@@ -23,7 +23,8 @@ symbol_dict = {
 
 
 class Forth_Generator:
-    def __init__(self):
+    def __init__(self, interp):
+        self._interp = interp
         self.final_code = []
         self.final_header = []
         self.final_init = []
@@ -33,7 +34,15 @@ class Forth_Generator:
         self.form_keys = []
         self.previous_model = self.awkward_model
 
-    def add_node_to_model(self, new_node, current_node, parent_node_name):
+    def _debug_forth(self):
+        self._interp._debug_forth(self)
+
+    def add_node_to_model(self, new_node, current_node=None, parent_node_name=None):
+        if current_node is None:
+            current_node = self.awkward_model
+        if parent_node_name is None:
+            parent_node_name = self.previous_model.name
+
         if (
             parent_node_name == current_node.name
         ) and parent_node_name != new_node.name:
@@ -146,11 +155,7 @@ class ForthStash:
     def add_to_init(self, code):
         self._init += code
 
-    def set_node(
-        self,
-        name,
-        dtype,
-    ):
+    def set_node(self, name, dtype):
         self._node = Node(
             name,
             dtype,
@@ -170,14 +175,17 @@ class Node:
         post_code=None,
         init_code=None,
         header_code=None,
+        form_details=None,
+        children=None,
     ):
         self._name = name
         self._dtype = dtype
-        self._pre_code = pre_code
-        self._post_code = post_code
-        self._init_code = init_code
-        self._header_code = header_code
-        self._children = []
+        self._pre_code = [] if pre_code is None else pre_code
+        self._post_code = [] if post_code is None else post_code
+        self._init_code = "" if init_code is None else init_code
+        self._header_code = "" if header_code is None else header_code
+        self._form_details = {} if form_details is None else form_details
+        self._children = [] if children is None else children
 
     def __str__(self) -> str:
         return self._name
@@ -187,23 +195,6 @@ class Node:
         children_dicts = [i.get_dict() for i in self._children]
         dictionary["_children"] = children_dicts
         return dictionary
-
-    def add_child(self, child):
-        self._children.append(child)
-
-    def append_code_snippet(self, code, case):
-        if case == "pre":
-            self._pre_code.append(code)
-        elif case == "post":
-            self._post_code.append(code)
-        elif case == "header":
-            self._header_code += code
-        elif case == "init":
-            self._init_code += code
-
-    @property
-    def children(self):
-        return self._children
 
     @property
     def name(self):
@@ -224,6 +215,96 @@ class Node:
     @property
     def init_code(self):
         return self._init_code
+
+    @property
+    def form_details(self):
+        return self._form_details
+
+    @property
+    def children(self):
+        return self._children
+
+    @property
+    def node(self):
+        return self
+
+    def add_to_pre(self, code):
+        self._pre_code.append(code)
+
+    def add_to_post(self, code):
+        self._post_code.append(code)
+
+    def add_to_header(self, code):
+        self._header_code += code
+
+    def add_to_init(self, code):
+        self._init_code += code
+
+    def add_form_details(self, form_details):
+        self._form_details = form_details
+
+    def add_child(self, child):
+        self._children.append(child)
+
+    def set_node(self, name, dtype):
+        # FIXME: get rid of this function!
+        self._name = name
+        self._dtype = dtype
+
+    def append_code_snippet(self, code, case):
+        # FIXME: get rid of this function!
+        if case == "pre":
+            self._pre_code.append(code)
+        elif case == "post":
+            self._post_code.append(code)
+        elif case == "header":
+            self._header_code += code
+        elif case == "init":
+            self._init_code += code
+
+    def derive_form(self):
+        if self._form_details.get("class") == "NumpyArray":
+            assert len(self._children) == 0
+            return self._form_details
+
+        elif self._form_details.get("class") == "ListOffsetArray":
+            assert len(self._children) == 1
+            out = dict(self._form_details)
+            out["content"] = self._children[0].derive_form()
+            return out
+
+        elif self._form_details.get("class") == "RecordArray":
+            out = dict(self._form_details)
+            out["fields"] = []
+            out["contents"] = []
+            for child in self._children:
+                if child.name.startswith("base-class "):
+                    assert len(child._children) == 1
+                    assert child._children[0].name.startswith("start-of-model ")
+                    assert len(child._children[0]._children) == 1
+                    assert child._children[0]._children[0]._form_details.get("class") == "RecordArray"
+                    base_form = child._children[0]._children[0].derive_form()
+                    out["fields"].extend(base_form["fields"])
+                    out["contents"].extend(base_form["contents"])
+                else:
+                    assert ":" in child.name
+                    out["fields"].append(child.name.split(":", 1)[-1])
+                    out["contents"].append(child.derive_form())
+
+            return out
+
+        elif (
+            self._name == "TOP"
+            or self._name.startswith("dispatch-by-version ")
+            or self._name.startswith("wrong-instance-version ")
+            or self._name.startswith("start-of-model ")
+        ):
+            assert len(self._children) == 1
+            return self._children[0].derive_form()
+
+        else:
+            return "NULL"
+
 
 
 def convert_dtype(format):

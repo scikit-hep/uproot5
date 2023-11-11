@@ -349,7 +349,7 @@ def test_07(is_forth):
             assert interp._complete_forth_code is not None
 
 
-@pytest.mark.skip(reason="AwkwardForth generation not implemented for this case.")
+# @pytest.mark.skip(reason="AwkwardForth generation not implemented for this case.")
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_08(is_forth):
     # see AwkwardForth testing: A, B, E, P (previously, this hadn't been tested: library="np")
@@ -392,6 +392,9 @@ def test_08(is_forth):
         interp._forth = is_forth
         py = branch.array(interp, library="ak", entry_stop=2)
         # py[-1] == <STLVector [[<ElementLink<DataVector<xAOD::IParticle>> (version 1) at 0x7fc6a08f2f70>, ...], ...] at 0x7fc6a08f2f10>
+        assert py.layout.form == interp.awkward_form(branch.file)
+        if is_forth:
+            assert interp._complete_forth_code is not None
 
 
 @pytest.mark.skip(reason="AwkwardForth generation not implemented for this case.")
@@ -3418,3 +3421,5 @@ def test_81(is_forth):
         assert py[0]["fY"] == pytest.approx(2.5636332035064697)
         # py[-1] == <STLVector [[], []] at 0x7f046a6951f0>
         assert py.layout.form == interp.awkward_form(branch.file)
+        if is_forth:
+            assert interp._complete_forth_code is not None

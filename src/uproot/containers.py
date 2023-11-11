@@ -76,10 +76,7 @@ def _read_nested(
                     forth_generator.previous_model.name,
                 )
 
-            forth_stash.set_node(
-                f"node{key}",
-                "i64",
-            )
+            forth_stash.set_node(f"node{key}", "i64")
 
             forth_generator.add_node_to_model(
                 forth_stash._node,
@@ -516,10 +513,7 @@ class AsString(AsContainer):
                 f"output node{offsets_num}-offsets int64\noutput node{data_num}-data uint8\n"
             )
             forth_stash.add_to_init(f"0 node{offsets_num}-offsets <- stack\n")
-            forth_stash.set_node(
-                f"node{offsets_num}",
-                "i64",
-            )
+            forth_stash.set_node(f"node{offsets_num}", "i64")
             temp_aform = f'{{"class": "ListOffsetArray", "offsets": "i64", "content": {{"class": "NumpyArray", "primitive": "uint8", "inner_shape": [], "parameters": {{"__array__": "char"}}, "form_key": "node{data_num}"}}, "parameters": {{"__array__": "string"}}, "form_key": "node{offsets_num}"}}'
             forth_obj.add_form(
                 json.loads(temp_aform),
@@ -745,10 +739,7 @@ in file {selffile.file_path}"""
                         forth_obj.previous_model.name,
                     )
 
-                    forth_stash.set_node(
-                        f"node{offsets_num}",
-                        "i64",
-                    )
+                    forth_stash.set_node(f"node{offsets_num}", "i64")
                     forth_obj.add_node_to_model(
                         forth_stash.node,
                         forth_obj.awkward_model,
@@ -821,10 +812,7 @@ in file {selffile.file_path}"""
                         forth_obj.discovered_form,
                         forth_obj.previous_model.name,
                     )
-                    forth_stash.set_node(
-                        f"node{offsets_num}",
-                        "i64",
-                    )
+                    forth_stash.set_node(f"node{offsets_num}", "i64")
                     forth_obj.add_node_to_model(
                         forth_stash.node,
                         forth_obj.awkward_model,
@@ -1130,9 +1118,9 @@ class AsVector(AsContainer):
 
                 if forth_generator.previous_model.name != node_key:
                     forth_generator.append_form_key(form_key)
-                    temp_aform = f'{{ "class":"ListOffsetArray", "offsets":"i64", "content": "NULL", "parameters": {{}}, "form_key": "node{key}"}}'
+                    temp_aform = {"class": "ListOffsetArray", "offsets": "i64", "content": "NULL", "parameters": {}, "form_key": node_key}
                     forth_generator.add_form(
-                        json.loads(temp_aform),
+                        temp_aform,
                         forth_generator.discovered_form,
                         forth_generator.previous_model.name,
                     )
@@ -1141,10 +1129,14 @@ class AsVector(AsContainer):
                     forth_stash.add_to_pre("0 do\n")
                     forth_stash.add_to_post("loop\n")
 
-                forth_stash.set_node(
-                    node_key,
-                    "i64",
-                )
+                forth_stash.set_node(node_key, "i64")
+
+                forth_stash.node.add_form_details({
+                    "class": "ListOffsetArray",
+                    "offsets": "i64",
+                    "parameters": {},
+                    "form_key": node_key,
+                })
 
                 forth_generator.add_node_to_model(
                     forth_stash.node,
@@ -1482,10 +1474,7 @@ class AsMap(AsContainer):
                     forth_stash.add_to_pre("dup 0 do\n")
                 else:
                     forth_stash.add_to_pre("dup\n")
-                forth_stash.set_node(
-                    f"node{key}",
-                    "i64",
-                )
+                forth_stash.set_node(f"node{key}", "i64")
                 forth_obj.add_node_to_model(
                     forth_stash.node,
                     forth_obj.awkward_model,

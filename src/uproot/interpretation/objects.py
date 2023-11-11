@@ -19,6 +19,7 @@ while an array is being built from ``TBaskets``. Its final form is determined
 by the :doc:`uproot.interpretation.library.Library`.
 """
 
+import json
 import contextlib
 import threading
 
@@ -106,10 +107,7 @@ class AsObjects(uproot.interpretation.Interpretation):
         context = self._make_context(
             context, index_format, header, tobject_header, breadcrumbs
         )
-        if isinstance(self._model, type):
-            return self._model.awkward_form(self._branch.file, context)
-        else:
-            return self._model.awkward_form(self._branch.file, context)
+        return self._model.awkward_form(self._branch.file, context)
 
     def basket_array(
         self,
@@ -201,7 +199,7 @@ class AsObjects(uproot.interpretation.Interpretation):
         if not hasattr(context["forth"], "vm"):
             # context["forth"] is a threading.local()
             context["forth"].vm = None
-            context["forth"].gen = uproot._awkward_forth.Forth_Generator()
+            context["forth"].gen = uproot._awkward_forth.Forth_Generator(self)
         else:
             context["forth"].gen = None
 
@@ -305,6 +303,29 @@ class AsObjects(uproot.interpretation.Interpretation):
                         return True
             return False
 
+    def _debug_forth(self, forth_obj):
+        self._assemble_forth(forth_obj, forth_obj.awkward_model.children[0])
+        expected_form = self._model.awkward_form(self._branch.file, {"index_format": "i64", "breadcrumbs": (), "header": False})
+
+        raise Exception(f"""EXPECTED FORM:
+{expected_form}
+
+DISCOVERED FORM:
+{json.dumps(forth_obj.awkward_model.derive_form(), indent=4)}
+
+FORTH CODE:
+input stream
+    input byteoffsets
+    input bytestops
+    {"".join(forth_obj.final_header)}
+    {"".join(forth_obj.final_init)}
+    0 do
+    byteoffsets I-> stack
+    stream seek
+    {"".join(forth_obj.final_code)}
+    loop
+    """)
+
     def _discover_forth(self, data, byte_offsets, branch, context, cursor_offset):
         output = numpy.empty(len(byte_offsets) - 1, dtype=numpy.dtype(object))
 
@@ -330,7 +351,8 @@ class AsObjects(uproot.interpretation.Interpretation):
                 branch,
             )
 
-            if not self._any_NULL(context["forth"].gen.discovered_form):
+            derived_form = context["forth"].gen.awkward_model.derive_form()
+            if not self._any_NULL(derived_form):
                 context["forth"].prereaddone = True
                 self._assemble_forth(
                     context["forth"].gen, context["forth"].gen.awkward_model.children[0]
@@ -347,7 +369,7 @@ class AsObjects(uproot.interpretation.Interpretation):
     loop
     """
                 self._forth_form_keys = tuple(context["forth"].gen.form_keys)
-                self._form = context["forth"].gen.discovered_form["content"]
+                self._form = derived_form
 
                 return None  # we should re-read all the data with Forth
         # Python output when Forth-Generation not successful

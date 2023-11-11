@@ -808,7 +808,7 @@ class Model:
                 ):
                     if forth_stash is not None:
                         forth_stash.set_node(
-                            "pass",
+                            f"wrong-instance-version {forth_obj.get_key_number()}",
                             "i64",
                         )
                         forth_obj.add_node_to_model(
@@ -850,7 +850,7 @@ class Model:
             )
             if forth_stash is not None:
                 forth_stash.set_node(
-                    "model828",
+                    f"start-of-model {forth_obj.get_key_number()}",
                     "i64",
                 )
                 forth_obj.add_node_to_model(
@@ -858,9 +858,14 @@ class Model:
                     forth_obj.awkward_model,
                     forth_obj.previous_model.name,
                 )
+                hold_previous_model = forth_obj.previous_model
                 forth_obj.update_previous_model(forth_stash.node)
 
             self.read_members(chunk, cursor, context, file)
+
+            if forth_stash is not None:
+                forth_obj.update_previous_model(hold_previous_model)
+
             self.hook_after_read_members(
                 chunk=chunk, cursor=cursor, context=context, file=file
             )
@@ -1328,7 +1333,7 @@ class DispatchByVersion:
             bytes_skipped = cursor._index - start_index
             forth_stash.add_to_pre(f"{bytes_skipped} stream skip \n")
             forth_stash.set_node(
-                "Model1319",
+                f"dispatch-by-version {forth_obj.get_key_number()}",
                 "i64",
             )
             forth_obj.add_node_to_model(
