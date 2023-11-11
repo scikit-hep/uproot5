@@ -282,7 +282,10 @@ class Node:
                     assert len(child._children) == 1
                     assert child._children[0].name.startswith("start-of-model ")
                     assert len(child._children[0]._children) == 1
-                    assert child._children[0]._children[0]._form_details.get("class") == "RecordArray"
+                    assert (
+                        child._children[0]._children[0]._form_details.get("class")
+                        == "RecordArray"
+                    )
                     base_form = child._children[0]._children[0].derive_form()
                     out["fields"].extend(base_form["fields"])
                     out["contents"].extend(base_form["contents"])
@@ -304,7 +307,6 @@ class Node:
 
         else:
             return "NULL"
-
 
 
 def convert_dtype(format):

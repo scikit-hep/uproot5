@@ -281,8 +281,8 @@ class Model_TStreamerInfo(uproot.model.Model):
 
         read_members.extend(
             [
-                 "        if forth_stash is not None:",
-                 "           forth_obj.update_key_number(hold_key_number)",
+                "        if forth_stash is not None:",
+                "           forth_obj.update_key_number(hold_key_number)",
                 f"           forth_stash.add_form_details({{'class': 'RecordArray', 'parameters': {{'__record__': {self.name!r}}}}})",
             ]
         )
@@ -708,14 +708,14 @@ class Model_TStreamerBase(Model_TStreamerElement):
         # AwkwardForth testing B: test_0637's 01,02,08,09,11,12,13,15,16,29,38,45,46,49,50
         read_members.extend(
             [
-                 "        if forth_stash is not None:",
-                 "            nested_forth_stash = uproot._awkward_forth.Node(f'base-class {forth_obj.get_key_number()}')",
-                 "            forth_obj.add_node_to_model(nested_forth_stash)",
-                 "            hold_previous_model = forth_obj.previous_model",
-                 "            forth_obj.update_previous_model(nested_forth_stash)",
+                "        if forth_stash is not None:",
+                "            nested_forth_stash = uproot._awkward_forth.Node(f'base-class {forth_obj.get_key_number()}')",
+                "            forth_obj.add_node_to_model(nested_forth_stash)",
+                "            hold_previous_model = forth_obj.previous_model",
+                "            forth_obj.update_previous_model(nested_forth_stash)",
                 f"        self._bases.append(c({self.name!r}, {self.base_version!r}).read(chunk, cursor, context, file, self._file, self._parent, concrete=self.concrete))",
-                 "        if forth_stash is not None:",
-                 "            forth_obj.update_previous_model(hold_previous_model)",
+                "        if forth_stash is not None:",
+                "            forth_obj.update_previous_model(hold_previous_model)",
             ]
         )
 

@@ -1118,7 +1118,13 @@ class AsVector(AsContainer):
 
                 if forth_generator.previous_model.name != node_key:
                     forth_generator.append_form_key(form_key)
-                    temp_aform = {"class": "ListOffsetArray", "offsets": "i64", "content": "NULL", "parameters": {}, "form_key": node_key}
+                    temp_aform = {
+                        "class": "ListOffsetArray",
+                        "offsets": "i64",
+                        "content": "NULL",
+                        "parameters": {},
+                        "form_key": node_key,
+                    }
                     forth_generator.add_form(
                         temp_aform,
                         forth_generator.discovered_form,
@@ -1131,12 +1137,14 @@ class AsVector(AsContainer):
 
                 forth_stash.set_node(node_key, "i64")
 
-                forth_stash.node.add_form_details({
-                    "class": "ListOffsetArray",
-                    "offsets": "i64",
-                    "parameters": {},
-                    "form_key": node_key,
-                })
+                forth_stash.node.add_form_details(
+                    {
+                        "class": "ListOffsetArray",
+                        "offsets": "i64",
+                        "parameters": {},
+                        "form_key": node_key,
+                    }
+                )
 
                 forth_generator.add_node_to_model(
                     forth_stash.node,
