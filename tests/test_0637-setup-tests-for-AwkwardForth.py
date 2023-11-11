@@ -239,7 +239,6 @@ def test_04(is_forth):
             assert interp._complete_forth_code is not None
 
 
-@pytest.mark.skip(reason="AwkwardForth generation not implemented for this case.")
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_05(is_forth):
     # see AwkwardForth testing: A, E (previously, this hadn't been tested: library="np")
@@ -267,6 +266,10 @@ def test_05(is_forth):
         interp._forth = is_forth
         py = branch.array(interp, library="ak", entry_stop=2)
         # py[-1] == <xAOD::TrigConfKeys_v1 (version 1) at 0x7fecf9212760>
+        assert py.layout.form == interp.awkward_form(branch.file)
+        if is_forth:
+            assert interp._complete_forth_code is not None
+            print(interp._complete_forth_code)
 
 
 @pytest.mark.parametrize("is_forth", [False, True])
