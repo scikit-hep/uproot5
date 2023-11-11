@@ -269,7 +269,6 @@ def test_05(is_forth):
         assert py.layout.form == interp.awkward_form(branch.file)
         if is_forth:
             assert interp._complete_forth_code is not None
-            print(interp._complete_forth_code)
 
 
 @pytest.mark.parametrize("is_forth", [False, True])
