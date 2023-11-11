@@ -52,39 +52,33 @@ def _read_nested(
 
     if isinstance(model, numpy.dtype):
         symbol = uproot._awkward_forth.symbol_dict.get(model)
+
         if forth_stash is not None and symbol is None:
-            raise TypeError("Cannot be awkward")
+            raise TypeError("Cannot be awkward")  # FIXME: use CannotBeAwkward exception type
+
         if forth_stash is not None:
-            forth_generator = context["forth"].gen
-            key = forth_generator.get_key_number()
-            forth_generator.increment_key_number()
-            node_key = f"node{key}"
-            form_key = f"node{key}-data"
+            forth_obj = context["forth"].gen
+            key = forth_obj.get_key_number()
+            forth_obj.increment_key_number()
+
+            forth_stash = uproot._awkward_forth.Node(
+                f"node{key}",
+                form_details={
+                    "class": "NumpyArray",
+                    "primitive": uproot._awkward_forth.convert_dtype(symbol),
+                    "form_key": f"node{key}",
+                }
+            )
+
             forth_stash.add_to_header(
                 f"output node{key}-data {uproot._awkward_forth.convert_dtype(symbol)}\n"
             )
             forth_stash.add_to_pre(f"stream #!{symbol}-> node{key}-data\n")
-            if forth_generator.previous_model.name != node_key:
-                forth_generator.append_form_key(form_key)
-                forth_generator.add_form(
-                    {
-                        "class": "NumpyArray",
-                        "primitive": f"{uproot._awkward_forth.convert_dtype(symbol)}",
-                        "form_key": f"node{key}",
-                    },
-                    forth_generator.discovered_form,
-                    forth_generator.previous_model.name,
-                )
 
-            forth_stash.set_node(f"node{key}", "i64")
-
-            forth_generator.add_node_to_model(
-                forth_stash._node,
-                forth_generator.awkward_model,
-                forth_generator.previous_model.name,
-            )
+            forth_obj.add_node_to_model(forth_stash)
 
         return cursor.array(chunk, length, model, context)
+
     else:
         values = numpy.empty(length, dtype=_stl_object_type)
         if isinstance(model, AsContainer):
@@ -105,6 +99,7 @@ def _read_nested(
                     parent,
                     header=header,
                 )
+
         else:
             for i in range(length):
                 values[i] = model.read(chunk, cursor, context, file, selffile, parent)
@@ -1037,6 +1032,19 @@ class AsVector(AsContainer):
     def read(self, chunk, cursor, context, file, selffile, parent, header=True):
         # AwkwardForth testing P: test_0637's 00,03,04,06,07,08,09,10,11,12,13,14,15,16,17,23,24,26,27,28,31,33,36,38,41,42,43,44,45,46,49,50,55,56,57,58,59,60,61,62,63,67,68,72,73,76,77,80
         forth_stash = uproot._awkward_forth.forth_stash(context)
+        if forth_stash is not None:
+            forth_obj = context["forth"].gen
+            key = forth_obj.get_key_number()
+            node_key = f"node{key}"
+            forth_stash = uproot._awkward_forth.Node(
+                node_key,
+                form_details={
+                    "class": "ListOffsetArray",
+                    "offsets": "i64",
+                    "parameters": {},
+                    "form_key": node_key,
+                }
+            )
 
         if self._header and header:
             start_cursor = cursor.copy()
@@ -1105,53 +1113,19 @@ class AsVector(AsContainer):
         else:
             length = cursor.field(chunk, _stl_container_size, context)
             if forth_stash is not None:
-                forth_generator = context["forth"].gen
-                key = forth_generator.get_key_number()
-                forth_generator.increment_key_number()
-                node_key = f"node{key}"
-                form_key = f"node{key}-offsets"
+                forth_obj.increment_key_number()
                 forth_stash.add_to_header(f"output node{key}-offsets int64\n")
                 forth_stash.add_to_init(f"0 node{key}-offsets <- stack\n")
                 forth_stash.add_to_pre(
                     f"stream !I-> stack\n dup node{key}-offsets +<- stack\n"
                 )
 
-                if forth_generator.previous_model.name != node_key:
-                    forth_generator.append_form_key(form_key)
-                    temp_aform = {
-                        "class": "ListOffsetArray",
-                        "offsets": "i64",
-                        "content": "NULL",
-                        "parameters": {},
-                        "form_key": node_key,
-                    }
-                    forth_generator.add_form(
-                        temp_aform,
-                        forth_generator.discovered_form,
-                        forth_generator.previous_model.name,
-                    )
-
                 if not isinstance(self._values, numpy.dtype):
                     forth_stash.add_to_pre("0 do\n")
                     forth_stash.add_to_post("loop\n")
 
-                forth_stash.set_node(node_key, "i64")
-
-                forth_stash.node.add_form_details(
-                    {
-                        "class": "ListOffsetArray",
-                        "offsets": "i64",
-                        "parameters": {},
-                        "form_key": node_key,
-                    }
-                )
-
-                forth_generator.add_node_to_model(
-                    forth_stash.node,
-                    forth_generator.awkward_model,
-                    forth_generator.previous_model.name,
-                )
-                forth_generator.update_previous_model(forth_stash.node)
+                forth_obj.add_node_to_model(forth_stash)
+                forth_obj.update_previous_model(forth_stash)
 
             values = _read_nested(
                 self._values, length, chunk, cursor, context, file, selffile, parent
