@@ -277,24 +277,6 @@ class AsObjects(uproot.interpretation.Interpretation):
 
         return output
 
-    def _any_NULL(self, form):
-        if form == "NULL":
-            return True
-        else:
-            content = form.get("content")
-            if content is not None:
-                return self._any_NULL(content)
-            contents = form.get("contents")
-            if isinstance(contents, list):
-                for content in contents:
-                    if self._any_NULL(content):
-                        return True
-            elif isinstance(contents, dict):
-                for content in contents.values():
-                    if self._any_NULL(content):
-                        return True
-            return False
-
     def _assemble_forth(self, forth_obj, awkward_model):
         forth_obj.add_to_header(awkward_model.header_code)
         forth_obj.add_to_init(awkward_model.init_code)
@@ -334,7 +316,7 @@ class AsObjects(uproot.interpretation.Interpretation):
                 0, origin=-(byte_offsets[i] + cursor_offset)
             )
 
-            context["forth"].gen.update_node_count(value=0)
+            context["forth"].gen.update_key_number(value=0)
             context["forth"].gen.update_previous_model(
                 uproot._awkward_forth.Node("TOP")
             )

@@ -274,12 +274,10 @@ class Model_TStreamerInfo(uproot.model.Model):
         read_members.extend(
             [
                 "        if forth_stash is not None:",
-                f"           forth_stash.add_form({{'class': 'RecordArray', 'contents': content, 'parameters': {{'__record__': {self.name!r}}}}})",
-                "           forth_stash.set_node('dynamic', \"i64\", forth_obj.previous_model.name)",
-                "           forth_obj.add_form(forth_stash.get_form(),forth_obj.discovered_form,'TOP')",
-                "           forth_obj.append_form_key(forth_stash.get_form_key())",
-                "           forth_obj.add_node_to_model(forth_stash.get_node(),forth_obj.awkward_model)",
-                "           forth_obj.update_previous_model(forth_stash.get_node())",
+                "           forth_stash.set_node('dynamic', \"i64\")",
+                f"           forth_obj.add_form({{'class': 'RecordArray', 'contents': content, 'parameters': {{'__record__': {self.name!r}}}}},forth_obj.discovered_form,'TOP')",
+                "           forth_obj.add_node_to_model(forth_stash.node,forth_obj.awkward_model,forth_obj.previous_model.name)",
+                "           forth_obj.update_previous_model(forth_stash.node)",
             ]
         )
         if len(read_members) == 1:
@@ -951,6 +949,28 @@ class Model_TStreamerBasicType(Model_TStreamerElement):
                     # AwkwardForth testing D: test_0637's 01,02,29,38,44,56
                     read_members.extend(
                         [
+                            "        if forth_stash is not None:",
+                            "            key = forth_obj.get_key_number()",
+                            "            forth_obj.increment_key_number()",
+                            '            form_key = f"node{key}-data"',
+                            f'            forth_stash.add_to_header(f"output node{{key}}-data {uproot._awkward_forth.convert_dtype(formats[-1][0])}\\n")',
+                            f'            content[{fields[-1][0]!r}] = {{ "class": "NumpyArray", "primitive": "{uproot._awkward_forth.convert_dtype(formats[-1][0])}", "inner_shape": [], "parameters": {{}}, "form_key": f"node{{key}}"}}',
+                        ]
+                    )
+                    if fields[-1][0] in COUNT_NAMES:
+                        read_members.extend(
+                            [
+                                f'            forth_stash.add_to_init(f"variable var_{fields[-1][0]}\\n")',
+                                f'            forth_stash.add_to_pre(f"stream !{formats[-1][0]}-> stack dup var_{fields[-1][0]} ! node{{key}}-data <- stack\\n")',
+                            ]
+                        )
+                    else:
+                        read_members.append(
+                            f'            forth_stash.add_to_pre(f"stream !{formats[-1][0]}-> node{{key}}-data\\n")'
+                        )
+                    read_members.extend(
+                        [
+                            "            forth_obj.append_form_key(form_key)",
                             f"        self._members[{fields[-1][0]!r}] = cursor.field(chunk, self._format{len(formats) - 1}, context)",
                         ]
                     )
@@ -960,14 +980,13 @@ class Model_TStreamerBasicType(Model_TStreamerElement):
                     for i in range(len(formats[0])):
                         read_members.extend(
                             [
-                                "           key = forth_obj.get_node_count()",
+                                "           key = forth_obj.get_key_number()",
                                 '           form_key = f"node{key}-data"',
                                 f'           forth_stash.add_to_header(f"output node{{key}}-data {uproot._awkward_forth.convert_dtype(formats[0][i])}\\n")',
                                 f'           content[{fields[0][i]!r}] = {{ "class": "NumpyArray", "primitive": "{uproot._awkward_forth.convert_dtype(formats[0][i])}", "inner_shape": [], "parameters": {{}}, "form_key": f"node{{key}}"}}',
                                 f'           forth_stash.add_to_pre(f"stream !{formats[0][i]}-> node{{key}}-data\\n")',
-                                "           forth_stash.add_form_key(form_key)",
-                                "           forth_obj.append_form_key(forth_stash.get_form_key())",
-                                "           forth_obj.increment_node_count()",
+                                "           forth_obj.append_form_key(form_key)",
+                                "           forth_obj.increment_key_number()",
                             ]
                         )
 

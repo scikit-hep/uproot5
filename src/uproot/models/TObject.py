@@ -53,10 +53,11 @@ in file {self.file.file_path}"""
             forth_stash.set_node(
                 "TObjext",
                 "i64",
-                forth_obj.previous_model.name,
             )
-            forth_obj.add_node_to_model(forth_stash.get_node(), forth_obj.awkward_model)
-            forth_obj.update_previous_model(forth_stash.get_node())
+            forth_obj.add_node_to_model(
+                forth_stash.node, forth_obj.awkward_model, forth_obj.previous_model.name
+            )
+            forth_obj.update_previous_model(forth_stash.node)
 
     writable = True
 

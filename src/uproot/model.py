@@ -806,6 +806,18 @@ class Model:
                 if classname_version(correct_cls.__name__) != classname_version(
                     cls.__name__
                 ):
+                    if forth_stash is not None:
+                        forth_stash.set_node(
+                            "pass",
+                            "i64",
+                        )
+                        forth_obj.add_node_to_model(
+                            forth_stash.node,
+                            forth_obj.awkward_model,
+                            forth_obj.previous_model.name,
+                        )
+                        forth_obj.update_previous_model(forth_stash.node)
+
                     cursor.move_to(self._cursor.index)
                     context["breadcrumbs"] = old_breadcrumbs
                     temp_var = correct_cls.read(
@@ -824,8 +836,12 @@ class Model:
             if self._num_bytes is None and self._instance_version != self.class_version:
                 self._instance_version = None
                 cursor = self._cursor
+                if forth_stash is not None and not context["cancel_forth"]:
+                    forth_stash._pre_code.pop(-1)
 
             elif self._instance_version == 0:
+                if forth_stash is not None:
+                    forth_stash.add_to_pre("4 stream skip\n")
                 cursor.skip(4)
 
         if context.get("reading", True):
@@ -836,12 +852,13 @@ class Model:
                 forth_stash.set_node(
                     "model828",
                     "i64",
-                    forth_obj.previous_model.name,
                 )
                 forth_obj.add_node_to_model(
-                    forth_stash.get_node(), forth_obj.awkward_model
+                    forth_stash.node,
+                    forth_obj.awkward_model,
+                    forth_obj.previous_model.name,
                 )
-                forth_obj.update_previous_model(forth_stash.get_node())
+                forth_obj.update_previous_model(forth_stash.node)
 
             self.read_members(chunk, cursor, context, file)
             self.hook_after_read_members(
@@ -1313,10 +1330,11 @@ class DispatchByVersion:
             forth_stash.set_node(
                 "Model1319",
                 "i64",
-                forth_obj.previous_model.name,
             )
-            forth_obj.add_node_to_model(forth_stash.get_node(), forth_obj.awkward_model)
-            forth_obj.update_previous_model(forth_stash.get_node())
+            forth_obj.add_node_to_model(
+                forth_stash.node, forth_obj.awkward_model, forth_obj.previous_model.name
+            )
+            forth_obj.update_previous_model(forth_stash.node)
 
         if versioned_cls is not None:
             pass

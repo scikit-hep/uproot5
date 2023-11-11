@@ -9,7 +9,6 @@ import uproot
 pytest.importorskip("awkward")
 
 
-@pytest.mark.skip(reason="AwkwardForth generation not implemented for this case.")
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_00(is_forth):
     # see AwkwardForth testing: L, P, R
