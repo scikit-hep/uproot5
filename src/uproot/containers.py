@@ -1228,6 +1228,17 @@ class AsSet(AsContainer):
 
         if forth_stash is not None:
             forth_obj = context["forth"].gen
+            key = forth_obj.get_key_number()
+            node_key = f"node{key}"
+            forth_stash = uproot._awkward_forth.Node(
+                node_key,
+                form_details={
+                    "class": "ListOffsetArray",
+                    "offsets": "i64",
+                    "parameters": {"__array__": "set"},
+                    "form_key": node_key,
+                },
+            )
 
         if self._header and header:
             start_cursor = cursor.copy()
@@ -1252,30 +1263,19 @@ in file {selffile.file_path}"""
         length = cursor.field(chunk, _stl_container_size, context)
 
         if forth_stash is not None:
-            key = forth_obj.get_key_number()
             forth_obj.increment_key_number()
-            node_key = f"node{key}"
-            form_key = f"node{key}-offsets"
             forth_stash.add_to_header(f"output node{key}-offsets int64\n")
             forth_stash.add_to_init(f"0 node{key}-offsets <- stack\n")
             forth_stash.add_to_pre(
                 f"stream !I-> stack\ndup node{key}-offsets +<- stack\n"
             )
-            forth_obj.append_form_key(form_key)
-            temp_aform = f'{{ "class":"ListOffsetArray", "offsets":"i64", "content": "NULL", "parameters": {{"__array__": "set"}}, "form_key": "node{key}"}}'
-            forth_obj.add_form(
-                json.loads(temp_aform),
-                forth_obj.discovered_form,
-                forth_obj.previous_model.name,
-            )
+            forth_obj.append_form_key(f"{node_key}-offsets")
             if not isinstance(self._keys, numpy.dtype):
                 forth_stash.add_to_pre("0 do\n")
                 forth_stash.add_to_post("loop\n")
-            forth_stash.set_node(node_key, "i64")
-            forth_obj.add_node_to_model(
-                forth_stash.node, forth_obj.awkward_model, forth_obj.previous_model.name
-            )
-            forth_obj.update_previous_model(forth_stash.node)
+
+            forth_obj.add_node_to_model(forth_stash)
+            forth_obj.update_previous_model(forth_stash)
 
         keys = _read_nested(
             self._keys, length, chunk, cursor, context, file, selffile, parent

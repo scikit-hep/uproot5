@@ -51,7 +51,7 @@ in file {self.file.file_path}"""
             skip_length = cursor._index - start_index
             forth_stash.add_to_pre(f"{skip_length} stream skip \n")
             forth_stash.set_node(
-                "TObjext",
+                "TObject",
                 "i64",
             )
             forth_obj.add_node_to_model(

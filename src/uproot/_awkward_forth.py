@@ -298,29 +298,6 @@ class Node:
             out["content"] = self._children[0].derive_form()
             return out
 
-        elif self._form_details.get("class") == "RecordArray":
-            out = dict(self._form_details)
-            out["fields"] = []
-            out["contents"] = []
-            for child in self._children:
-                if child.name.startswith("base-class "):
-                    assert len(child._children) == 1
-                    assert child._children[0].name.startswith("start-of-model ")
-                    assert len(child._children[0]._children) == 1
-                    assert (
-                        child._children[0]._children[0]._form_details.get("class")
-                        == "RecordArray"
-                    )
-                    base_form = child._children[0]._children[0].derive_form()
-                    out["fields"].extend(base_form["fields"])
-                    out["contents"].extend(base_form["contents"])
-                else:
-                    assert ":" in child.name
-                    out["fields"].append(child.name.split(":", 1)[-1])
-                    out["contents"].append(child.derive_form())
-
-            return out
-
         elif (
             self._name == "TOP"
             or self._name.startswith("dispatch-by-version ")
@@ -332,7 +309,25 @@ class Node:
 
         else:
             # print(json.dumps(self.get_dict(), indent=4))
-            return "NULL"
+
+            out = dict(self._form_details)
+            out["class"] = "RecordArray"
+            out["fields"] = []
+            out["contents"] = []
+            for child in self._children:
+                if child.name.startswith("base-class "):
+                    assert len(child._children) == 1
+                    assert child._children[0].name.startswith("start-of-model ")
+                    assert len(child._children[0]._children) == 1
+                    base_form = child._children[0]._children[0].derive_form()
+                    out["fields"].extend(base_form["fields"])
+                    out["contents"].extend(base_form["contents"])
+                else:
+                    assert ":" in child.name
+                    out["fields"].append(child.name.split(":", 1)[-1])
+                    out["contents"].append(child.derive_form())
+
+            return out
 
 
 def convert_dtype(format):

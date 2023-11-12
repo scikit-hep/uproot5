@@ -275,13 +275,21 @@ class AsObjects(uproot.interpretation.Interpretation):
 
         return output
 
-    def _assemble_forth(self, forth_obj, awkward_model):
-        forth_obj.add_to_header(awkward_model.header_code)
-        forth_obj.add_to_init(awkward_model.init_code)
-        forth_obj.add_to_final(awkward_model.pre_code)
-        for child in awkward_model.children:
+    def _assemble_forth(self, forth_obj, node, only_base=False):
+        if only_base != node.name.startswith("base-class "):
+            return
+
+        forth_obj.add_to_header(node.header_code)
+        forth_obj.add_to_init(node.init_code)
+
+        if node.name.startswith("read-members "):
+            for child in node.children:
+                self._assemble_forth(forth_obj, child, only_base=True)
+        forth_obj.add_to_final(node.pre_code)
+        for child in node.children:
             self._assemble_forth(forth_obj, child)
-        forth_obj.add_to_final(awkward_model.post_code)
+
+        forth_obj.add_to_final(node.post_code)
 
     def _any_NULL(self, form):
         # Recursion through form.
@@ -307,7 +315,12 @@ class AsObjects(uproot.interpretation.Interpretation):
         self._assemble_forth(forth_obj, forth_obj.awkward_model.children[0])
         expected_form = self._model.awkward_form(
             self._branch.file,
-            {"index_format": "i64", "breadcrumbs": (), "header": False},
+            {
+                "index_format": "i64",
+                "header": False,
+                "tobject_header": False,
+                "breadcrumbs": (),
+            },
         )
 
         raise Exception(
