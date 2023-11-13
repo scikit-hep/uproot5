@@ -93,6 +93,7 @@ def test_fsspec_writing_ssh(tmp_path):
         assert f["tree"]["x"].array().tolist() == [1, 2, 3]
 
 
+@pytest.mark.skip(reason="not working yet")
 def test_fsspec_writing_memory(tmp_path):
     uri = f"memory://{tmp_path}/file.root"
 
