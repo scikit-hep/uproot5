@@ -102,8 +102,10 @@ def _sink_from_path(
         import fsspec
 
         # truncate the file
-        with fsspec.open(file_path, mode="wb", **storage_options):
-            pass
+        fs, local_path = fsspec.core.url_to_fs(file_path, **storage_options)
+        if not fs.exists(local_path):
+            fs.mkdirs(Path(local_path).parent, exist_ok=True)
+            fs.touch(local_path, truncate=True)
 
         open_file = fsspec.open(file_path, mode="r+b", **storage_options)
         return uproot.sink.file.FileSink.from_fsspec(open_file)

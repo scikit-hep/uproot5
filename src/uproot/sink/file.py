@@ -87,9 +87,6 @@ class FileSink:
             return
 
         if self._fsspec_open_file:
-            assert (
-                self._fsspec_open_file.mode == "r+b"
-            ), "FileSink only supports r+b mode"
             self._file = self._fsspec_open_file.open()
         else:
             self._file = open(self._file_path, "r+b")

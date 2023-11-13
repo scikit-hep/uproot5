@@ -46,7 +46,7 @@ def test_fsspec_writing_http(server):
     "scheme",
     [
         "",
-        # "file://",  # why does this fail?
+        "file://",
     ],
 )
 def test_fsspec_writing_local_update(tmp_path, scheme):
