@@ -119,7 +119,7 @@ def test_memmap_fail(use_threads, tmp_path):
 
 @pytest.mark.parametrize("use_threads", [True, False])
 @pytest.mark.network
-def test_http(server, use_threads):
+def test_http(use_threads):
     url = "https://example.com"
     with uproot.source.http.HTTPSource(
         url,
