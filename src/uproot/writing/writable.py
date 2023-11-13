@@ -139,10 +139,17 @@ def recreate(file_path: str | IO, **options):
     See :doc:`uproot.writing.writable.WritableFile` for details on these options.
     """
 
-    storage_options = {
-        key: value for key, value in options.items() if key not in recreate.defaults
-    }
-    sink = _sink_from_path(file_path, **storage_options)
+    # storage_options = {key: value for key, value in options.items() if key not in recreate.defaults}
+    # sink = _sink_from_path(file_path, **storage_options)
+    file_path = uproot._util.regularize_path(file_path)
+    if uproot._util.isstr(file_path):
+        # Truncate file
+        with open(file_path, "w"):
+            pass
+        sink = uproot.sink.file.FileSink(file_path)
+    else:
+        sink = uproot.sink.file.FileSink.from_object(file_path)
+    # TODO: remove above
 
     compression = options.pop("compression", create.defaults["compression"])
 
@@ -192,10 +199,17 @@ def update(file_path: str | IO, **options):
     See :doc:`uproot.writing.writable.WritableFile` for details on these options.
     """
 
-    storage_options = {
-        key: value for key, value in options.items() if key not in update.defaults
-    }
-    sink = _sink_from_path(file_path, **storage_options)
+    # storage_options = {key: value for key, value in options.items() if key not in update.defaults }
+    # sink = _sink_from_path(file_path, **storage_options)
+    file_path = uproot._util.regularize_path(file_path)
+    if uproot._util.isstr(file_path):
+        # Truncate file
+        with open(file_path, "w"):
+            pass
+        sink = uproot.sink.file.FileSink(file_path)
+    else:
+        sink = uproot.sink.file.FileSink.from_object(file_path)
+    # TODO: remove above
 
     initial_directory_bytes = options.pop(
         "initial_directory_bytes", create.defaults["initial_directory_bytes"]
