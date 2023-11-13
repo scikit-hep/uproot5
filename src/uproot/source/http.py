@@ -291,7 +291,7 @@ for URL {}""".format(
 
         range_header = {
             "Range": "bytes="
-            + ", ".join([f"{start}-{stop - 1}" for start, stop in ranges])
+            + ",".join([f"{start}-{stop - 1}" for start, stop in ranges])
         }
         connection.request(
             "GET",
