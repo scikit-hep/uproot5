@@ -63,7 +63,7 @@ def iterate(
     report=False,
     custom_classes=None,
     allow_missing=False,
-    **options,  # NOTE: a comma after **options breaks Python 2
+    **options,
 ):
     """
     Args:
@@ -243,7 +243,7 @@ def concatenate(
     how=None,
     custom_classes=None,
     allow_missing=False,
-    **options,  # NOTE: a comma after **options breaks Python 2
+    **options,
 ):
     """
     Args:

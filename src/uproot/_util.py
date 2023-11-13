@@ -1135,7 +1135,7 @@ def regularize_object_path(
             object_cache=None,
             array_cache=None,
             custom_classes=custom_classes,
-            **options,  # NOTE: a comma after **options breaks Python 2
+            **options,
         ).root_directory
         if object_path is None:
             trees = file.keys(filter_classname="TTree", cycle=False)
