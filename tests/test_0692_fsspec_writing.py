@@ -46,7 +46,7 @@ def test_fsspec_writing_http(server):
     "scheme",
     [
         "",
-        # "file://",  # This fails because of the fsspec file-like object cannot be used for reading and writing at the same time
+        # "file://",  # why does this fail?
     ],
 )
 def test_fsspec_writing_local_update(tmp_path, scheme):
@@ -93,7 +93,7 @@ def test_fsspec_writing_ssh(tmp_path):
         assert f["tree"]["x"].array().tolist() == [1, 2, 3]
 
 
-@pytest.mark.skip(reason="not working yet")
+@pytest.mark.skip("https://github.com/fsspec/filesystem_spec/pull/1426")
 def test_fsspec_writing_memory(tmp_path):
     uri = f"memory://{tmp_path}/file.root"
 
