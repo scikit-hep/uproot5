@@ -150,8 +150,6 @@ class LZMA(Compression, _DecompressLZMA):
     Represents the LZMA compression algorithm.
 
     Uproot uses ``lzma`` from the Python 3 standard library.
-
-    In Python 2, ``backports.lzma`` must be installed.
     """
 
     def __init__(self, level):
