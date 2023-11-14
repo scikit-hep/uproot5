@@ -9,9 +9,13 @@ context manager (Python's ``with`` statement) to ensure that files are properly 
 (although files are flushed after every object-write).
 """
 
+from __future__ import annotations
 
 import numbers
 import os
+from typing import IO
+
+import uproot
 
 
 class FileSink:
@@ -28,7 +32,7 @@ class FileSink:
     """
 
     @classmethod
-    def from_object(cls, obj):
+    def from_object(cls, obj: IO) -> FileSink:
         """
         Args:
             obj (file-like object): An object with ``read``, ``write``, ``seek``,
@@ -38,16 +42,7 @@ class FileSink:
         as ``io.BytesIO``. The object must be readable, writable, and seekable
         with ``"r+b"`` mode semantics.
         """
-        if (
-            callable(getattr(obj, "read", None))
-            and callable(getattr(obj, "write", None))
-            and callable(getattr(obj, "seek", None))
-            and callable(getattr(obj, "tell", None))
-            and callable(getattr(obj, "flush", None))
-            and (not hasattr(obj, "readable") or obj.readable())
-            and (not hasattr(obj, "writable") or obj.writable())
-            and (not hasattr(obj, "seekable") or obj.seekable())
-        ):
+        if uproot._util.is_file_like(obj):
             self = cls(None)
             self._file = obj
         else:

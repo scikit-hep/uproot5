@@ -133,7 +133,7 @@ def dask(
 
     Options (type; default):
 
-    * handler (:doc:`uproot.source.chunk.Source` class; `uproot.source.fsspec.FSSpecSource`)
+    * handler (:doc:`uproot.source.chunk.Source` class; `None`)
     * timeout (float for HTTP, int for XRootD; 30)
     * max_num_elements (None or int; None)
     * num_workers (int; 1)

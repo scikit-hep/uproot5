@@ -17,12 +17,15 @@ import platform
 import re
 import warnings
 from collections.abc import Iterable
+from typing import IO
 from urllib.parse import urlparse
 
 import numpy
 import packaging.version
 
 import uproot.source.chunk
+import uproot.source.fsspec
+import uproot.source.object
 
 win = platform.system().lower().startswith("win")
 
@@ -55,6 +58,19 @@ def isnum(x):
     """
     return isinstance(x, (int, float, numbers.Real, numpy.number)) and not isinstance(
         x, (bool, numpy.bool_)
+    )
+
+
+def is_file_like(obj) -> bool:
+    return (
+        callable(getattr(obj, "read", None))
+        and callable(getattr(obj, "write", None))
+        and callable(getattr(obj, "seek", None))
+        and callable(getattr(obj, "tell", None))
+        and callable(getattr(obj, "flush", None))
+        and (not hasattr(obj, "readable") or obj.readable())
+        and (not hasattr(obj, "writable") or obj.writable())
+        and (not hasattr(obj, "seekable") or obj.seekable())
     )
 
 
@@ -346,28 +362,35 @@ def file_object_path_split(path: str) -> tuple[str, str | None]:
     return path, obj
 
 
-def file_path_to_source_class(
-    file_path, options
-) -> tuple[uproot.source.chunk.Source, str]:
+def file_path_to_source_class(file_path: str | IO, options: dict):
     """
     Use a file path to get the :doc:`uproot.source.chunk.Source` class that would read it.
 
     Returns a tuple of (class, file_path) where the class is a subclass of :doc:`uproot.source.chunk.Source`.
-
-    The "handler" option is the preferred way to specify a custom source class.
     """
+
+    handler_cls = options["handler"]
+    if handler_cls is None:
+        if isinstance(file_path, str):
+            handler_cls = uproot.source.fsspec.FSSpecSource
+        elif uproot._util.is_file_like(file_path):
+            handler_cls = uproot.source.object.ObjectSource
+        else:
+            raise TypeError(
+                f"file_path must be a string or file-like object, not {file_path!r}"
+            )
 
     file_path = regularize_path(file_path)
 
-    handler = options["handler"]
     if not (
-        isinstance(handler, type) and issubclass(handler, uproot.source.chunk.Source)
+        isinstance(handler_cls, type)
+        and issubclass(handler_cls, uproot.source.chunk.Source)
     ):
         raise TypeError(
-            f"'handler' is not a class object inheriting from Source: {handler!r}"
+            f"'handler' is not a class object inheriting from Source: {handler_cls!r}"
         )
 
-    return handler, file_path
+    return handler_cls, file_path
 
 
 if isinstance(__builtins__, dict):
