@@ -1617,7 +1617,7 @@ class HasBranches(Mapping):
 
         if uproot._util.isint(where):
             return self.branches[where]
-        elif uproot._util.isstr(where):
+        elif isinstance(where, str):
             where = uproot._util.ensure_str(where)
         else:
             raise TypeError(f"where must be an integer or a string, not {where!r}")
@@ -2666,11 +2666,11 @@ def _regularize_executors(decompression_executor, interpretation_executor, file)
 def _regularize_array_cache(array_cache, file):
     if isinstance(array_cache, MutableMapping):
         return array_cache
-    elif uproot._util.isstr(array_cache) and array_cache == "inherit":
+    elif isinstance(array_cache, str) and array_cache == "inherit":
         return file._array_cache
     elif array_cache is None:
         return None
-    elif uproot._util.isint(array_cache) or uproot._util.isstr(array_cache):
+    elif uproot._util.isint(array_cache) or isinstance(array_cache, str):
         return uproot.cache.LRUArrayCache(array_cache)
     else:
         raise TypeError("array_cache must be None, a MutableMapping, or a memory size")
@@ -2895,7 +2895,7 @@ def _regularize_expressions(
                     branchname,
                 )
 
-    elif uproot._util.isstr(expressions):
+    elif isinstance(expressions, str):
         _regularize_expression(
             hasbranches,
             expressions,
@@ -2917,7 +2917,7 @@ def _regularize_expressions(
         else:
             items = []
             for expression in expressions:
-                if uproot._util.isstr(expression):
+                if isinstance(expression, str):
                     items.append((expression, None))
                 elif isinstance(expression, tuple) and len(expression) == 2:
                     items.append(expression)
@@ -2972,7 +2972,7 @@ def _regularize_expressions(
 
     if cut is None:
         pass
-    elif uproot._util.isstr(cut):
+    elif isinstance(cut, str):
         _regularize_expression(
             hasbranches,
             cut,

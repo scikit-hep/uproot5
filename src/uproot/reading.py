@@ -122,7 +122,7 @@ def open(
     if isinstance(path, dict) and len(path) == 1:
         ((file_path, object_path),) = path.items()
 
-    elif uproot._util.isstr(path):
+    elif isinstance(path, str):
         file_path, object_path = uproot._util.file_object_path_split(path)
 
     else:
@@ -131,7 +131,7 @@ def open(
 
     file_path = uproot._util.regularize_path(file_path)
 
-    if not uproot._util.isstr(file_path) and not (
+    if not isinstance(file_path, str) and not (
         hasattr(file_path, "read") and hasattr(file_path, "seek")
     ):
         raise ValueError(
@@ -771,7 +771,7 @@ in file {file_path}"""
     def array_cache(self, value):
         if value is None or isinstance(value, MutableMapping):
             self._array_cache = value
-        elif uproot._util.isint(value) or uproot._util.isstr(value):
+        elif uproot._util.isint(value) or isinstance(value, str):
             self._array_cache = uproot.cache.LRUArrayCache(value)
         else:
             raise TypeError(

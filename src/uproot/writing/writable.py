@@ -60,7 +60,7 @@ def create(file_path, **options):
     See :doc:`uproot.writing.writable.WritableFile` for details on these options.
     """
     file_path = uproot._util.regularize_path(file_path)
-    if uproot._util.isstr(file_path) and os.path.exists(file_path):
+    if isinstance(file_path, str) and os.path.exists(file_path):
         raise OSError(
             "path exists and refusing to overwrite (use 'uproot.recreate' to "
             f"overwrite)\n\nfor path {file_path}"
@@ -92,7 +92,7 @@ def recreate(file_path, **options):
     See :doc:`uproot.writing.writable.WritableFile` for details on these options.
     """
     file_path = uproot._util.regularize_path(file_path)
-    if uproot._util.isstr(file_path):
+    if isinstance(file_path, str):
         # Truncate file
         with open(file_path, "w"):
             pass
@@ -148,7 +148,7 @@ def update(file_path, **options):
     See :doc:`uproot.writing.writable.WritableFile` for details on these options.
     """
     file_path = uproot._util.regularize_path(file_path)
-    if uproot._util.isstr(file_path):
+    if isinstance(file_path, str):
         sink = uproot.sink.file.FileSink(file_path)
     else:
         sink = uproot.sink.file.FileSink.from_object(file_path)
@@ -1741,7 +1741,7 @@ class WritableTree:
         elif (
             isinstance(value, Mapping)
             and all(
-                uproot._util.isstr(k)
+                isinstance(k, str)
                 and (v is None or isinstance(v, uproot.compression.Compression))
                 for k, v in value.items()
             )
@@ -2084,7 +2084,7 @@ class WritableNTuple:
         elif (
             isinstance(value, Mapping)
             and all(
-                uproot._util.isstr(k)
+                isinstance(k, str)
                 and (v is None or isinstance(v, uproot.compression.Compression))
                 for k, v in value.items()
             )

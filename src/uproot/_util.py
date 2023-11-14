@@ -56,13 +56,6 @@ def isnum(x):
     )
 
 
-def isstr(x):
-    """
-    Returns True if and only if ``x`` is a string (including Python 2 unicode).
-    """
-    return isinstance(x, str)
-
-
 def ensure_str(x):
     """
     Ensures that ``x`` is a string (decoding with 'surrogateescape' if necessary).
@@ -166,7 +159,7 @@ def regularize_filter(filter):
         return no_filter
     elif callable(filter):
         return filter
-    elif isstr(filter):
+    elif isinstance(filter, str):
         m = _regularize_filter_regex.match(filter)
         if m is not None:
             regex, flags = m.groups()
@@ -207,7 +200,7 @@ def regularize_rename(rename):
     elif callable(rename):
         return rename
 
-    elif isstr(rename):
+    elif isinstance(rename, str):
         m = _regularize_filter_regex_rename.match(rename)
         if m is not None:
             regex, trans, flags = m.groups()
@@ -222,7 +215,7 @@ def regularize_rename(rename):
     elif isinstance(rename, Iterable) and not isinstance(rename, bytes):
         rules = []
         for x in rename:
-            if isstr(x):
+            if isinstance(x, str):
                 m = _regularize_filter_regex_rename.match(x)
                 if m is not None:
                     regex, trans, flags = m.groups()
@@ -387,7 +380,7 @@ def file_path_to_source_class(file_path, options):
             return out, file_path
 
     if (
-        not isstr(file_path)
+        not isinstance(file_path, str)
         and hasattr(file_path, "read")
         and hasattr(file_path, "seek")
     ):
@@ -593,7 +586,7 @@ def memory_size(data, error_message=None):
     Regularizes strings like '## kB' and plain integer number of bytes to
     an integer number of bytes.
     """
-    if isstr(data):
+    if isinstance(data, str):
         m = re.match(
             r"^\s*([+-]?(\d+(\.\d*)?|\.\d+)(e[+-]?\d+)?)\s*([kmgtpezy]?b)\s*$",
             data,
@@ -1001,11 +994,11 @@ def _regularize_files_inner(files, parse_colon, counter, HasBranches, steps_allo
 
     maybe_steps = None
 
-    if isstr(files2) and not isstr(files):
+    if isinstance(files2, str) and not isinstance(files, str):
         parse_colon = False
         files = files2
 
-    if isstr(files):
+    if isinstance(files, str):
         if parse_colon:
             file_path, object_path = file_object_path_split(files)
         else:
@@ -1098,7 +1091,7 @@ def regularize_files(files, steps_allowed):
     for file_path, object_path, maybe_steps in _regularize_files_inner(
         files, True, counter, HasBranches, steps_allowed
     ):
-        if isstr(file_path):
+        if isinstance(file_path, str):
             key = (counter[0], file_path, object_path)
             if key not in seen:
                 out.append((file_path, object_path))
