@@ -6,6 +6,9 @@ import asyncio
 import concurrent.futures
 import queue
 
+import fsspec
+import fsspec.asyn
+
 import uproot
 import uproot.source.chunk
 import uproot.source.futures
@@ -24,8 +27,6 @@ class FSSpecSource(uproot.source.chunk.Source):
     """
 
     def __init__(self, file_path: str, **options):
-        import fsspec.core
-
         default_options = uproot.reading.open.defaults
 
         exclude_keys = set(default_options.keys())
@@ -188,11 +189,9 @@ class FSSpecSource(uproot.source.chunk.Source):
 class FSSpecLoopExecutor(uproot.source.futures.Executor):
     @property
     def loop(self) -> asyncio.AbstractEventLoop:
-        import fsspec.asyn
-
         return fsspec.asyn.get_loop()
 
     def submit(self, coroutine) -> concurrent.futures.Future:
         if not asyncio.iscoroutine(coroutine):
             raise TypeError("loop executor can only submit coroutines")
-        return asyncio.run_coroutine_threadsafe(coroutine, self.loop)
+        return asyncio.run_coroutine_threadsafe(coroutine, fsspec.asyn.get_loop())
