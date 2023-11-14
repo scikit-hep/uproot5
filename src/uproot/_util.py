@@ -322,12 +322,15 @@ def file_object_path_split(urlpath: str) -> tuple[str, str | None]:
     while _uri_scheme_chain.match(path):
         path = _uri_scheme_chain.sub("", path)
 
-    if _uri_scheme.match(path) or True:
+    if _uri_scheme.match(path):
         # if not a local path, attempt to match a URI scheme
         if path.startswith("file://"):
             parsed_url_path = path[7:]
         else:
             parsed_url_path = urlparse(path).path
+
+        if parsed_url_path.startswith("//"):
+            parsed_url_path = parsed_url_path[2:]
 
         parts = _split_path(parsed_url_path)
     else:
