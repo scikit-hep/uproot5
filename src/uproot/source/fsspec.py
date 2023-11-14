@@ -194,4 +194,4 @@ class FSSpecLoopExecutor(uproot.source.futures.Executor):
     def submit(self, coroutine) -> concurrent.futures.Future:
         if not asyncio.iscoroutine(coroutine):
             raise TypeError("loop executor can only submit coroutines")
-        return asyncio.run_coroutine_threadsafe(coroutine, fsspec.asyn.get_loop())
+        return asyncio.run_coroutine_threadsafe(coroutine, self.loop)
