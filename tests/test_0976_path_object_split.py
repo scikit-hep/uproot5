@@ -71,9 +71,9 @@ import pathlib
             ),
         ),
         (
-            "ssh://user@host:222222/path/to/file",
+            "ssh://user@host:50230/path/to/file",
             (
-                "ssh://user@host:222222/path/to/file",
+                "ssh://user@host:50230/path/to/file",
                 None,
             ),
         ),

@@ -304,8 +304,8 @@ def file_object_path_split(urlpath: str) -> tuple[str, str | None]:
         Example: ``("https://localhost:8888/file.root", "tree")``
     """
 
-    urlpath: str = regularize_path(urlpath).strip()
-    path = urlpath
+    urlpath: str = regularize_path(urlpath)
+    path = urlpath.strip()
 
     def _split_path(path: str) -> list[str]:
         parts = path.split(":")
