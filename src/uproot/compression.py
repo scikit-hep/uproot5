@@ -5,6 +5,8 @@ This module defines an interface to compression algorithms used by ROOT, as well
 as functions for compressing and decompressing a :doc:`uproot.source.chunk.Chunk`.
 """
 
+from __future__ import annotations
+
 import struct
 import threading
 
@@ -287,7 +289,7 @@ class ZSTD(Compression, _DecompressZSTD):
             self._compressor = zstandard.ZstdCompressor(level=self._level)
         return self._compressor
 
-    def compress(self, data):
+    def compress(self, data: bytes) -> bytes:
         return self.compressor.compress(data)
 
 
@@ -474,7 +476,7 @@ _3BYTE_MAX = 2**24 - 1
 _4byte = struct.Struct("<I")  # compressed sizes are 3-byte little endian!
 
 
-def compress(data: bytes, compression: uproot.compression.Compression) -> bytes:
+def compress(data: bytes, compression: Compression) -> bytes:
     """
     Args:
         data (bytes, memoryview, or NumPy array): Data to compress.
