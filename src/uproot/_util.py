@@ -283,7 +283,7 @@ _windows_absolute_path_pattern = re.compile(r"^[A-Za-z]:[\\/]")
 _windows_absolute_path_pattern_slash = re.compile(r"^[\\/][A-Za-z]:[\\/]")
 
 _remote_schemes = ["root", "s3", "http", "https"]
-_schemes = fsspec.available_protocols()
+_schemes = list({*_remote_schemes, *fsspec.available_protocols()})
 
 _uri_scheme = re.compile("^(" + "|".join([re.escape(x) for x in _schemes]) + ")://")
 
