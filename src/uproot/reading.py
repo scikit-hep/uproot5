@@ -567,10 +567,10 @@ class ReadOnlyFile(CommonFileMethods):
 
         self.hook_before_create_source()
 
-        Source, file_path = uproot._util.file_path_to_source_class(
+        source_cls, file_path = uproot._util.file_path_to_source_class(
             file_path, self._options
         )
-        self._source = Source(file_path, **self._options)
+        self._source = source_cls(file_path, **self._options)
 
         self.hook_before_get_chunks()
 

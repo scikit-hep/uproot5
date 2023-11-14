@@ -17,10 +17,12 @@ import platform
 import re
 import warnings
 from collections.abc import Iterable
-from urllib.parse import unquote, urlparse
+from urllib.parse import urlparse
 
 import numpy
 import packaging.version
+
+import uproot.source.chunk
 
 win = platform.system().lower().startswith("win")
 
@@ -344,200 +346,28 @@ def file_object_path_split(path: str) -> tuple[str, str | None]:
     return path, obj
 
 
-def file_path_to_source_class(file_path, options):
+def file_path_to_source_class(
+    file_path, options
+) -> tuple[uproot.source.chunk.Source, str]:
     """
     Use a file path to get the :doc:`uproot.source.chunk.Source` class that would read it.
 
     Returns a tuple of (class, file_path) where the class is a subclass of :doc:`uproot.source.chunk.Source`.
 
     The "handler" option is the preferred way to specify a custom source class.
-    The "*_handler" options are for backwards compatibility and will override the "handler" option if set.
     """
-    import uproot.source.chunk
 
     file_path = regularize_path(file_path)
 
-    out = options["handler"]
-    if out is not None:
-        if not (isinstance(out, type) and issubclass(out, uproot.source.chunk.Source)):
-            raise TypeError(
-                f"'handler' is not a class object inheriting from Source: {out!r}"
-            )
-        # check if "object_handler" is set
-        if (
-            options["object_handler"] is not None
-            or options["file_handler"] is not None
-            or options["xrootd_handler"] is not None
-            or options["s3_handler"] is not None
-            or options["http_handler"] is not None
-        ):
-            # These options will override the "handler" option for backwards compatibility
-            warnings.warn(
-                """In version 5.2.0, the '*_handler' argument ('http_handler`, 's3_handler', etc.) will be removed from 'uproot.open'. Use 'handler' instead.""",
-                stacklevel=1,
-            )
-        else:
-            return out, file_path
-
-    if (
-        not isinstance(file_path, str)
-        and hasattr(file_path, "read")
-        and hasattr(file_path, "seek")
+    handler = options["handler"]
+    if not (
+        isinstance(handler, type) and issubclass(handler, uproot.source.chunk.Source)
     ):
-        out = options["object_handler"]
-        if out is None:
-            out = uproot.source.object.ObjectSource
-        else:
-            warnings.warn(
-                f"""In version 5.2.0, the 'object_handler' argument will be removed from 'uproot.open'. Use
-uproot.open(..., handler={out!r})
-instead.
+        raise TypeError(
+            f"'handler' is not a class object inheriting from Source: {handler!r}"
+        )
 
-To raise these warnings as errors (and get stack traces to find out where they're called), run
-import warnings
-warnings.filterwarnings("error", module="uproot.*")
-after the first `import uproot` or use `@pytest.mark.filterwarnings("error:::uproot.*")` in pytest.""",
-                DeprecationWarning,
-                stacklevel=1,
-            )
-        if not (isinstance(out, type) and issubclass(out, uproot.source.chunk.Source)):
-            raise TypeError(
-                f"'object_handler' is not a class object inheriting from Source: {out!r}"
-            )
-
-        return out, file_path
-
-    windows_absolute_path = None
-    if win and _windows_absolute_path_pattern.match(file_path) is not None:
-        windows_absolute_path = file_path
-
-    parsed_url = urlparse(file_path)
-    if parsed_url.scheme.upper() == "FILE":
-        parsed_url_path = unquote(parsed_url.path)
-    else:
-        parsed_url_path = parsed_url.path
-
-    if win and windows_absolute_path is None:
-        if _windows_absolute_path_pattern.match(parsed_url_path) is not None:
-            windows_absolute_path = parsed_url_path
-        elif _windows_absolute_path_pattern_slash.match(parsed_url_path) is not None:
-            windows_absolute_path = parsed_url_path[1:]
-
-    scheme = parsed_url.scheme.lower()
-    if (
-        scheme == "file"
-        or len(parsed_url.scheme) == 0
-        or windows_absolute_path is not None
-    ):
-        if windows_absolute_path is None:
-            if parsed_url.netloc.lower() == "localhost":
-                file_path = parsed_url_path
-            else:
-                file_path = parsed_url.netloc + parsed_url_path
-        else:
-            file_path = windows_absolute_path
-
-        out = options["file_handler"]
-        if out is None:
-            out = uproot.source.file.MemmapSource
-        else:
-            warnings.warn(
-                f"""In version 5.2.0, the 'file_handler' argument will be removed from 'uproot.open'. Use
-    uproot.open(..., handler={out!r}
-    instead.
-
-    To raise these warnings as errors (and get stack traces to find out where they're called), run
-    import warnings
-    warnings.filterwarnings("error", module="uproot.*")
-    after the first `import uproot` or use `@pytest.mark.filterwarnings("error:::uproot.*")` in pytest.""",
-                DeprecationWarning,
-                stacklevel=1,
-            )
-
-        if not (isinstance(out, type) and issubclass(out, uproot.source.chunk.Source)):
-            raise TypeError(
-                "'file_handler' is not a class object inheriting from Source: "
-                + repr(out)
-            )
-        return out, os.path.expanduser(file_path)
-
-    elif scheme == "root":
-        out = options["xrootd_handler"]
-        if out is None:
-            out = uproot.source.xrootd.XRootDSource
-        else:
-            warnings.warn(
-                f"""In version 5.2.0, the 'xrootd_handler' argument will be removed from 'uproot.open'. Use
-    uproot.open(..., handler={out!r}
-    instead.
-
-    To raise these warnings as errors (and get stack traces to find out where they're called), run
-    import warnings
-    warnings.filterwarnings("error", module="uproot.*")
-    after the first `import uproot` or use `@pytest.mark.filterwarnings("error:::uproot.*")` in pytest.""",
-                DeprecationWarning,
-                stacklevel=1,
-            )
-        if not (isinstance(out, type) and issubclass(out, uproot.source.chunk.Source)):
-            raise TypeError(
-                "'xrootd_handler' is not a class object inheriting from Source: "
-                + repr(out)
-            )
-        return out, file_path
-
-    elif scheme == "s3":
-        out = options["s3_handler"]
-        if out is None:
-            out = uproot.source.s3.S3Source
-        else:
-            warnings.warn(
-                f"""In version 5.2.0, the 's3_handler' argument will be removed from 'uproot.open'. Use
-uproot.open(..., handler={out!r}
-instead.
-
-To raise these warnings as errors (and get stack traces to find out where they're called), run
-import warnings
-warnings.filterwarnings("error", module="uproot.*")
-after the first `import uproot` or use `@pytest.mark.filterwarnings("error:::uproot.*")` in pytest.""",
-                DeprecationWarning,
-                stacklevel=1,
-            )
-        if not (isinstance(out, type) and issubclass(out, uproot.source.chunk.Source)):
-            raise TypeError(
-                "'s3' is not a class object inheriting from Source: " + repr(out)
-            )
-        return out, file_path
-
-    elif scheme in ("http", "https"):
-        out = options["http_handler"]
-        if out is None:
-            out = uproot.source.http.HTTPSource
-        else:
-            warnings.warn(
-                f"""In version 5.2.0, the 'http_handler' argument will be removed from 'uproot.open'. Use
-uproot.open(..., handler={out!r}
-instead.
-
-To raise these warnings as errors (and get stack traces to find out where they're called), run
-import warnings
-warnings.filterwarnings("error", module="uproot.*")
-after the first `import uproot` or use `@pytest.mark.filterwarnings("error:::uproot.*")` in pytest.""",
-                DeprecationWarning,
-                stacklevel=1,
-            )
-        if not (isinstance(out, type) and issubclass(out, uproot.source.chunk.Source)):
-            raise TypeError(
-                "'http_handler' is not a class object inheriting from Source: "
-                + repr(out)
-            )
-        return out, file_path
-
-    else:
-        # try to use fsspec before raising an error
-        if scheme in _schemes:
-            return uproot.source.fsspec.FSSpecSource, file_path
-
-        raise ValueError(f"URI scheme not recognized: {file_path}")
+    return handler, file_path
 
 
 if isinstance(__builtins__, dict):
