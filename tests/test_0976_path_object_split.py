@@ -64,16 +64,16 @@ import pathlib
             ),
         ),
         (
-            "ssh://user@host:port/path/to/file:object",
+            "ssh://user@host:22/path/to/file:object",
             (
-                "ssh://user@host:port/path/to/file",
+                "ssh://user@host:22/path/to/file",
                 "object",
             ),
         ),
         (
-            "ssh://user@host:port/path/to/file",
+            "ssh://user@host:222222/path/to/file",
             (
-                "ssh://user@host:port/path/to/file",
+                "ssh://user@host:222222/path/to/file",
                 None,
             ),
         ),
