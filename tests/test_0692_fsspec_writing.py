@@ -20,7 +20,7 @@ def test_fsspec_writing_no_integration(tmp_path):
         assert f["tree"]["x"].array().tolist() == [1, 2, 3]
 
 
-@pytest.mark.parametrize("scheme", ["", "file://"])
+@pytest.mark.parametrize("scheme", ["", "file://", "simplecache::file://"])
 def test_fsspec_writing_local(tmp_path, scheme):
     uri = scheme + os.path.join(tmp_path, "some", "path", "file.root")
     with uproot.recreate(uri) as f:
@@ -49,6 +49,7 @@ def test_fsspec_writing_http(server):
     [
         "",
         "file://",
+        "simplecache::file://",
     ],
 )
 def test_fsspec_writing_local_update(tmp_path, scheme):
@@ -65,7 +66,14 @@ def test_fsspec_writing_local_update(tmp_path, scheme):
         assert f["tree2"]["y"].array().tolist() == [4, 5, 6]
 
 
-def test_fsspec_writing_ssh(tmp_path):
+@pytest.mark.parametrize(
+    "scheme",
+    [
+        "ssh://",
+        "simplecache::ssh://",
+    ],
+)
+def test_fsspec_writing_ssh(tmp_path, scheme):
     pytest.importorskip("paramiko")
     import paramiko
     import getpass
@@ -86,7 +94,7 @@ def test_fsspec_writing_ssh(tmp_path):
         pytest.skip(f"ssh connection to host failed: {e}")
 
     local_path = os.path.join(tmp_path, "file.root")
-    uri = f"ssh://{user}@{host}:{port}{local_path}"
+    uri = f"{scheme}{user}@{host}:{port}{local_path}"
 
     with uproot.recreate(uri) as f:
         f["tree"] = {"x": np.array([1, 2, 3])}
@@ -95,8 +103,15 @@ def test_fsspec_writing_ssh(tmp_path):
         assert f["tree"]["x"].array().tolist() == [1, 2, 3]
 
 
-def test_fsspec_writing_memory(tmp_path):
-    uri = f"memory://{tmp_path}/file.root"
+@pytest.mark.parametrize(
+    "scheme",
+    [
+        "memory://",
+        "simplecache::memory://",
+    ],
+)
+def test_fsspec_writing_memory(tmp_path, scheme):
+    uri = f"{scheme}{tmp_path}/file.root"
 
     # when https://github.com/fsspec/filesystem_spec/pull/1426 is merged this will work, we must remove the catch
     with pytest.raises(ValueError):
@@ -105,3 +120,6 @@ def test_fsspec_writing_memory(tmp_path):
 
         with uproot.open(uri) as f:
             assert f["tree"]["x"].array().tolist() == [1, 2, 3]
+
+        if scheme == "simplecache::memory://":
+            raise ValueError("wait for next fsspec release and remove this")
