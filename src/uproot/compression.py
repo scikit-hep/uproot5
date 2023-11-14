@@ -5,6 +5,7 @@ This module defines an interface to compression algorithms used by ROOT, as well
 as functions for compressing and decompressing a :doc:`uproot.source.chunk.Chunk`.
 """
 
+from __future__ import annotations
 
 import struct
 import threading
@@ -88,7 +89,7 @@ class _DecompressZLIB:
     _2byte = b"ZL"
     _method = b"\x08"
 
-    def decompress(self, data, uncompressed_bytes=None):
+    def decompress(self, data: bytes, uncompressed_bytes=None) -> bytes:
         import zlib
 
         return zlib.decompress(data)
@@ -125,7 +126,7 @@ class ZLIB(Compression, _DecompressZLIB):
             raise ValueError("Compression level must be between 0 and 9 (inclusive)")
         self._level = int(value)
 
-    def compress(self, data):
+    def compress(self, data: bytes) -> bytes:
         import zlib
 
         return zlib.compress(data, self._level)
@@ -136,8 +137,9 @@ class _DecompressLZMA:
     _2byte = b"XZ"
     _method = b"\x00"
 
-    def decompress(self, data, uncompressed_bytes=None):
-        lzma = uproot.extras.lzma()
+    def decompress(self, data: bytes, uncompressed_bytes=None) -> bytes:
+        import lzma
+
         return lzma.decompress(data)
 
 
@@ -150,8 +152,6 @@ class LZMA(Compression, _DecompressLZMA):
     Represents the LZMA compression algorithm.
 
     Uproot uses ``lzma`` from the Python 3 standard library.
-
-    In Python 2, ``backports.lzma`` must be installed.
     """
 
     def __init__(self, level):
@@ -174,8 +174,9 @@ class LZMA(Compression, _DecompressLZMA):
             raise ValueError("Compression level must be between 0 and 9 (inclusive)")
         self._level = int(value)
 
-    def compress(self, data):
-        lzma = uproot.extras.lzma()
+    def compress(self, data: bytes) -> bytes:
+        import lzma
+
         return lzma.compress(data, preset=self._level)
 
 
@@ -184,7 +185,7 @@ class _DecompressLZ4:
     _2byte = b"L4"
     _method = b"\x01"
 
-    def decompress(self, data, uncompressed_bytes=None):
+    def decompress(self, data: bytes, uncompressed_bytes=None) -> bytes:
         lz4_block = uproot.extras.lz4_block()
         if uncompressed_bytes is None:
             raise ValueError(
@@ -224,7 +225,7 @@ class LZ4(Compression, _DecompressLZ4):
             raise ValueError("Compression level must be between 0 and 12 (inclusive)")
         self._level = int(value)
 
-    def compress(self, data):
+    def compress(self, data: bytes) -> bytes:
         lz4_block = uproot.extras.lz4_block()
         return lz4_block.compress(data, compression=self._level, store_size=False)
 
@@ -245,7 +246,7 @@ class _DecompressZSTD:
             self._decompressor.obj = zstandard.ZstdDecompressor()
         return self._decompressor.obj
 
-    def decompress(self, data, uncompressed_bytes=None):
+    def decompress(self, data: bytes, uncompressed_bytes=None) -> bytes:
         return self.decompressor.decompress(data)
 
 
@@ -288,7 +289,7 @@ class ZSTD(Compression, _DecompressZSTD):
             self._compressor = zstandard.ZstdCompressor(level=self._level)
         return self._compressor
 
-    def compress(self, data):
+    def compress(self, data: bytes) -> bytes:
         return self.compressor.compress(data)
 
 
@@ -475,7 +476,7 @@ _3BYTE_MAX = 2**24 - 1
 _4byte = struct.Struct("<I")  # compressed sizes are 3-byte little endian!
 
 
-def compress(data, compression):
+def compress(data: bytes, compression: Compression) -> bytes:
     """
     Args:
         data (bytes, memoryview, or NumPy array): Data to compress.

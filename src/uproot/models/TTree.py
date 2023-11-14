@@ -949,7 +949,7 @@ def num_entries(paths):
 
     if isinstance(paths, dict):
         paths = list(paths.items())
-    elif not uproot._util.isstr(paths):
+    elif not isinstance(paths, str):
         paths = [(uproot._util.file_object_path_split(path)) for path in paths]
     else:
         paths = [uproot._util.file_object_path_split(paths)]

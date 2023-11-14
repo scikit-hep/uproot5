@@ -117,7 +117,7 @@ def _read_nested(
 
 
 def _tostring(value):
-    if uproot._util.isstr(value):
+    if isinstance(value, str):
         return repr(value)
     else:
         return str(value)

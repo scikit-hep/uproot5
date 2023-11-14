@@ -8,7 +8,6 @@ If a library cannot be imported, these functions raise ``ModuleNotFoundError`` w
 error messages containing instructions on how to install the library.
 """
 
-
 import atexit
 import importlib.metadata as importlib_metadata
 import os
@@ -158,16 +157,6 @@ def xrootd_version():
             return importlib_metadata.version("pyxrootd")
         except ModuleNotFoundError:
             return None
-
-
-def lzma():
-    """
-    Imports and returns ``lzma`` (which is part of the Python 3 standard
-    library, but not Python 2).
-    """
-    import lzma
-
-    return lzma
 
 
 def lz4_block():
