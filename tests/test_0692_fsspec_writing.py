@@ -31,6 +31,8 @@ def test_fsspec_writing_local(tmp_path, scheme):
 
 
 def test_fsspec_writing_http(server):
+    pytest.importorskip("aiohttp")
+
     uri = f"{server}/file.root"
 
     with pytest.raises(NotImplementedError):
