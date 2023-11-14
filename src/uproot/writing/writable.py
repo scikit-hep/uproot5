@@ -75,7 +75,7 @@ def create(file_path: str | IO, **options):
 def _sink_from_path(
     file_path_or_object: str | IO, **storage_options
 ) -> uproot.sink.file.FileSink:
-    if not uproot._util.isstr(file_path_or_object):
+    if not isinstance(file_path_or_object, str):
         # assume it's a file-like object
         return uproot.sink.file.FileSink.from_object(file_path_or_object)
 
