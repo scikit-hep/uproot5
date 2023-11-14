@@ -101,10 +101,11 @@ def _sink_from_path(
         # TODO: remove try/except block when fsspec becomes a dependency
         import fsspec
 
-        # truncate the file
+        # truncate the file if it doesn't exist (also create parent directories)
         fs, local_path = fsspec.core.url_to_fs(file_path, **storage_options)
         if not fs.exists(local_path):
-            fs.mkdirs(Path(local_path).parent, exist_ok=True)
+            parent_directory = fs.sep.join(local_path.split(fs.sep)[:-1])
+            fs.mkdirs(parent_directory, exist_ok=True)
             fs.touch(local_path, truncate=True)
 
         open_file = fsspec.open(file_path, mode="r+b", **storage_options)
