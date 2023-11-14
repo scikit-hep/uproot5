@@ -36,6 +36,7 @@ dependencies = [
   "awkward>=2.4.6",
   "importlib-metadata;python_version<\"3.8\"",
   "numpy",
+  "fsspec",
   "packaging",
   "typing_extensions>=4.1.0; python_version < \"3.11\""
 ]
@@ -61,7 +62,6 @@ test = [
   "lz4",
   "minio",
   "aiohttp; python_version<\"3.12\"",  # asyncio not available
-  "fsspec",
   "fsspec-xrootd",
   "s3fs; python_version<\"3.12\"",  # asyncio not available
   "paramiko",
