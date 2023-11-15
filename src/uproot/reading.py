@@ -11,7 +11,6 @@ and :doc:`uproot.reading.ReadOnlyKey` (``TKey``).
 import struct
 import sys
 import uuid
-import warnings
 from collections.abc import Mapping, MutableMapping
 
 import uproot
@@ -152,38 +151,16 @@ def open(
         return file.root_directory[object_path]
 
 
-class _OpenDefaults(dict):
-    def __getitem__(self, where):
-        if where == "xrootd_handler" and where not in self:
-            # See https://github.com/scikit-hep/uproot5/issues/294
-            if uproot.extras.older_xrootd("5.2.0"):
-                message = (
-                    f"XRootD {uproot.extras.xrootd_version()} is not fully supported; "
-                    """either upgrade to 5.2.0+ or set
-
-    open.defaults["xrootd_handler"] = uproot.MultithreadedXRootDSource
-"""
-                )
-                warnings.warn(message, FutureWarning, stacklevel=1)
-
-            # The key should still be set, regardless of whether we see the warning.
-            self["xrootd_handler"] = uproot.source.xrootd.XRootDSource
-
-        return dict.__getitem__(self, where)
-
-
-open.defaults = _OpenDefaults(
-    {
-        "handler": None,
-        "timeout": 30,
-        "max_num_elements": None,
-        "num_workers": 1,
-        "use_threads": sys.platform != "emscripten",
-        "num_fallback_workers": 10,
-        "begin_chunk_size": 403,  # the smallest a ROOT file can be
-        "minimal_ttree_metadata": True,
-    }
-)
+open.defaults = {
+    "handler": None,
+    "timeout": 30,
+    "max_num_elements": None,
+    "num_workers": 1,
+    "use_threads": sys.platform != "emscripten",
+    "num_fallback_workers": 10,
+    "begin_chunk_size": 403,  # the smallest a ROOT file can be
+    "minimal_ttree_metadata": True,
+}
 
 must_be_attached = [
     "TROOT",
@@ -557,7 +534,7 @@ class ReadOnlyFile(CommonFileMethods):
         self.decompression_executor = decompression_executor
         self.interpretation_executor = interpretation_executor
 
-        self._options = _OpenDefaults(open.defaults)
+        self._options = open.defaults.copy()
         self._options.update(options)
         for option in ["begin_chunk_size"]:
             self._options[option] = uproot._util.memory_size(self._options[option])

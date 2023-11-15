@@ -354,10 +354,8 @@ def file_path_to_source_class(file_path, options):
     Use a file path to get the :doc:`uproot.source.chunk.Source` class that would read it.
 
     Returns a tuple of (class, file_path) where the class is a subclass of :doc:`uproot.source.chunk.Source`.
-
-    The "handler" option is the preferred way to specify a custom source class.
-    The "*_handler" options are for backwards compatibility and will override the "handler" option if set.
     """
+
     import uproot.source.chunk
 
     file_path = regularize_path(file_path)
