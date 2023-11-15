@@ -32,7 +32,7 @@ class FSSpecSource(uproot.source.chunk.Source):
         exclude_keys = set(default_options.keys())
         storage_options = {k: v for k, v in options.items() if k not in exclude_keys}
 
-        self._executor = FSSpecLoopExecutor()
+        self._open()
 
         self._fs, self._file_path = fsspec.core.url_to_fs(file_path, **storage_options)
 
@@ -45,6 +45,9 @@ class FSSpecSource(uproot.source.chunk.Source):
         self._num_requested_chunks = 0
         self._num_requested_bytes = 0
         self.__enter__()
+
+    def _open(self):
+        self._executor = FSSpecLoopExecutor()
 
     def __repr__(self):
         path = repr(self._file_path)
