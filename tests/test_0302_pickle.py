@@ -1,8 +1,6 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot5/blob/main/LICENSE
 
-import os
 import pickle
-import sys
 
 import pytest
 import skhep_testdata
@@ -34,6 +32,8 @@ def test_pickle_roundtrip_mmap():
 
 @pytest.mark.network
 def test_pickle_roundtrip_http():
+    pytest.importorskip("aiohttp")
+
     with uproot.open("https://scikit-hep.org/uproot3/examples/Zmumu.root") as f:
         pkl = pickle.dumps(f["events"])
 
