@@ -1,14 +1,13 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/main/LICENSE
 
 import pytest
-import requests
-
 import uproot
 import uproot.source.fsspec
 
 import skhep_testdata
 import queue
 import fsspec
+import requests
 import os
 
 
