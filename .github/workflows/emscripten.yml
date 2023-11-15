@@ -16,18 +16,41 @@ jobs:
     timeout-minutes: 30
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v4
+      - name: Setup Python
+        uses: actions/setup-python@v4
         with:
           python-version: 3.11
 
-      - run: |
+      - name: Install pyodide-build
+        run: |
           pip install pyodide-build
           echo EMSCRIPTEN_VERSION=$(pyodide config get emscripten_version) >> $GITHUB_ENV
 
-      - uses: mymindstorm/setup-emsdk@v12
+      - name: Setup Emscripten
+        uses: mymindstorm/setup-emsdk@v12
         with:
           version: ${{ env.EMSCRIPTEN_VERSION }}
 
-      - run: pyodide build
+      - name: Build
+        run: pyodide build
+
+      - name: Setup node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Set up Pyodide virtual environment
+        run: |
+          pyodide venv .venv-pyodide
+          source .venv-pyodide/bin/activate
+          python -m pip install .[test]
+          python -m pip install dist/*.whl
+          python -c "import sys; print(sys.platform)"
+
+      - name: Test
+        run: |
+          source .venv-pyodide/bin/activate
+          python -m pytest -vv tests
