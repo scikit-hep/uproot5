@@ -393,8 +393,8 @@ def test_xrootd_vectorread_max_element_split_consistency(use_threads):
     pytest.importorskip("XRootD")
     filename = "root://eospublic.cern.ch//eos/root-eos/cms_opendata_2012_nanoaod/Run2012B_DoubleMuParked.root"
 
-    def get_chunk(Source, **kwargs):
-        with Source(filename, **kwargs) as source:
+    def get_chunk(source_cls, **kwargs):
+        with source_cls(filename, **kwargs) as source:
             notifications = queue.Queue()
             max_element_size = 2097136
             chunks = source.chunks([(0, max_element_size + 1)], notifications)
