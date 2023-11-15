@@ -19,7 +19,8 @@ def test_s3_fail():
 @pytest.mark.network
 def test_read_s3():
     with uproot.open(
-        "s3://pivarski-princeton/pythia_ppZee_run17emb.picoDst.root:PicoDst"
+        "s3://pivarski-princeton/pythia_ppZee_run17emb.picoDst.root:PicoDst",
+        handler=uproot.source.s3.S3Source,
     ) as f:
         data = f["Event/Event.mEventId"].array(library="np")
         assert len(data) == 8004
