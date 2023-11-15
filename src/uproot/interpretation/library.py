@@ -867,7 +867,7 @@ class Pandas(Library):
         elif how is dict:
             return {_rename(name, c): arrays[name] for name, c in expression_context}
 
-        elif uproot._util.isstr(how) or how is None:
+        elif isinstance(how, str) or how is None:
             arrays, names = _pandas_only_series(pandas, arrays, expression_context)
             return _pandas_memory_efficient(pandas, arrays, names)
 

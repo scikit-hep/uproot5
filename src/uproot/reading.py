@@ -27,7 +27,7 @@ def open(
     custom_classes=None,
     decompression_executor=None,
     interpretation_executor=None,
-    **options,  # NOTE: a comma after **options breaks Python 2
+    **options,
 ):
     """
     Args:
@@ -122,7 +122,7 @@ def open(
     if isinstance(path, dict) and len(path) == 1:
         ((file_path, object_path),) = path.items()
 
-    elif uproot._util.isstr(path):
+    elif isinstance(path, str):
         file_path, object_path = uproot._util.file_object_path_split(path)
 
     else:
@@ -131,7 +131,7 @@ def open(
 
     file_path = uproot._util.regularize_path(file_path)
 
-    if not uproot._util.isstr(file_path) and not (
+    if not isinstance(file_path, str) and not (
         hasattr(file_path, "read") and hasattr(file_path, "seek")
     ):
         raise ValueError(
@@ -147,7 +147,7 @@ def open(
         custom_classes=custom_classes,
         decompression_executor=decompression_executor,
         interpretation_executor=interpretation_executor,
-        **options,  # NOTE: a comma after **options breaks Python 2
+        **options,
     )
 
     if object_path is None:
@@ -562,7 +562,7 @@ class ReadOnlyFile(CommonFileMethods):
         custom_classes=None,
         decompression_executor=None,
         interpretation_executor=None,
-        **options,  # NOTE: a comma after **options breaks Python 2
+        **options,
     ):
         self._file_path = file_path
         self.object_cache = object_cache
@@ -584,9 +584,7 @@ class ReadOnlyFile(CommonFileMethods):
         Source, file_path = uproot._util.file_path_to_source_class(
             file_path, self._options
         )
-        self._source = Source(
-            file_path, **self._options  # NOTE: a comma after **options breaks Python 2
-        )
+        self._source = Source(file_path, **self._options)
 
         self.hook_before_get_chunks()
 
@@ -773,7 +771,7 @@ in file {file_path}"""
     def array_cache(self, value):
         if value is None or isinstance(value, MutableMapping):
             self._array_cache = value
-        elif uproot._util.isint(value) or uproot._util.isstr(value):
+        elif uproot._util.isint(value) or isinstance(value, str):
             self._array_cache = uproot.cache.LRUArrayCache(value)
         else:
             raise TypeError(

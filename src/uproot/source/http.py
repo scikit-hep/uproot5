@@ -289,16 +289,14 @@ for URL {}""".format(
         """
         connection = make_connection(source.parsed_url, source.timeout)
 
-        range_strings = []
-        for start, stop in ranges:
-            range_strings.append(f"{start}-{stop - 1}")
-
+        range_header = {
+            "Range": "bytes="
+            + ",".join([f"{start}-{stop - 1}" for start, stop in ranges])
+        }
         connection.request(
             "GET",
             full_path(source.parsed_url),
-            headers=dict(
-                {"Range": "bytes=" + ", ".join(range_strings)}, **source.auth_headers
-            ),
+            headers=dict(**range_header, **source.auth_headers),
         )
 
         def task(resource):
@@ -317,7 +315,7 @@ for URL {}""".format(
                                 "GET",
                                 full_path(redirect_url),
                                 headers={
-                                    "Range": "bytes=" + ", ".join(range_strings),
+                                    **range_header,
                                     **source.auth_headers,
                                 },
                             )
@@ -714,8 +712,7 @@ class HTTPSource(uproot.source.chunk.Source):
 
     def _set_fallback(self):
         self._fallback = MultithreadedHTTPSource(
-            self._file_path,
-            **self._fallback_options,  # NOTE: a comma after **fallback_options breaks Python 2
+            self._file_path, **self._fallback_options
         )
 
 

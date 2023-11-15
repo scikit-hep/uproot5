@@ -44,7 +44,7 @@ jobs:
           mamba install root
           conda list
 
-      - name: Install sshd for sshfs tests
+      - name: Install sshd for fsspec ssh tests
         if: runner.os != 'macOS'  &&  runner.os != 'Windows'
         run: |
           sudo apt-get install -y openssh-server
