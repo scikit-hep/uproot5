@@ -33,7 +33,7 @@ class FSSpecSource(uproot.source.chunk.Source):
 
         protocol = fsspec.core.split_protocol(file_path)[0]
         self._async_impl = fsspec.get_filesystem_class(protocol=protocol).async_impl
-        self._executor = FSSpecLoopExecutor()
+        self._open()
 
         self._fs, self._file_path = fsspec.core.url_to_fs(file_path, **storage_options)
 
@@ -43,6 +43,9 @@ class FSSpecSource(uproot.source.chunk.Source):
         self._num_requested_chunks = 0
         self._num_requested_bytes = 0
         self.__enter__()
+
+    def _open(self):
+        self._executor = FSSpecLoopExecutor()
 
     def __repr__(self):
         path = repr(self._file_path)
