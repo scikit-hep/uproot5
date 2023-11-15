@@ -609,7 +609,7 @@ class HTTPSource(uproot.source.chunk.Source):
         if len(self._file_path) > 10:
             path = repr("..." + self._file_path[-10:])
         fallback = ""
-        if hasattr(self, "_fallback") and self._fallback is not None:
+        if getattr(self, "_fallback", None) is not None:
             fallback = " with fallback"
         return f"<{type(self).__name__} {path}{fallback} at 0x{id(self):012x}>"
 
