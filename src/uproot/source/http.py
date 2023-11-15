@@ -761,7 +761,7 @@ class MultithreadedHTTPSource(uproot.source.chunk.MultithreadedSource):
             self._executor = uproot.source.futures.ResourceThreadPoolExecutor(
                 [
                     HTTPResource(self._file_path, self._timeout)
-                    for x in range(self._num_workers)
+                    for _ in range(self._num_workers)
                 ]
             )
         else:
