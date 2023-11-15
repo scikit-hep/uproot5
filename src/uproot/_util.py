@@ -18,7 +18,7 @@ import re
 import warnings
 from collections.abc import Iterable
 from typing import IO
-from urllib.parse import urlparse
+from urllib.parse import unquote, urlparse
 
 import numpy
 import packaging.version
@@ -379,10 +379,13 @@ def file_path_to_source_class(file_path: str | IO, options: dict):
             handler_cls = uproot.source.object.ObjectSource
         else:
             raise TypeError(
-                f"file_path must be a string or file-like object, not {file_path!r}"
+                f"file_path must be a string or file-like object, not {type(file_path)!r}"
             )
 
     file_path = regularize_path(file_path)
+    protocol, path = fsspec.core.split_protocol(file_path)
+    if protocol == "file":
+        file_path = unquote(path)
 
     if not (
         isinstance(handler_cls, type)
