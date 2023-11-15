@@ -386,6 +386,9 @@ def file_path_to_source_class(file_path: str | IO, options: dict):
     protocol, path = fsspec.core.split_protocol(file_path)
     if protocol == "file":
         file_path = unquote(path)
+    if "://" not in file_path:
+        file_path = "file://" + file_path
+        _, file_path = fsspec.core.url_to_fs(file_path)
 
     if not (
         isinstance(handler_cls, type)
