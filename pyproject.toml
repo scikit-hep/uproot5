@@ -60,10 +60,10 @@ dev = [
 test = [
   "lz4",
   "minio",
-  "aiohttp",
+  "aiohttp; python_version<\"3.12\"",  # asyncio not available
   "fsspec",
   "fsspec-xrootd",
-  "s3fs",
+  "s3fs; python_version<\"3.12\"",  # asyncio not available
   "paramiko",
   "pytest>=6",
   "pytest-timeout",
