@@ -299,9 +299,6 @@ def test_fallback(server, use_threads, num_workers):
         assert one[:4] == b"root"
 
 
-@pytest.mark.skip(
-    reason="RECHECK: Run2012B_DoubleMuParked.root is super-flaky right now"
-)
 @pytest.mark.network
 @pytest.mark.xrootd
 @pytest.mark.parametrize("use_threads", [True, False], indirect=True)
@@ -322,9 +319,6 @@ def test_xrootd(use_threads):
         assert one[:4] == b"root"
 
 
-@pytest.mark.skip(
-    reason="RECHECK: Run2012B_DoubleMuParked.root is super-flaky right now"
-)
 @pytest.mark.network
 @pytest.mark.xrootd
 @pytest.mark.parametrize("use_threads", [True, False], indirect=True)
@@ -352,9 +346,6 @@ def test_xrootd_fail(use_threads):
         )
 
 
-@pytest.mark.skip(
-    reason="RECHECK: Run2012B_DoubleMuParked.root is super-flaky right now"
-)
 @pytest.mark.network
 @pytest.mark.xrootd
 @pytest.mark.parametrize("use_threads", [True, False], indirect=True)
@@ -376,9 +367,6 @@ def test_xrootd_vectorread(use_threads):
         assert one[:4] == b"root"
 
 
-@pytest.mark.skip(
-    reason="RECHECK: Run2012B_DoubleMuParked.root is super-flaky right now"
-)
 @pytest.mark.network
 @pytest.mark.xrootd
 @pytest.mark.parametrize("use_threads", [True, False], indirect=True)
@@ -398,9 +386,6 @@ def test_xrootd_vectorread_max_element_split(use_threads):
         assert len(one) == max_element_size + 1
 
 
-@pytest.mark.skip(
-    reason="RECHECK: Run2012B_DoubleMuParked.root is super-flaky right now"
-)
 @pytest.mark.network
 @pytest.mark.xrootd
 @pytest.mark.parametrize("use_threads", [True, False], indirect=True)
@@ -444,9 +429,6 @@ def test_xrootd_vectorread_fail(use_threads):
         )
 
 
-@pytest.mark.skip(
-    reason="RECHECK: Run2012B_DoubleMuParked.root is super-flaky right now"
-)
 @pytest.mark.network
 @pytest.mark.xrootd
 @pytest.mark.parametrize("use_threads", [True, False], indirect=True)
@@ -474,9 +456,6 @@ def test_xrootd_size(use_threads):
     assert size1 == 3469136394
 
 
-@pytest.mark.skip(
-    reason="RECHECK: Run2012B_DoubleMuParked.root is super-flaky right now"
-)
 @pytest.mark.network
 @pytest.mark.xrootd
 @pytest.mark.parametrize("use_threads", [True, False], indirect=True)
