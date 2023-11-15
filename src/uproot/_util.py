@@ -376,7 +376,11 @@ def file_path_to_source_class(file_path, options):
             )
         return source_cls, file_path
 
-    if is_file_like(file_path):
+    if (
+        not isinstance(file_path, str)
+        and hasattr(file_path, "read")
+        and hasattr(file_path, "seek")
+    ):
         source_cls = uproot.source.object.ObjectSource
         return source_cls, file_path
 
