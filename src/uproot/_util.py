@@ -419,12 +419,7 @@ def file_path_to_source_class(file_path, options):
         source_cls = uproot.source.fsspec.FSSpecSource
         return source_cls, file_path
 
-    else:
-        # try to use fsspec before raising an error
-        if scheme in _schemes:
-            return uproot.source.fsspec.FSSpecSource, file_path
-
-        raise ValueError(f"URI scheme not recognized: {file_path}")
+    return uproot.source.fsspec.FSSpecSource, file_path
 
 
 if isinstance(__builtins__, dict):
