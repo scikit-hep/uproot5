@@ -563,8 +563,6 @@ class HTTPSource(uproot.source.chunk.Source):
     ResourceClass = HTTPResource
 
     def __init__(self, file_path: str, **options):
-        options = dict(uproot.reading.open.defaults, **options)
-
         self._num_fallback_workers = options["num_fallback_workers"]
         self._timeout = options["timeout"]
         self._num_requests = 0
@@ -609,7 +607,7 @@ class HTTPSource(uproot.source.chunk.Source):
         if len(self._file_path) > 10:
             path = repr("..." + self._file_path[-10:])
         fallback = ""
-        if hasattr(self, "_fallback") and self._fallback is not None:
+        if self._fallback is not None:
             fallback = " with fallback"
         return f"<{type(self).__name__} {path}{fallback} at 0x{id(self):012x}>"
 

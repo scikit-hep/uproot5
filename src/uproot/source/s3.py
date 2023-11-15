@@ -42,7 +42,6 @@ class S3Source(uproot.source.http.HTTPSource):
     ):
         Minio = uproot.extras.Minio_client()
 
-        self._file_path = file_path
         if access_key is None:
             access_key = os.environ.get(
                 "S3_ACCESS_KEY", os.environ.get("AWS_ACCESS_KEY_ID", None)
