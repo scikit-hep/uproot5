@@ -15,8 +15,6 @@ import numbers
 import os
 from typing import IO
 
-import uproot
-
 
 class FileSink:
     """
@@ -42,7 +40,16 @@ class FileSink:
         as ``io.BytesIO``. The object must be readable, writable, and seekable
         with ``"r+b"`` mode semantics.
         """
-        if uproot._util.is_file_like(obj, writeable=True):
+        if (
+            callable(getattr(obj, "read", None))
+            and callable(getattr(obj, "write", None))
+            and callable(getattr(obj, "seek", None))
+            and callable(getattr(obj, "tell", None))
+            and callable(getattr(obj, "flush", None))
+            and (not hasattr(obj, "readable") or obj.readable())
+            and (not hasattr(obj, "writable") or obj.writable())
+            and (not hasattr(obj, "seekable") or obj.seekable())
+        ):
             self = cls(None)
             self._file = obj
         else:
