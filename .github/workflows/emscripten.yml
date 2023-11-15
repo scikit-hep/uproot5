@@ -46,7 +46,8 @@ jobs:
         run: |
           pyodide venv .venv-pyodide
           source .venv-pyodide/bin/activate
-          python -m pip install .[test]
+          # python -m pip install .[test]
+          python -m pip install pytest
           python -m pip install dist/*.whl
           python -c "import sys; print(sys.platform)"
 
