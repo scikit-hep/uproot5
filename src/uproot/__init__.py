@@ -72,7 +72,6 @@ The submodules of Uproot are:
 isort:skip_file
 """
 
-
 from uproot.version import __version__
 import uproot.const
 import uproot.extras
@@ -92,6 +91,7 @@ from uproot.source.xrootd import XRootDSource
 from uproot.source.xrootd import MultithreadedXRootDSource
 from uproot.source.s3 import S3Source
 from uproot.source.object import ObjectSource
+from uproot.source.fsspec import FSSpecSource
 from uproot.source.cursor import Cursor
 from uproot.source.futures import TrivialExecutor
 from uproot.source.futures import ThreadPoolExecutor
