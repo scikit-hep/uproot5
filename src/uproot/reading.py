@@ -77,7 +77,7 @@ def open(
 
     Options (type; default):
 
-    * handler (:doc:`uproot.source.chunk.Source` class; `None`)
+    * handler (:doc:`uproot.source.chunk.Source` class; None)
     * timeout (float for HTTP, int for XRootD; 30)
     * max_num_elements (None or int; None)
     * num_workers (int; 1)
@@ -526,7 +526,7 @@ class ReadOnlyFile(CommonFileMethods):
 
     Options (type; default):
 
-    * handler (:doc:`uproot.source.chunk.Source` class; `None`)
+    * handler (:doc:`uproot.source.chunk.Source` class; None)
     * timeout (float for HTTP, int for XRootD; 30)
     * max_num_elements (None or int; None)
     * num_workers (int; 1)
