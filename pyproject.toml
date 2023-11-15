@@ -36,6 +36,7 @@ dependencies = [
   "awkward>=2.4.6",
   "importlib-metadata;python_version<\"3.8\"",
   "numpy",
+  "fsspec",
   "packaging",
   "typing_extensions>=4.1.0; python_version < \"3.11\""
 ]
