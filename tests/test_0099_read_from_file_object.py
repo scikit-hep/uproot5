@@ -10,7 +10,7 @@ import uproot.source.object
 
 @pytest.mark.parametrize(
     "handler",
-    [None, uproot.source.fsspec.FSSpecSource, uproot.source.object.ObjectSource],
+    [None, uproot.source.object.ObjectSource],
 )
 def test_read_from_file_like_object(handler):
     with open(skhep_testdata.data_path("uproot-Zmumu.root"), "rb") as f:

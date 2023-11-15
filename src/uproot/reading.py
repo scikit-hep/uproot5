@@ -43,7 +43,7 @@ def open(
             ``"rel/file.root:tdirectory/ttree"``, ``Path("rel:/file.root")``,
             ``Path("/abs/path:stuff.root")``
         object_cache (None, MutableMapping, or int): Cache of objects drawn
-            from ROOT directories (e.g histograms, TTrees, other directories);
+            from ROOT directories (e.g. histograms, TTrees, other directories);
             if None, do not use a cache; if an int, create a new cache of this
             size.
         array_cache (None, MutableMapping, or memory size): Cache of arrays

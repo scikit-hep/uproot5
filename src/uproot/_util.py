@@ -61,16 +61,18 @@ def isnum(x):
     )
 
 
-def is_file_like(obj) -> bool:
+def is_file_like(
+    obj, readable: bool = True, writeable: bool = False, seekable: bool = True
+) -> bool:
     return (
         callable(getattr(obj, "read", None))
         and callable(getattr(obj, "write", None))
         and callable(getattr(obj, "seek", None))
         and callable(getattr(obj, "tell", None))
         and callable(getattr(obj, "flush", None))
-        and (not hasattr(obj, "readable") or obj.readable())
-        and (not hasattr(obj, "writable") or obj.writable())
-        and (not hasattr(obj, "seekable") or obj.seekable())
+        and ((not hasattr(obj, "readable") or obj.readable()) if readable else True)
+        and ((not hasattr(obj, "writable") or obj.writable()) if writeable else True)
+        and ((not hasattr(obj, "seekable") or obj.seekable()) if seekable else True)
     )
 
 
