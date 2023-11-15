@@ -142,11 +142,6 @@ def dask(
     Options (type; default):
 
     * handler (:doc:`uproot.source.chunk.Source` class; None)
-    * file_handler (:doc:`uproot.source.chunk.Source` class; None) (Deprecated: Use `handler` instead. If set, this will take precedence over `handler`)
-    * xrootd_handler (:doc:`uproot.source.chunk.Source` class; None) (Deprecated: Use `handler` instead. If set, this will take precedence over `handler`)
-    * s3_handler (:doc:`uproot.source.chunk.Source` class; None) (Deprecated: Use `handler` instead. If set, this will take precedence over `handler`)
-    * http_handler (:doc:`uproot.source.chunk.Source` class; None) (Deprecated: Use `handler` instead. If set, this will take precedence over `handler`)
-    * object_handler (:doc:`uproot.source.chunk.Source` class; None) (Deprecated: Use `handler` instead. If set, this will take precedence over `handler`)
     * timeout (float for HTTP, int for XRootD; 30)
     * max_num_elements (None or int; None)
     * num_workers (int; 1)

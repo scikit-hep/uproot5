@@ -3,9 +3,8 @@
 import pickle
 import sys
 
-import numpy as np
+import uproot
 import pytest
-import skhep_testdata
 
 
 @pytest.mark.skipif(
