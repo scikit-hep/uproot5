@@ -410,23 +410,24 @@ def file_path_to_source_class(file_path, options):
         else:
             file_path = windows_absolute_path
 
-        source_cls = (
-            uproot.source.fsspec.FSSpecSource
-        )  # uproot.source.file.MemmapSource
+        # uproot.source.file.MemmapSource
+        source_cls = uproot.source.fsspec.FSSpecSource
+
         return source_cls, os.path.expanduser(file_path)
 
     elif scheme == "root":
-        source_cls = (
-            uproot.source.fsspec.FSSpecSource
-        )  # uproot.source.xrootd.XRootDSource
+        # uproot.source.xrootd.XRootDSource
+        source_cls = uproot.source.fsspec.FSSpecSource
         return source_cls, file_path
 
     elif scheme == "s3":
-        source_cls = uproot.source.fsspec.FSSpecSource  # uproot.source.s3.S3Source
+        # https://github.com/scikit-hep/uproot5/pull/1012
+        source_cls = uproot.source.s3.S3Source
         return source_cls, file_path
 
     elif scheme in ("http", "https"):
-        source_cls = uproot.source.fsspec.FSSpecSource  # uproot.source.http.HTTPSource
+        # uproot.source.http.HTTPSource
+        source_cls = uproot.source.fsspec.FSSpecSource
         return source_cls, file_path
 
     else:
