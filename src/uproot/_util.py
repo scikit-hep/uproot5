@@ -17,16 +17,11 @@ import platform
 import re
 import warnings
 from collections.abc import Iterable
-from typing import IO
 from urllib.parse import unquote, urlparse
 
 import fsspec
 import numpy
 import packaging.version
-
-import uproot.source.chunk
-import uproot.source.fsspec
-import uproot.source.object
 
 win = platform.system().lower().startswith("win")
 
@@ -357,41 +352,85 @@ def file_object_path_split(path: str) -> tuple[str, str | None]:
     return path, obj
 
 
-def file_path_to_source_class(file_path: str | IO, options: dict):
+def file_path_to_source_class(file_path, options):
     """
     Use a file path to get the :doc:`uproot.source.chunk.Source` class that would read it.
 
     Returns a tuple of (class, file_path) where the class is a subclass of :doc:`uproot.source.chunk.Source`.
-    """
 
-    handler_cls = options["handler"]
-    if handler_cls is None:
-        if isinstance(file_path, str):
-            handler_cls = uproot.source.fsspec.FSSpecSource
-        elif uproot._util.is_file_like(file_path):
-            handler_cls = uproot.source.object.ObjectSource
-        else:
-            raise TypeError(
-                f"file_path must be a string or file-like object, not {type(file_path)!r}"
-            )
+    The "handler" option is the preferred way to specify a custom source class.
+    The "*_handler" options are for backwards compatibility and will override the "handler" option if set.
+    """
+    import uproot.source.chunk
 
     file_path = regularize_path(file_path)
-    protocol, path = fsspec.core.split_protocol(file_path)
-    if protocol == "file":
-        file_path = unquote(path)
-    if "://" not in file_path:
-        file_path = "file://" + file_path
-        _, file_path = fsspec.core.url_to_fs(file_path)
 
-    if not (
-        isinstance(handler_cls, type)
-        and issubclass(handler_cls, uproot.source.chunk.Source)
+    source_cls = options["handler"]
+    if source_cls is not None:
+        if not (
+            isinstance(source_cls, type)
+            and issubclass(source_cls, uproot.source.chunk.Source)
+        ):
+            raise TypeError(
+                f"'handler' is not a class object inheriting from Source: {source_cls!r}"
+            )
+        return source_cls, file_path
+
+    if is_file_like(file_path):
+        source_cls = uproot.source.object.ObjectSource
+        return source_cls, file_path
+
+    windows_absolute_path = None
+    if win and _windows_absolute_path_pattern.match(file_path) is not None:
+        windows_absolute_path = file_path
+
+    parsed_url = urlparse(file_path)
+    if parsed_url.scheme.lower() == "file":
+        parsed_url_path = unquote(parsed_url.path)
+    else:
+        parsed_url_path = parsed_url.path
+
+    if win and windows_absolute_path is None:
+        if _windows_absolute_path_pattern.match(parsed_url_path) is not None:
+            windows_absolute_path = parsed_url_path
+        elif _windows_absolute_path_pattern_slash.match(parsed_url_path) is not None:
+            windows_absolute_path = parsed_url_path[1:]
+
+    scheme = parsed_url.scheme.lower()
+    if (
+        scheme == "file"
+        or len(parsed_url.scheme) == 0
+        or windows_absolute_path is not None
     ):
-        raise TypeError(
-            f"'handler' is not a class object inheriting from Source: {handler_cls!r}"
-        )
+        if windows_absolute_path is None:
+            if parsed_url.netloc.lower() == "localhost":
+                file_path = parsed_url_path
+            else:
+                file_path = parsed_url.netloc + parsed_url_path
+        else:
+            file_path = windows_absolute_path
 
-    return handler_cls, file_path
+        source_cls = uproot.source.file.MemmapSource
+        return source_cls, os.path.expanduser(file_path)
+
+    elif scheme == "root":
+        source_cls = uproot.source.xrootd.XRootDSource
+        return source_cls, file_path
+
+    elif scheme == "s3":
+        source_cls = uproot.source.s3.S3Source
+        return source_cls, file_path
+
+    elif scheme in ("http", "https"):
+        source_cls = uproot.source.http.HTTPSource
+        return source_cls, file_path
+
+    else:
+        # try to use fsspec before raising an error
+        if scheme in _schemes:
+            return uproot.source.fsspec.FSSpecSource, file_path
+
+        raise ValueError(f"URI scheme not recognized: {file_path}")
 
 
 if isinstance(__builtins__, dict):
