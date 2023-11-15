@@ -162,6 +162,12 @@ open.defaults = {
     "minimal_ttree_metadata": True,
 }
 
+
+class _OpenDefaults(dict):
+    def __init__(self):
+        raise NotImplementedError  # kept for backwards compatibility
+
+
 must_be_attached = [
     "TROOT",
     "TDirectory",
