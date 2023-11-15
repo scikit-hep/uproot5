@@ -310,6 +310,7 @@ def test_cache():
         skhep_testdata.data_path("uproot-sample-6.20.04-uncompressed.root"),
         object_cache=100,
         array_cache="100 MB",
+        handler=uproot.source.file.MemmapSource,
     ) as f:
         assert f.cache_key == "db4be408-93ad-11ea-9027-d201a8c0beef:/"
         assert f["sample"].cache_key == "db4be408-93ad-11ea-9027-d201a8c0beef:/sample;1"

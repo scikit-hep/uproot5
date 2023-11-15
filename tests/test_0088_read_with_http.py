@@ -9,6 +9,8 @@ import skhep_testdata
 
 @pytest.mark.network
 def test_issue176():
+    pytest.importorskip("aiohttp")
+
     with uproot.open(
         "https://starterkit.web.cern.ch/starterkit/data/advanced-python-2019/dalitzdata.root"
     ) as f:
@@ -18,6 +20,8 @@ def test_issue176():
 
 @pytest.mark.network
 def test_issue176_again():
+    pytest.importorskip("aiohttp")
+
     with uproot.open(
         "https://starterkit.web.cern.ch/starterkit/data/advanced-python-2019/dalitzdata.root"
     ) as f:
