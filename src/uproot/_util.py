@@ -279,14 +279,17 @@ _remote_schemes = ["root", "s3", "http", "https"]
 _schemes = list({*_remote_schemes, *fsspec.available_protocols()})
 
 _uri_scheme = re.compile("^(" + "|".join([re.escape(x) for x in _schemes]) + ")://")
+_uri_scheme_chain = re.compile(
+    "^(" + "|".join([re.escape(x) for x in _schemes]) + ")::"
+)
 
 
-def file_object_path_split(path: str) -> tuple[str, str | None]:
+def file_object_path_split(urlpath: str) -> tuple[str, str | None]:
     """
     Split a path with a colon into a file path and an object-in-file path.
 
     Args:
-        path: The path to split. Example: ``"https://localhost:8888/file.root:tree"``
+        urlpath: The path to split. Example: ``"https://localhost:8888/file.root:tree"``
 
     Returns:
         A tuple of the file path and the object-in-file path. If there is no
@@ -294,8 +297,8 @@ def file_object_path_split(path: str) -> tuple[str, str | None]:
         Example: ``("https://localhost:8888/file.root", "tree")``
     """
 
-    path: str = regularize_path(path)
-    path = path.strip()
+    urlpath: str = regularize_path(urlpath).strip()
+    path = urlpath
 
     def _split_path(path: str) -> list[str]:
         parts = path.split(":")
@@ -306,16 +309,22 @@ def file_object_path_split(path: str) -> tuple[str, str | None]:
         return parts
 
     if "://" not in path:
-        # assume it's a local file path
-        parts = _split_path(path)
-    elif _uri_scheme.match(path):
+        path = "file://" + path
+
+    # replace the match of _uri_scheme_chain with "" until there is no match
+    while _uri_scheme_chain.match(path):
+        path = _uri_scheme_chain.sub("", path)
+
+    if _uri_scheme.match(path):
         # if not a local path, attempt to match a URI scheme
-        parsed_url = urlparse(path)
-        parsed_url_path = parsed_url.path
+        if path.startswith("file://"):
+            parsed_url_path = path[7:]
+        else:
+            parsed_url_path = urlparse(path).path
+
         if parsed_url_path.startswith("//"):
-            # This can be a leftover from url chaining in fsspec
-            # TODO: replace this with str.removeprefix once Python 3.8 is dropped
             parsed_url_path = parsed_url_path[2:]
+
         parts = _split_path(parsed_url_path)
     else:
         # invalid scheme
@@ -329,12 +338,15 @@ def file_object_path_split(path: str) -> tuple[str, str | None]:
     elif len(parts) == 2:
         obj = parts[1]
         # remove the object from the path (including the colon)
-        path = path[: -len(obj) - 1]
-        obj = obj.strip()
+        urlpath = urlpath[: -len(obj) - 1]
+        # clean badly placed slashes
+        obj = obj.strip().lstrip("/")
+        while "//" in obj:
+            obj = obj.replace("//", "/")
     else:
         raise ValueError(f"could not split object from path {path}")
 
-    return path, obj
+    return urlpath, obj
 
 
 def file_path_to_source_class(file_path, options):

@@ -13,7 +13,6 @@ from __future__ import annotations
 
 import numbers
 import os
-from typing import IO
 
 
 class FileSink:
@@ -30,7 +29,7 @@ class FileSink:
     """
 
     @classmethod
-    def from_object(cls, obj: IO) -> FileSink:
+    def from_object(cls, obj) -> FileSink:
         """
         Args:
             obj (file-like object): An object with ``read``, ``write``, ``seek``,
@@ -61,23 +60,38 @@ class FileSink:
             )
         return self
 
-    def __init__(self, file_path):
+    @classmethod
+    def from_fsspec(cls, open_file) -> FileSink:
+        import fsspec
+
+        if not isinstance(open_file, fsspec.core.OpenFile):
+            raise TypeError("""argument should be of type fsspec.core.OpenFile""")
+        self = cls(None)
+        self._fsspec_open_file = open_file
+        return self
+
+    def __init__(self, file_path: str | None):
         self._file_path = file_path
         self._file = None
+        self._fsspec_open_file = None
 
     @property
-    def file_path(self):
+    def file_path(self) -> str | None:
         """
         A path to the file, which is None if constructed with a file-like object.
         """
         return self._file_path
 
     def _ensure(self):
-        if self._file is None:
-            if self._file_path is None:
-                raise TypeError("FileSink created from an object cannot be reopened")
+        if self._file:
+            return
+
+        if self._fsspec_open_file:
+            self._file = self._fsspec_open_file.open()
+        else:
             self._file = open(self._file_path, "r+b")
-            self._file.seek(0)
+
+        self._file.seek(0)
 
     def __getstate__(self):
         state = dict(self.__dict__)
@@ -103,7 +117,7 @@ class FileSink:
         return self._file.flush()
 
     @property
-    def closed(self):
+    def closed(self) -> bool:
         """
         True if the file is closed; False otherwise.
         """
@@ -126,7 +140,7 @@ class FileSink:
         self.close()
 
     @property
-    def in_path(self):
+    def in_path(self) -> str:
         if self._file_path is None:
             return ""
         else:
@@ -159,7 +173,7 @@ class FileSink:
         if missing > 0:
             self._file.write(b"\x00" * missing)
 
-    def read(self, location, num_bytes, insist=True):
+    def read(self, location, num_bytes, insist=True) -> bytes:
         """
         Args:
             location (int): Position in the file to read.
