@@ -1,6 +1,5 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot5/blob/main/LICENSE
 
-import numpy
 import pytest
 
 import uproot
@@ -8,6 +7,8 @@ import uproot
 
 @pytest.mark.network
 def test():
+    pytest.importorskip("aiohttp")
+
     with uproot.open(
         "https://starterkit.web.cern.ch/starterkit/data/advanced-python-2019/RD_distribution.root:tree"
     ) as f:
