@@ -441,7 +441,6 @@ def test_xrootd_size(use_threads):
     ) as source:
         size1 = source.num_bytes
 
-    pytest.importorskip("XRootD")
     with uproot.source.xrootd.MultithreadedXRootDSource(
         "root://eospublic.cern.ch//eos/root-eos/cms_opendata_2012_nanoaod/Run2012B_DoubleMuParked.root",
         timeout=10,

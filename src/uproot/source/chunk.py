@@ -53,12 +53,12 @@ class Source:
     """
 
     def __init__(self):
-        self._executor = None
         self._num_requested_bytes = 0
         self._num_requests = 0
-        self._num_bytes = 0
         self._num_requested_chunks = 0
         self._file_path = None
+        self._num_bytes = None
+        self._executor = None
 
     def chunk(self, start: int, stop: int) -> Chunk:
         """

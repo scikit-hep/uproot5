@@ -290,7 +290,7 @@ class XRootDSource(uproot.source.chunk.Source):
         # futures that wait for chunks that have been split to merge them.
         if self._use_threads:
             self._executor = uproot.source.futures.ResourceThreadPoolExecutor(
-                [trivial_resource() for x in range(self._num_workers)]
+                [trivial_resource() for _ in range(self._num_workers)]
             )
         else:
             self._executor = uproot.source.futures.ResourceTrivialExecutor(
