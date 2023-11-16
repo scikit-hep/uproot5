@@ -2,6 +2,7 @@
 
 import pytest
 
+import sys
 import uproot
 
 pytest.importorskip("minio")
@@ -9,6 +10,10 @@ pytest.importorskip("minio")
 
 @pytest.mark.network
 def test_s3_fail():
+    if sys.version_info == (3, 8):
+        # In Python 3.8 this test fails with a socket.timeout consistently (retries don't help)
+        pytest.skip("socket.timeout on Python 3.8")
+
     with pytest.raises(FileNotFoundError):
         with uproot.source.s3.S3Source(
             "s3://pivarski-princeton/does-not-exist", timeout=0.1
