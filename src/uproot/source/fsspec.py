@@ -39,12 +39,16 @@ class FSSpecSource(uproot.source.chunk.Source):
         # What should we do when there is a chain of filesystems?
         self._async_impl = self._fs.async_impl
 
-        self._open()
-
+        self._executor = None
+        self._file = None
         self._fh = None
+
         self._num_requests = 0
         self._num_requested_chunks = 0
         self._num_requested_bytes = 0
+
+        self._open()
+
         self.__enter__()
 
     def _open(self):
