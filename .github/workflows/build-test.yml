@@ -67,9 +67,7 @@ jobs:
 
       - name: Run pytest
         run: |
-          python -m pytest -vv tests \
-            --reruns 3 --reruns-delay 30 \
-            --only-rerun requests.exceptions.HTTPError
+          python -m pytest -vv tests --reruns 3 --reruns-delay 30 --only-rerun "http.client.HTTPException|TimeoutError"
 
   vanilla-build:
     strategy:
