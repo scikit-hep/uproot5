@@ -508,5 +508,9 @@ class MultithreadedXRootDSource(uproot.source.chunk.MultithreadedSource):
     @property
     def num_bytes(self) -> int:
         if self._num_bytes is None:
-            self._num_bytes = self._executor.workers[0].resource.num_bytes
+            if hasattr(self._executor, "workers"):
+                self._num_bytes = self._executor.workers[0].resource.num_bytes
+            else:
+                self._num_bytes = self._executor._resource.num_bytes
+
         return self._num_bytes
