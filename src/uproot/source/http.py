@@ -106,7 +106,7 @@ def get_num_bytes(file_path: str, parsed_url: urllib.parse.ParseResult, timeout)
                 response = connection.getresponse()
                 break
         else:
-            raise OSError(
+            raise http.client.HTTPException(
                 """remote server responded with status {} (redirect) without a 'location'
 for URL {}""".format(
                     response.status, file_path
@@ -119,7 +119,7 @@ for URL {}""".format(
 
     if response.status != 200:
         connection.close()
-        raise OSError(
+        raise http.client.HTTPException(
             """HTTP response was {}, rather than 200, in attempt to get file size
 in file {}""".format(
                 response.status, file_path
@@ -132,7 +132,7 @@ in file {}""".format(
             return int(x)
     else:
         connection.close()
-        raise OSError(
+        raise http.client.HTTPException(
             """response headers did not include content-length: {}
 in file {}""".format(
                 dict(response.getheaders()), file_path
@@ -216,7 +216,7 @@ class HTTPResource(uproot.source.chunk.Resource):
                     )
                     return self.get(redirect, start, stop)
 
-            raise OSError(
+            raise http.client.HTTPException(
                 """remote server responded with status {} (redirect) without a 'location'
 for URL {}""".format(
                     response.status, self._file_path
@@ -225,7 +225,7 @@ for URL {}""".format(
 
         if response.status != 206:
             connection.close()
-            raise OSError(
+            raise http.client.HTTPException(
                 """remote server responded with status {}, rather than 206 (range requests)
 for URL {}""".format(
                     response.status, self._file_path
@@ -322,7 +322,7 @@ for URL {}""".format(
                             task(resource)
                             return
 
-                    raise OSError(
+                    raise http.client.HTTPException(
                         """remote server responded with status {} (redirect) without a 'location'
 for URL {}""".format(
                             response.status, source.file_path
@@ -428,7 +428,7 @@ for URL {}""".format(
             data = response_buffer.read(length)
 
             if len(data) != length:
-                raise OSError(
+                raise http.client.HTTPException(
                     """wrong chunk length {} (expected {}) for byte range {} "
                     "in HTTP multipart
 for URL {}""".format(
@@ -454,7 +454,7 @@ for URL {}""".format(
                     else:
                         range_string = range_string.decode("utf-8", "surrogateescape")
                         expecting = ", ".join(f"{a}-{b - 1}" for a, b in futures)
-                        raise OSError(
+                        raise http.client.HTTPException(
                             """unrecognized byte range in headers of HTTP multipart: {}
 
     expecting: {}

@@ -26,10 +26,12 @@ class FSSpecSource(uproot.source.chunk.Source):
     def __init__(self, file_path: str, **options):
         import fsspec.core
 
-        default_options = uproot.reading.open.defaults
-
-        exclude_keys = set(default_options.keys())
-        storage_options = {k: v for k, v in options.items() if k not in exclude_keys}
+        options = dict(uproot.reading.open.defaults, **options)
+        storage_options = {
+            k: v
+            for k, v in options.items()
+            if k not in uproot.reading.open.defaults.keys()
+        }
 
         self._executor = FSSpecLoopExecutor()
 
