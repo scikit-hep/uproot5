@@ -3,7 +3,6 @@ import socket
 
 import pytest
 
-import sys
 import uproot
 
 pytest.importorskip("minio")
@@ -11,7 +10,7 @@ pytest.importorskip("minio")
 
 @pytest.mark.network
 def test_s3_fail():
-    with pytest.raises(FileNotFoundError, TimeoutError, socket.timeout):
+    with pytest.raises((FileNotFoundError, TimeoutError, socket.timeout)):
         # Sometimes this raises a timeout error that doesn't go away for a long time, we might as well skip it.
         with uproot.source.s3.S3Source(
             "s3://pivarski-princeton/does-not-exist", timeout=0.1
