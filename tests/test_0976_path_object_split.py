@@ -141,6 +141,27 @@ import pathlib
                 "Events/MET_pt",
             ),
         ),
+        (
+            "zip://uproot-issue121.root:Events/MET_pt::file:///some/weird/path:with:colons/file.root",
+            (
+                "zip://uproot-issue121.root::file:///some/weird/path:with:colons/file.root",
+                "Events/MET_pt",
+            ),
+        ),
+        (
+            "/some/weird/path:with:colons/file.root:Events/MET_pt",
+            (
+                "/some/weird/path:with:colons/file.root",
+                "Events/MET_pt",
+            ),
+        ),
+        (
+            "/some/weird/path:with:colons/file.root",
+            (
+                "/some/weird/path:with:colons/file.root",
+                None,
+            ),
+        ),
     ],
 )
 def test_url_split(input_value, expected_output):
