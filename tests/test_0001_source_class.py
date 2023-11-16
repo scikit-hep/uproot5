@@ -321,14 +321,12 @@ def test_xrootd(use_threads):
 
 @pytest.mark.network
 @pytest.mark.xrootd
-@pytest.mark.parametrize("use_threads", [True, False], indirect=True)
-def test_xrootd_deadlock(use_threads):
+def test_xrootd_deadlock():
     pytest.importorskip("XRootD")
     # Attach this file to the "test_xrootd_deadlock" function, so it leaks
     pytest.uproot_test_xrootd_deadlock_f = uproot.source.xrootd.XRootDResource(
         "root://eospublic.cern.ch//eos/root-eos/cms_opendata_2012_nanoaod/Run2012B_DoubleMuParked.root",
         timeout=20,
-        use_threads=use_threads,
     )
 
 
