@@ -64,24 +64,38 @@ import pathlib
             ),
         ),
         (
-            "ssh://user@host:22/path/to/file:object",
+            "ssh://user@host:22/path/to/file.root:/object//path",
             (
-                "ssh://user@host:22/path/to/file",
-                "object",
+                "ssh://user@host:22/path/to/file.root",
+                "object/path",
             ),
         ),
         (
-            "ssh://user@host:50230/path/to/file",
+            "ssh://user@host:22/path/to/file.root:/object//path:with:colon:in:path/something/",
             (
-                "ssh://user@host:50230/path/to/file",
+                "ssh://user@host:22/path/to/file.root",
+                "object/path:with:colon:in:path/something",
+            ),
+        ),
+        (
+            "ssh://user@host:50230/path/to/file.root",
+            (
+                "ssh://user@host:50230/path/to/file.root",
                 None,
             ),
         ),
         (
-            "s3://bucket/path/to/file:object",
+            "s3://bucket/path/to/file.root:/dir////object",
             (
-                "s3://bucket/path/to/file",
-                "object",
+                "s3://bucket/path/to/file.root",
+                "dir/object",
+            ),
+        ),
+        (
+            "s3://bucket/path/to/file.root:",
+            (
+                "s3://bucket/path/to/file.root",
+                "",
             ),
         ),
         (
@@ -98,25 +112,54 @@ import pathlib
                 None,
             ),
         ),
+        # https://github.com/scikit-hep/uproot5/issues/975
         (
-            "zip://uproot-issue121.root::file:///tmp/pytest-of-runner/pytest-0/test_fsspec_zip0/uproot-issue121.root.zip:Events/MET_pt",
+            "DAOD_PHYSLITE_2023-09-13T1230.art.rntuple.root:RNT:CollectionTree",
+            (
+                "DAOD_PHYSLITE_2023-09-13T1230.art.rntuple.root",
+                "RNT:CollectionTree",
+            ),
+        ),
+        (
+            "zip://uproot-issue121.root:Events/MET_pt::file:///tmp/pytest-of-runner/pytest-0/test_fsspec_zip0/uproot-issue121.root.zip",
             (
                 "zip://uproot-issue121.root::file:///tmp/pytest-of-runner/pytest-0/test_fsspec_zip0/uproot-issue121.root.zip",
                 "Events/MET_pt",
             ),
         ),
         (
-            "simplecache::zip://uproot-issue121.root::file:///tmp/pytest-of-runner/pytest-0/test_fsspec_zip0/uproot-issue121.root.zip:Events/MET_pt",
+            "simplecache::zip://uproot-issue121.root:Events/MET_pt::file:///tmp/pytest-of-runner/pytest-0/test_fsspec_zip0/uproot-issue121.root.zip",
             (
                 "simplecache::zip://uproot-issue121.root::file:///tmp/pytest-of-runner/pytest-0/test_fsspec_zip0/uproot-issue121.root.zip",
                 "Events/MET_pt",
             ),
         ),
         (
-            r"zip://uproot-issue121.root::file://C:\Users\runneradmin\AppData\Local\Temp\pytest-of-runneradmin\pytest-0\test_fsspec_zip0\uproot-issue121.root.zip:Events/MET_pt",
+            r"zip://uproot-issue121.root:Events/MET_pt::file://C:\Users\runneradmin\AppData\Local\Temp\pytest-of-runneradmin\pytest-0\test_fsspec_zip0\uproot-issue121.root.zip",
             (
                 r"zip://uproot-issue121.root::file://C:\Users\runneradmin\AppData\Local\Temp\pytest-of-runneradmin\pytest-0\test_fsspec_zip0\uproot-issue121.root.zip",
                 "Events/MET_pt",
+            ),
+        ),
+        (
+            "zip://uproot-issue121.root:Events/MET_pt::file:///some/weird/path:with:colons/file.root",
+            (
+                "zip://uproot-issue121.root::file:///some/weird/path:with:colons/file.root",
+                "Events/MET_pt",
+            ),
+        ),
+        (
+            "/some/weird/path:with:colons/file.root:Events/MET_pt",
+            (
+                "/some/weird/path:with:colons/file.root",
+                "Events/MET_pt",
+            ),
+        ),
+        (
+            "/some/weird/path:with:colons/file.root",
+            (
+                "/some/weird/path:with:colons/file.root",
+                None,
             ),
         ),
     ],
@@ -131,9 +174,12 @@ def test_url_split(input_value, expected_output):
 @pytest.mark.parametrize(
     "input_value",
     [
-        "local/file.root://Events",
+        "local/file.root.zip://Events",
+        "local/file.roo://Events",
+        "local/file://Events",
     ],
 )
 def test_url_split_invalid(input_value):
-    with pytest.raises(ValueError):
-        uproot._util.file_object_path_split(input_value)
+    path, obj = uproot._util.file_object_path_split(input_value)
+    assert obj is None
+    assert path == input_value
