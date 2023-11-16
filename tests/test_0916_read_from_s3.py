@@ -2,16 +2,9 @@
 
 import pytest
 
-import sys
 import uproot
 
 pytest.importorskip("minio")
-
-if sys.version_info < (3, 11):
-    pytest.skip(
-        "S3Source tests cause pytest to break in the CI (https://github.com/scikit-hep/uproot5/pull/1012)",
-        allow_module_level=True,
-    )
 
 
 @pytest.mark.network
