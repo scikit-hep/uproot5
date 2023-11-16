@@ -176,7 +176,7 @@ def test_url_split(input_value, expected_output):
     [
         "local/file.root.zip://Events",
         "local/file.roo://Events",
-        "local/file.roo://Events",
+        "local/file://Events",
     ],
 )
 def test_url_split_invalid(input_value):
