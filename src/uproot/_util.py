@@ -12,7 +12,6 @@ import glob
 import itertools
 import numbers
 import os
-import pathlib
 import platform
 import re
 import warnings
@@ -290,13 +289,9 @@ _windows_drive_letter_ending = re.compile(r".*\b[A-Za-z]$")
 _windows_absolute_path_pattern = re.compile(r"^[A-Za-z]:[\\/]")
 _windows_absolute_path_pattern_slash = re.compile(r"^[\\/][A-Za-z]:[\\/]")
 
+# These schemes may not appear in fsspec if the corresponding libraries are not installed (e.g. s3fs)
 _remote_schemes = ["root", "s3", "http", "https"]
 _schemes = list({*_remote_schemes, *fsspec.available_protocols()})
-
-_uri_scheme = re.compile("^(" + "|".join([re.escape(x) for x in _schemes]) + ")://")
-_uri_scheme_chain = re.compile(
-    "^(" + "|".join([re.escape(x) for x in _schemes]) + ")::"
-)
 
 
 def file_object_path_split(urlpath: str) -> tuple[str, str | None]:
@@ -313,54 +308,19 @@ def file_object_path_split(urlpath: str) -> tuple[str, str | None]:
     """
 
     urlpath: str = regularize_path(urlpath).strip()
-    path = urlpath
+    obj = None
 
-    def _split_path(path: str) -> list[str]:
-        parts = path.split(":")
-        if pathlib.PureWindowsPath(path).drive:
-            # Windows absolute path
-            assert len(parts) >= 2, f"could not split object from windows path {path}"
-            parts = [parts[0] + ":" + parts[1]] + parts[2:]
-        return parts
+    separator = "::"
+    parts = urlpath.split(separator)
+    object_regex = re.compile(r"(.+\.root):(.*$)")
+    for i, part in enumerate(reversed(parts)):
+        match = object_regex.match(part)
+        if match:
+            obj = re.sub(r"/+", "/", match.group(2).strip().lstrip("/")).rstrip("/")
+            parts[-i - 1] = match.group(1)
+            break
 
-    if "://" not in path:
-        path = "file://" + path
-
-    # replace the match of _uri_scheme_chain with "" until there is no match
-    while _uri_scheme_chain.match(path):
-        path = _uri_scheme_chain.sub("", path)
-
-    if _uri_scheme.match(path):
-        # if not a local path, attempt to match a URI scheme
-        if path.startswith("file://"):
-            parsed_url_path = path[7:]
-        else:
-            parsed_url_path = urlparse(path).path
-
-        if parsed_url_path.startswith("//"):
-            parsed_url_path = parsed_url_path[2:]
-
-        parts = _split_path(parsed_url_path)
-    else:
-        # invalid scheme
-        scheme = path.split("://")[0]
-        raise ValueError(
-            f"Invalid URI scheme: '{scheme}://' in {path}. Available schemes: {', '.join(_schemes)}."
-        )
-
-    if len(parts) == 1:
-        obj = None
-    elif len(parts) == 2:
-        obj = parts[1]
-        # remove the object from the path (including the colon)
-        urlpath = urlpath[: -len(obj) - 1]
-        # clean badly placed slashes
-        obj = obj.strip().lstrip("/")
-        while "//" in obj:
-            obj = obj.replace("//", "/")
-    else:
-        raise ValueError(f"could not split object from path {path}")
-
+    urlpath = separator.join(parts)
     return urlpath, obj
 
 
