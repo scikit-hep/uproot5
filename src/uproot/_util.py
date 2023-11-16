@@ -274,13 +274,9 @@ _windows_drive_letter_ending = re.compile(r".*\b[A-Za-z]$")
 _windows_absolute_path_pattern = re.compile(r"^[A-Za-z]:[\\/]")
 _windows_absolute_path_pattern_slash = re.compile(r"^[\\/][A-Za-z]:[\\/]")
 
+# These schemes may not appear in fsspec if the corresponding libraries are not installed (e.g. s3fs)
 _remote_schemes = ["root", "s3", "http", "https"]
 _schemes = list({*_remote_schemes, *fsspec.available_protocols()})
-
-_uri_scheme = re.compile("^(" + "|".join([re.escape(x) for x in _schemes]) + ")://")
-_uri_scheme_chain = re.compile(
-    "^(" + "|".join([re.escape(x) for x in _schemes]) + ")::"
-)
 
 
 def file_object_path_split(urlpath: str) -> tuple[str, str | None]:
