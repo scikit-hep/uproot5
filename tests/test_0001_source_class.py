@@ -148,13 +148,13 @@ def test_colons_and_ports():
         "https://example.com:443",
         None,
     )
-    assert uproot._util.file_object_path_split("https://example.com:443/something") == (
-        "https://example.com:443/something",
+    assert uproot._util.file_object_path_split("https://example.com:443/file.root") == (
+        "https://example.com:443/file.root",
         None,
     )
     assert uproot._util.file_object_path_split(
-        "https://example.com:443/something:else"
-    ) == ("https://example.com:443/something", "else")
+        "https://example.com:443/file.root:object"
+    ) == ("https://example.com:443/file.root", "object")
 
 
 @pytest.mark.parametrize("use_threads", [True, False], indirect=True)
