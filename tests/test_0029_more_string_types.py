@@ -82,7 +82,7 @@ def test_parse_typename():
         parse_typename("map<string, int>>")
 
 
-def test_strings1():
+def test_strings_1():
     with uproot.open(skhep_testdata.data_path("uproot-small-evnt-tree-fullsplit.root"))[
         "tree"
     ] as tree:
@@ -166,7 +166,7 @@ def test_top_level_vectors():
         ]
 
 
-def test_strings1():
+def test_strings_2():
     with uproot.open(skhep_testdata.data_path("uproot-issue31.root"))[
         "T/name"
     ] as branch:
@@ -174,7 +174,7 @@ def test_strings1():
         assert result.tolist() == ["one", "two", "three", "four", "five"]
 
 
-def test_strings2():
+def test_strings_3():
     with uproot.open(skhep_testdata.data_path("uproot-small-evnt-tree-fullsplit.root"))[
         "tree/Str"
     ] as branch:
@@ -182,7 +182,7 @@ def test_strings2():
         assert result.tolist() == [f"evt-{i:03d}" for i in range(100)]
 
 
-def test_strings3():
+def test_strings_4():
     with uproot.open(skhep_testdata.data_path("uproot-small-evnt-tree-fullsplit.root"))[
         "tree/StdStr"
     ] as branch:
