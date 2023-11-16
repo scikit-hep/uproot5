@@ -112,6 +112,14 @@ import pathlib
                 None,
             ),
         ),
+        # https://github.com/scikit-hep/uproot5/issues/975
+        (
+            "DAOD_PHYSLITE_2023-09-13T1230.art.rntuple.root:RNT:CollectionTree",
+            (
+                "DAOD_PHYSLITE_2023-09-13T1230.art.rntuple.root",
+                "RNT:CollectionTree",
+            ),
+        ),
         (
             "zip://uproot-issue121.root:Events/MET_pt::file:///tmp/pytest-of-runner/pytest-0/test_fsspec_zip0/uproot-issue121.root.zip",
             (
