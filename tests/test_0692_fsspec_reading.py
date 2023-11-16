@@ -50,7 +50,7 @@ def test_open_fsspec_local():
 
 
 @pytest.mark.network
-def test_open_fsspec_s3(handler):
+def test_open_fsspec_s3():
     pytest.importorskip("s3fs")
 
     with uproot.open(
