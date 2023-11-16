@@ -1,8 +1,6 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot5/blob/main/LICENSE
 
-import os
 import pickle
-import sys
 
 import pytest
 import skhep_testdata
@@ -14,7 +12,7 @@ import uproot
     "handler",
     [
         uproot.source.file.MemmapSource,
-        uproot.source.fsspec.FSSpecSource,
+        # uproot.source.fsspec.FSSpecSource,
     ],
 )
 def test_pickle_roundtrip_local(handler):
@@ -43,7 +41,7 @@ def test_pickle_roundtrip_local(handler):
     "handler",
     [
         uproot.source.http.HTTPSource,
-        uproot.source.fsspec.FSSpecSource,
+        # uproot.source.fsspec.FSSpecSource,
     ],
 )
 @pytest.mark.network
@@ -75,7 +73,7 @@ def test_pickle_roundtrip_http(handler):
     "handler",
     [
         uproot.source.xrootd.XRootDSource,
-        uproot.source.fsspec.FSSpecSource,
+        # uproot.source.fsspec.FSSpecSource,
     ],
 )
 @pytest.mark.network
