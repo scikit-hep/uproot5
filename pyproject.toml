@@ -94,7 +94,8 @@ log_cli_level = "info"
 markers = [
   "slow",
   "network",
-  "xrootd"
+  "xrootd",
+  "emscripten"
 ]
 minversion = "6.0"
 testpaths = ["tests"]

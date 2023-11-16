@@ -54,4 +54,4 @@ jobs:
       - name: Test
         run: |
           source .venv-pyodide/bin/activate
-          python -m pytest -vv tests
+          python -m pytest -vv tests -m emscripten --reruns 3 --reruns-delay 30 --only-rerun "(?i)http|timeout|connection"

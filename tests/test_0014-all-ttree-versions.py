@@ -1,16 +1,14 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot5/blob/main/LICENSE
 
-import json
-import sys
 from io import StringIO
 
-import numpy
 import pytest
 import skhep_testdata
 
 import uproot
 
 
+@pytest.mark.emscripten
 def test_streamerless_read():
     with uproot.open(
         skhep_testdata.data_path("uproot-sample-5.23.02-uncompressed.root")
