@@ -31,11 +31,12 @@ class FSSpecSource(uproot.source.chunk.Source):
         exclude_keys = set(default_options.keys())
         storage_options = {k: v for k, v in options.items() if k not in exclude_keys}
 
-        protocol = fsspec.core.split_protocol(file_path)[0]
-        self._async_impl = fsspec.get_filesystem_class(protocol=protocol).async_impl
         self._executor = FSSpecLoopExecutor()
 
         self._fs, self._file_path = fsspec.core.url_to_fs(file_path, **storage_options)
+
+        # What should we do when there is a chain of filesystems?
+        self._async_impl = self._fs.async_impl
 
         self._file = self._fs.open(self._file_path)
         self._fh = None
