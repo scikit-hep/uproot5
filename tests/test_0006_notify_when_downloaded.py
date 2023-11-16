@@ -145,9 +145,6 @@ def test_http_fallback_workers(server):
             expected.pop((chunk.start, chunk.stop))
 
 
-@pytest.mark.skip(
-    reason="RECHECK: Run2012B_DoubleMuParked.root is super-flaky right now"
-)
 @pytest.mark.network
 @pytest.mark.xrootd
 def test_xrootd():
@@ -168,9 +165,6 @@ def test_xrootd():
             expected.pop((chunk.start, chunk.stop))
 
 
-@pytest.mark.skip(
-    reason="RECHECK: Run2012B_DoubleMuParked.root is super-flaky right now"
-)
 @pytest.mark.network
 @pytest.mark.xrootd
 def test_xrootd_workers():
@@ -191,9 +185,6 @@ def test_xrootd_workers():
             expected.pop((chunk.start, chunk.stop))
 
 
-@pytest.mark.skip(
-    reason="RECHECK: Run2012B_DoubleMuParked.root is super-flaky right now"
-)
 @pytest.mark.network
 @pytest.mark.xrootd
 def test_xrootd_vectorread():

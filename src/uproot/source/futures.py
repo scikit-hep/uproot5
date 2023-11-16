@@ -453,9 +453,7 @@ class ResourceTrivialExecutor(TrivialExecutor):
         """
         assert isinstance(future, ResourceFuture)
         if self.closed:
-            raise OSError(
-                f"resource is closed for file {self._workers[0].resource.file_path}"
-            )
+            raise OSError(f"resource is closed for file {self._resource.file_path}")
         future._run(self._resource)
         return future
 
