@@ -266,6 +266,8 @@ class XRootDSource(uproot.source.chunk.Source):
     ResourceClass = XRootDResource
 
     def __init__(self, file_path: str, **options):
+        options = dict(uproot.reading.open.defaults, **options)
+
         self._timeout = options["timeout"]
         self._desired_max_num_elements = options["max_num_elements"]
         self._use_threads = options["use_threads"]
