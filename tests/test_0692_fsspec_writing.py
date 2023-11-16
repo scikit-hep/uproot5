@@ -5,6 +5,7 @@ import uproot
 import uproot.source.fsspec
 
 import os
+import pathlib
 import fsspec
 import numpy as np
 
@@ -28,6 +29,22 @@ def test_fsspec_writing_local(tmp_path, scheme):
 
     with uproot.open(uri) as f:
         assert f["tree"]["x"].array().tolist() == [1, 2, 3]
+
+
+def test_issue_1029(tmp_path):
+    # https://github.com/scikit-hep/uproot5/issues/1029
+    urlpath = os.path.join(tmp_path, "some", "path", "file.root")
+    urlpath = pathlib.Path(urlpath)
+
+    with uproot.recreate(urlpath) as f:
+        f["tree_1"] = {"x": np.array([1, 2, 3])}
+
+    with uproot.update(urlpath) as f:
+        f["tree_2"] = {"y": np.array([4, 5, 6])}
+
+    with uproot.open(urlpath) as f:
+        assert f["tree_1"]["x"].array().tolist() == [1, 2, 3]
+        assert f["tree_2"]["y"].array().tolist() == [4, 5, 6]
 
 
 def test_fsspec_writing_http(server):

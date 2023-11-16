@@ -73,10 +73,9 @@ def create(file_path: str | IO, **options):
 
 
 def _sink_from_path(
-    file_path_or_object: str | IO, **storage_options
+    file_path_or_object: str | Path | IO, **storage_options
 ) -> uproot.sink.file.FileSink:
-    if not isinstance(file_path_or_object, str):
-        # assume it's a file-like object
+    if uproot._util.is_file_like(file_path_or_object):
         return uproot.sink.file.FileSink.from_object(file_path_or_object)
 
     file_path = uproot._util.regularize_path(file_path_or_object)
@@ -118,7 +117,7 @@ def _sink_from_path(
         ) from None
 
 
-def recreate(file_path: str | IO, **options):
+def recreate(file_path: str | Path | IO, **options):
     """
     Args:
         file_path (str, ``pathlib.Path`` or file-like object): The filesystem path of the
@@ -174,7 +173,7 @@ def recreate(file_path: str | IO, **options):
     ).root_directory
 
 
-def update(file_path: str | IO, **options):
+def update(file_path: str | Path | IO, **options):
     """
     Args:
         file_path (str, ``pathlib.Path`` or file-like object): The filesystem path of the

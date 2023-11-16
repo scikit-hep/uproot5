@@ -90,6 +90,21 @@ def ensure_numpy(array, types=(numpy.bool_, numpy.integer, numpy.floating)):
         return out
 
 
+def is_file_like(
+    obj, readable: bool = False, writable: bool = False, seekable: bool = False
+) -> bool:
+    return (
+        callable(getattr(obj, "read", None))
+        and callable(getattr(obj, "write", None))
+        and callable(getattr(obj, "seek", None))
+        and callable(getattr(obj, "tell", None))
+        and callable(getattr(obj, "flush", None))
+        and (not readable or not hasattr(obj, "readable") or obj.readable())
+        and (not writable or not hasattr(obj, "writable") or obj.writable())
+        and (not seekable or not hasattr(obj, "seekable") or obj.seekable())
+    )
+
+
 def parse_version(version):
     """
     Converts a semver string into a Version object that can be compared with
