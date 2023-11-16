@@ -34,14 +34,13 @@ class FSSpecSource(uproot.source.chunk.Source):
             if k not in uproot.reading.open.defaults.keys()
         }
 
-        self._open()
-
         self._fs, self._file_path = fsspec.core.url_to_fs(file_path, **storage_options)
 
         # What should we do when there is a chain of filesystems?
         self._async_impl = self._fs.async_impl
 
-        self._file = self._fs.open(self._file_path)
+        self._open()
+
         self._fh = None
         self._num_requests = 0
         self._num_requested_chunks = 0
@@ -50,6 +49,7 @@ class FSSpecSource(uproot.source.chunk.Source):
 
     def _open(self):
         self._executor = FSSpecLoopExecutor()
+        self._file = self._fs.open(self._file_path)
 
     def __repr__(self):
         path = repr(self._file_path)
@@ -60,6 +60,8 @@ class FSSpecSource(uproot.source.chunk.Source):
     def __getstate__(self):
         state = dict(self.__dict__)
         state.pop("_executor")
+        state.pop("_file")
+        state.pop("_fh")
         return state
 
     def __setstate__(self, state):
