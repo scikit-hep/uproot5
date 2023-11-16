@@ -299,9 +299,6 @@ def test_fallback(server, use_threads, num_workers):
         assert one[:4] == b"root"
 
 
-@pytest.mark.skip(
-    reason="RECHECK: Run2012B_DoubleMuParked.root is super-flaky right now"
-)
 @pytest.mark.network
 @pytest.mark.xrootd
 @pytest.mark.parametrize("use_threads", [True, False], indirect=True)
@@ -322,22 +319,6 @@ def test_xrootd(use_threads):
         assert one[:4] == b"root"
 
 
-@pytest.mark.skip(
-    reason="RECHECK: Run2012B_DoubleMuParked.root is super-flaky right now"
-)
-@pytest.mark.network
-@pytest.mark.xrootd
-@pytest.mark.parametrize("use_threads", [True, False], indirect=True)
-def test_xrootd_deadlock(use_threads):
-    pytest.importorskip("XRootD")
-    # Attach this file to the "test_xrootd_deadlock" function, so it leaks
-    pytest.uproot_test_xrootd_deadlock_f = uproot.source.xrootd.XRootDResource(
-        "root://eospublic.cern.ch//eos/root-eos/cms_opendata_2012_nanoaod/Run2012B_DoubleMuParked.root",
-        timeout=20,
-        use_threads=use_threads,
-    )
-
-
 @pytest.mark.network
 @pytest.mark.xrootd
 @pytest.mark.parametrize("use_threads", [True, False], indirect=True)
@@ -352,9 +333,6 @@ def test_xrootd_fail(use_threads):
         )
 
 
-@pytest.mark.skip(
-    reason="RECHECK: Run2012B_DoubleMuParked.root is super-flaky right now"
-)
 @pytest.mark.network
 @pytest.mark.xrootd
 @pytest.mark.parametrize("use_threads", [True, False], indirect=True)
@@ -376,9 +354,6 @@ def test_xrootd_vectorread(use_threads):
         assert one[:4] == b"root"
 
 
-@pytest.mark.skip(
-    reason="RECHECK: Run2012B_DoubleMuParked.root is super-flaky right now"
-)
 @pytest.mark.network
 @pytest.mark.xrootd
 @pytest.mark.parametrize("use_threads", [True, False], indirect=True)
@@ -398,9 +373,6 @@ def test_xrootd_vectorread_max_element_split(use_threads):
         assert len(one) == max_element_size + 1
 
 
-@pytest.mark.skip(
-    reason="RECHECK: Run2012B_DoubleMuParked.root is super-flaky right now"
-)
 @pytest.mark.network
 @pytest.mark.xrootd
 @pytest.mark.parametrize("use_threads", [True, False], indirect=True)
@@ -408,8 +380,8 @@ def test_xrootd_vectorread_max_element_split_consistency(use_threads):
     pytest.importorskip("XRootD")
     filename = "root://eospublic.cern.ch//eos/root-eos/cms_opendata_2012_nanoaod/Run2012B_DoubleMuParked.root"
 
-    def get_chunk(Source, **kwargs):
-        with Source(filename, **kwargs) as source:
+    def get_chunk(source_cls, **kwargs):
+        with source_cls(filename, **kwargs) as source:
             notifications = queue.Queue()
             max_element_size = 2097136
             chunks = source.chunks([(0, max_element_size + 1)], notifications)
@@ -444,9 +416,6 @@ def test_xrootd_vectorread_fail(use_threads):
         )
 
 
-@pytest.mark.skip(
-    reason="RECHECK: Run2012B_DoubleMuParked.root is super-flaky right now"
-)
 @pytest.mark.network
 @pytest.mark.xrootd
 @pytest.mark.parametrize("use_threads", [True, False], indirect=True)
@@ -461,7 +430,6 @@ def test_xrootd_size(use_threads):
     ) as source:
         size1 = source.num_bytes
 
-    pytest.importorskip("XRootD")
     with uproot.source.xrootd.MultithreadedXRootDSource(
         "root://eospublic.cern.ch//eos/root-eos/cms_opendata_2012_nanoaod/Run2012B_DoubleMuParked.root",
         timeout=10,
@@ -474,9 +442,6 @@ def test_xrootd_size(use_threads):
     assert size1 == 3469136394
 
 
-@pytest.mark.skip(
-    reason="RECHECK: Run2012B_DoubleMuParked.root is super-flaky right now"
-)
 @pytest.mark.network
 @pytest.mark.xrootd
 @pytest.mark.parametrize("use_threads", [True, False], indirect=True)

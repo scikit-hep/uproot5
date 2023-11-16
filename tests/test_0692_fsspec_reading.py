@@ -1,15 +1,15 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/main/LICENSE
 
 import pytest
-import requests
-
 import uproot
 import uproot.source.fsspec
 
 import skhep_testdata
 import queue
 import fsspec
+import requests
 import os
+import sys
 
 
 def test_open_fsspec_http(server):
@@ -54,13 +54,17 @@ def test_open_fsspec_local():
 @pytest.mark.parametrize(
     "handler",
     [
-        # uproot.source.fsspec.FSSpecSource,
+        uproot.source.fsspec.FSSpecSource,
         uproot.source.s3.S3Source,
         None,
     ],
 )
 def test_open_fsspec_s3(handler):
     pytest.importorskip("s3fs")
+    if sys.version_info < (3, 11):
+        pytest.skip(
+            "https://github.com/scikit-hep/uproot5/pull/1012",
+        )
 
     with uproot.open(
         "s3://pivarski-princeton/pythia_ppZee_run17emb.picoDst.root:PicoDst",
