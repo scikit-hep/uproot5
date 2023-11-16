@@ -41,7 +41,7 @@ class FileSink:
         as ``io.BytesIO``. The object must be readable, writable, and seekable
         with ``"r+b"`` mode semantics.
         """
-        if uproot._util.is_file_like(obj, writable=True):
+        if uproot._util.is_file_like(obj, readable=True, writable=True, seekable=True):
             self = cls(None)
             self._file = obj
         else:

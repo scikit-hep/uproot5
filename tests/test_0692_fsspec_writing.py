@@ -35,6 +35,7 @@ def test_issue_1029(tmp_path):
     # https://github.com/scikit-hep/uproot5/issues/1029
     urlpath = os.path.join(tmp_path, "some", "path", "file.root")
     urlpath = pathlib.Path(urlpath)
+
     with uproot.recreate(urlpath) as f:
         f["tree_1"] = {"x": np.array([1, 2, 3])}
 

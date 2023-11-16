@@ -75,10 +75,7 @@ def create(file_path: str | IO, **options):
 def _sink_from_path(
     file_path_or_object: str | Path | IO, **storage_options
 ) -> uproot.sink.file.FileSink:
-    if uproot._util.is_file_like(
-        file_path_or_object, readable=False, writable=False, seekable=False
-    ):
-        # check if it's a file-like object (regardless of whether it's readable or writable)
+    if uproot._util.is_file_like(file_path_or_object):
         return uproot.sink.file.FileSink.from_object(file_path_or_object)
 
     file_path = uproot._util.regularize_path(file_path_or_object)

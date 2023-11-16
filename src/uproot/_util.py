@@ -91,7 +91,7 @@ def ensure_numpy(array, types=(numpy.bool_, numpy.integer, numpy.floating)):
 
 
 def is_file_like(
-    obj, readable: bool = True, writable: bool = False, seekable: bool = True
+    obj, readable: bool = False, writable: bool = False, seekable: bool = False
 ) -> bool:
     return (
         callable(getattr(obj, "read", None))
