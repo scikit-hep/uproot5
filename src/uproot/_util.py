@@ -39,7 +39,7 @@ def tobytes(array):
         return array.tostring()
 
 
-def isint(x):
+def isint(x) -> bool:
     """
     Returns True if and only if ``x`` is an integer (including NumPy, not
     including bool).
@@ -49,7 +49,7 @@ def isint(x):
     )
 
 
-def isnum(x):
+def isnum(x) -> bool:
     """
     Returns True if and only if ``x`` is a number (including NumPy, not
     including bool).
@@ -59,7 +59,7 @@ def isnum(x):
     )
 
 
-def ensure_str(x):
+def ensure_str(x) -> str:
     """
     Ensures that ``x`` is a string (decoding with 'surrogateescape' if necessary).
     """
@@ -97,18 +97,17 @@ def is_file_like(
     obj, readable: bool = False, writable: bool = False, seekable: bool = False
 ) -> bool:
     return (
-        callable(getattr(obj, "read", None))
-        and callable(getattr(obj, "write", None))
-        and callable(getattr(obj, "seek", None))
-        and callable(getattr(obj, "tell", None))
-        and callable(getattr(obj, "flush", None))
+        all(
+            callable(getattr(obj, attr, None))
+            for attr in ("read", "write", "seek", "tell", "flush")
+        )
         and (not readable or not hasattr(obj, "readable") or obj.readable())
         and (not writable or not hasattr(obj, "writable") or obj.writable())
         and (not seekable or not hasattr(obj, "seekable") or obj.seekable())
     )
 
 
-def parse_version(version):
+def parse_version(version: str):
     """
     Converts a semver string into a Version object that can be compared with
     ``<``, ``>=``, etc.
@@ -119,7 +118,7 @@ def parse_version(version):
     return packaging.version.parse(version)
 
 
-def from_module(obj, module_name):
+def from_module(obj, module_name: str) -> bool:
     """
     Returns True if ``obj`` is an instance of a class from a module
     given by name.
@@ -158,7 +157,7 @@ def _regularize_filter_regex_flags(flags):
     return flagsbyte
 
 
-def no_filter(x):
+def no_filter(x) -> bool:
     """
     A filter that accepts anything (always returns True).
     """
@@ -344,7 +343,10 @@ def file_path_to_source_class(
         )
 
     # Infer the source class from the file path
-    if uproot._util.is_file_like(file_path_or_object):
+    if all(
+        callable(getattr(file_path_or_object, attr, None)) for attr in ("read", "seek")
+    ):
+        # need a very soft object check for ubuntu python3.8 pyroot ci tests, cannot use uproot._util.is_file_like
         if (
             source_cls is not None
             and source_cls is not uproot.source.object.ObjectSource
