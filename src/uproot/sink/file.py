@@ -13,7 +13,6 @@ from __future__ import annotations
 
 import numbers
 import os
-from pathlib import Path
 from typing import IO
 
 import fsspec
@@ -34,7 +33,7 @@ class FileSink:
     In this case the file is opened in the first read or write operation.
     """
 
-    def __init__(self, urlpath_or_file_like: str | Path | IO, **storage_options):
+    def __init__(self, urlpath_or_file_like: str | IO, **storage_options):
         self._open_file = None
         self._file = None
 
@@ -50,14 +49,43 @@ class FileSink:
                     """writable file can only be created from a file path or an object that supports reading and writing"""
                 )
         else:
-            urlpath = str(urlpath_or_file_like)
-            fs, local_path = fsspec.core.url_to_fs(urlpath, **storage_options)
-            if not fs.exists(local_path):
-                parent_directory = fs.sep.join(local_path.split(fs.sep)[:-1])
-                fs.mkdirs(parent_directory, exist_ok=True)
-                fs.touch(local_path, truncate=True)
+            if not self._file_exists(urlpath_or_file_like, **storage_options):
+                self._truncate_file(urlpath_or_file_like, **storage_options)
 
-            self._open_file = fsspec.open(urlpath, mode="r+b", **storage_options)
+            self._open_file = fsspec.open(
+                urlpath_or_file_like, mode="r+b", **storage_options
+            )
+
+    @classmethod
+    def _file_exists(cls, urlpath: str, **storage_options) -> bool:
+        """
+        Args:
+            urlpath (str): A filesystem URL that specifies the file to check by fsspec.
+
+        Returns True if the file exists; False otherwise.
+        """
+        fs, local_path = fsspec.core.url_to_fs(urlpath, **storage_options)
+        return fs.exists(local_path)
+
+    @classmethod
+    def _truncate_file(cls, urlpath: str, **storage_options) -> None:
+        """
+        Args:
+            urlpath (str): A filesystem URL that specifies the file to truncate by fsspec.
+
+        Truncates the file to zero bytes. Creates parent directories if necessary.
+        """
+        fs, local_path = fsspec.core.url_to_fs(urlpath, **storage_options)
+        parent_directory = fs.sep.join(local_path.split(fs.sep)[:-1])
+        fs.mkdirs(parent_directory, exist_ok=True)
+        fs.touch(local_path, truncate=True)
+
+    @property
+    def from_object(self) -> bool:
+        """
+        True if constructed with a file-like object; False otherwise.
+        """
+        return self._open_file is None
 
     @property
     def file_path(self) -> str | None:

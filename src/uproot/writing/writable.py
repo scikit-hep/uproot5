@@ -20,7 +20,6 @@ from __future__ import annotations
 
 import datetime
 import itertools
-import os
 import queue
 import sys
 import uuid
@@ -39,7 +38,7 @@ import uproot.writing._cascade
 from uproot._util import no_filter, no_rename
 
 
-def create(file_path: str | IO, **options):
+def create(file_path: str | Path | IO, **options):
     """
     Args:
         file_path (str, ``pathlib.Path`` or file-like object): The filesystem path of the
@@ -61,9 +60,16 @@ def create(file_path: str | IO, **options):
     the :doc:`uproot.writing.writable.WritableFile`. Default is ``uproot.ZLIB(1)``.
 
     See :doc:`uproot.writing.writable.WritableFile` for details on these options.
+
+    Additional options are passed to as ``storage_options`` to the fsspec filesystem
     """
     file_path = uproot._util.regularize_path(file_path)
-    if isinstance(file_path, str) and os.path.exists(file_path):
+    storage_options = {
+        key: value for key, value in options.items() if key not in create.defaults
+    }
+    if isinstance(file_path, str) and uproot.sink.file.FileSink._file_exists(
+        file_path, **storage_options
+    ):
         raise OSError(
             "path exists and refusing to overwrite (use 'uproot.recreate' to "
             f"overwrite)\n\nfor path {file_path}"
@@ -93,13 +99,15 @@ def recreate(file_path: str | Path | IO, **options):
     the :doc:`uproot.writing.writable.WritableFile`. Default is ``uproot.ZLIB(1)``.
 
     See :doc:`uproot.writing.writable.WritableFile` for details on these options.
+
+    Additional options are passed to as ``storage_options`` to the fsspec filesystem.
     """
 
+    file_path = uproot._util.regularize_path(file_path)
     storage_options = {
         key: value for key, value in options.items() if key not in recreate.defaults
     }
     sink = uproot.sink.file.FileSink(file_path, **storage_options)
-
     compression = options.pop("compression", create.defaults["compression"])
 
     initial_directory_bytes = options.pop(
@@ -146,8 +154,11 @@ def update(file_path: str | Path | IO, **options):
     * uuid_function (callable; ``uuid.uuid1``)
 
     See :doc:`uproot.writing.writable.WritableFile` for details on these options.
+
+    Additional options are passed to as ``storage_options`` to the fsspec filesystem
     """
 
+    file_path = uproot._util.regularize_path(file_path)
     storage_options = {
         key: value for key, value in options.items() if key not in update.defaults
     }
