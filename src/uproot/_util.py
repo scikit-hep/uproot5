@@ -16,11 +16,17 @@ import platform
 import re
 import warnings
 from collections.abc import Iterable
-from urllib.parse import unquote, urlparse
+from pathlib import Path
+from typing import IO
+from urllib.parse import urlparse
 
 import fsspec
 import numpy
 import packaging.version
+
+import uproot.source.chunk
+import uproot.source.fsspec
+import uproot.source.object
 
 win = platform.system().lower().startswith("win")
 
@@ -324,16 +330,16 @@ def file_object_path_split(urlpath: str) -> tuple[str, str | None]:
     return urlpath, obj
 
 
-def file_path_to_source_class(file_path, options):
+def file_path_to_source_class(
+    file_path: str | Path | IO, options
+) -> tuple[type[uproot.source.chunk.Source], str | IO]:
     """
     Use a file path to get the :doc:`uproot.source.chunk.Source` class that would read it.
 
     Returns a tuple of (class, file_path) where the class is a subclass of :doc:`uproot.source.chunk.Source`.
     """
 
-    import uproot.source.chunk
-
-    file_path = regularize_path(file_path)
+    file_path: str | IO = regularize_path(file_path)
 
     source_cls = options["handler"]
     if source_cls is not None:
@@ -351,58 +357,7 @@ def file_path_to_source_class(file_path, options):
         and hasattr(file_path, "read")
         and hasattr(file_path, "seek")
     ):
-        source_cls = uproot.source.object.ObjectSource
-        return source_cls, file_path
-
-    windows_absolute_path = None
-    if win and _windows_absolute_path_pattern.match(file_path) is not None:
-        windows_absolute_path = file_path
-
-    parsed_url = urlparse(file_path)
-    if parsed_url.scheme.lower() == "file":
-        parsed_url_path = unquote(parsed_url.path)
-    else:
-        parsed_url_path = parsed_url.path
-
-    if win and windows_absolute_path is None:
-        if _windows_absolute_path_pattern.match(parsed_url_path) is not None:
-            windows_absolute_path = parsed_url_path
-        elif _windows_absolute_path_pattern_slash.match(parsed_url_path) is not None:
-            windows_absolute_path = parsed_url_path[1:]
-
-    scheme = parsed_url.scheme.lower()
-    if (
-        scheme == "file"
-        or len(parsed_url.scheme) == 0
-        or windows_absolute_path is not None
-    ):
-        if windows_absolute_path is None:
-            if parsed_url.netloc.lower() == "localhost":
-                file_path = parsed_url_path
-            else:
-                file_path = parsed_url.netloc + parsed_url_path
-        else:
-            file_path = windows_absolute_path
-
-        # uproot.source.file.MemmapSource
-        source_cls = uproot.source.fsspec.FSSpecSource
-
-        return source_cls, os.path.expanduser(file_path)
-
-    elif scheme == "root":
-        # uproot.source.xrootd.XRootDSource
-        source_cls = uproot.source.fsspec.FSSpecSource
-        return source_cls, file_path
-
-    elif scheme == "s3":
-        # uproot.source.s3.S3Source
-        source_cls = uproot.source.fsspec.FSSpecSource
-        return source_cls, file_path
-
-    elif scheme in ("http", "https"):
-        # uproot.source.http.HTTPSource
-        source_cls = uproot.source.fsspec.FSSpecSource
-        return source_cls, file_path
+        return uproot.source.object.ObjectSource, file_path
 
     return uproot.source.fsspec.FSSpecSource, file_path
 
@@ -448,7 +403,7 @@ Functions that accept many files (uproot.iterate, etc.) also allow:
     )
 
 
-def memory_size(data, error_message=None):
+def memory_size(data, error_message=None) -> int:
     """
     Regularizes strings like '## kB' and plain integer number of bytes to
     an integer number of bytes.

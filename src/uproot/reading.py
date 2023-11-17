@@ -8,10 +8,14 @@ and the classes that are too fundamental to be models:
 and :doc:`uproot.reading.ReadOnlyKey` (``TKey``).
 """
 
+from __future__ import annotations
+
 import struct
 import sys
 import uuid
 from collections.abc import Mapping, MutableMapping
+from pathlib import Path
+from typing import IO
 
 import uproot
 import uproot.behaviors.TBranch
@@ -524,7 +528,7 @@ class ReadOnlyFile(CommonFileMethods):
 
     def __init__(
         self,
-        file_path,
+        file_path: str | Path | IO,
         *,
         object_cache=100,
         array_cache="100 MB",
