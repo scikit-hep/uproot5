@@ -25,15 +25,13 @@ class FileSink:
     """
     Args:
         urlpath_or_file_like (str, Path, or file-like object): If a string or Path, a
-            filesystem URL that specifies the file to open. If a file-like object, it
+            filesystem URL that specifies the file to open by fsspec. If a file-like object, it
             must have ``read``, ``write``, ``seek``, ``tell``, and ``flush`` methods.
 
-    An object that can write (and read) files on a local filesystem, which either opens
-    a new file from a ``file_path`` in ``"r+b"`` mode or wraps a file-like object
-    with the :ref:`uproot.sink.file.FileSink.from_object` constructor.
-
-    With the ``file_path``-based constructor, the file is opened upon first read or
-    write.
+    An object that can write (and read) files on a local or remote filesystem.
+    It can be initialized from a file-like object (already opened) or a filesystem URL.
+    If initialized from a filesystem URL, fsspec is used to open the file.
+    In this case the file is opened in the first read or write operation.
     """
 
     def __init__(self, urlpath_or_file_like: str | Path | IO, **storage_options):
@@ -69,6 +67,10 @@ class FileSink:
         return self._open_file.path if self._open_file else None
 
     def _ensure(self):
+        """
+        Opens the file if it is not already open.
+        Sets the file's position to the beginning.
+        """
         if not self._file:
             self._file = self._open_file.open()
 
@@ -83,14 +85,14 @@ class FileSink:
         self.__dict__ = state
         self._file = None
 
-    def tell(self):
+    def tell(self) -> int:
         """
         Calls the file or file-like object's ``tell`` method.
         """
         self._ensure()
         return self._file.tell()
 
-    def flush(self):
+    def flush(self) -> None:
         """
         Calls the file or file-like object's ``flush`` method.
         """
@@ -124,7 +126,7 @@ class FileSink:
     def in_path(self) -> str:
         return f"\n\nin path: {self.file_path}" if self.file_path is not None else ""
 
-    def write(self, location, serialization):
+    def write(self, location: int, serialization) -> int:
         """
         Args:
             location (int): Position in the file to write.
@@ -135,23 +137,21 @@ class FileSink:
         """
         self._ensure()
         self._file.seek(location)
-        self._file.write(serialization)
+        return self._file.write(serialization)
 
-    def set_file_length(self, length):
+    def set_file_length(self, length: int):
         """
         Sets the file's length to ``length``, truncating with zeros if necessary.
 
         Calls ``seek``, ``tell``, and possibly ``write``.
         """
         self._ensure()
-        # self._file.truncate(length)
-
         self._file.seek(0, os.SEEK_END)
         missing = length - self._file.tell()
         if missing > 0:
             self._file.write(b"\x00" * missing)
 
-    def read(self, location, num_bytes, insist=True) -> bytes:
+    def read(self, location: int, num_bytes: int, insist: bool = True) -> bytes:
         """
         Args:
             location (int): Position in the file to read.
