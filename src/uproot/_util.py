@@ -324,7 +324,7 @@ def file_object_path_split(urlpath: str) -> tuple[str, str | None]:
 
 
 def file_path_to_source_class(
-    file_path: str | Path | IO, options
+    file_path_or_object: str | Path | IO, options: dict
 ) -> tuple[type[uproot.source.chunk.Source], str | IO]:
     """
     Use a file path to get the :doc:`uproot.source.chunk.Source` class that would read it.
@@ -332,27 +332,36 @@ def file_path_to_source_class(
     Returns a tuple of (class, file_path) where the class is a subclass of :doc:`uproot.source.chunk.Source`.
     """
 
-    file_path: str | IO = regularize_path(file_path)
+    file_path_or_object: str | IO = regularize_path(file_path_or_object)
 
     source_cls = options["handler"]
-    if source_cls is not None:
-        if not (
-            isinstance(source_cls, type)
-            and issubclass(source_cls, uproot.source.chunk.Source)
+    if source_cls is not None and not (
+        isinstance(source_cls, type)
+        and issubclass(source_cls, uproot.source.chunk.Source)
+    ):
+        raise TypeError(
+            f"'handler' is not a class object inheriting from Source: {source_cls!r}"
+        )
+
+    # Infer the source class from the file path
+    if uproot._util.is_file_like(file_path_or_object):
+        if (
+            source_cls is not None
+            and source_cls is not uproot.source.object.ObjectSource
         ):
             raise TypeError(
-                f"'handler' is not a class object inheriting from Source: {source_cls!r}"
+                f"'handler' is not ObjectSource for a file-like object: {source_cls!r}"
             )
-        return source_cls, file_path
-
-    if (
-        not isinstance(file_path, str)
-        and hasattr(file_path, "read")
-        and hasattr(file_path, "seek")
-    ):
-        return uproot.source.object.ObjectSource, file_path
-
-    return uproot.source.fsspec.FSSpecSource, file_path
+        return uproot.source.object.ObjectSource, file_path_or_object
+    elif isinstance(file_path_or_object, str):
+        source_cls = (
+            uproot.source.fsspec.FSSpecSource if source_cls is None else source_cls
+        )
+        return source_cls, file_path_or_object
+    else:
+        raise TypeError(
+            f"file_path is not a string or file-like object: {file_path_or_object!r}"
+        )
 
 
 if isinstance(__builtins__, dict):
