@@ -13,6 +13,10 @@ from __future__ import annotations
 
 import numbers
 import os
+from pathlib import Path
+from typing import IO
+
+import fsspec
 
 import uproot._util
 
@@ -20,7 +24,9 @@ import uproot._util
 class FileSink:
     """
     Args:
-        file_path (str): The filesystem path of the file to open.
+        urlpath_or_file_like (str, Path, or file-like object): If a string or Path, a
+            filesystem URL that specifies the file to open. If a file-like object, it
+            must have ``read``, ``write``, ``seek``, ``tell``, and ``flush`` methods.
 
     An object that can write (and read) files on a local filesystem, which either opens
     a new file from a ``file_path`` in ``"r+b"`` mode or wraps a file-like object
@@ -30,59 +36,41 @@ class FileSink:
     write.
     """
 
-    @classmethod
-    def from_object(cls, obj) -> FileSink:
-        """
-        Args:
-            obj (file-like object): An object with ``read``, ``write``, ``seek``,
-                ``tell``, and ``flush`` methods.
-
-        Creates a :doc:`uproot.sink.file.FileSink` from a file-like object, such
-        as ``io.BytesIO``. The object must be readable, writable, and seekable
-        with ``"r+b"`` mode semantics.
-        """
-        if uproot._util.is_file_like(obj, readable=True, writable=True, seekable=True):
-            self = cls(None)
-            self._file = obj
-        else:
-            raise TypeError(
-                """writable file can only be created from a file path or an object
-
-    * that has 'read', 'write', 'seek', and 'tell' methods
-    * is 'readable() and writable() and seekable()'"""
-            )
-        return self
-
-    @classmethod
-    def from_fsspec(cls, open_file) -> FileSink:
-        import fsspec
-
-        if not isinstance(open_file, fsspec.core.OpenFile):
-            raise TypeError("""argument should be of type fsspec.core.OpenFile""")
-        self = cls(None)
-        self._fsspec_open_file = open_file
-        return self
-
-    def __init__(self, file_path: str | None):
-        self._file_path = file_path
+    def __init__(self, urlpath_or_file_like: str | Path | IO, **storage_options):
+        self._open_file = None
         self._file = None
-        self._fsspec_open_file = None
+
+        if uproot._util.is_file_like(
+            urlpath_or_file_like, readable=False, writable=False, seekable=False
+        ):
+            self._file = urlpath_or_file_like
+
+            if not uproot._util.is_file_like(
+                self._file, readable=True, writable=True, seekable=True
+            ):
+                raise TypeError(
+                    """writable file can only be created from a file path or an object that supports reading and writing"""
+                )
+        else:
+            urlpath = str(urlpath_or_file_like)
+            fs, local_path = fsspec.core.url_to_fs(urlpath, **storage_options)
+            if not fs.exists(local_path):
+                parent_directory = fs.sep.join(local_path.split(fs.sep)[:-1])
+                fs.mkdirs(parent_directory, exist_ok=True)
+                fs.touch(local_path, truncate=True)
+
+            self._open_file = fsspec.open(urlpath, mode="r+b", **storage_options)
 
     @property
     def file_path(self) -> str | None:
         """
         A path to the file, which is None if constructed with a file-like object.
         """
-        return self._file_path
+        return self._open_file.path if self._open_file else None
 
     def _ensure(self):
-        if self._file:
-            return
-
-        if self._fsspec_open_file:
-            self._file = self._fsspec_open_file.open()
-        else:
-            self._file = open(self._file_path, "r+b")
+        if not self._file:
+            self._file = self._open_file.open()
 
         self._file.seek(0)
 
@@ -134,10 +122,7 @@ class FileSink:
 
     @property
     def in_path(self) -> str:
-        if self._file_path is None:
-            return ""
-        else:
-            return "\n\nin path: " + self._file_path
+        return f"\n\nin path: {self.file_path}" if self.file_path is not None else ""
 
     def write(self, location, serialization):
         """

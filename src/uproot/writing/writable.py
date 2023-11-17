@@ -27,7 +27,6 @@ import uuid
 from collections.abc import Mapping, MutableMapping
 from pathlib import Path
 from typing import IO
-from urllib.parse import urlparse
 
 import uproot._util
 import uproot.compression
@@ -72,51 +71,6 @@ def create(file_path: str | IO, **options):
     return recreate(file_path, **options)
 
 
-def _sink_from_path(
-    file_path_or_object: str | Path | IO, **storage_options
-) -> uproot.sink.file.FileSink:
-    if uproot._util.is_file_like(file_path_or_object):
-        return uproot.sink.file.FileSink.from_object(file_path_or_object)
-
-    file_path = uproot._util.regularize_path(file_path_or_object)
-    file_path, obj = uproot._util.file_object_path_split(file_path)
-    if obj is not None:
-        raise ValueError(f"file path '{file_path}' cannot contain an object: {obj}")
-
-    parsed_url = urlparse(file_path)
-    scheme = parsed_url.scheme
-
-    if not scheme:
-        # no scheme, assume local file
-        if not os.path.exists(file_path):
-            # truncate the file
-            Path(file_path).parent.mkdir(parents=True, exist_ok=True)
-            with open(file_path, mode="wb"):
-                pass
-        return uproot.sink.file.FileSink(file_path)
-
-    # use fsspec to open the file
-    try:
-        # TODO: remove try/except block when fsspec becomes a dependency
-        import fsspec
-
-        # truncate the file if it doesn't exist (also create parent directories)
-        fs, local_path = fsspec.core.url_to_fs(file_path, **storage_options)
-        if not fs.exists(local_path):
-            parent_directory = fs.sep.join(local_path.split(fs.sep)[:-1])
-            fs.mkdirs(parent_directory, exist_ok=True)
-            fs.touch(local_path, truncate=True)
-
-        open_file = fsspec.open(file_path, mode="r+b", **storage_options)
-        return uproot.sink.file.FileSink.from_fsspec(open_file)
-
-    except ImportError:
-        raise ImportError(
-            f"cannot open file path '{file_path}' with scheme '{scheme}' because "
-            "the fsspec package is not installed."
-        ) from None
-
-
 def recreate(file_path: str | Path | IO, **options):
     """
     Args:
@@ -144,7 +98,7 @@ def recreate(file_path: str | Path | IO, **options):
     storage_options = {
         key: value for key, value in options.items() if key not in recreate.defaults
     }
-    sink = _sink_from_path(file_path, **storage_options)
+    sink = uproot.sink.file.FileSink(file_path, **storage_options)
 
     compression = options.pop("compression", create.defaults["compression"])
 
@@ -197,7 +151,7 @@ def update(file_path: str | Path | IO, **options):
     storage_options = {
         key: value for key, value in options.items() if key not in update.defaults
     }
-    sink = _sink_from_path(file_path, **storage_options)
+    sink = uproot.sink.file.FileSink(file_path, **storage_options)
 
     initial_directory_bytes = options.pop(
         "initial_directory_bytes", create.defaults["initial_directory_bytes"]
