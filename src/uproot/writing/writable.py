@@ -46,7 +46,7 @@ def create(file_path: str | Path | IO, **options):
         options: See below.
 
     Opens a local file for writing. Like ROOT's ``"CREATE"`` option, this function
-    raises an error (``OSError``) if a file already exists at ``file_path``.
+    raises an error (``FileExistsError``) if a file already exists at ``file_path``.
 
     Returns a :doc:`uproot.writing.writable.WritableDirectory`.
 
@@ -70,7 +70,7 @@ def create(file_path: str | Path | IO, **options):
     if isinstance(file_path, str) and uproot.sink.file.FileSink._file_exists(
         file_path, **storage_options
     ):
-        raise OSError(
+        raise FileExistsError(
             "path exists and refusing to overwrite (use 'uproot.recreate' to "
             f"overwrite)\n\nfor path {file_path}"
         )

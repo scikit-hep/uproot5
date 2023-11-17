@@ -37,7 +37,7 @@ def test_fsspec_writing_local_create(tmp_path, scheme):
     with uproot.create(uri) as f:
         f["tree"] = {"x": np.array([1, 2, 3])}
 
-    with pytest.raises(OSError):
+    with pytest.raises(FileExistsError):
         with uproot.create(uri):
             pass
 
