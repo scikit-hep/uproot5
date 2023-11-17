@@ -12,7 +12,6 @@ import glob
 import itertools
 import numbers
 import os
-import platform
 import re
 import warnings
 from collections.abc import Iterable
@@ -27,8 +26,6 @@ import packaging.version
 import uproot.source.chunk
 import uproot.source.fsspec
 import uproot.source.object
-
-win = platform.system().lower().startswith("win")
 
 
 def tobytes(array):
@@ -290,10 +287,6 @@ def regularize_path(path):
 
     return path
 
-
-_windows_drive_letter_ending = re.compile(r".*\b[A-Za-z]$")
-_windows_absolute_path_pattern = re.compile(r"^[A-Za-z]:[\\/]")
-_windows_absolute_path_pattern_slash = re.compile(r"^[\\/][A-Za-z]:[\\/]")
 
 # These schemes may not appear in fsspec if the corresponding libraries are not installed (e.g. s3fs)
 _remote_schemes = ["root", "s3", "http", "https"]
@@ -694,7 +687,7 @@ def damerau_levenshtein(a, b, ratio=False):
     # Modified Damerau-Levenshtein distance. Adds a middling penalty
     # for capitalization.
     # https://en.wikipedia.org/wiki/Damerau%E2%80%93Levenshtein_distance
-    M = [[0] * (len(b) + 1) for i in range(len(a) + 1)]
+    M = [[0] * (len(b) + 1) for _ in range(len(a) + 1)]
 
     for i in range(len(a) + 1):
         M[i][0] = i
@@ -726,7 +719,7 @@ def damerau_levenshtein(a, b, ratio=False):
                     # Transpose only
                     M[i][j] = min(M[i][j], M[i - 2][j - 2] + 1)
                 else:
-                    # Traspose and capitalization
+                    # Transpose and capitalization
                     M[i][j] = min(M[i][j], M[i - 2][j - 2] + 1.5)
 
     if not ratio:
