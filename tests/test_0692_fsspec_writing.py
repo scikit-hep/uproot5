@@ -31,8 +31,17 @@ def test_fsspec_writing_local(tmp_path, scheme):
         assert f["tree"]["x"].array().tolist() == [1, 2, 3]
 
 
-@pytest.mark.parametrize("scheme", ["", "file://", "simplecache::file://"])
-def test_fsspec_writing_local_create(tmp_path, scheme):
+@pytest.mark.parametrize(
+    "scheme",
+    [
+        "",
+        "file://",
+        "simplecache::file://",
+        # "memory://", # uncomment when https://github.com/fsspec/filesystem_spec/pull/1426 is available in pypi
+        "simplecache::memory://",
+    ],
+)
+def test_fsspec_writing_create(tmp_path, scheme):
     uri = scheme + os.path.join(tmp_path, "some", "path", "file.root")
     with uproot.create(uri) as f:
         f["tree"] = {"x": np.array([1, 2, 3])}
