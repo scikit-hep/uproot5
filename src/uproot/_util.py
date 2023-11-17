@@ -435,8 +435,8 @@ def file_path_to_source_class(file_path, options):
         return source_cls, file_path
 
     elif scheme == "s3":
-        # https://github.com/scikit-hep/uproot5/pull/1012
-        source_cls = uproot.source.s3.S3Source
+        # uproot.source.s3.S3Source
+        source_cls = uproot.source.fsspec.FSSpecSource
         return source_cls, file_path
 
     elif scheme in ("http", "https"):
