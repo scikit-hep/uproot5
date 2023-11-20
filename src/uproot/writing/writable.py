@@ -20,14 +20,12 @@ from __future__ import annotations
 
 import datetime
 import itertools
-import os
 import queue
 import sys
 import uuid
 from collections.abc import Mapping, MutableMapping
 from pathlib import Path
 from typing import IO
-from urllib.parse import urlparse
 
 import uproot._util
 import uproot.compression
@@ -40,7 +38,7 @@ import uproot.writing._cascade
 from uproot._util import no_filter, no_rename
 
 
-def create(file_path: str | IO, **options):
+def create(file_path: str | Path | IO, **options):
     """
     Args:
         file_path (str, ``pathlib.Path`` or file-like object): The filesystem path of the
@@ -48,7 +46,7 @@ def create(file_path: str | IO, **options):
         options: See below.
 
     Opens a local file for writing. Like ROOT's ``"CREATE"`` option, this function
-    raises an error (``OSError``) if a file already exists at ``file_path``.
+    raises an error (``FileExistsError``) if a file already exists at ``file_path``.
 
     Returns a :doc:`uproot.writing.writable.WritableDirectory`.
 
@@ -62,59 +60,21 @@ def create(file_path: str | IO, **options):
     the :doc:`uproot.writing.writable.WritableFile`. Default is ``uproot.ZLIB(1)``.
 
     See :doc:`uproot.writing.writable.WritableFile` for details on these options.
+
+    Additional options are passed to as ``storage_options`` to the fsspec filesystem
     """
     file_path = uproot._util.regularize_path(file_path)
-    if isinstance(file_path, str) and os.path.exists(file_path):
-        raise OSError(
+    storage_options = {
+        key: value for key, value in options.items() if key not in create.defaults
+    }
+    if isinstance(file_path, str) and uproot.sink.file.FileSink._file_exists(
+        file_path, **storage_options
+    ):
+        raise FileExistsError(
             "path exists and refusing to overwrite (use 'uproot.recreate' to "
             f"overwrite)\n\nfor path {file_path}"
         )
     return recreate(file_path, **options)
-
-
-def _sink_from_path(
-    file_path_or_object: str | Path | IO, **storage_options
-) -> uproot.sink.file.FileSink:
-    if uproot._util.is_file_like(file_path_or_object):
-        return uproot.sink.file.FileSink.from_object(file_path_or_object)
-
-    file_path = uproot._util.regularize_path(file_path_or_object)
-    file_path, obj = uproot._util.file_object_path_split(file_path)
-    if obj is not None:
-        raise ValueError(f"file path '{file_path}' cannot contain an object: {obj}")
-
-    parsed_url = urlparse(file_path)
-    scheme = parsed_url.scheme
-
-    if not scheme:
-        # no scheme, assume local file
-        if not os.path.exists(file_path):
-            # truncate the file
-            Path(file_path).parent.mkdir(parents=True, exist_ok=True)
-            with open(file_path, mode="wb"):
-                pass
-        return uproot.sink.file.FileSink(file_path)
-
-    # use fsspec to open the file
-    try:
-        # TODO: remove try/except block when fsspec becomes a dependency
-        import fsspec
-
-        # truncate the file if it doesn't exist (also create parent directories)
-        fs, local_path = fsspec.core.url_to_fs(file_path, **storage_options)
-        if not fs.exists(local_path):
-            parent_directory = fs.sep.join(local_path.split(fs.sep)[:-1])
-            fs.mkdirs(parent_directory, exist_ok=True)
-            fs.touch(local_path, truncate=True)
-
-        open_file = fsspec.open(file_path, mode="r+b", **storage_options)
-        return uproot.sink.file.FileSink.from_fsspec(open_file)
-
-    except ImportError:
-        raise ImportError(
-            f"cannot open file path '{file_path}' with scheme '{scheme}' because "
-            "the fsspec package is not installed."
-        ) from None
 
 
 def recreate(file_path: str | Path | IO, **options):
@@ -139,13 +99,15 @@ def recreate(file_path: str | Path | IO, **options):
     the :doc:`uproot.writing.writable.WritableFile`. Default is ``uproot.ZLIB(1)``.
 
     See :doc:`uproot.writing.writable.WritableFile` for details on these options.
+
+    Additional options are passed to as ``storage_options`` to the fsspec filesystem.
     """
 
+    file_path = uproot._util.regularize_path(file_path)
     storage_options = {
         key: value for key, value in options.items() if key not in recreate.defaults
     }
-    sink = _sink_from_path(file_path, **storage_options)
-
+    sink = uproot.sink.file.FileSink(file_path, **storage_options)
     compression = options.pop("compression", create.defaults["compression"])
 
     initial_directory_bytes = options.pop(
@@ -192,12 +154,15 @@ def update(file_path: str | Path | IO, **options):
     * uuid_function (callable; ``uuid.uuid1``)
 
     See :doc:`uproot.writing.writable.WritableFile` for details on these options.
+
+    Additional options are passed to as ``storage_options`` to the fsspec filesystem
     """
 
+    file_path = uproot._util.regularize_path(file_path)
     storage_options = {
         key: value for key, value in options.items() if key not in update.defaults
     }
-    sink = _sink_from_path(file_path, **storage_options)
+    sink = uproot.sink.file.FileSink(file_path, **storage_options)
 
     initial_directory_bytes = options.pop(
         "initial_directory_bytes", create.defaults["initial_directory_bytes"]
