@@ -13,6 +13,9 @@ from __future__ import annotations
 
 import numbers
 import os
+from typing import IO
+
+import fsspec
 
 import uproot._util
 
@@ -20,69 +23,84 @@ import uproot._util
 class FileSink:
     """
     Args:
-        file_path (str): The filesystem path of the file to open.
+        urlpath_or_file_like (str, Path, or file-like object): If a string or Path, a
+            filesystem URL that specifies the file to open by fsspec. If a file-like object, it
+            must have ``read``, ``write``, ``seek``, ``tell``, and ``flush`` methods.
 
-    An object that can write (and read) files on a local filesystem, which either opens
-    a new file from a ``file_path`` in ``"r+b"`` mode or wraps a file-like object
-    with the :ref:`uproot.sink.file.FileSink.from_object` constructor.
-
-    With the ``file_path``-based constructor, the file is opened upon first read or
-    write.
+    An object that can write (and read) files on a local or remote filesystem.
+    It can be initialized from a file-like object (already opened) or a filesystem URL.
+    If initialized from a filesystem URL, fsspec is used to open the file.
+    In this case the file is opened in the first read or write operation.
     """
 
+    def __init__(self, urlpath_or_file_like: str | IO, **storage_options):
+        self._open_file = None
+        self._file = None
+
+        if uproot._util.is_file_like(
+            urlpath_or_file_like, readable=False, writable=False, seekable=False
+        ):
+            self._file = urlpath_or_file_like
+
+            if not uproot._util.is_file_like(
+                self._file, readable=True, writable=True, seekable=True
+            ):
+                raise TypeError(
+                    """writable file can only be created from a file path or an object that supports reading and writing"""
+                )
+        else:
+            if not self._file_exists(urlpath_or_file_like, **storage_options):
+                self._truncate_file(urlpath_or_file_like, **storage_options)
+
+            self._open_file = fsspec.open(
+                urlpath_or_file_like, mode="r+b", **storage_options
+            )
+
     @classmethod
-    def from_object(cls, obj) -> FileSink:
+    def _file_exists(cls, urlpath: str, **storage_options) -> bool:
         """
         Args:
-            obj (file-like object): An object with ``read``, ``write``, ``seek``,
-                ``tell``, and ``flush`` methods.
+            urlpath (str): A filesystem URL that specifies the file to check by fsspec.
 
-        Creates a :doc:`uproot.sink.file.FileSink` from a file-like object, such
-        as ``io.BytesIO``. The object must be readable, writable, and seekable
-        with ``"r+b"`` mode semantics.
+        Returns True if the file exists; False otherwise.
         """
-        if uproot._util.is_file_like(obj, readable=True, writable=True, seekable=True):
-            self = cls(None)
-            self._file = obj
-        else:
-            raise TypeError(
-                """writable file can only be created from a file path or an object
-
-    * that has 'read', 'write', 'seek', and 'tell' methods
-    * is 'readable() and writable() and seekable()'"""
-            )
-        return self
+        fs, local_path = fsspec.core.url_to_fs(urlpath, **storage_options)
+        return fs.exists(local_path)
 
     @classmethod
-    def from_fsspec(cls, open_file) -> FileSink:
-        import fsspec
+    def _truncate_file(cls, urlpath: str, **storage_options) -> None:
+        """
+        Args:
+            urlpath (str): A filesystem URL that specifies the file to truncate by fsspec.
 
-        if not isinstance(open_file, fsspec.core.OpenFile):
-            raise TypeError("""argument should be of type fsspec.core.OpenFile""")
-        self = cls(None)
-        self._fsspec_open_file = open_file
-        return self
+        Truncates the file to zero bytes. Creates parent directories if necessary.
+        """
+        fs, local_path = fsspec.core.url_to_fs(urlpath, **storage_options)
+        parent_directory = fs.sep.join(local_path.split(fs.sep)[:-1])
+        fs.mkdirs(parent_directory, exist_ok=True)
+        fs.touch(local_path, truncate=True)
 
-    def __init__(self, file_path: str | None):
-        self._file_path = file_path
-        self._file = None
-        self._fsspec_open_file = None
+    @property
+    def from_object(self) -> bool:
+        """
+        True if constructed with a file-like object; False otherwise.
+        """
+        return self._open_file is None
 
     @property
     def file_path(self) -> str | None:
         """
         A path to the file, which is None if constructed with a file-like object.
         """
-        return self._file_path
+        return self._open_file.path if self._open_file else None
 
     def _ensure(self):
-        if self._file:
-            return
-
-        if self._fsspec_open_file:
-            self._file = self._fsspec_open_file.open()
-        else:
-            self._file = open(self._file_path, "r+b")
+        """
+        Opens the file if it is not already open.
+        Sets the file's position to the beginning.
+        """
+        if not self._file:
+            self._file = self._open_file.open()
 
         self._file.seek(0)
 
@@ -95,14 +113,14 @@ class FileSink:
         self.__dict__ = state
         self._file = None
 
-    def tell(self):
+    def tell(self) -> int:
         """
         Calls the file or file-like object's ``tell`` method.
         """
         self._ensure()
         return self._file.tell()
 
-    def flush(self):
+    def flush(self) -> None:
         """
         Calls the file or file-like object's ``flush`` method.
         """
@@ -134,12 +152,9 @@ class FileSink:
 
     @property
     def in_path(self) -> str:
-        if self._file_path is None:
-            return ""
-        else:
-            return "\n\nin path: " + self._file_path
+        return f"\n\nin path: {self.file_path}" if self.file_path is not None else ""
 
-    def write(self, location, serialization):
+    def write(self, location: int, serialization) -> int:
         """
         Args:
             location (int): Position in the file to write.
@@ -150,23 +165,21 @@ class FileSink:
         """
         self._ensure()
         self._file.seek(location)
-        self._file.write(serialization)
+        return self._file.write(serialization)
 
-    def set_file_length(self, length):
+    def set_file_length(self, length: int):
         """
         Sets the file's length to ``length``, truncating with zeros if necessary.
 
         Calls ``seek``, ``tell``, and possibly ``write``.
         """
         self._ensure()
-        # self._file.truncate(length)
-
         self._file.seek(0, os.SEEK_END)
         missing = length - self._file.tell()
         if missing > 0:
             self._file.write(b"\x00" * missing)
 
-    def read(self, location, num_bytes, insist=True) -> bytes:
+    def read(self, location: int, num_bytes: int, insist: bool = True) -> bytes:
         """
         Args:
             location (int): Position in the file to read.
