@@ -208,3 +208,10 @@ def test_fsspec_zip(tmp_path):
     ) as branch:
         data = branch.array(library="np")
         assert len(data) == 40
+
+
+# https://github.com/scikit-hep/uproot5/issues/1035
+def test_issue_1035():
+    with uproot.open(skhep_testdata.data_path("uproot-issue-1035.root")) as f:
+        tree = f["CollectionTree"]
+        print(tree.keys())
