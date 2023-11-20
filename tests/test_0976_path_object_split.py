@@ -162,6 +162,13 @@ import pathlib
                 None,
             ),
         ),
+        (
+            r"C:\tmp\test\dir\my%20file.root:Dir/Test",
+            (
+                r"C:\tmp\test\dir\my%20file.root",
+                "Dir/Test",
+            ),
+        ),
     ],
 )
 def test_url_split(input_value, expected_output):
