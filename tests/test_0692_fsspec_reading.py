@@ -7,12 +7,42 @@ import uproot.source.file
 import uproot.source.xrootd
 import uproot.source.s3
 
+from typing import BinaryIO
 import skhep_testdata
 import queue
 import fsspec
 import requests
 import os
 import sys
+
+
+@pytest.mark.parametrize(
+    "urlpath, source_class",
+    [
+        ("file.root", uproot.source.fsspec.FSSpecSource),
+        ("s3://path/file.root", uproot.source.fsspec.FSSpecSource),
+        (r"C:\path\file.root", uproot.source.fsspec.FSSpecSource),
+        (r"file://C:\path\file.root", uproot.source.fsspec.FSSpecSource),
+        ("root://file.root", uproot.source.fsspec.FSSpecSource),
+        (BinaryIO(), uproot.source.object.ObjectSource),
+    ],
+)
+def test_default_source(urlpath, source_class):
+    assert uproot._util.file_path_to_source_class(
+        urlpath, options=uproot.reading.open.defaults
+    ) == (source_class, urlpath)
+
+
+@pytest.mark.parametrize(
+    "to_open, handler",
+    [
+        ("file.root", "invalid_handler"),
+        (BinaryIO(), uproot.source.fsspec.FSSpecSource),
+    ],
+)
+def test_invalid_handler(to_open, handler):
+    with pytest.raises(TypeError):
+        uproot.open(to_open, handler=handler)
 
 
 def test_open_fsspec_http(server):
