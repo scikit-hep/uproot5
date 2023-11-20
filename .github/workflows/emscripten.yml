@@ -49,6 +49,7 @@ jobs:
           cd awkward
           git checkout main
           git submodule update --init --recursive
+          pipx run nox -s prepare -- --headers --signatures --tests
           pyodide build
           mv dist/*.whl ../dist
 
