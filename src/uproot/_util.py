@@ -12,17 +12,20 @@ import glob
 import itertools
 import numbers
 import os
-import platform
 import re
 import warnings
 from collections.abc import Iterable
-from urllib.parse import unquote, urlparse
+from pathlib import Path
+from typing import IO
+from urllib.parse import urlparse
 
 import fsspec
 import numpy
 import packaging.version
 
-win = platform.system().lower().startswith("win")
+import uproot.source.chunk
+import uproot.source.fsspec
+import uproot.source.object
 
 
 def tobytes(array):
@@ -36,7 +39,7 @@ def tobytes(array):
         return array.tostring()
 
 
-def isint(x):
+def isint(x) -> bool:
     """
     Returns True if and only if ``x`` is an integer (including NumPy, not
     including bool).
@@ -46,7 +49,7 @@ def isint(x):
     )
 
 
-def isnum(x):
+def isnum(x) -> bool:
     """
     Returns True if and only if ``x`` is a number (including NumPy, not
     including bool).
@@ -56,7 +59,7 @@ def isnum(x):
     )
 
 
-def ensure_str(x):
+def ensure_str(x) -> str:
     """
     Ensures that ``x`` is a string (decoding with 'surrogateescape' if necessary).
     """
@@ -94,18 +97,17 @@ def is_file_like(
     obj, readable: bool = False, writable: bool = False, seekable: bool = False
 ) -> bool:
     return (
-        callable(getattr(obj, "read", None))
-        and callable(getattr(obj, "write", None))
-        and callable(getattr(obj, "seek", None))
-        and callable(getattr(obj, "tell", None))
-        and callable(getattr(obj, "flush", None))
+        all(
+            callable(getattr(obj, attr, None))
+            for attr in ("read", "write", "seek", "tell", "flush")
+        )
         and (not readable or not hasattr(obj, "readable") or obj.readable())
         and (not writable or not hasattr(obj, "writable") or obj.writable())
         and (not seekable or not hasattr(obj, "seekable") or obj.seekable())
     )
 
 
-def parse_version(version):
+def parse_version(version: str):
     """
     Converts a semver string into a Version object that can be compared with
     ``<``, ``>=``, etc.
@@ -116,7 +118,7 @@ def parse_version(version):
     return packaging.version.parse(version)
 
 
-def from_module(obj, module_name):
+def from_module(obj, module_name: str) -> bool:
     """
     Returns True if ``obj`` is an instance of a class from a module
     given by name.
@@ -155,7 +157,7 @@ def _regularize_filter_regex_flags(flags):
     return flagsbyte
 
 
-def no_filter(x):
+def no_filter(x) -> bool:
     """
     A filter that accepts anything (always returns True).
     """
@@ -285,10 +287,6 @@ def regularize_path(path):
     return path
 
 
-_windows_drive_letter_ending = re.compile(r".*\b[A-Za-z]$")
-_windows_absolute_path_pattern = re.compile(r"^[A-Za-z]:[\\/]")
-_windows_absolute_path_pattern_slash = re.compile(r"^[\\/][A-Za-z]:[\\/]")
-
 # These schemes may not appear in fsspec if the corresponding libraries are not installed (e.g. s3fs)
 _remote_schemes = ["root", "s3", "http", "https"]
 _schemes = list({*_remote_schemes, *fsspec.available_protocols()})
@@ -324,87 +322,48 @@ def file_object_path_split(urlpath: str) -> tuple[str, str | None]:
     return urlpath, obj
 
 
-def file_path_to_source_class(file_path, options):
+def file_path_to_source_class(
+    file_path_or_object: str | Path | IO, options: dict
+) -> tuple[type[uproot.source.chunk.Source], str | IO]:
     """
     Use a file path to get the :doc:`uproot.source.chunk.Source` class that would read it.
 
     Returns a tuple of (class, file_path) where the class is a subclass of :doc:`uproot.source.chunk.Source`.
     """
 
-    import uproot.source.chunk
-
-    file_path = regularize_path(file_path)
+    file_path_or_object: str | IO = regularize_path(file_path_or_object)
 
     source_cls = options["handler"]
-    if source_cls is not None:
-        if not (
-            isinstance(source_cls, type)
-            and issubclass(source_cls, uproot.source.chunk.Source)
+    if source_cls is not None and not (
+        isinstance(source_cls, type)
+        and issubclass(source_cls, uproot.source.chunk.Source)
+    ):
+        raise TypeError(
+            f"'handler' is not a class object inheriting from Source: {source_cls!r}"
+        )
+
+    # Infer the source class from the file path
+    if all(
+        callable(getattr(file_path_or_object, attr, None)) for attr in ("read", "seek")
+    ):
+        # need a very soft object check for ubuntu python3.8 pyroot ci tests, cannot use uproot._util.is_file_like
+        if (
+            source_cls is not None
+            and source_cls is not uproot.source.object.ObjectSource
         ):
             raise TypeError(
-                f"'handler' is not a class object inheriting from Source: {source_cls!r}"
+                f"'handler' is not ObjectSource for a file-like object: {source_cls!r}"
             )
-        return source_cls, file_path
-
-    if (
-        not isinstance(file_path, str)
-        and hasattr(file_path, "read")
-        and hasattr(file_path, "seek")
-    ):
-        source_cls = uproot.source.object.ObjectSource
-        return source_cls, file_path
-
-    windows_absolute_path = None
-    if win and _windows_absolute_path_pattern.match(file_path) is not None:
-        windows_absolute_path = file_path
-
-    parsed_url = urlparse(file_path)
-    if parsed_url.scheme.lower() == "file":
-        parsed_url_path = unquote(parsed_url.path)
+        return uproot.source.object.ObjectSource, file_path_or_object
+    elif isinstance(file_path_or_object, str):
+        source_cls = (
+            uproot.source.fsspec.FSSpecSource if source_cls is None else source_cls
+        )
+        return source_cls, file_path_or_object
     else:
-        parsed_url_path = parsed_url.path
-
-    if win and windows_absolute_path is None:
-        if _windows_absolute_path_pattern.match(parsed_url_path) is not None:
-            windows_absolute_path = parsed_url_path
-        elif _windows_absolute_path_pattern_slash.match(parsed_url_path) is not None:
-            windows_absolute_path = parsed_url_path[1:]
-
-    scheme = parsed_url.scheme.lower()
-    if (
-        scheme == "file"
-        or len(parsed_url.scheme) == 0
-        or windows_absolute_path is not None
-    ):
-        if windows_absolute_path is None:
-            if parsed_url.netloc.lower() == "localhost":
-                file_path = parsed_url_path
-            else:
-                file_path = parsed_url.netloc + parsed_url_path
-        else:
-            file_path = windows_absolute_path
-
-        # uproot.source.file.MemmapSource
-        source_cls = uproot.source.fsspec.FSSpecSource
-
-        return source_cls, os.path.expanduser(file_path)
-
-    elif scheme == "root":
-        # uproot.source.xrootd.XRootDSource
-        source_cls = uproot.source.fsspec.FSSpecSource
-        return source_cls, file_path
-
-    elif scheme == "s3":
-        # uproot.source.s3.S3Source
-        source_cls = uproot.source.fsspec.FSSpecSource
-        return source_cls, file_path
-
-    elif scheme in ("http", "https"):
-        # uproot.source.http.HTTPSource
-        source_cls = uproot.source.fsspec.FSSpecSource
-        return source_cls, file_path
-
-    return uproot.source.fsspec.FSSpecSource, file_path
+        raise TypeError(
+            f"file_path is not a string or file-like object: {file_path_or_object!r}"
+        )
 
 
 if isinstance(__builtins__, dict):
@@ -448,7 +407,7 @@ Functions that accept many files (uproot.iterate, etc.) also allow:
     )
 
 
-def memory_size(data, error_message=None):
+def memory_size(data, error_message=None) -> int:
     """
     Regularizes strings like '## kB' and plain integer number of bytes to
     an integer number of bytes.
@@ -739,7 +698,7 @@ def damerau_levenshtein(a, b, ratio=False):
     # Modified Damerau-Levenshtein distance. Adds a middling penalty
     # for capitalization.
     # https://en.wikipedia.org/wiki/Damerau%E2%80%93Levenshtein_distance
-    M = [[0] * (len(b) + 1) for i in range(len(a) + 1)]
+    M = [[0] * (len(b) + 1) for _ in range(len(a) + 1)]
 
     for i in range(len(a) + 1):
         M[i][0] = i
@@ -771,7 +730,7 @@ def damerau_levenshtein(a, b, ratio=False):
                     # Transpose only
                     M[i][j] = min(M[i][j], M[i - 2][j - 2] + 1)
                 else:
-                    # Traspose and capitalization
+                    # Transpose and capitalization
                     M[i][j] = min(M[i][j], M[i - 2][j - 2] + 1.5)
 
     if not ratio:
