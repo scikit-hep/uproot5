@@ -36,11 +36,17 @@ def test_fsspec_writing_local(tmp_path, scheme):
 @pytest.mark.parametrize(
     "filename", ["file.root", "file%2Eroot", "my%E2%80%92file.root", "my%20file.root"]
 )
-def test_fsspec_writing_local_uri(tmp_path, scheme, filename):
-    uri = scheme + os.path.join(tmp_path, "some", "path", filename)
+@pytest.mark.parametrize(
+    "add_slash", [True, False], ids=["with_slash", "without_slash"]
+)
+def test_fsspec_writing_local_uri(tmp_path, scheme, add_slash, filename):
+    uri = (
+        scheme
+        + ("/" if add_slash else "")
+        + os.path.join(tmp_path, "some", "path", filename)
+    )
     with uproot.create(uri) as f:
         f["tree"] = {"x": np.array([1, 2, 3])}
-
     with uproot.open(uri) as f:
         assert f["tree"]["x"].array().tolist() == [1, 2, 3]
 
