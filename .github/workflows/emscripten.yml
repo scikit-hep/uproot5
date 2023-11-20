@@ -43,13 +43,14 @@ jobs:
           node-version: 20
 
       # clone awkward and build a wheel, copy the wheel
-      - name: Build awkward wheel
+      - name: Awkward wheel
         run: |
           git clone https://github.com/scikit-hep/awkward.git
           cd awkward
           git checkout main
           git submodule update --init --recursive
-          pyodide build --wheel --wheel-dir ../dist
+          pyodide build
+          mv dist/*.whl ../dist
 
       - name: Set up Pyodide virtual environment
         run: |
