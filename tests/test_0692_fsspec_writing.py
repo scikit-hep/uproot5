@@ -32,7 +32,15 @@ def test_fsspec_writing_local(tmp_path, scheme):
 
 
 # https://github.com/scikit-hep/uproot5/issues/325
-@pytest.mark.parametrize("scheme", ["", "file://", "simplecache::file://"])
+@pytest.mark.parametrize(
+    "scheme",
+    [
+        "",
+        "file:",  # this is not a valid schema, but we should support it
+        "file://",
+        "simplecache::file://",
+    ],
+)
 @pytest.mark.parametrize(
     "filename", ["file.root", "file%2Eroot", "my%E2%80%92file.root", "my%20file.root"]
 )
