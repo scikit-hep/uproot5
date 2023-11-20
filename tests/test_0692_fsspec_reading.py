@@ -3,6 +3,9 @@
 import pytest
 import uproot
 import uproot.source.fsspec
+import uproot.source.file
+import uproot.source.xrootd
+import uproot.source.s3
 
 import skhep_testdata
 import queue
@@ -211,7 +214,17 @@ def test_fsspec_zip(tmp_path):
 
 
 # https://github.com/scikit-hep/uproot5/issues/1035
-def test_issue_1035():
-    with uproot.open(skhep_testdata.data_path("uproot-issue-1035.root")) as f:
+@pytest.mark.parametrize(
+    "handler",
+    [
+        uproot.source.file.MemmapSource,
+        uproot.source.fsspec.FSSpecSource,
+        None,
+    ],
+)
+def test_issue_1035(handler):
+    with uproot.open(
+        skhep_testdata.data_path("uproot-issue-1035.root"), handler=handler
+    ) as f:
         tree = f["CollectionTree"]
         print(tree.keys())
