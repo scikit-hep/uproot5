@@ -254,7 +254,14 @@ def test_open_fsspec_xrootd_iterate(handler):
     pytest.importorskip("XRootD")
 
     iterator = uproot.iterate(
-        files="root://eospublic.cern.ch//eos/root-eos/cms_opendata_2012_nanoaod/Run2012B_DoubleMuParked.root:Events",
+        files=[
+            {
+                "root://eospublic.cern.ch//eos/root-eos/cms_opendata_2012_nanoaod/Run2012B_DoubleMuParked.root": "Events"
+            },
+            {
+                "root://eospublic.cern.ch//eos/root-eos/cms_opendata_2012_nanoaod/Run2012B_DoubleMuParked.root": "Events"
+            },
+        ],
         expressions=["run"],
         step_size=100,
     )
