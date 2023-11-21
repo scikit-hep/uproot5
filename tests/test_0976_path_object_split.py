@@ -169,6 +169,13 @@ import pathlib
                 "Dir/Test",
             ),
         ),
+        (
+            "root://xcache.af.uchicago.edu:1094//root://fax.mwt2.org:1094//pnfs/uchicago.edu/atlaslocalgroupdisk/rucio/data18_13TeV/df/a4/DAOD_PHYSLITE.34858087._000001.pool.root.1",
+            (
+                "root://xcache.af.uchicago.edu:1094//root://fax.mwt2.org:1094//pnfs/uchicago.edu/atlaslocalgroupdisk/rucio/data18_13TeV/df/a4/DAOD_PHYSLITE.34858087._000001.pool.root.1",
+                None,
+            ),
+        ),
     ],
 )
 def test_url_split(input_value, expected_output):
