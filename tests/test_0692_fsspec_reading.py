@@ -224,6 +224,7 @@ def test_fsspec_zip(tmp_path):
 )
 def test_issue_1035(handler):
     # remove after https://github.com/scikit-hep/scikit-hep-testdata/pull/132
+    pytest.importorskip("aiohttp")
     with fsspec.open(
         "https://github.com/lobis/scikit-hep-testdata/raw/main/src/skhep_testdata/data/uproot-issue-1035.root"
     ) as f_remote:
