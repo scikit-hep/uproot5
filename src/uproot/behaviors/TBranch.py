@@ -1805,6 +1805,13 @@ class TBranch(HasBranches):
             False,
         )
 
+        if len([x for x in expression_context if x[1]["is_primary"]]) != len(
+            expression_context
+        ):
+            expression_context = [
+                x for x in expression_context if not x[1]["is_primary"]
+            ]
+
         ranges_or_baskets = []
         checked = set()
         for _, context in expression_context:
