@@ -239,5 +239,7 @@ def test_issue_1035(handler):
     with uproot.open(
         skhep_testdata.data_path("uproot-issue-1035.root"), handler=handler
     ) as f:
-        tree = f["CollectionTree"]
-        print(tree.keys())
+        for _ in range(25):  # intermittent failure
+            tree = f["CollectionTree"]
+            branch = tree["MuonSpectrometerTrackParticlesAuxDyn.truthParticleLink"]
+            branch.array()
