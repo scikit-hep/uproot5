@@ -11,7 +11,6 @@ See :doc:`uproot.models.TBranch` for deserialization of the ``TBranch``
 objects themselves.
 """
 
-
 import queue
 import re
 import sys
@@ -1815,7 +1814,9 @@ class TBranch(HasBranches):
                         basket_num,
                         range_or_basket,
                     ) in branch.entries_to_ranges_or_baskets(entry_start, entry_stop):
-                        if len(branch.branches) > 0:
+                        if len(branch.branches) > 0 and any(
+                            branch.cache_key in checked for branch in branch.branches
+                        ):
                             continue
                         ranges_or_baskets.append((branch, basket_num, range_or_basket))
 
