@@ -1805,13 +1805,6 @@ class TBranch(HasBranches):
             False,
         )
 
-        if len([x for x in expression_context if x[1]["is_primary"]]) != len(
-            expression_context
-        ):
-            expression_context = [
-                x for x in expression_context if not x[1]["is_primary"]
-            ]
-
         ranges_or_baskets = []
         checked = set()
         for _, context in expression_context:
@@ -1822,6 +1815,8 @@ class TBranch(HasBranches):
                         basket_num,
                         range_or_basket,
                     ) in branch.entries_to_ranges_or_baskets(entry_start, entry_stop):
+                        if len(branch.branches) > 0:
+                            continue
                         ranges_or_baskets.append((branch, basket_num, range_or_basket))
 
         interp_options = {"ak_add_doc": ak_add_doc}
