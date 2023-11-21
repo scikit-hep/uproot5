@@ -218,6 +218,7 @@ def test_fsspec_zip(tmp_path):
     "handler",
     [
         uproot.source.file.MemmapSource,
+        uproot.source.file.MultithreadedFileSource,
         uproot.source.fsspec.FSSpecSource,
         None,
     ],
@@ -238,7 +239,10 @@ def test_issue_1035(handler):
     skhep_testdata.known_files.add("uproot-issue-1035.root")
 
     with uproot.open(
-        skhep_testdata.data_path("uproot-issue-1035.root"), handler=handler
+        skhep_testdata.data_path("uproot-issue-1035.root"),
+        handler=handler,
+        use_threads=True,
+        num_workers=10,
     ) as f:
         for _ in range(25):  # intermittent failure
             tree = f["CollectionTree"]
