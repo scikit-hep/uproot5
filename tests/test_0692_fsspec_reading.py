@@ -247,4 +247,5 @@ def test_issue_1035(handler):
         for _ in range(25):  # intermittent failure
             tree = f["CollectionTree"]
             branch = tree["MuonSpectrometerTrackParticlesAuxDyn.truthParticleLink"]
-            branch.array()
+            data = branch.array()
+            assert len(data) == 40
