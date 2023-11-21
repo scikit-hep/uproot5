@@ -51,11 +51,7 @@ class FSSpecSource(uproot.source.chunk.Source):
         self.__enter__()
 
     def _open(self):
-        self._executor = (
-            FSSpecLoopExecutor()
-            if self.async_impl
-            else uproot.source.futures.TrivialExecutor()
-        )
+        self._executor = FSSpecLoopExecutor()
         self._file = self._fs.open(self._file_path)
 
     def __repr__(self):
@@ -161,19 +157,15 @@ class FSSpecSource(uproot.source.chunk.Source):
         chunks = []
         for start, stop in ranges:
             # _cat_file is async while cat_file is not.
-            if self.async_impl:
-                coroutine = (
-                    self._fs._cat_file(self._file_path, start=start, end=stop)
-                    if self._async_impl
-                    else async_wrapper_thread(
-                        self._fs.cat_file, self._file_path, start=start, end=stop
-                    )
-                )
-                future = self._executor.submit(coroutine)
-            else:
-                future = self._executor.submit(
+            coroutine = (
+                self._fs._cat_file(self._file_path, start=start, end=stop)
+                if self._async_impl
+                else async_wrapper_thread(
                     self._fs.cat_file, self._file_path, start=start, end=stop
                 )
+            )
+
+            future = self._executor.submit(coroutine)
 
             chunk = uproot.source.chunk.Chunk(self, start, stop, future)
             future.add_done_callback(uproot.source.chunk.notifier(chunk, notifications))
