@@ -234,6 +234,7 @@ def test_issue_1035(handler):
             "wb",
         ) as f_local:
             f_local.write(f_remote.read())
+    skhep_testdata.known_files.add("uproot-issue-1035.root")
 
     with uproot.open(
         skhep_testdata.data_path("uproot-issue-1035.root"), handler=handler
