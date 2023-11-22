@@ -1814,8 +1814,9 @@ class TBranch(HasBranches):
                         basket_num,
                         range_or_basket,
                     ) in branch.entries_to_ranges_or_baskets(entry_start, entry_stop):
-                        if len(branch.branches) > 0 and any(
-                            branch.cache_key in checked for branch in branch.branches
+                        if any(
+                            subbranch.cache_key in checked
+                            for subbranch in branch.branches
                         ):
                             continue
                         ranges_or_baskets.append((branch, basket_num, range_or_basket))
