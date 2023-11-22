@@ -6,7 +6,7 @@ which prepends string lengths following ROOT's convention, :doc:`uproot.serializ
 the opposite of :doc:`uproot.deserialization.numbytes_version`, and :doc:`uproot.serialization.serialize_object_any`,
 the opposite of :doc:`uproot.deserialization.read_object_any`.
 """
-
+from __future__ import annotations
 
 import struct
 

@@ -3,7 +3,7 @@
 """
 This module defines a versionless model for ``TClonesArray``.
 """
-
+from __future__ import annotations
 
 from collections.abc import Sequence
 

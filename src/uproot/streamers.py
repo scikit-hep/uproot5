@@ -4,6 +4,7 @@
 This module defines models for ``TStreamerInfo`` and its elements, as well as
 routines for generating Python code for new classes from streamer data.
 """
+from __future__ import annotations
 
 import re
 import struct

@@ -10,7 +10,7 @@ Most of the functionality of TTree-reading is implemented here.
 See :doc:`uproot.models.TBranch` for deserialization of the ``TBranch``
 objects themselves.
 """
-
+from __future__ import annotations
 
 import queue
 import re

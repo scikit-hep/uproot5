@@ -3,7 +3,7 @@
 """
 This module defines versioned models for ``TAttLine``, ``TAttFill``, and ``TAttMarker``.
 """
-
+from __future__ import annotations
 
 import struct
 

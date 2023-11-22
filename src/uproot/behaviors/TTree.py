@@ -4,7 +4,7 @@
 This module defines the behaviors of ``TTree``, which is almost entirely inherited from
 functions in :doc:`uproot.behaviors.TBranch`.
 """
-
+from __future__ import annotations
 
 import uproot
 

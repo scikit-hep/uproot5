@@ -3,7 +3,7 @@
 """
 This module defines the behaviors of ``TGraph``.
 """
-
+from __future__ import annotations
 
 import numpy
 

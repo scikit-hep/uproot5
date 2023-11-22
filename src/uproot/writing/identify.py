@@ -15,6 +15,7 @@ but not adding it to any :doc:`uproot.writing.writable.WritableDirectory`.
 The (many) other functions in this module construct writable :doc:`uproot.model.Model`
 objects from Python builtins and other writable models.
 """
+from __future__ import annotations
 
 from collections.abc import Mapping
 
