@@ -20,6 +20,7 @@ from collections.abc import Iterable, Mapping, MutableMapping
 import numpy
 
 import uproot
+import uproot.interpretation.grouped
 import uproot.language.python
 from uproot._util import no_filter
 
@@ -1814,9 +1815,9 @@ class TBranch(HasBranches):
                         basket_num,
                         range_or_basket,
                     ) in branch.entries_to_ranges_or_baskets(entry_start, entry_stop):
-                        if any(
-                            subbranch.cache_key in checked
-                            for subbranch in branch.branches
+                        if isinstance(
+                            branchid_interpretation[branch.cache_key],
+                            uproot.interpretation.grouped.AsGrouped,
                         ):
                             continue
                         ranges_or_baskets.append((branch, basket_num, range_or_basket))
