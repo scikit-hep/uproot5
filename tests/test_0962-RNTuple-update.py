@@ -2,6 +2,7 @@
 
 import pytest
 import uproot
+import awkward as ak
 import skhep_testdata
 import numpy as np
 
@@ -44,7 +45,7 @@ def test_new_support_RNTuple_event_data():
         obj = f["Events"]
         df = obj.arrays(["nTau"])
         assert len(df) == 1334428
-        assert df[:31] == [
+        assert ak.to_list(df["nTau"][:10]) == [
             0,
             0,
             2,
@@ -54,26 +55,5 @@ def test_new_support_RNTuple_event_data():
             1,
             1,
             2,
-            0,
-            1,
-            2,
-            0,
-            0,
-            1,
-            0,
-            0,
-            0,
-            2,
-            2,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            0,
-            0,
-            1,
             0,
         ]

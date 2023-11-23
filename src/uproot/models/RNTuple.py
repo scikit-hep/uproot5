@@ -6,6 +6,7 @@ This module defines a versionless model for ``ROOT::Experimental::RNTuple``.
 
 import struct
 import zlib
+from collections import defaultdict
 
 import numpy
 
@@ -49,7 +50,7 @@ class Model_ROOT_3a3a_Experimental_3a3a_RNTuple(uproot.model.Model):
         keys = []
         field_records = self.header.field_records
         for i, fr in enumerate(field_records):
-            if fr.parent_field_id == i:
+            if fr.parent_field_id == i and fr.type_name != "":
                 keys.append(fr.field_name)
         return keys
 
@@ -141,8 +142,6 @@ in file {self.file.file_path}"""
             self._header = h
             assert h.crc32 == zlib.crc32(self._header_chunk.raw_data[:-4])
 
-        # cursor = self._header_cursor.copy()
-        # cursor.debug(self._header_chunk)
         return self._header
 
     @property
@@ -235,15 +234,23 @@ in file {self.file.file_path}"""
     def col_form(self, field_id):
         ak = uproot.extras.awkward()
 
-        # FIXME remove this ugly logic
-        rel_crs = []
-        rel_crs_idxs = []
-        for i, cr in enumerate(self.header.column_records):
-            if cr.field_id == field_id:
-                rel_crs.append(cr)
-                rel_crs_idxs.append(i)
-            if cr.field_id > field_id:
-                break
+        if field_id in self._column_recorrds_dict:
+            rel_crs = self._column_recorrds_dict[field_id]["rel_crs"]
+            rel_crs_idxs = self._column_recorrds_dict[field_id]["rel_crs_idxs"]
+        elif field_id in self._alias_columns_dict:
+            rel_crs = self._column_recorrds_dict[self._alias_columns_dict[field_id]][
+                "rel_crs"
+            ]
+            rel_crs_idxs = self._column_recorrds_dict[
+                self._alias_columns_dict[field_id]
+            ]["rel_crs_idxs"]
+        else:
+            raise (
+                RuntimeError(
+                    f"The filed_id: {field_id} is missing both from the columns records and the alias columns."
+                )
+            )
+
         if len(rel_crs) == 1:  # base case
             return self.base_col_form(rel_crs[0], rel_crs_idxs[0])
         elif (
@@ -266,7 +273,7 @@ in file {self.file.file_path}"""
 
         field_records = self.header.field_records
         this_record = field_records[this_id]
-        seen.append(this_id)
+        seen.add(this_id)
         structural_role = this_record.struct_role
         if (
             structural_role == uproot.const.rntuple_role_leaf
@@ -276,30 +283,23 @@ in file {self.file.file_path}"""
             # n.b. the split may happen in column
             return self.col_form(this_id)
         elif structural_role == uproot.const.rntuple_role_leaf:
-            # std::array
-            child_id = next(
-                filter(
-                    lambda i: field_records[i].parent_field_id == this_id,
-                    range(this_id + 1, len(field_records)),
-                )
-            )
+            # std::array it only has one child
+            if this_id in self._related_ids:
+                child_id = self._related_ids[this_id][0]
+
             inner = self.field_form(child_id, seen)
             return ak.forms.RegularForm(inner, this_record.repetition)
         elif structural_role == uproot.const.rntuple_role_vector:
-            keyname = self.col_form(this_id)
-            child_id = next(
-                filter(
-                    lambda i: field_records[i].parent_field_id == this_id,
-                    range(this_id + 1, len(field_records)),
-                )
-            )
+            keyname = f"column-{this_id}"
+            #  this only has one child
+            if this_id in self._related_ids:
+                child_id = self._related_ids[this_id][0]
             inner = self.field_form(child_id, seen)
             return ak.forms.ListOffsetForm("u32", inner, form_key=keyname)
         elif structural_role == uproot.const.rntuple_role_struct:
             newids = []
-            for i, fr in enumerate(field_records):
-                if i not in seen and fr.parent_field_id == this_id:
-                    newids.append(i)
+            if this_id in self._related_ids:
+                newids = self._related_ids[this_id]
             # go find N in the rest, N is the # of fields in struct
             recordlist = [self.field_form(i, seen) for i in newids]
             namelist = [field_records[i].field_name for i in newids]
@@ -307,9 +307,8 @@ in file {self.file.file_path}"""
         elif structural_role == uproot.const.rntuple_role_union:
             keyname = self.col_form(this_id)
             newids = []
-            for i, fr in enumerate(field_records):
-                if i not in seen and fr.parent_field_id == this_id:
-                    newids.append(i)
+            if this_id in self._related_ids:
+                newids = self._related_ids[this_id]
             recordlist = [self.field_form(i, seen) for i in newids]
             return ak.forms.UnionForm("i8", "i64", recordlist, form_key=keyname)
         else:
@@ -322,7 +321,7 @@ in file {self.file.file_path}"""
         field_records = self.header.field_records
         recordlist = []
         topnames = self.keys()
-        seen = []
+        seen = set()
         for i in range(len(field_records)):
             if i not in seen:
                 recordlist.append(self.field_form(i, seen))
@@ -427,7 +426,7 @@ in file {self.file.file_path}"""
         if zigzag:
             res = from_zigzag(res)
         elif delta:
-            numpy.cumsum(res)
+            res = numpy.cumsum(res)
         return res
 
     def arrays(
@@ -454,17 +453,46 @@ in file {self.file.file_path}"""
             [c.num_entries for c in clusters[start_cluster_idx:stop_cluster_idx]]
         )
 
+        self._alias_columns_dict = {
+            el.field_id: el.physical_id
+            for i, el in enumerate(self.header.alias_columns)
+        }
+        self._column_recorrds_dict = {}
+        self._column_recorrds_dict = {
+            el.field_id: {
+                "rel_crs": [*(self._column_recorrds_dict.get(el.field_id) or {}).get("rel_crs", []), el],
+                "rel_crs_idxs": [*(self._column_recorrds_dict.get(el.field_id) or {}).get("rel_crs_idxs", []), i],
+            }
+            for i, el in enumerate(self.header.column_records)
+        }
+
+        self._related_ids = defaultdict(list)
+        for i, el in enumerate(self.header.field_records):
+            if el.parent_field_id != i:
+                self._related_ids[el.parent_field_id].append(i)
+
         form = self.to_akform().select_columns(filter_names)
         # only read columns mentioned in the awkward form
         target_cols = []
         container_dict = {}
         _recursive_find(form, target_cols)
-        for i, cr in enumerate(self.column_records):
-            key = f"column-{i}"
-            dtype_byte = cr.type
-            if key in target_cols:
+        for key in target_cols:
+            if "column" in key:
+                key_nr = int(key.split("-")[1])
+                if key_nr in self._column_recorrds_dict:
+                    id = key_nr
+                elif key_nr in self._alias_columns_dict:
+                    id = self._alias_columns_dict[key_nr]
+                else:
+                    raise (
+                        RuntimeError(
+                            f"The key: {key} is missing both from the columns records and the alias columns."
+                        )
+                    )
+
+                dtype_byte = self._column_recorrds_dict[id]["rel_crs"][0].type
                 content = self.read_col_pages(
-                    i, range(start_cluster_idx, stop_cluster_idx)
+                    id, range(start_cluster_idx, stop_cluster_idx)
                 )
                 if dtype_byte == uproot.const.rntuple_col_type_to_num_dict["switch"]:
                     kindex, tags = _split_switch_bits(content)
