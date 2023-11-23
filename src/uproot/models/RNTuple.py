@@ -460,8 +460,18 @@ in file {self.file.file_path}"""
         self._column_recorrds_dict = {}
         self._column_recorrds_dict = {
             el.field_id: {
-                "rel_crs": [*(self._column_recorrds_dict.get(el.field_id) or {}).get("rel_crs", []), el],
-                "rel_crs_idxs": [*(self._column_recorrds_dict.get(el.field_id) or {}).get("rel_crs_idxs", []), i],
+                "rel_crs": [
+                    *(self._column_recorrds_dict.get(el.field_id) or {}).get(
+                        "rel_crs", []
+                    ),
+                    el,
+                ],
+                "rel_crs_idxs": [
+                    *(self._column_recorrds_dict.get(el.field_id) or {}).get(
+                        "rel_crs_idxs", []
+                    ),
+                    i,
+                ],
             }
             for i, el in enumerate(self.header.column_records)
         }
