@@ -914,8 +914,10 @@ def _parse_node(tokens, i, typename, file, quote, header, inner_header):
     elif (
         has2
         and tokens[i].group(0) == "const"
-        and (tokens[i + 1].group(0) == "string" or
-             _simplify_token(tokens[i + 1]) == "std::string")
+        and (
+            tokens[i + 1].group(0) == "string"
+            or _simplify_token(tokens[i + 1]) == "std::string"
+        )
     ):
         return (
             i + 2,
