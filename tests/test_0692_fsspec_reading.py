@@ -126,6 +126,7 @@ def test_open_fsspec_ssh(handler):
 )
 def test_open_fsspec_xrootd(handler):
     pytest.importorskip("XRootD")
+    pytest.importorskip("fsspec_xrootd")
     with uproot.open(
         "root://eospublic.cern.ch//eos/root-eos/cms_opendata_2012_nanoaod/Run2012B_DoubleMuParked.root",
         handler=handler,
