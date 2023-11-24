@@ -73,5 +73,5 @@ def server():
 
 
 @pytest.fixture(scope="module")
-def test_directory() -> str:
+def tests_directory() -> str:
     return os.path.dirname(os.path.realpath(__file__))

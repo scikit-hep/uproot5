@@ -4,6 +4,6 @@ import pickle
 import os
 
 
-def test_pickle(test_directory):
-    with open(os.path.join(test_directory, "samples/h_dynamic.pkl"), "rb") as f:
+def test_pickle(tests_directory):
+    with open(os.path.join(tests_directory, "samples/h_dynamic.pkl"), "rb") as f:
         assert len(list(pickle.load(f).axis(0))) == 100
