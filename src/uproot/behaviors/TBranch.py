@@ -1809,17 +1809,15 @@ class TBranch(HasBranches):
         checked = set()
         for _, context in expression_context:
             for branch in context["branches"]:
-                if branch.cache_key not in checked:
+                if branch.cache_key not in checked and not isinstance(
+                    branchid_interpretation[branch.cache_key],
+                    uproot.interpretation.grouped.AsGrouped,
+                ):
                     checked.add(branch.cache_key)
                     for (
                         basket_num,
                         range_or_basket,
                     ) in branch.entries_to_ranges_or_baskets(entry_start, entry_stop):
-                        if isinstance(
-                            branchid_interpretation[branch.cache_key],
-                            uproot.interpretation.grouped.AsGrouped,
-                        ):
-                            continue
                         ranges_or_baskets.append((branch, basket_num, range_or_basket))
 
         interp_options = {"ak_add_doc": ak_add_doc}
