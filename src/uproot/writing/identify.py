@@ -16,7 +16,6 @@ The (many) other functions in this module construct writable :doc:`uproot.model.
 objects from Python builtins and other writable models.
 """
 
-
 from collections.abc import Mapping
 
 import numpy
@@ -67,7 +66,7 @@ def add_to_directory(obj, name, directory, streamers):
     if isinstance(obj, numpy.ndarray) and obj.dtype.fields is not None:
         obj = uproot.writing._cascadetree.recarray_to_dict(obj)
 
-    if isinstance(obj, Mapping) and all(uproot._util.isstr(x) for x in obj):
+    if isinstance(obj, Mapping) and all(isinstance(x, str) for x in obj):
         data = {}
         metadata = {}
 
@@ -89,7 +88,7 @@ def add_to_directory(obj, name, directory, streamers):
                 )
 
             if isinstance(branch_array, Mapping) and all(
-                uproot._util.isstr(x) for x in branch_array
+                isinstance(x, str) for x in branch_array
             ):
                 datum = {}
                 metadatum = {}
@@ -225,7 +224,7 @@ def to_writable(obj):
                 )
             )
 
-    elif uproot._util.isstr(obj):
+    elif isinstance(obj, str):
         return to_TObjString(obj)
 
     elif (
@@ -437,11 +436,11 @@ def to_writable(obj):
         isinstance(obj, (tuple, list))
         and 2 <= len(obj) <= 5  # might have a histogram title as the last item
         and all(isinstance(x, numpy.ndarray) for x in obj[:-1])
-        and (isinstance(obj[-1], numpy.ndarray) or uproot._util.isstr(obj[-1]))
+        and isinstance(obj[-1], (numpy.ndarray, str))
         and len(obj[0].shape) == sum(int(isinstance(x, numpy.ndarray)) for x in obj[1:])
         and all(len(x.shape) == 1 for x in obj[1:] if isinstance(x, numpy.ndarray))
     ):
-        if uproot._util.isstr(obj[-1]):
+        if isinstance(obj[-1], str):
             obj, title = obj[:-1], obj[-1]
         else:
             title = ""

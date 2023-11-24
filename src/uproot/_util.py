@@ -5,11 +5,14 @@ This module defines utilities for internal use. This is not a public interface
 and may be changed without notice.
 """
 
+from __future__ import annotations
+
 import datetime
 import glob
 import itertools
 import numbers
 import os
+import pathlib
 import platform
 import re
 import warnings
@@ -53,13 +56,6 @@ def isnum(x):
     )
 
 
-def isstr(x):
-    """
-    Returns True if and only if ``x`` is a string (including Python 2 unicode).
-    """
-    return isinstance(x, str)
-
-
 def ensure_str(x):
     """
     Ensures that ``x`` is a string (decoding with 'surrogateescape' if necessary).
@@ -92,6 +88,21 @@ def ensure_numpy(array, types=(numpy.bool_, numpy.integer, numpy.floating)):
         if not issubclass(out.dtype.type, types):
             raise TypeError(f"cannot be converted to a NumPy array of type {types}")
         return out
+
+
+def is_file_like(
+    obj, readable: bool = False, writable: bool = False, seekable: bool = False
+) -> bool:
+    return (
+        callable(getattr(obj, "read", None))
+        and callable(getattr(obj, "write", None))
+        and callable(getattr(obj, "seek", None))
+        and callable(getattr(obj, "tell", None))
+        and callable(getattr(obj, "flush", None))
+        and (not readable or not hasattr(obj, "readable") or obj.readable())
+        and (not writable or not hasattr(obj, "writable") or obj.writable())
+        and (not seekable or not hasattr(obj, "seekable") or obj.seekable())
+    )
 
 
 def parse_version(version):
@@ -163,7 +174,7 @@ def regularize_filter(filter):
         return no_filter
     elif callable(filter):
         return filter
-    elif isstr(filter):
+    elif isinstance(filter, str):
         m = _regularize_filter_regex.match(filter)
         if m is not None:
             regex, flags = m.groups()
@@ -204,7 +215,7 @@ def regularize_rename(rename):
     elif callable(rename):
         return rename
 
-    elif isstr(rename):
+    elif isinstance(rename, str):
         m = _regularize_filter_regex_rename.match(rename)
         if m is not None:
             regex, trans, flags = m.groups()
@@ -219,7 +230,7 @@ def regularize_rename(rename):
     elif isinstance(rename, Iterable) and not isinstance(rename, bytes):
         rules = []
         for x in rename:
-            if isstr(x):
+            if isinstance(x, str):
                 m = _regularize_filter_regex_rename.match(x)
                 if m is not None:
                     regex, trans, flags = m.groups()
@@ -277,17 +288,30 @@ def regularize_path(path):
 _windows_drive_letter_ending = re.compile(r".*\b[A-Za-z]$")
 _windows_absolute_path_pattern = re.compile(r"^[A-Za-z]:[\\/]")
 _windows_absolute_path_pattern_slash = re.compile(r"^[\\/][A-Za-z]:[\\/]")
-_might_be_port = re.compile(r"^[0-9].*")
-_remote_schemes = ["ROOT", "S3", "HTTP", "HTTPS"]
-_schemes = ["FILE", *_remote_schemes]
+
+_remote_schemes = ["root", "s3", "http", "https"]
+_schemes = ["file", *_remote_schemes]
+
+try:
+    # TODO: remove this try/except when fsspec becomes a required dependency
+    import fsspec
+
+    _schemes = list({*_schemes, *fsspec.available_protocols()})
+except ImportError:
+    pass
+
+_uri_scheme = re.compile("^(" + "|".join([re.escape(x) for x in _schemes]) + ")://")
+_uri_scheme_chain = re.compile(
+    "^(" + "|".join([re.escape(x) for x in _schemes]) + ")::"
+)
 
 
-def file_object_path_split(path):
+def file_object_path_split(urlpath: str) -> tuple[str, str | None]:
     """
     Split a path with a colon into a file path and an object-in-file path.
 
     Args:
-        path: The path to split. Example: ``"https://localhost:8888/file.root:tree"``
+        urlpath: The path to split. Example: ``"https://localhost:8888/file.root:tree"``
 
     Returns:
         A tuple of the file path and the object-in-file path. If there is no
@@ -295,25 +319,56 @@ def file_object_path_split(path):
         Example: ``("https://localhost:8888/file.root", "tree")``
     """
 
-    path: str = regularize_path(path)
-    # remove whitespace
-    path = path.strip()
+    urlpath: str = regularize_path(urlpath).strip()
+    path = urlpath
 
-    # split url into parts
-    parsed_url = urlparse(path)
+    def _split_path(path: str) -> list[str]:
+        parts = path.split(":")
+        if pathlib.PureWindowsPath(path).drive:
+            # Windows absolute path
+            assert len(parts) >= 2, f"could not split object from windows path {path}"
+            parts = [parts[0] + ":" + parts[1]] + parts[2:]
+        return parts
 
-    parts = parsed_url.path.split(":")
+    if "://" not in path:
+        path = "file://" + path
+
+    # replace the match of _uri_scheme_chain with "" until there is no match
+    while _uri_scheme_chain.match(path):
+        path = _uri_scheme_chain.sub("", path)
+
+    if _uri_scheme.match(path):
+        # if not a local path, attempt to match a URI scheme
+        if path.startswith("file://"):
+            parsed_url_path = path[7:]
+        else:
+            parsed_url_path = urlparse(path).path
+
+        if parsed_url_path.startswith("//"):
+            parsed_url_path = parsed_url_path[2:]
+
+        parts = _split_path(parsed_url_path)
+    else:
+        # invalid scheme
+        scheme = path.split("://")[0]
+        raise ValueError(
+            f"Invalid URI scheme: '{scheme}://' in {path}. Available schemes: {', '.join(_schemes)}."
+        )
+
     if len(parts) == 1:
         obj = None
     elif len(parts) == 2:
         obj = parts[1]
         # remove the object from the path (including the colon)
-        path = path[: -len(obj) - 1]
-        obj = obj.strip()
+        urlpath = urlpath[: -len(obj) - 1]
+        # clean badly placed slashes
+        obj = obj.strip().lstrip("/")
+        while "//" in obj:
+            obj = obj.replace("//", "/")
     else:
-        raise ValueError(f"too many colons in file path: {path} for url {parsed_url}")
+        raise ValueError(f"could not split object from path {path}")
 
-    return path, obj
+    return urlpath, obj
 
 
 def file_path_to_source_class(file_path, options):
@@ -333,7 +388,7 @@ def file_path_to_source_class(file_path, options):
     if out is not None:
         if not (isinstance(out, type) and issubclass(out, uproot.source.chunk.Source)):
             raise TypeError(
-                "'handler' is not a class object inheriting from Source: " + repr(out)
+                f"'handler' is not a class object inheriting from Source: {out!r}"
             )
         # check if "object_handler" is set
         if (
@@ -352,7 +407,7 @@ def file_path_to_source_class(file_path, options):
             return out, file_path
 
     if (
-        not isstr(file_path)
+        not isinstance(file_path, str)
         and hasattr(file_path, "read")
         and hasattr(file_path, "seek")
     ):
@@ -374,8 +429,7 @@ after the first `import uproot` or use `@pytest.mark.filterwarnings("error:::upr
             )
         if not (isinstance(out, type) and issubclass(out, uproot.source.chunk.Source)):
             raise TypeError(
-                "'object_handler' is not a class object inheriting from Source: "
-                + repr(out)
+                f"'object_handler' is not a class object inheriting from Source: {out!r}"
             )
 
         return out, file_path
@@ -385,7 +439,7 @@ after the first `import uproot` or use `@pytest.mark.filterwarnings("error:::upr
         windows_absolute_path = file_path
 
     parsed_url = urlparse(file_path)
-    if parsed_url.scheme.upper() == "FILE":
+    if parsed_url.scheme.lower() == "file":
         parsed_url_path = unquote(parsed_url.path)
     else:
         parsed_url_path = parsed_url.path
@@ -396,13 +450,14 @@ after the first `import uproot` or use `@pytest.mark.filterwarnings("error:::upr
         elif _windows_absolute_path_pattern_slash.match(parsed_url_path) is not None:
             windows_absolute_path = parsed_url_path[1:]
 
+    scheme = parsed_url.scheme.lower()
     if (
-        parsed_url.scheme.upper() == "FILE"
+        scheme == "file"
         or len(parsed_url.scheme) == 0
         or windows_absolute_path is not None
     ):
         if windows_absolute_path is None:
-            if parsed_url.netloc.upper() == "LOCALHOST":
+            if parsed_url.netloc.lower() == "localhost":
                 file_path = parsed_url_path
             else:
                 file_path = parsed_url.netloc + parsed_url_path
@@ -433,7 +488,7 @@ after the first `import uproot` or use `@pytest.mark.filterwarnings("error:::upr
             )
         return out, os.path.expanduser(file_path)
 
-    elif parsed_url.scheme.upper() == "ROOT":
+    elif scheme == "root":
         out = options["xrootd_handler"]
         if out is None:
             out = uproot.source.xrootd.XRootDSource
@@ -457,7 +512,7 @@ after the first `import uproot` or use `@pytest.mark.filterwarnings("error:::upr
             )
         return out, file_path
 
-    elif parsed_url.scheme.upper() in {"S3"}:
+    elif scheme == "s3":
         out = options["s3_handler"]
         if out is None:
             out = uproot.source.s3.S3Source
@@ -480,7 +535,7 @@ after the first `import uproot` or use `@pytest.mark.filterwarnings("error:::upr
             )
         return out, file_path
 
-    elif parsed_url.scheme.upper() in {"HTTP", "HTTPS"}:
+    elif scheme in ("http", "https"):
         out = options["http_handler"]
         if out is None:
             out = uproot.source.http.HTTPSource
@@ -505,6 +560,10 @@ after the first `import uproot` or use `@pytest.mark.filterwarnings("error:::upr
         return out, file_path
 
     else:
+        # try to use fsspec before raising an error
+        if scheme in _schemes:
+            return uproot.source.fsspec.FSSpecSource, file_path
+
         raise ValueError(f"URI scheme not recognized: {file_path}")
 
 
@@ -554,7 +613,7 @@ def memory_size(data, error_message=None):
     Regularizes strings like '## kB' and plain integer number of bytes to
     an integer number of bytes.
     """
-    if isstr(data):
+    if isinstance(data, str):
         m = re.match(
             r"^\s*([+-]?(\d+(\.\d*)?|\.\d+)(e[+-]?\d+)?)\s*([kmgtpezy]?b)\s*$",
             data,
@@ -962,11 +1021,11 @@ def _regularize_files_inner(files, parse_colon, counter, HasBranches, steps_allo
 
     maybe_steps = None
 
-    if isstr(files2) and not isstr(files):
+    if isinstance(files2, str) and not isinstance(files, str):
         parse_colon = False
         files = files2
 
-    if isstr(files):
+    if isinstance(files, str):
         if parse_colon:
             file_path, object_path = file_object_path_split(files)
         else:
@@ -974,7 +1033,7 @@ def _regularize_files_inner(files, parse_colon, counter, HasBranches, steps_allo
 
         parsed_url = urlparse(file_path)
 
-        if parsed_url.scheme.upper() in _remote_schemes:
+        if parsed_url.scheme.lower() in _remote_schemes:
             yield file_path, object_path, maybe_steps
 
         else:
@@ -1059,7 +1118,7 @@ def regularize_files(files, steps_allowed):
     for file_path, object_path, maybe_steps in _regularize_files_inner(
         files, True, counter, HasBranches, steps_allowed
     ):
-        if isstr(file_path):
+        if isinstance(file_path, str):
             key = (counter[0], file_path, object_path)
             if key not in seen:
                 out.append((file_path, object_path))
@@ -1096,7 +1155,7 @@ def regularize_object_path(
             object_cache=None,
             array_cache=None,
             custom_classes=custom_classes,
-            **options,  # NOTE: a comma after **options breaks Python 2
+            **options,
         ).root_directory
         if object_path is None:
             trees = file.keys(filter_classname="TTree", cycle=False)

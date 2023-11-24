@@ -63,7 +63,10 @@ def get_server_config(file):
         XRootD_client.flags.QueryCode.CONFIG, "readv_iov_max readv_ior_max"
     )
     if status.error:
-        raise OSError(status.message)
+        if status.code in (206,):
+            raise TimeoutError(status.message)
+        else:
+            raise OSError(status.message)
 
     # Result is something like b'178956968\n2097136\n'
     readv_iov_max, readv_ior_max = map(int, result.split(b"\n", 1))
@@ -121,12 +124,12 @@ class XRootDResource(uproot.source.chunk.Resource):
         # https://github.com/xrootd/xrootd/blob/250eced4d3787c2ac5be2c8c922134153bbf7f08/src/XrdCl/XrdClStatus.cc#L34-L74
         if status.code in (101, 304, 400):
             raise uproot._util._file_not_found(self._file_path, status.message)
-
-        else:
-            raise OSError(
-                f"""XRootD error: {status.message}
-in file {self._file_path}"""
+        elif status.code in (206,):
+            raise TimeoutError(
+                f"XRootD error: {status.message} in file {self._file_path}"
             )
+        else:
+            raise OSError(f"XRootD error: {status.message} in file {self._file_path}")
 
     @property
     def timeout(self) -> float | None:
@@ -266,6 +269,8 @@ class XRootDSource(uproot.source.chunk.Source):
     ResourceClass = XRootDResource
 
     def __init__(self, file_path: str, **options):
+        options = dict(uproot.reading.open.defaults, **options)
+
         self._timeout = options["timeout"]
         self._desired_max_num_elements = options["max_num_elements"]
         self._use_threads = options["use_threads"]
@@ -285,7 +290,7 @@ class XRootDSource(uproot.source.chunk.Source):
         # futures that wait for chunks that have been split to merge them.
         if self._use_threads:
             self._executor = uproot.source.futures.ResourceThreadPoolExecutor(
-                [trivial_resource() for x in range(self._num_workers)]
+                [trivial_resource() for _ in range(self._num_workers)]
             )
         else:
             self._executor = uproot.source.futures.ResourceTrivialExecutor(
@@ -458,6 +463,8 @@ class MultithreadedXRootDSource(uproot.source.chunk.MultithreadedSource):
     ResourceClass = XRootDResource
 
     def __init__(self, file_path: str, **options):
+        options = dict(uproot.reading.open.defaults, **options)
+
         self._num_workers = options["num_workers"]
         self._timeout = options["timeout"]
         self._use_threads = options["use_threads"]
@@ -501,5 +508,9 @@ class MultithreadedXRootDSource(uproot.source.chunk.MultithreadedSource):
     @property
     def num_bytes(self) -> int:
         if self._num_bytes is None:
-            self._num_bytes = self._executor.workers[0].resource.num_bytes
+            if hasattr(self._executor, "workers"):
+                self._num_bytes = self._executor.workers[0].resource.num_bytes
+            else:
+                self._num_bytes = self._executor._resource.num_bytes
+
         return self._num_bytes
