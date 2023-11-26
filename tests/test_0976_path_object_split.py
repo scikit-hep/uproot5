@@ -71,10 +71,53 @@ import pathlib
             ),
         ),
         (
+            "ssh://user@host:22/path/to/file.root:/object//path",
+            (
+                "ssh://user@host:22/path/to/file.root",
+                "object/path",
+            ),
+        ),
+        (
+            "ssh://user@host:22/path/to/file.root:/object//path:with:colon:in:path/something/",
+            (
+                "ssh://user@host:22/path/to/file.root",
+                "object/path:with:colon:in:path/something",
+            ),
+        ),
+        (
+            "ssh://user@host:50230/path/to/file.root",
+            (
+                "ssh://user@host:50230/path/to/file.root",
+                None,
+            ),
+        ),
+        (
+            "s3://bucket/path/to/file.root:/dir////object",
+            (
+                "s3://bucket/path/to/file.root",
+                "dir/object",
+            ),
+        ),
+        (
+            "s3://bucket/path/to/file.root:",
+            (
+                "s3://bucket/path/to/file.root",
+                "",
+            ),
+        ),
+        (
             "00376186-543E-E311-8D30-002618943857.root:Events",
             (
                 "00376186-543E-E311-8D30-002618943857.root",
                 "Events",
+            ),
+        ),
+        # https://github.com/scikit-hep/uproot5/issues/975
+        (
+            "DAOD_PHYSLITE_2023-09-13T1230.art.rntuple.root:RNT:CollectionTree",
+            (
+                "DAOD_PHYSLITE_2023-09-13T1230.art.rntuple.root",
+                "RNT:CollectionTree",
             ),
         ),
         # https://github.com/scikit-hep/uproot5/issues/975
@@ -118,6 +161,13 @@ import pathlib
             (
                 "/some/weird/path:with:colons/file.root",
                 "Events/MET_pt",
+            ),
+        ),
+        (
+            "/some/weird/path:with:colons/file.root",
+            (
+                "/some/weird/path:with:colons/file.root",
+                None,
             ),
         ),
         (

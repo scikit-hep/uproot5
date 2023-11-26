@@ -11,7 +11,6 @@ See :doc:`uproot.models.TBranch` for deserialization of the ``TBranch``
 objects themselves.
 """
 
-
 import queue
 import re
 import sys
@@ -21,6 +20,7 @@ from collections.abc import Iterable, Mapping, MutableMapping
 import numpy
 
 import uproot
+import uproot.interpretation.grouped
 import uproot.language.python
 from uproot._util import no_filter
 
@@ -1799,7 +1799,10 @@ class TBranch(HasBranches):
         checked = set()
         for _, context in expression_context:
             for branch in context["branches"]:
-                if branch.cache_key not in checked:
+                if branch.cache_key not in checked and not isinstance(
+                    branchid_interpretation[branch.cache_key],
+                    uproot.interpretation.grouped.AsGrouped,
+                ):
                     checked.add(branch.cache_key)
                     for (
                         basket_num,
