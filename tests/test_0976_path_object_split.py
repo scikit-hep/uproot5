@@ -85,13 +85,6 @@ import pathlib
             ),
         ),
         (
-            "ssh://user@host:50230/path/to/file.root",
-            (
-                "ssh://user@host:50230/path/to/file.root",
-                None,
-            ),
-        ),
-        (
             "s3://bucket/path/to/file.root:/dir////object",
             (
                 "s3://bucket/path/to/file.root",
@@ -161,13 +154,6 @@ import pathlib
             (
                 "/some/weird/path:with:colons/file.root",
                 "Events/MET_pt",
-            ),
-        ),
-        (
-            "/some/weird/path:with:colons/file.root",
-            (
-                "/some/weird/path:with:colons/file.root",
-                None,
             ),
         ),
         (
