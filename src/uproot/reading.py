@@ -24,7 +24,7 @@ from uproot._util import no_filter
 
 
 def open(
-    path,
+    path: str | Path | IO | dict[str | Path | IO, str],
     *,
     object_cache=100,
     array_cache="100 MB",
