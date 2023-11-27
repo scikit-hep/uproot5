@@ -8,8 +8,6 @@ and the classes that are too fundamental to be models:
 and :doc:`uproot.reading.ReadOnlyKey` (``TKey``).
 """
 
-from __future__ import annotations
-
 import struct
 import sys
 import uuid
