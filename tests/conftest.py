@@ -5,6 +5,7 @@ import threading
 import contextlib
 import skhep_testdata
 from functools import partial
+import os
 
 # The base http server does not support range requests. Watch https://github.com/python/cpython/issues/86809 for updates
 from http.server import HTTPServer
@@ -69,3 +70,8 @@ def serve():
 def server():
     with serve() as server_url:
         yield server_url
+
+
+@pytest.fixture(scope="module")
+def tests_directory() -> str:
+    return os.path.dirname(os.path.realpath(__file__))
