@@ -244,6 +244,71 @@ def test_fsspec_zip(tmp_path):
         assert len(data) == 40
 
 
+@pytest.mark.network
+@pytest.mark.xrootd
+@pytest.mark.parametrize(
+    "handler",
+    [
+        uproot.source.fsspec.FSSpecSource,
+        uproot.source.xrootd.XRootDSource,
+        None,
+    ],
+)
+def test_open_fsspec_xrootd_iterate_files(handler):
+    pytest.importorskip("XRootD")
+
+    iterator = uproot.iterate(
+        files=[
+            {
+                "root://eospublic.cern.ch//eos/root-eos/cms_opendata_2012_nanoaod/Run2012B_DoubleMuParked.root": "Events"
+            },
+            {
+                "root://eospublic.cern.ch//eos/root-eos/cms_opendata_2012_nanoaod/Run2012B_DoubleMuParked.root": "Events"
+            },
+        ],
+        expressions=["run"],
+        step_size=100,
+        handler=handler,
+    )
+
+    for i, data in enumerate(iterator):
+        if i >= 5:
+            break
+        assert len(data) == 100
+        assert all(data["run"] == 194778)
+
+
+@pytest.mark.network
+@pytest.mark.xrootd
+@pytest.mark.parametrize(
+    "handler",
+    [
+        uproot.source.fsspec.FSSpecSource,
+        uproot.source.xrootd.XRootDSource,
+        None,
+    ],
+)
+def test_open_fsspec_xrootd_iterate_tree(handler):
+    pytest.importorskip("XRootD")
+
+    with uproot.open(
+        {
+            "root://eospublic.cern.ch//eos/root-eos/cms_opendata_2012_nanoaod/Run2012B_DoubleMuParked.root": "Events"
+        },
+        handler=handler,
+    ) as f:
+        iterator = f.iterate(
+            ["run"],
+            step_size=100,
+        )
+
+        for i, data in enumerate(iterator):
+            if i >= 5:
+                break
+            assert len(data) == 100
+            assert all(data["run"] == 194778)
+
+
 # https://github.com/scikit-hep/uproot5/issues/1035
 @pytest.mark.parametrize(
     "handler",
