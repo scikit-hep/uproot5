@@ -9,8 +9,6 @@ and :doc:`uproot.reading.ReadOnlyKey` (``TKey``).
 """
 from __future__ import annotations
 
-from __future__ import annotations
-
 import struct
 import sys
 import uuid
@@ -25,7 +23,7 @@ from uproot._util import no_filter
 
 
 def open(
-    path,
+    path: str | Path | IO | dict[str | Path | IO, str],
     *,
     object_cache=100,
     array_cache="100 MB",
