@@ -7,6 +7,7 @@ and the classes that are too fundamental to be models:
 :doc:`uproot.reading.ReadOnlyDirectory` (``TDirectory`` or ``TDirectoryFile``),
 and :doc:`uproot.reading.ReadOnlyKey` (``TKey``).
 """
+from __future__ import annotations
 
 import struct
 import sys

@@ -8,7 +8,7 @@ The :doc:`uproot.interpretation.jagged.JaggedArray` class only holds data while
 an array is being built from ``TBaskets``. Its final form is determined by
 :doc:`uproot.interpretation.library`.
 """
-
+from __future__ import annotations
 
 import numpy
 

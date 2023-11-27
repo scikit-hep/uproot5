@@ -7,7 +7,7 @@ This module defines low-level routines for deserialization, including
 :doc:`uproot.deserialization.read_object_any`, which manages references to
 previously read objects.
 """
-
+from __future__ import annotations
 
 import struct
 import sys

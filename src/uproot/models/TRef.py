@@ -3,7 +3,7 @@
 """
 This module defines versionless models of ``TRef`` and ``TRefArray``.
 """
-
+from __future__ import annotations
 
 import json
 import struct

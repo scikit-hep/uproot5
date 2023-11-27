@@ -6,7 +6,7 @@ This module defines versioned models for ``TTree``.
 See :doc:`uproot.behaviors.TBranch` for definitions of ``TTree``-reading
 functions.
 """
-
+from __future__ import annotations
 
 import struct
 

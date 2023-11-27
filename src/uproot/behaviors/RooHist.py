@@ -3,7 +3,7 @@
 """
 This module defines the behaviors of ``RooHist``.
 """
-
+from __future__ import annotations
 
 import numpy
 

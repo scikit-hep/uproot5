@@ -11,7 +11,7 @@ need to be tweaked by new types, type combinations, and serialization methods
 observed in ROOT files (perhaps forever), unless a systematic study can be
 performed to exhaustively discover all cases.
 """
-
+from __future__ import annotations
 
 import ast
 import numbers

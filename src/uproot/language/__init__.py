@@ -8,6 +8,7 @@ The default is :doc:`uproot.language.python.PythonLanguage`.
 
 All languages must be subclasses of :doc:`uproot.language.Language`.
 """
+from __future__ import annotations
 
 
 class Language:

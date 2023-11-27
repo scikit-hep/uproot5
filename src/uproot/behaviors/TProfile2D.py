@@ -3,7 +3,7 @@
 """
 This module defines the behavior of ``TProfile2D``.
 """
-
+from __future__ import annotations
 
 import numpy
 
