@@ -10,6 +10,7 @@ See :doc:`uproot.interpretation.identify.interpretation_of` for heuristics
 that determine the default interpretation of a
 :doc:`uproot.behaviors.TBranch.TBranch`.
 """
+from __future__ import annotations
 
 
 class Interpretation:

@@ -3,6 +3,7 @@
 """
 This module defines the behaviors of ``TGraphErrors``.
 """
+from __future__ import annotations
 
 
 class TGraphErrors:

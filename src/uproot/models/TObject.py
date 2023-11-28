@@ -3,7 +3,7 @@
 """
 This module defines a versionless model for ``TObject``.
 """
-
+from __future__ import annotations
 
 import json
 import struct

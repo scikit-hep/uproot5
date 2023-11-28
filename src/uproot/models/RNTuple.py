@@ -3,6 +3,7 @@
 """
 This module defines a versionless model for ``ROOT::Experimental::RNTuple``.
 """
+from __future__ import annotations
 
 import struct
 import zlib

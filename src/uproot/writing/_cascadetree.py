@@ -13,7 +13,7 @@ and sometimes freeing data.
 
 See :doc:`uproot.writing._cascade` for a general overview of the cascading writer concept.
 """
-
+from __future__ import annotations
 
 import datetime
 import math

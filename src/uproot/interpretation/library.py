@@ -21,7 +21,7 @@ are not efficiently represented, but some jagged arrays are encoded as
 Lazy arrays (:doc:`uproot.behaviors.TBranch.lazy`) can only use the
 :doc:`uproot.interpretation.library.Awkward` library.
 """
-
+from __future__ import annotations
 
 import gc
 import json
