@@ -16,7 +16,7 @@ The :doc:`uproot.model.UnknownClass` and
 not be modeled, either because the class has no streamer or no streamer for its
 version.
 """
-
+from __future__ import annotations
 
 import re
 import sys

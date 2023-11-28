@@ -141,6 +141,9 @@ select = [
 ]
 src = ["src"]
 
+[tool.ruff.lint]
+isort.required-imports = ["from __future__ import annotations"]
+
 [tool.ruff.mccabe]
 max-complexity = 100
 

@@ -1,6 +1,7 @@
 """
 Use this to make src/uproot/models/TH.py and src/uproot/models/TGraph.py.
 """
+from __future__ import annotations
 
 import numpy as np
 

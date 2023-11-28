@@ -9,7 +9,7 @@ The :doc:`uproot.writing.writable` submodule defines the entry-points for user
 interaction: :doc:`uproot.writing.writable.create`, :doc:`uproot.writing.writable.recreate`,
 and :doc:`uproot.writing.writable.update`.
 """
-
+from __future__ import annotations
 
 from uproot.writing.identify import (
     to_TArray,

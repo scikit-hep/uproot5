@@ -3,7 +3,7 @@
 """
 This module defines a versionless model for ``TObjString``.
 """
-
+from __future__ import annotations
 
 import uproot
 import uproot.serialization

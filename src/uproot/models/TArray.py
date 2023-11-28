@@ -3,7 +3,7 @@
 """
 This module defines versionless models for ``TArray`` and its subclasses.
 """
-
+from __future__ import annotations
 
 import struct
 from collections.abc import Sequence

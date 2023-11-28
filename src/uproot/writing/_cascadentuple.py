@@ -8,7 +8,7 @@ The implementation in this module does not use the RNTuple infrastructure in
 
 See :doc:`uproot.writing._cascade` for a general overview of the cascading writer concept.
 """
-
+from __future__ import annotations
 
 import datetime
 import struct

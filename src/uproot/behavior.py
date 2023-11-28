@@ -5,7 +5,7 @@ This module defines utilities for adding behaviors to C++ objects in Python.
 Behaviors are defined by specially named classes in specially named modules
 that get auto-detected by :doc:`uproot.behavior.behavior_of`.
 """
-
+from __future__ import annotations
 
 import pkgutil
 
