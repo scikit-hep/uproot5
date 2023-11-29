@@ -4,7 +4,6 @@
 This module defines utilities for adding components to the forth reader.
 """
 
-
 import numpy as np
 
 symbol_dict = {
