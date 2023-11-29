@@ -214,9 +214,8 @@ class Model_TStreamerInfo(uproot.model.Model):
             '                f"memberwise serialization of {type(self).__name__}\\nin file {self.file.file_path}"',
             "            )",
             # FIXME: instead of swapping the forth_stash with a Node, get a Node in the first place
-            "        forth_stash = uproot._awkward_forth.forth_stash(context)",
-            "        if forth_stash is not None:",
-            '            forth_obj = context["forth"].gen',
+            "        forth_obj = uproot._awkward_forth.get_forth_obj(context)",
+            "        if forth_obj is not None:",
             "            forth_stash = uproot._awkward_forth.Node(f'read-members {forth_obj.get_key_number()}')",
             "            forth_obj.add_node_to_model(forth_stash)",
             "            forth_obj.update_previous_model(forth_stash)",
@@ -281,7 +280,7 @@ class Model_TStreamerInfo(uproot.model.Model):
 
         read_members.extend(
             [
-                "        if forth_stash is not None:",
+                "        if forth_obj is not None:",
                 "           forth_obj.update_key_number(hold_key_number)",
                 f"           forth_stash.add_form_details({{'class': 'RecordArray', 'parameters': {{'__record__': {self.name!r}}}}})",
             ]
@@ -708,13 +707,13 @@ class Model_TStreamerBase(Model_TStreamerElement):
         # AwkwardForth testing B: test_0637's 01,02,08,09,11,12,13,15,16,29,38,45,46,49,50
         read_members.extend(
             [
-                "        if forth_stash is not None:",
+                "        if forth_obj is not None:",
                 "            nested_forth_stash = uproot._awkward_forth.Node(f'base-class {forth_obj.get_key_number()}')",
                 "            forth_obj.add_node_to_model(nested_forth_stash)",
                 "            hold_previous_model = forth_obj.previous_model",
                 "            forth_obj.update_previous_model(nested_forth_stash)",
                 f"        self._bases.append(c({self.name!r}, {self.base_version!r}).read(chunk, cursor, context, file, self._file, self._parent, concrete=self.concrete))",
-                "        if forth_stash is not None:",
+                "        if forth_obj is not None:",
                 "            forth_obj.update_previous_model(hold_previous_model)",
             ]
         )
@@ -960,7 +959,7 @@ class Model_TStreamerBasicType(Model_TStreamerElement):
                     # AwkwardForth testing D: test_0637's 01,02,29,38,44,56
                     read_members.extend(
                         [
-                            "        if forth_stash is not None:",
+                            "        if forth_obj is not None:",
                             "            key = forth_obj.get_key_number()",
                             "            forth_obj.increment_key_number()",
                             '            form_key = f"node{key}-data"',
@@ -988,7 +987,7 @@ class Model_TStreamerBasicType(Model_TStreamerElement):
 
                 else:
                     # AwkwardForth testing E: test_0637's 01,02,05,08,09,11,12,13,15,16,29,35,39,45,46,47,49,50,56
-                    read_members.append("        if forth_stash is not None:")
+                    read_members.append("        if forth_obj is not None:")
                     for i in range(len(formats[0])):
                         read_members.extend(
                             [

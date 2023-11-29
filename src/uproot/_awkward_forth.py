@@ -54,31 +54,6 @@ class Forth_Generator:
             for child_node in current_node.children:
                 self.add_node_to_model(new_node, child_node, parent_node_name)
 
-    def append_code(self, tree, node_name, code, case):
-        if tree.name == node_name:
-            tree.append_code_snippet(code, case)
-        else:
-            for child_node in tree.children:
-                self.append_code(child_node, node_name, code, case)
-
-    def add_form(self, new_form, current_form, new_form_parent):
-        if current_form["class"] == "RecordArray":
-            for form_dict in current_form["contents"]:
-                self.add_form(new_form, form_dict, new_form_parent)
-        elif "content" in current_form.keys():
-            if new_form_parent == current_form["form_key"]:
-                if current_form["content"] == "NULL":
-                    current_form.update({"content": new_form})
-                elif not current_form["content"]:
-                    current_form["content"].update(new_form)
-                elif current_form["content"]["class"] == "RecordArray":
-                    for children in current_form["content"]["contents"]:
-                        if children["form_key"] == new_form["form_key"]:
-                            return
-                    current_form["content"]["contents"].append(new_form)
-            else:
-                self.add_form(new_form, current_form["content"], new_form_parent)
-
     def get_key_number(self):
         return self.key_number
 
@@ -105,65 +80,14 @@ class Forth_Generator:
         self.previous_model = model
 
 
-def forth_stash(context):
+def get_forth_obj(context):
     """
-    Returns a ForthLevelStash object if ForthGeneration is to be done, else None.
+    Returns a the Forth Generator object if ForthGeneration is to be done, else None.
     """
     if hasattr(context.get("forth"), "gen"):
-        return ForthStash()
+        return context["forth"].gen
     else:
         return None
-
-
-class ForthStash:
-    def __init__(self):
-        self._pre_code = []
-        self._post_code = []
-        self._header = ""
-        self._init = ""
-        self._node = None
-
-    @property
-    def pre_code(self):
-        return self._pre_code
-
-    @property
-    def post_code(self):
-        return self._post_code
-
-    @property
-    def header_code(self):
-        return self._header
-
-    @property
-    def init_code(self):
-        return self._init
-
-    @property
-    def node(self):
-        return self._node
-
-    def add_to_pre(self, code):
-        self._pre_code.append(code)
-
-    def add_to_post(self, code):
-        self._post_code.append(code)
-
-    def add_to_header(self, code):
-        self._header += code
-
-    def add_to_init(self, code):
-        self._init += code
-
-    def set_node(self, name, dtype):
-        self._node = Node(
-            name,
-            dtype,
-            self._pre_code,
-            self._post_code,
-            self._init,
-            self._header,
-        )
 
 
 class Node:
@@ -246,21 +170,8 @@ class Node:
     def add_child(self, child):
         self._children.append(child)
 
-    def set_node(self, name, dtype):
-        # FIXME: get rid of this function!
-        self._name = name
-        self._dtype = dtype
-
-    def append_code_snippet(self, code, case):
-        # FIXME: get rid of this function!
-        if case == "pre":
-            self._pre_code.append(code)
-        elif case == "post":
-            self._post_code.append(code)
-        elif case == "header":
-            self._header_code += code
-        elif case == "init":
-            self._init_code += code
+    def change_name(self, new_name):
+        self._name = new_name
 
     def derive_form(self):
         if self._form_details.get("class") == "NumpyArray":
