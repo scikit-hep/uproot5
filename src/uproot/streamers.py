@@ -213,13 +213,11 @@ class Model_TStreamerInfo(uproot.model.Model):
             "            raise NotImplementedError(",
             '                f"memberwise serialization of {type(self).__name__}\\nin file {self.file.file_path}"',
             "            )",
-            # FIXME: instead of swapping the forth_stash with a Node, get a Node in the first place
             "        forth_obj = uproot._awkward_forth.get_forth_obj(context)",
             "        if forth_obj is not None:",
             "            forth_stash = uproot._awkward_forth.Node(f'read-members {forth_obj.get_key_number()}')",
             "            forth_obj.add_node_to_model(forth_stash)",
             "            forth_obj.update_previous_model(forth_stash)",
-            "            content = {}",  # FIXME: get rid of this
             "            hold_key_number = forth_obj.get_key_number()",
             "            forth_obj.increment_key_number()",
         ]
