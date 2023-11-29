@@ -38,6 +38,7 @@ def dask(
     allow_missing=False,
     open_files=True,
     form_mapping=None,
+    report=None,
     **options,
 ):
     """
@@ -259,6 +260,7 @@ def dask(
                 interp_options,
                 form_mapping,
                 steps_per_file,
+                report,
             )
         else:
             return _get_dak_array_delay_open(
@@ -274,6 +276,7 @@ def dask(
                 interp_options,
                 form_mapping,
                 steps_per_file,
+                report,
             )
     else:
         raise NotImplementedError()
@@ -1151,6 +1154,7 @@ def _get_dak_array(
     interp_options,
     form_mapping,
     steps_per_file,
+    report,
 ):
     dask_awkward = uproot.extras.dask_awkward()
     awkward = uproot.extras.awkward()
@@ -1306,15 +1310,27 @@ which has {entry_stop} entries"""
     else:
         expected_form, form_mapping_info = form_mapping(base_form)
 
+    fn = _UprootRead(
+        ttrees,
+        common_keys,
+        interp_options,
+        base_form=base_form,
+        expected_form=expected_form,
+        form_mapping_info=form_mapping_info,
+    )
+
+    if report is not None:
+        return dask_awkward.from_map(
+            fn,
+            partition_args,
+            divisions=tuple(divisions),
+            label="from-uproot",
+            empty_on_raise=(Exception,),
+            empty_backend="cpu",
+        )
+
     return dask_awkward.from_map(
-        _UprootRead(
-            ttrees,
-            common_keys,
-            interp_options,
-            base_form=base_form,
-            expected_form=expected_form,
-            form_mapping_info=form_mapping_info,
-        ),
+        fn,
         partition_args,
         divisions=tuple(divisions),
         label="from-uproot",
@@ -1334,6 +1350,7 @@ def _get_dak_array_delay_open(
     interp_options,
     form_mapping,
     steps_per_file,
+    report,
 ):
     dask_awkward = uproot.extras.dask_awkward()
     awkward = uproot.extras.awkward()
@@ -1396,17 +1413,29 @@ def _get_dak_array_delay_open(
     else:
         expected_form, form_mapping_info = form_mapping(base_form)
 
+    fn = _UprootOpenAndRead(
+        custom_classes,
+        allow_missing,
+        real_options,
+        common_keys,
+        interp_options,
+        base_form=base_form,
+        expected_form=expected_form,
+        form_mapping_info=form_mapping_info,
+    )
+
+    if report is not None:
+        return dask_awkward.from_map(
+            fn,
+            partition_args,
+            divisions=None if divisions is None else tuple(divisions),
+            label="from-uproot",
+            empty_on_raise=(Exception,),
+            empty_backend="cpu",
+        )
+
     return dask_awkward.from_map(
-        _UprootOpenAndRead(
-            custom_classes,
-            allow_missing,
-            real_options,
-            common_keys,
-            interp_options,
-            base_form=base_form,
-            expected_form=expected_form,
-            form_mapping_info=form_mapping_info,
-        ),
+        fn,
         partition_args,
         divisions=None if divisions is None else tuple(divisions),
         label="from-uproot",
