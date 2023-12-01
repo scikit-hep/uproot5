@@ -808,21 +808,31 @@ class Model:
                 if classname_version(correct_cls.__name__) != classname_version(
                     cls.__name__
                 ):
-                    if forth_obj is not None:
-                        forth_obj.add_node_to_model(forth_stash)
-                        forth_obj.update_previous_model(forth_stash)
-
                     cursor.move_to(self._cursor.index)
                     context["breadcrumbs"] = old_breadcrumbs
-                    temp_var = correct_cls.read(
-                        chunk,
-                        cursor,
-                        context,
-                        file,
-                        selffile,
-                        parent,
-                        concrete=concrete,
-                    )
+                    if forth_obj is not None:
+                        forth_obj.add_node_to_model(forth_stash)
+                        with uproot._awkward_forth.UnwindProtect(forth_obj, forth_stash):
+                            temp_var = correct_cls.read(
+                                chunk,
+                                cursor,
+                                context,
+                                file,
+                                selffile,
+                                parent,
+                                concrete=concrete,
+                            )
+                    else:
+                        temp_var = correct_cls.read(
+                                chunk,
+                                cursor,
+                                context,
+                                file,
+                                selffile,
+                                parent,
+                                concrete=concrete,
+                            )
+
                     return temp_var
 
         if context.get("in_TBranch", False):
@@ -845,13 +855,10 @@ class Model:
             if forth_obj is not None:
                 forth_stash.change_name(f"start-of-model {forth_obj.get_key_number()}")
                 forth_obj.add_node_to_model(forth_stash)
-                hold_previous_model = forth_obj.previous_model
-                forth_obj.update_previous_model(forth_stash)
-
-            self.read_members(chunk, cursor, context, file)
-
-            if forth_obj is not None:
-                forth_obj.update_previous_model(hold_previous_model)
+                with uproot._awkward_forth.UnwindProtect(forth_obj, forth_stash):
+                    self.read_members(chunk, cursor, context, file)
+            else:
+                self.read_members(chunk, cursor, context, file)
 
             self.hook_after_read_members(
                 chunk=chunk, cursor=cursor, context=context, file=file

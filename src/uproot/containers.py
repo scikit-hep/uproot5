@@ -85,20 +85,29 @@ def _read_nested(
             if forth_obj is not None:
                 # These two attributes in ForthGenerator need to be the same each iteration, but are changed in .read()
                 temp_count = forth_obj.key_number
-                prev_model = forth_obj.previous_model
             for i in range(length):
                 if forth_obj is not None:
                     forth_obj.update_key_number(temp_count)
-                    forth_obj.update_previous_model(prev_model)
-                values[i] = model.read(
-                    chunk,
-                    cursor,
-                    context,
-                    file,
-                    selffile,
-                    parent,
-                    header=header,
-                )
+                    with uproot._awkward_forth.UnwindProtect(forth_obj, forth_obj.previous_model):
+                        values[i] = model.read(
+                            chunk,
+                            cursor,
+                            context,
+                            file,
+                            selffile,
+                            parent,
+                            header=header,
+                        )
+                else:
+                    values[i] = model.read(
+                            chunk,
+                            cursor,
+                            context,
+                            file,
+                            selffile,
+                            parent,
+                            header=header,
+                        )
 
         else:
             for i in range(length):
@@ -735,19 +744,23 @@ in file {selffile.file_path}"""
                             f"repeat\nswap node{offsets_num}-offsets +<- stack drop\n"
                         )
                     forth_obj.add_node_to_model(forth_stash)
-                    forth_obj.update_previous_model(forth_stash)
                     forth_obj.append_form_key(f"node{offsets_num}")
 
                 out = []
                 if forth_obj is not None:
                     # These two attributes in ForthGenerator need to be the same each iteration, but are changed in .read()
                     temp_count = forth_obj.get_key_number()
-                    prev_model = forth_obj.previous_model
                 while cursor.displacement(start_cursor) < num_bytes:
                     if forth_obj is not None:
                         forth_obj.update_key_number(temp_count)
-                        forth_obj.update_previous_model(prev_model)
-                    out.append(
+                        with uproot._awkward_forth.UnwindProtect(forth_obj, forth_stash):
+                            out.append(
+                                self._values.read(
+                                    chunk, cursor, context, file, selffile, parent
+                                )
+                            )
+                    else:
+                        out.append(
                         self._values.read(
                             chunk, cursor, context, file, selffile, parent
                         )
@@ -794,21 +807,25 @@ in file {selffile.file_path}"""
                         )
                     forth_obj.append_form_key(f"node{offsets_num}-offsets")
                     forth_obj.add_node_to_model(forth_stash)
-                    forth_obj.update_previous_model(forth_stash)
                 out = []
                 if forth_obj is not None:
                     # These two attributes in ForthGenerator need to be the same each iteration, but are changed in .read()
                     temp_count = forth_obj.get_key_number()
-                    prev_model = forth_obj.previous_model
                 while cursor.index < chunk.stop:
                     if forth_obj is not None:
                         forth_obj.update_key_number(temp_count)
-                        forth_obj.update_previous_model(prev_model)
-                    out.append(
-                        self._values.read(
-                            chunk, cursor, context, file, selffile, parent
+                        with uproot._awkward_forth.UnwindProtect(forth_obj,forth_stash):
+                            out.append(
+                                self._values.read(
+                                    chunk, cursor, context, file, selffile, parent
+                                )
+                            )
+                    else:
+                        out.append(
+                            self._values.read(
+                                chunk, cursor, context, file, selffile, parent
+                            )
                         )
-                    )
                 return uproot._util.objectarray1d(out).reshape(-1, *self.inner_shape)
 
 

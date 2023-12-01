@@ -356,18 +356,16 @@ input stream
             )
 
             context["forth"].gen.update_key_number(value=0)
-            context["forth"].gen.update_previous_model(
-                uproot._awkward_forth.Node("TOP")
-            )
 
-            output[i] = self._model.read(
-                chunk,
-                cursor,
-                context,
-                branch.file,
-                branch.file.detached,
-                branch,
-            )
+            with uproot._awkward_forth.UnwindProtect(context["forth"].gen, uproot._awkward_forth.Node("TOP")):
+                output[i] = self._model.read(
+                    chunk,
+                    cursor,
+                    context,
+                    branch.file,
+                    branch.file.detached,
+                    branch,
+                )
 
             # print(json.dumps(context["forth"].gen.awkward_model.get_dict(), indent=4))
             # context["forth"].gen._debug_forth()

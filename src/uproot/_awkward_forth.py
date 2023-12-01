@@ -239,6 +239,19 @@ class Node:
 
             return out
 
+class UnwindProtect:
+    def __init__(self, forth_obj, temporary_model):
+        self.forth_obj = forth_obj
+        self.temporary_model = temporary_model
+        self.old_model = None
+
+    def __enter__(self):
+        self.old_model = self.forth_obj.previous_model
+        self.forth_obj.update_previous_model(self.temporary_model)
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.forth_obj.update_previous_model(self.old_model)
+
 
 def convert_dtype(format):
     """Takes datatype codes from classses and returns the full datatype name.
