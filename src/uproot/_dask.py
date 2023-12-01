@@ -949,7 +949,7 @@ class UprootReadMixin:
             behavior=self.form_mapping_info.behavior,
         )
 
-    def mock_empty(self, backend="cpu") -> AwkArray:
+    def mock_empty(self, backend) -> AwkArray:
         awkward = uproot.extras.awkward()
         return awkward.to_backend(
             self.expected_form.length_zero_array(highlevel=False),
@@ -1334,7 +1334,7 @@ which has {entry_stop} entries"""
             partition_args,
             divisions=tuple(divisions),
             label="from-uproot",
-            empty_on_raise=(Exception,),
+            empty_on_raise=(OSError,)
             empty_backend="cpu",
         )
 
@@ -1439,7 +1439,7 @@ def _get_dak_array_delay_open(
             partition_args,
             divisions=None if divisions is None else tuple(divisions),
             label="from-uproot",
-            empty_on_raise=(Exception,),
+            empty_on_raise=(OSError,),
             empty_backend="cpu",
         )
 
