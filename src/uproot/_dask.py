@@ -949,10 +949,12 @@ class UprootReadMixin:
             behavior=self.form_mapping_info.behavior,
         )
 
-    def mock_empty(self) -> AwkArray:
+    def mock_empty(self, backend="cpu") -> AwkArray:
         awkward = uproot.extras.awkward()
-        return awkward.Array(
+        return awkward.to_backend(
             self.expected_form.length_zero_array(highlevel=False),
+            backend=backend,
+            highlevel=True,
             behavior=self.form_mapping_info.behavior,
         )
 
