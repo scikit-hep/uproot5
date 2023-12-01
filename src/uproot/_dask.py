@@ -949,9 +949,9 @@ class UprootReadMixin:
             behavior=self.form_mapping_info.behavior,
         )
 
-    def mock_empty() -> AwkArray:
+    def mock_empty(self) -> AwkArray:
         awkward = uproot.extras.awkward()
-        return ak.Array(
+        return awkward.Array(
             self.expected_form.length_zero_array(highlevel=False),
             behavior=self.form_mapping_info.behavior,
         )
