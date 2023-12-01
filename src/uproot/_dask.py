@@ -949,6 +949,13 @@ class UprootReadMixin:
             behavior=self.form_mapping_info.behavior,
         )
 
+    def mock_empty() -> AwkArray:
+        awkward = uproot.extras.awkward()
+        return ak.Array(
+            self.expected_form.length_zero_array(highlevel=False),
+            behavior=self.form_mapping_info.behavior,
+        )
+
     def prepare_for_projection(self) -> tuple[AwkArray, TypeTracerReport, dict]:
         awkward = uproot.extras.awkward()
         dask_awkward = uproot.extras.dask_awkward()
