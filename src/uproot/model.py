@@ -812,7 +812,9 @@ class Model:
                     context["breadcrumbs"] = old_breadcrumbs
                     if forth_obj is not None:
                         forth_obj.add_node_to_model(forth_stash)
-                        with uproot._awkward_forth.UnwindProtect(forth_obj, forth_stash):
+                        with uproot._awkward_forth.UnwindProtect(
+                            forth_obj, forth_stash
+                        ):
                             temp_var = correct_cls.read(
                                 chunk,
                                 cursor,
@@ -824,14 +826,14 @@ class Model:
                             )
                     else:
                         temp_var = correct_cls.read(
-                                chunk,
-                                cursor,
-                                context,
-                                file,
-                                selffile,
-                                parent,
-                                concrete=concrete,
-                            )
+                            chunk,
+                            cursor,
+                            context,
+                            file,
+                            selffile,
+                            parent,
+                            concrete=concrete,
+                        )
 
                     return temp_var
 

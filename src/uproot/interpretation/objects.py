@@ -357,7 +357,9 @@ input stream
 
             context["forth"].gen.update_key_number(value=0)
 
-            with uproot._awkward_forth.UnwindProtect(context["forth"].gen, uproot._awkward_forth.Node("TOP")):
+            with uproot._awkward_forth.UnwindProtect(
+                context["forth"].gen, uproot._awkward_forth.Node("TOP")
+            ):
                 output[i] = self._model.read(
                     chunk,
                     cursor,

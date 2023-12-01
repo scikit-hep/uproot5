@@ -88,7 +88,9 @@ def _read_nested(
             for i in range(length):
                 if forth_obj is not None:
                     forth_obj.update_key_number(temp_count)
-                    with uproot._awkward_forth.UnwindProtect(forth_obj, forth_obj.previous_model):
+                    with uproot._awkward_forth.UnwindProtect(
+                        forth_obj, forth_obj.previous_model
+                    ):
                         values[i] = model.read(
                             chunk,
                             cursor,
@@ -100,14 +102,14 @@ def _read_nested(
                         )
                 else:
                     values[i] = model.read(
-                            chunk,
-                            cursor,
-                            context,
-                            file,
-                            selffile,
-                            parent,
-                            header=header,
-                        )
+                        chunk,
+                        cursor,
+                        context,
+                        file,
+                        selffile,
+                        parent,
+                        header=header,
+                    )
 
         else:
             for i in range(length):
@@ -753,7 +755,9 @@ in file {selffile.file_path}"""
                 while cursor.displacement(start_cursor) < num_bytes:
                     if forth_obj is not None:
                         forth_obj.update_key_number(temp_count)
-                        with uproot._awkward_forth.UnwindProtect(forth_obj, forth_stash):
+                        with uproot._awkward_forth.UnwindProtect(
+                            forth_obj, forth_stash
+                        ):
                             out.append(
                                 self._values.read(
                                     chunk, cursor, context, file, selffile, parent
@@ -761,10 +765,10 @@ in file {selffile.file_path}"""
                             )
                     else:
                         out.append(
-                        self._values.read(
-                            chunk, cursor, context, file, selffile, parent
+                            self._values.read(
+                                chunk, cursor, context, file, selffile, parent
+                            )
                         )
-                    )
 
                 if self._header and header:
                     uproot.deserialization.numbytes_check(
@@ -814,7 +818,9 @@ in file {selffile.file_path}"""
                 while cursor.index < chunk.stop:
                     if forth_obj is not None:
                         forth_obj.update_key_number(temp_count)
-                        with uproot._awkward_forth.UnwindProtect(forth_obj,forth_stash):
+                        with uproot._awkward_forth.UnwindProtect(
+                            forth_obj, forth_stash
+                        ):
                             out.append(
                                 self._values.read(
                                     chunk, cursor, context, file, selffile, parent

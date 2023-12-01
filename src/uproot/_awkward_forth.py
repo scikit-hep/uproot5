@@ -239,6 +239,7 @@ class Node:
 
             return out
 
+
 class UnwindProtect:
     def __init__(self, forth_obj, temporary_model):
         self.forth_obj = forth_obj
