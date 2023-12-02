@@ -1334,7 +1334,7 @@ which has {entry_stop} entries"""
             partition_args,
             divisions=tuple(divisions),
             label="from-uproot",
-            empty_on_raise=(OSError,)
+            empty_on_raise=(OSError,),
             empty_backend="cpu",
         )
 
