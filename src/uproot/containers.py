@@ -1145,11 +1145,15 @@ class AsVector(AsContainer):
                     forth_stash.add_to_post("loop\n")
 
                 forth_obj.add_node_to_model(forth_stash)
+                hold_previous_model = forth_obj.previous_model
                 forth_obj.update_previous_model(forth_stash)
 
             values = _read_nested(
                 self._values, length, chunk, cursor, context, file, selffile, parent
             )
+
+            if forth_obj is not None:
+                forth_obj.update_previous_model(hold_previous_model)
 
         out = STLVector(values)
 
