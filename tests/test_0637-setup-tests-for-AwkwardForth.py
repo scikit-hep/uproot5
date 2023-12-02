@@ -349,7 +349,6 @@ def test_07(is_forth):
             assert interp._complete_forth_code is not None
 
 
-# @pytest.mark.skip(reason="AwkwardForth generation not implemented for this case.")
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_08(is_forth):
     # see AwkwardForth testing: A, B, E, P (previously, this hadn't been tested: library="np")
@@ -486,7 +485,6 @@ def test_10(is_forth):
             assert interp._complete_forth_code is not None
 
 
-@pytest.mark.skip(reason="AwkwardForth generation not implemented for this case.")
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_11(is_forth):
     # see AwkwardForth testing: A, B, E, P
@@ -537,7 +535,6 @@ def test_11(is_forth):
             assert interp._complete_forth_code is not None
 
 
-@pytest.mark.skip(reason="AwkwardForth generation not implemented for this case.")
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_12(is_forth):
     # see AwkwardForth testing: A, B, E, P
@@ -586,7 +583,6 @@ def test_12(is_forth):
             assert interp._complete_forth_code is not None
 
 
-@pytest.mark.skip(reason="AwkwardForth generation not implemented for this case.")
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_13(is_forth):
     # see AwkwardForth testing: A, B, E, P

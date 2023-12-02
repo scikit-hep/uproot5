@@ -227,9 +227,13 @@ class Node:
             for child in self._children:
                 if child.name.startswith("base-class "):
                     assert len(child._children) == 1
-                    assert child._children[0].name.startswith("start-of-model ")
-                    assert len(child._children[0]._children) == 1
-                    base_form = child._children[0]._children[0].derive_form()
+                    descendant = child._children[0]
+                    if descendant.name.startswith("dispatch-by-version "):
+                        assert len(descendant._children) == 1
+                        descendant = descendant._children[0]
+                    assert descendant.name.startswith("start-of-model ")
+                    assert len(descendant._children) == 1
+                    base_form = descendant._children[0].derive_form()
                     out["fields"].extend(base_form["fields"])
                     out["contents"].extend(base_form["contents"])
                 else:
