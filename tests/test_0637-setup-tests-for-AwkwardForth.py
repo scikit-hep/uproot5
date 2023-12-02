@@ -864,7 +864,6 @@ def test_23(is_forth):
         assert py.layout.form == interp.awkward_form(branch.file)
 
 
-@pytest.mark.skip(reason="AwkwardForth generation not implemented for this case.")
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_24(is_forth):
     # see AwkwardForth testing: N, P
@@ -907,7 +906,6 @@ def test_24(is_forth):
             assert interp._complete_forth_code is not None
 
 
-@pytest.mark.skip(reason="AwkwardForth generation not implemented for this case.")
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_25(is_forth):
     # see AwkwardForth testing: L, N
@@ -957,7 +955,6 @@ def test_26():
         # py[-1] == array([<STLVector [] at 0x7f5060ef49d0>], dtype=object)
 
 
-@pytest.mark.skip(reason="AwkwardForth generation not implemented for this case.")
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_27(is_forth):
     # see AwkwardForth testing: L, N, P
@@ -1004,7 +1001,6 @@ def test_27(is_forth):
             assert interp._complete_forth_code is not None
 
 
-@pytest.mark.skip(reason="AwkwardForth generation not implemented for this case.")
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_28(is_forth):
     # see AwkwardForth testing: N, P
@@ -1057,7 +1053,6 @@ def test_29():
         # py[-1] == <JPetGeantEventInformation (version 3) at 0x7fd5bdeedac0>
 
 
-@pytest.mark.skip(reason="AwkwardForth generation not implemented for this case.")
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_30(is_forth):
     # see AwkwardForth testing: L, N
@@ -1864,7 +1859,6 @@ def test_50():
         # py[-1] == <STLVector [] at 0x7f769cbf0bb0>
 
 
-@pytest.mark.skip(reason="AwkwardForth generation not implemented for this case.")
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_51(is_forth):
     # see AwkwardForth testing: L, N

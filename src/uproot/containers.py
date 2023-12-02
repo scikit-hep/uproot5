@@ -708,14 +708,14 @@ class AsArray(AsContainer):
                         "size": f"{self.inner_shape[0]}",
                     },
                     "parameters": {},
-                    "form_key": "node{offsets_num}",
+                    "form_key": f"node{offsets_num}",
                 }
             else:
                 temp_form = {
                     "class": "ListOffsetArray",
                     "offsets": "i64",
                     "parameters": {},
-                    "form_key": "node{offsets_num}",
+                    "form_key": f"node{offsets_num}",
                 }
 
             forth_stash = uproot._awkward_forth.Node(
@@ -735,6 +735,11 @@ class AsArray(AsContainer):
                     f"""memberwise serialization of {type(self).__name__}
 in file {selffile.file_path}"""
                 )
+
+            if forth_obj is not None:
+                temp_jump = cursor._index - start_cursor._index
+                if temp_jump != 0:
+                    forth_stash.add_to_pre(f"{temp_jump} stream skip\n")
 
             if isinstance(self._values, numpy.dtype):
                 remainder = chunk.get(
