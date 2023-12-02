@@ -700,9 +700,9 @@ class AsArray(AsContainer):
             offsets_num = forth_obj.get_key_number()
             forth_obj.increment_key_number()
             if len(self.inner_shape) > 0:
-                temp_form = f'{{ "class":"ListOffsetArray", "offsets":"i64", "content": {{"class": "RegularArray", "size": {self.inner_shape[0]}}}, "parameters": {{}}, "form_key": "node{offsets_num}"}}'
+                temp_form = { "class":"ListOffsetArray", "offsets":"i64", "content": {"class": "RegularArray", "size": f'{self.inner_shape[0]}'}, "parameters": {}, "form_key": "node{offsets_num}"}
             else:
-                temp_form = f'{{ "class":"ListOffsetArray", "offsets":"i64", "parameters": {{}}, "form_key": "node{offsets_num}"}}'
+                temp_form = {"class":"ListOffsetArray", "offsets":"i64", "parameters": {}, "form_key": "node{offsets_num}"}
 
             forth_stash = uproot._awkward_forth.Node(
                 f"node{offsets_num}",
