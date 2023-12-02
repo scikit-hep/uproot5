@@ -182,7 +182,9 @@ class Node:
         self._name = new_name
 
     def derive_form(self):
-        if self._form_details.get("class") == "NumpyArray":
+        if self._name.endswith(":prebuilt"):
+            return self._form_details
+        elif self._form_details.get("class") == "NumpyArray":
             assert len(self._children) == 0
             return self._form_details
 
