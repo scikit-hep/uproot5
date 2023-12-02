@@ -99,6 +99,7 @@ class Node:
         init_code=None,
         header_code=None,
         form_details=None,
+        field_name=None,
         children=None,
     ):
         self._name = name
@@ -108,6 +109,7 @@ class Node:
         self._init_code = "" if init_code is None else init_code
         self._header_code = "" if header_code is None else header_code
         self._form_details = {} if form_details is None else form_details
+        self._field_name = field_name
         self._children = [] if children is None else children
 
     def __str__(self) -> str:
@@ -144,6 +146,10 @@ class Node:
         return self._form_details
 
     @property
+    def field_name(self):
+        return self._field_name
+
+    @property
     def children(self):
         return self._children
 
@@ -166,6 +172,9 @@ class Node:
     def add_form_details(self, form_details):
         self._form_details = form_details
 
+    def change_field_name(self, new_name):
+        self._field_name = new_name
+
     def add_child(self, child):
         self._children.append(child)
 
@@ -177,7 +186,7 @@ class Node:
             assert len(self._children) == 0
             return self._form_details
 
-        elif self._form_details.get("class") == "ListOffsetArray":
+        elif self._form_details.get("class") in ("ListOffsetArray", "RegularArray"):
             out = dict(self._form_details)
 
             if (
@@ -205,8 +214,14 @@ class Node:
                 return out
 
             assert len(self._children) == 1
+            returnme = out
+            while out.get("content", {}).get("class") in (
+                "ListOffsetArray",
+                "RegularArray",
+            ):
+                out = out["content"]
             out["content"] = self._children[0].derive_form()
-            return out
+            return returnme
 
         elif (
             self._name == "TOP"
@@ -218,6 +233,7 @@ class Node:
             return self._children[0].derive_form()
 
         else:
+            # import json
             # print(json.dumps(self.get_dict(), indent=4))
 
             out = dict(self._form_details)
@@ -237,10 +253,8 @@ class Node:
                     out["fields"].extend(base_form["fields"])
                     out["contents"].extend(base_form["contents"])
                 else:
-                    assert ":" in child.name
-                    out["fields"].append(child.name.split(":", 1)[-1])
+                    out["fields"].append(child.field_name)
                     out["contents"].append(child.derive_form())
-
             return out
 
 

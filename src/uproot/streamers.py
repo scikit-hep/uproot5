@@ -708,6 +708,7 @@ class Model_TStreamerBase(Model_TStreamerElement):
             [
                 "        if forth_obj is not None:",
                 "            nested_forth_stash = uproot._awkward_forth.Node(f'base-class {forth_obj.get_key_number()}')",
+                "            forth_obj.increment_key_number()",
                 "            forth_obj.add_node_to_model(nested_forth_stash)",
                 "            with uproot._awkward_forth.UnwindProtect(forth_obj, nested_forth_stash):",
                 f"                 self._bases.append(c({self.name!r}, {self.base_version!r}).read(chunk, cursor, context, file, self._file, self._parent, concrete=self.concrete))",
@@ -961,20 +962,21 @@ class Model_TStreamerBasicType(Model_TStreamerElement):
                             "            key = forth_obj.get_key_number()",
                             "            forth_obj.increment_key_number()",
                             '            form_key = f"node{key}-data"',
-                            f'            forth_stash.add_to_header(f"output node{{key}}-data {uproot._awkward_forth.convert_dtype(formats[-1][0])}\\n")',
-                            f'            content[{fields[-1][0]!r}] = {{ "class": "NumpyArray", "primitive": "{uproot._awkward_forth.convert_dtype(formats[-1][0])}", "inner_shape": [], "parameters": {{}}, "form_key": f"node{{key}}"}}',
+                            f'            nested_forth_stash = uproot._awkward_forth.Node(f"node{{key}}", field_name={fields[-1][0]!r}, form_details={{ "class": "NumpyArray", "primitive": "{uproot._awkward_forth.convert_dtype(formats[-1][0])}", "inner_shape": [], "parameters": {{}}, "form_key": f"node{{key}}"}})',
+                            f'            nested_forth_stash.add_to_header(f"output node{{key}}-data {uproot._awkward_forth.convert_dtype(formats[-1][0])}\\n")',
+                            "            forth_obj.add_node_to_model(nested_forth_stash)",
                         ]
                     )
                     if fields[-1][0] in COUNT_NAMES:
                         read_members.extend(
                             [
-                                f'            forth_stash.add_to_init(f"variable var_{fields[-1][0]}\\n")',
-                                f'            forth_stash.add_to_pre(f"stream !{formats[-1][0]}-> stack dup var_{fields[-1][0]} ! node{{key}}-data <- stack\\n")',
+                                f'            nested_forth_stash.add_to_init(f"variable var_{fields[-1][0]}\\n")',
+                                f'            nested_forth_stash.add_to_pre(f"stream !{formats[-1][0]}-> stack dup var_{fields[-1][0]} ! node{{key}}-data <- stack\\n")',
                             ]
                         )
                     else:
                         read_members.append(
-                            f'            forth_stash.add_to_pre(f"stream !{formats[-1][0]}-> node{{key}}-data\\n")'
+                            f'            nested_forth_stash.add_to_pre(f"stream !{formats[-1][0]}-> node{{key}}-data\\n")'
                         )
                     read_members.extend(
                         [
@@ -991,9 +993,10 @@ class Model_TStreamerBasicType(Model_TStreamerElement):
                             [
                                 "           key = forth_obj.get_key_number()",
                                 '           form_key = f"node{key}-data"',
-                                f'           forth_stash.add_to_header(f"output {{form_key}} {uproot._awkward_forth.convert_dtype(formats[0][i])}\\n")',
-                                f'           forth_stash.add_to_pre(f"stream !{formats[0][i]}-> {{form_key}}\\n")',
-                                f'           forth_obj.add_node_to_model(uproot._awkward_forth.Node(f"node{{key}} field :" + {fields[0][i]!r}, form_details={{ "class": "NumpyArray", "primitive": "{uproot._awkward_forth.convert_dtype(formats[0][i])}", "inner_shape": [], "parameters": {{}}, "form_key": f"node{{key}}"}}))',
+                                f'           nested_forth_stash = uproot._awkward_forth.Node(f"node{{key}}", field_name={fields[0][i]!r}, form_details={{ "class": "NumpyArray", "primitive": "{uproot._awkward_forth.convert_dtype(formats[0][i])}", "inner_shape": [], "parameters": {{}}, "form_key": f"node{{key}}"}})',
+                                f'           nested_forth_stash.add_to_header(f"output {{form_key}} {uproot._awkward_forth.convert_dtype(formats[0][i])}\\n")',
+                                f'           nested_forth_stash.add_to_pre(f"stream !{formats[0][i]}-> {{form_key}}\\n")',
+                                "           forth_obj.add_node_to_model(nested_forth_stash)",
                                 "           forth_obj.append_form_key(form_key)",
                                 "           forth_obj.increment_key_number()",
                             ]
@@ -1532,6 +1535,9 @@ class TStreamerObjectTypes:
         read_members.extend(
             [
                 f"        self._members[{self.name!r}] = c({self.typename.rstrip('*')!r}).read(chunk, cursor, context, file, self._file, self.concrete)",
+                "        if forth_obj is not None:",
+                "            if len(forth_obj.previous_model.children) != 0:",
+                f"                forth_obj.previous_model.children[-1].change_field_name({self.name!r})",
             ]
         )
 

@@ -81,39 +81,37 @@ def _read_nested(
 
     else:
         values = numpy.empty(length, dtype=_stl_object_type)
-        if isinstance(model, AsContainer):
-            if forth_obj is not None:
-                # These two attributes in ForthGenerator need to be the same each iteration, but are changed in .read()
-                temp_count = forth_obj.key_number
-            for i in range(length):
-                if forth_obj is not None:
-                    forth_obj.update_key_number(temp_count)
-                    with uproot._awkward_forth.UnwindProtect(
-                        forth_obj, forth_obj.previous_model
-                    ):
-                        values[i] = model.read(
-                            chunk,
-                            cursor,
-                            context,
-                            file,
-                            selffile,
-                            parent,
-                            header=header,
-                        )
-                else:
-                    values[i] = model.read(
-                        chunk,
-                        cursor,
-                        context,
-                        file,
-                        selffile,
-                        parent,
-                        header=header,
-                    )
 
-        else:
-            for i in range(length):
-                values[i] = model.read(chunk, cursor, context, file, selffile, parent)
+        if forth_obj is not None:
+            # These two attributes in ForthGenerator need to be the same each iteration, but are changed in .read()
+            temp_count = forth_obj.key_number
+            prev_model = forth_obj.previous_model
+
+        for i in range(length):
+            if forth_obj is not None:
+                forth_obj.update_key_number(temp_count)
+                forth_obj.update_previous_model(prev_model)
+
+            if isinstance(model, AsContainer):
+                values[i] = model.read(
+                    chunk,
+                    cursor,
+                    context,
+                    file,
+                    selffile,
+                    parent,
+                    header=header,
+                )
+            else:
+                values[i] = model.read(
+                    chunk,
+                    cursor,
+                    context,
+                    file,
+                    selffile,
+                    parent,
+                )
+
         return values
 
 
@@ -705,7 +703,7 @@ class AsArray(AsContainer):
                     "offsets": "i64",
                     "content": {
                         "class": "RegularArray",
-                        "size": f"{self.inner_shape[0]}",
+                        "size": self.inner_shape[0],
                     },
                     "parameters": {},
                     "form_key": f"node{offsets_num}",
@@ -1152,6 +1150,7 @@ class AsVector(AsContainer):
             values = _read_nested(
                 self._values, length, chunk, cursor, context, file, selffile, parent
             )
+
         out = STLVector(values)
 
         if self._header and header:
