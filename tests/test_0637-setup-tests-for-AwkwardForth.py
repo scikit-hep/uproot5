@@ -1237,7 +1237,6 @@ def test_34(is_forth):
             assert interp._complete_forth_code is not None
 
 
-@pytest.mark.skip(reason="AwkwardForth generation not implemented for this case.")
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_35(is_forth):
     # see AwkwardForth testing: A, E, G, L, R
@@ -1582,7 +1581,6 @@ def test_38(is_forth):
             assert interp._complete_forth_code is not None
 
 
-@pytest.mark.skip(reason="AwkwardForth generation not implemented for this case.")
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_39(is_forth):
     # see AwkwardForth testing: A, E, G, L, R
@@ -1773,7 +1771,6 @@ def test_46():
         # py[-1] == <STLVector [<allpix::MCParticle (version 6) at 0x7f94bc223760>, ...] at 0x7f94bc223550>
 
 
-@pytest.mark.skip(reason="AwkwardForth generation not implemented for this case.")
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_47(is_forth):
     # see AwkwardForth testing: A, E, G, L, R
@@ -1994,7 +1991,7 @@ def test_53(is_forth):
             assert interp._complete_forth_code is not None
 
 
-@pytest.mark.parametrize("is_forth", [True])  # FIXME: False,
+@pytest.mark.parametrize("is_forth", [False, True])
 def test_54(is_forth):
     # see AwkwardForth testing: (none?)
     # Expected AwkwardForth code:
