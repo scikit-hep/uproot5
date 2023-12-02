@@ -1698,6 +1698,7 @@ def test_42(is_forth):
         # py[-1] == <STLVector [] at 0x7feac87629a0>
         assert py.layout.form == interp.awkward_form(branch.file)
 
+
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_43(is_forth):
     # see AwkwardForth testing: P
