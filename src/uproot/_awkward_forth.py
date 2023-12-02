@@ -197,7 +197,8 @@ class Node:
                 return out
 
             elif len(self._children) == 0:
-                out["content"] = "NULL"
+                if out.get("content", {}).get("class") != "NumpyArray":
+                    out["content"] = "NULL"
                 return out
 
             elif (
@@ -240,20 +241,28 @@ class Node:
             out["class"] = "RecordArray"
             out["fields"] = []
             out["contents"] = []
-            for child in self._children:
+            for child in self.children:
                 if child.name.startswith("base-class "):
-                    assert len(child._children) == 1
-                    descendant = child._children[0]
+                    assert len(child.children) == 1
+                    descendant = child.children[0]
                     if descendant.name.startswith("dispatch-by-version "):
-                        assert len(descendant._children) == 1
-                        descendant = descendant._children[0]
+                        assert len(descendant.children) == 1
+                        descendant = descendant.children[0]
                     assert descendant.name.startswith("start-of-model ")
-                    assert len(descendant._children) == 1
-                    base_form = descendant._children[0].derive_form()
+                    assert len(descendant.children) == 1
+                    base_form = descendant.children[0].derive_form()
                     out["fields"].extend(base_form["fields"])
                     out["contents"].extend(base_form["contents"])
                 else:
-                    out["fields"].append(child.field_name)
+                    descendant = child
+                    while descendant.field_name is None:
+                        assert descendant.form_details.get("class") in (
+                            "ListOffsetArray",
+                            "RegularArray",
+                        )
+                        assert len(descendant.children) == 1
+                        descendant = descendant.children[0]
+                    out["fields"].append(descendant.field_name)
                     out["contents"].append(child.derive_form())
             return out
 

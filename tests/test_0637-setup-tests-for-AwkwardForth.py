@@ -1700,7 +1700,6 @@ def test_43(is_forth):
         assert py.layout.form == interp.awkward_form(branch.file)
 
 
-@pytest.mark.skip(reason="AwkwardForth generation not implemented for this case.")
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_44(is_forth):
     # see AwkwardForth testing: A, C, D, F, G, P

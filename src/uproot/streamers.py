@@ -836,8 +836,22 @@ class Model_TStreamerBasicPointer(Model_TStreamerElement):
                 [
                     "        if context.get('speedbump', True):",
                     "            cursor.skip(1)",
+                    "        if forth_obj is not None:",
+                    "            key = forth_obj.get_key_number()",
+                    "            forth_obj.increment_key_number()",
+                    "            key2 = forth_obj.get_key_number()",
+                    "            forth_obj.increment_key_number()",
+                    f'            nested_forth_stash = uproot._awkward_forth.Node(f"node{{key}}", field_name={self.name!r}, form_details={{"class": "ListOffsetArray", "offsets": "i64", "content": {{ "class": "NumpyArray", "primitive": f"{{uproot._awkward_forth.convert_dtype(uproot._awkward_forth.symbol_dict[self._dtype{len(dtypes)}])}}", "inner_shape": [], "parameters": {{}}, "form_key": f"node{{key}}"}}, "form_key": f"node{{key2}}"}})',
+                    "            if context.get('speedbump', True):",
+                    "                nested_forth_stash.add_to_pre('1 stream skip \\n')",
+                    f'            nested_forth_stash.add_to_header(f"output node{{key}}-data {{uproot._awkward_forth.convert_dtype(uproot._awkward_forth.symbol_dict[self._dtype{len(dtypes)}])}}\\n")',
+                    '            nested_forth_stash.add_to_header(f"output node{key2}-offsets int64\\n")',
+                    '            nested_forth_stash.add_to_init(f"0 node{key2}-offsets <- stack\\n")',
+                    f'            nested_forth_stash.add_to_pre(f" var_{self.count_name} @ dup node{{key2}}-offsets +<- stack \\n stream #!{{uproot._awkward_forth.symbol_dict[self._dtype{len(dtypes)}]}}-> node{{key}}-data\\n")',
+                    "            forth_obj.add_node_to_model(nested_forth_stash)",
                 ]
             )
+
             read_member_n.extend(
                 [
                     "            if context.get('speedbump', True):",
@@ -845,7 +859,6 @@ class Model_TStreamerBasicPointer(Model_TStreamerElement):
                 ]
             )
 
-        # FIXME: this doesn't do any AwkwardForth handling at all; it *will* be wrong.
         read_members.append(
             f"        self._members[{self.name!r}] = cursor.array(chunk, self.member({self.count_name!r}), tmp, context);\n"
         )
@@ -1019,9 +1032,19 @@ class Model_TStreamerBasicType(Model_TStreamerElement):
 
         else:
             # AwkwardForth testing F: test_0637's 44,56
-            # FIXME: this doesn't do any AwkwardForth handling at all; it *will* be wrong.
             read_members.extend(
                 [
+                    "        if forth_obj is not None:",
+                    "            key = forth_obj.get_key_number()",
+                    "            forth_obj.increment_key_number()",
+                    "            key2 = forth_obj.get_key_number()",
+                    "            forth_obj.increment_key_number()",
+                    f'            nested_forth_stash = uproot._awkward_forth.Node(f"node{{key}}", field_name={self.name!r}, form_details={{"class": "RegularArray", "size": {self.array_length}, "content": {{ "class": "NumpyArray", "primitive": f"{{uproot._awkward_forth.convert_dtype(uproot._awkward_forth.symbol_dict[self._dtype{len(dtypes)}])}}", "inner_shape": [], "parameters": {{}}, "form_key": f"node{{key}}"}}, "form_key": f"node{{key2}}"}})',
+                    f'            nested_forth_stash.add_to_header(f"output node{{key}}-data {{uproot._awkward_forth.convert_dtype(uproot._awkward_forth.symbol_dict[self._dtype{len(dtypes)}])}}\\n")',
+                    '            nested_forth_stash.add_to_header(f"output node{key2}-offsets int64\\n")',
+                    '            nested_forth_stash.add_to_init(f"0 node{key2}-offsets <- stack\\n")',
+                    f'            nested_forth_stash.add_to_pre(f"{self.array_length} dup node{{key2}}-offsets +<- stack \\n stream #!{{uproot._awkward_forth.symbol_dict[self._dtype{len(dtypes)}]}}-> node{{key}}-data\\n")',
+                    "            forth_obj.add_node_to_model(nested_forth_stash)",
                     f"        self._members[{self.name!r}] = cursor.array(chunk, {self.array_length}, self._dtype{len(dtypes)}, context)",
                 ]
             )
