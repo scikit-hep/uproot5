@@ -219,6 +219,7 @@ class Model_TStreamerInfo(uproot.model.Model):
             "            forth_obj.add_node_to_model(forth_stash)",
             "            forth_obj.update_previous_model(forth_stash)",
             "            hold_key_number = forth_obj.get_key_number()",
+            "            content = {}",  # FIXME: get rid of this
             "            forth_obj.increment_key_number()",
         ]
         read_member_n = [
