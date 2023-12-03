@@ -6,6 +6,7 @@ This module defines a versionless model of ``TString``.
 
 
 import uproot
+import uproot._awkward_forth
 
 
 class Model_TString(uproot.model.Model, str):
@@ -24,6 +25,37 @@ class Model_TString(uproot.model.Model, str):
                 f"""memberwise serialization of {type(self).__name__}
 in file {self.file.file_path}"""
             )
+        forth_obj = uproot._awkward_forth.get_forth_obj(context)
+        if forth_obj is not None:
+            offsets_num = forth_obj.next_key_number()
+            data_num = forth_obj.next_key_number()
+            nested_forth_stash = uproot._awkward_forth.Node(
+                f"node{offsets_num} TString",
+                form_details={
+                    "class": "ListOffsetArray",
+                    "offsets": "i64",
+                    "content": {
+                        "class": "NumpyArray",
+                        "primitive": "uint8",
+                        "inner_shape": [],
+                        "parameters": {"__array__": "char"},
+                        "form_key": f"node{data_num}",
+                    },
+                    "parameters": {"__array__": "string"},
+                    "form_key": f"node{offsets_num}",
+                },
+            )
+            nested_forth_stash.add_to_pre(
+                f" stream !B-> stack dup 255 = if drop stream !I-> stack then dup node{offsets_num}-offsets +<- stack stream #!B-> node{data_num}-data\n"
+            )
+            nested_forth_stash.add_to_header(
+                f"output node{offsets_num}-offsets int64\noutput node{data_num}-data uint8\n"
+            )
+            nested_forth_stash.add_to_init(
+                f"0 node{offsets_num}-offsets <- stack\n"
+            )
+            forth_obj.add_node_to_model(nested_forth_stash)
+
         self._data = cursor.string(chunk, context)
 
     def postprocess(self, chunk, cursor, context, file):
