@@ -1455,7 +1455,7 @@ class TStreamerPointerTypes:
             # AwkwardForth testing I: test_0637's (none! untested!)
             read_members.extend(
                 [
-                    f"        self._members[{self.name!r}] = read_object_any(chunk, cursor, context, file, self._file, self)"
+                    f"        self._members[{self.name!r}] = read_object_any(chunk, cursor, context, file, self._file, self)",
                     "        if forth_obj is not None:",
                     "            if len(forth_obj.previous_model.children) != 0:",
                     f"                forth_obj.previous_model.children[-1].change_field_name({self.name!r})",
