@@ -778,7 +778,9 @@ in file {selffile.file_path}"""
                                     chunk,
                                     cursor,
                                     uproot._awkward_forth.add_to_path(
-                                        forth_obj, context, uproot._awkward_forth.SpecialPathItem("item")
+                                        forth_obj,
+                                        context,
+                                        uproot._awkward_forth.SpecialPathItem("item"),
                                     ),
                                     file,
                                     selffile,
@@ -788,9 +790,16 @@ in file {selffile.file_path}"""
                     else:
                         out.append(
                             self._values.read(
-                                chunk, cursor, uproot._awkward_forth.add_to_path(
-                forth_obj, context, uproot._awkward_forth.SpecialPathItem("item")
-            ), file, selffile, parent
+                                chunk,
+                                cursor,
+                                uproot._awkward_forth.add_to_path(
+                                    forth_obj,
+                                    context,
+                                    uproot._awkward_forth.SpecialPathItem("item"),
+                                ),
+                                file,
+                                selffile,
+                                parent,
                             )
                         )
 
@@ -843,17 +852,31 @@ in file {selffile.file_path}"""
                         ):
                             out.append(
                                 self._values.read(
-                                    chunk, cursor, uproot._awkward_forth.add_to_path(
-                forth_obj, context, uproot._awkward_forth.SpecialPathItem("item")
-            ), file, selffile, parent
+                                    chunk,
+                                    cursor,
+                                    uproot._awkward_forth.add_to_path(
+                                        forth_obj,
+                                        context,
+                                        uproot._awkward_forth.SpecialPathItem("item"),
+                                    ),
+                                    file,
+                                    selffile,
+                                    parent,
                                 )
                             )
                     else:
                         out.append(
                             self._values.read(
-                                chunk, cursor, uproot._awkward_forth.add_to_path(
-                forth_obj, context, uproot._awkward_forth.SpecialPathItem("item")
-            ), file, selffile, parent
+                                chunk,
+                                cursor,
+                                uproot._awkward_forth.add_to_path(
+                                    forth_obj,
+                                    context,
+                                    uproot._awkward_forth.SpecialPathItem("item"),
+                                ),
+                                file,
+                                selffile,
+                                parent,
                             )
                         )
                 return uproot._util.objectarray1d(out).reshape(-1, *self.inner_shape)

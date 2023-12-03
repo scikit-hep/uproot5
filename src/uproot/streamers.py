@@ -835,8 +835,8 @@ class Model_TStreamerBasicPointer(Model_TStreamerElement):
                     "        if context.get('speedbump', True):",
                     "            cursor.skip(1)",
                     "        if forth_obj is not None:",
-                     "            key = key_number ; key_number += 1",
-                     "            key2 = key_number ; key_number += 1",
+                    "            key = key_number ; key_number += 1",
+                    "            key2 = key_number ; key_number += 1",
                     f'            nested_forth_stash = uproot._awkward_forth.Node(f"node{{key}}", field_name={self.name!r}, form_details={{"class": "ListOffsetArray", "offsets": "i64", "content": {{ "class": "NumpyArray", "primitive": f"{{uproot._awkward_forth.convert_dtype(uproot._awkward_forth.symbol_dict[self._dtype{len(dtypes)}])}}", "inner_shape": [], "parameters": {{}}, "form_key": f"node{{key}}"}}, "form_key": f"node{{key2}}"}})',
                     "            if context.get('speedbump', True):",
                     "                nested_forth_stash.add_to_pre('1 stream skip \\n')",
@@ -1029,8 +1029,8 @@ class Model_TStreamerBasicType(Model_TStreamerElement):
             read_members.extend(
                 [
                     "        if forth_obj is not None:",
-                     "            key = key_number ; key_number += 1",
-                     "            key2 = key_number ; key_number += 1",
+                    "            key = key_number ; key_number += 1",
+                    "            key2 = key_number ; key_number += 1",
                     f'            nested_forth_stash = uproot._awkward_forth.Node(f"node{{key}}", field_name={self.name!r}, form_details={{"class": "RegularArray", "size": {self.array_length}, "content": {{ "class": "NumpyArray", "primitive": f"{{uproot._awkward_forth.convert_dtype(uproot._awkward_forth.symbol_dict[self._dtype{len(dtypes)}])}}", "inner_shape": [], "parameters": {{}}, "form_key": f"node{{key}}"}}, "form_key": f"node{{key2}}"}})',
                     f'            nested_forth_stash.add_to_header(f"output node{{key}}-data {{uproot._awkward_forth.convert_dtype(uproot._awkward_forth.symbol_dict[self._dtype{len(dtypes)}])}}\\n")',
                     '            nested_forth_stash.add_to_header(f"output node{key2}-offsets int64\\n")',
