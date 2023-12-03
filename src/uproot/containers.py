@@ -58,11 +58,7 @@ def _read_nested(
             )  # FIXME: use CannotBeAwkward exception type
 
         if forth_obj is not None:
-            # key = forth_obj.get_key_number()
             key = uproot._awkward_forth.get_first_key_number(context)
-
-            forth_obj.increment_key_number()
-
             forth_stash = uproot._awkward_forth.Node(
                 f"node{key}",
                 form_details={
@@ -86,12 +82,10 @@ def _read_nested(
 
         if forth_obj is not None:
             # These two attributes in ForthGenerator need to be the same each iteration, but are changed in .read()
-            temp_count = forth_obj.key_number
             prev_model = forth_obj.previous_model
 
         for i in range(length):
             if forth_obj is not None:
-                forth_obj.update_key_number(temp_count)
                 forth_obj.update_previous_model(prev_model)
 
             if isinstance(model, AsContainer):
@@ -472,10 +466,6 @@ class AsString(AsContainer):
                 forth_obj, context, uproot._awkward_forth.SpecialPathItem("string")
             )
 
-            # offsets_num = forth_obj.get_key_number()
-            # forth_obj.increment_key_number()
-            # data_num = forth_obj.get_key_number()
-            # forth_obj.increment_key_number()
             offsets_num = uproot._awkward_forth.get_first_key_number(context)
             data_num = offsets_num + 1
 
@@ -707,10 +697,8 @@ class AsArray(AsContainer):
                 forth_obj, context, uproot._awkward_forth.SpecialPathItem("array")
             )
 
-            # offsets_num = forth_obj.get_key_number()
             offsets_num = uproot._awkward_forth.get_first_key_number(context)
 
-            forth_obj.increment_key_number()
             if len(self.inner_shape) > 0:
                 temp_form = {
                     "class": "ListOffsetArray",
@@ -780,12 +768,8 @@ in file {selffile.file_path}"""
                     forth_obj.append_form_key(f"node{offsets_num}")
 
                 out = []
-                # if forth_obj is not None:
-                #     # These two attributes in ForthGenerator need to be the same each iteration, but are changed in .read()
-                #     temp_count = forth_obj.get_key_number()
                 while cursor.displacement(start_cursor) < num_bytes:
                     if forth_obj is not None:
-                        # forth_obj.update_key_number(temp_count)
                         with uproot._awkward_forth.UnwindProtect(
                             forth_obj, forth_stash
                         ):
@@ -852,12 +836,8 @@ in file {selffile.file_path}"""
                     forth_obj.append_form_key(f"node{offsets_num}-offsets")
                     forth_obj.add_node_to_model(forth_stash)
                 out = []
-                # if forth_obj is not None:
-                #     # These two attributes in ForthGenerator need to be the same each iteration, but are changed in .read()
-                #     temp_count = forth_obj.get_key_number()
                 while cursor.index < chunk.stop:
                     if forth_obj is not None:
-                        # forth_obj.update_key_number(temp_count)
                         with uproot._awkward_forth.UnwindProtect(
                             forth_obj, forth_stash
                         ):
@@ -1086,7 +1066,6 @@ class AsVector(AsContainer):
                 forth_obj, context, uproot._awkward_forth.SpecialPathItem("vector")
             )
 
-            # key = forth_obj.get_key_number()
             key = uproot._awkward_forth.get_first_key_number(context)
 
             node_key = f"node{key}"
@@ -1167,7 +1146,6 @@ class AsVector(AsContainer):
         else:
             length = cursor.field(chunk, _stl_container_size, context)
             if forth_obj is not None:
-                forth_obj.increment_key_number()
                 forth_stash.add_to_header(f"output node{key}-offsets int64\n")
                 forth_stash.add_to_init(f"0 node{key}-offsets <- stack\n")
                 forth_stash.add_to_pre(
@@ -1292,7 +1270,6 @@ class AsSet(AsContainer):
                 forth_obj, context, uproot._awkward_forth.SpecialPathItem("set")
             )
 
-            # key = forth_obj.get_key_number()
             key = uproot._awkward_forth.get_first_key_number(context)
 
             node_key = f"node{key}"
@@ -1329,7 +1306,6 @@ in file {selffile.file_path}"""
         length = cursor.field(chunk, _stl_container_size, context)
 
         if forth_obj is not None:
-            forth_obj.increment_key_number()
             forth_stash.add_to_header(f"output node{key}-offsets int64\n")
             forth_stash.add_to_init(f"0 node{key}-offsets <- stack\n")
             forth_stash.add_to_pre(
@@ -1488,7 +1464,6 @@ class AsMap(AsContainer):
                 forth_obj, context, uproot._awkward_forth.SpecialPathItem("map")
             )
 
-            # key = forth_obj.get_key_number()
             key = uproot._awkward_forth.get_first_key_number(context)
 
             forth_stash = uproot._awkward_forth.Node(
@@ -1524,12 +1499,6 @@ class AsMap(AsContainer):
 
             length = cursor.field(chunk, _stl_container_size, context)
             if forth_obj is not None:
-                forth_obj.increment_key_number()
-                # forth_obj.get_key_number()
-                forth_obj.increment_key_number()
-                # forth_obj.get_key_number()
-                forth_obj.increment_key_number()
-
                 forth_obj.append_form_key(f"node{key}-offsets")
                 forth_stash.add_to_header(f"output node{key}-offsets int64\n")
                 forth_stash.add_to_init(f"0 node{key}-offsets <- stack\n")

@@ -857,7 +857,6 @@ class Model:
             if forth_obj is not None:
                 key = uproot._awkward_forth.get_first_key_number(context)
                 forth_stash.change_name(f"start-of-model {key}")
-                # forth_obj.increment_key_number()
                 forth_obj.add_node_to_model(forth_stash)
                 with uproot._awkward_forth.UnwindProtect(forth_obj, forth_stash):
                     self.read_members(chunk, cursor, context, file)
@@ -1331,7 +1330,6 @@ class DispatchByVersion:
                 f"dispatch-by-version {uproot._awkward_forth.get_first_key_number(context)}",
                 form_details={"offsets": "i64"},
             )
-            forth_obj.increment_key_number()
             bytes_skipped = cursor._index - start_index
             forth_stash.add_to_pre(f"{bytes_skipped} stream skip \n")
 

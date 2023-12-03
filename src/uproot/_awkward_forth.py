@@ -43,7 +43,7 @@ def add_to_path(forth_obj, context, field):
 
 
 def get_first_key_number(context, extra_fields=()):
-    return hash(context["path"] + extra_fields)
+    return abs(hash(context["path"] + extra_fields))
 
 
 class Forth_Generator:
@@ -54,7 +54,6 @@ class Forth_Generator:
         self.final_init = []
         self.discovered_form = {"form_key": "TOP", "content": {}, "class": "TOP"}
         self.awkward_model = Node("TOP")
-        self.key_number = 0
         self.form_keys = []
         self.previous_model = self.awkward_model
 
@@ -77,15 +76,6 @@ class Forth_Generator:
         else:
             for child_node in current_node.children:
                 self.add_node_to_model(new_node, child_node, parent_node_name)
-
-    def get_key_number(self):
-        return self.key_number
-
-    def update_key_number(self, value):
-        self.key_number = value
-
-    def increment_key_number(self):
-        self.key_number += 1
 
     def add_to_header(self, code):
         self.final_header += code

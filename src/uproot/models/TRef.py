@@ -126,11 +126,6 @@ in file {self.file.file_path}"""
         if forth_obj is not None:
             key_number = uproot._awkward_forth.get_first_key_number(context)
             keys = [key_number + i for i in range(6)]
-            # keys = []
-            # for _i in range(6):
-            #     keys.append(forth_obj.get_key_number())
-            #     forth_obj.increment_key_number()
-
             forth_stash = uproot._awkward_forth.Node(
                 f"node{keys[0]} TRef :prebuilt",
                 form_details={

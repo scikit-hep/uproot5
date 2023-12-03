@@ -29,9 +29,6 @@ in file {self.file.file_path}"""
         if forth_obj is not None:
             offsets_num = uproot._awkward_forth.get_first_key_number(context)
             data_num = offsets_num + 1
-            # offsets_num = forth_obj.next_key_number()
-            # data_num = forth_obj.next_key_number()
-
             nested_forth_stash = uproot._awkward_forth.Node(
                 f"node{offsets_num} TString",
                 form_details={

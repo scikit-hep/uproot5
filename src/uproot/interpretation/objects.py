@@ -358,8 +358,6 @@ input stream
                 0, origin=-(byte_offsets[i] + cursor_offset)
             )
 
-            context["forth"].gen.update_key_number(value=0)
-
             with uproot._awkward_forth.UnwindProtect(
                 context["forth"].gen, uproot._awkward_forth.Node("TOP")
             ):
