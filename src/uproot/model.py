@@ -790,7 +790,7 @@ class Model:
         forth_obj = uproot._awkward_forth.get_forth_obj(context)
         if forth_obj is not None:
             forth_stash = uproot._awkward_forth.Node(
-                name=f"wrong-instance-version {forth_obj.get_key_number()}",
+                name=f"wrong-instance-version {uproot._awkward_forth.get_first_key_number(context)}",
                 form_details={"offsets": "i64"},
             )
         if context.get("reading", True):
@@ -855,8 +855,9 @@ class Model:
                 chunk=chunk, cursor=cursor, context=context, file=file
             )
             if forth_obj is not None:
-                forth_stash.change_name(f"start-of-model {forth_obj.get_key_number()}")
-                forth_obj.increment_key_number()
+                key = uproot._awkward_forth.get_first_key_number(context)
+                forth_stash.change_name(f"start-of-model {key}")
+                # forth_obj.increment_key_number()
                 forth_obj.add_node_to_model(forth_stash)
                 with uproot._awkward_forth.UnwindProtect(forth_obj, forth_stash):
                     self.read_members(chunk, cursor, context, file)
@@ -1327,7 +1328,7 @@ class DispatchByVersion:
         forth_obj = uproot._awkward_forth.get_forth_obj(context)
         if forth_obj is not None:
             forth_stash = uproot._awkward_forth.Node(
-                f"dispatch-by-version {forth_obj.get_key_number()}",
+                f"dispatch-by-version {uproot._awkward_forth.get_first_key_number(context)}",
                 form_details={"offsets": "i64"},
             )
             forth_obj.increment_key_number()

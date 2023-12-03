@@ -21,6 +21,31 @@ symbol_dict = {
 }
 
 
+class SpecialPathItem:
+    def __init__(self, name):
+        self.name = name
+
+    def __repr__(self):
+        return f"SpecialPathItem({self.name!r})"
+
+    def __eq__(self, other):
+        return isinstance(other, SpecialPathItem) and self.name == other.name
+
+    def __hash__(self):
+        return hash((SpecialPathItem, self.name))
+
+
+def add_to_path(forth_obj, context, field):
+    if forth_obj is not None:
+        context = dict(context)
+        context["path"] = context["path"] + (field,)
+    return context
+
+
+def get_first_key_number(context, extra_fields=()):
+    return hash(context["path"] + extra_fields)
+
+
 class Forth_Generator:
     def __init__(self, interp):
         self._interp = interp

@@ -208,6 +208,9 @@ class AsObjects(uproot.interpretation.Interpretation):
                 # all threads have to wait until complete_forth_code is ready
 
                 if self._complete_forth_code is None:
+                    context = dict(context)
+                    context["path"] = ()
+
                     # another thread didn't make it while this thread waited
                     # this thread tries to make it now
                     output = self._discover_forth(
