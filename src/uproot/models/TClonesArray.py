@@ -18,6 +18,8 @@ class Model_TClonesArray(uproot.model.VersionedModel, Sequence):
     """
 
     def read_members(self, chunk, cursor, context, file):
+        if uproot._awkward_forth.get_forth_obj(context) is not None:
+            raise uproot.interpretation.objects.CannotBeForth()
         if self.is_memberwise:
             raise NotImplementedError(
                 "memberwise serialization of {}\nin file {}".format(

@@ -336,6 +336,8 @@ class AsDynamic(AsContainer):
 
     def read(self, chunk, cursor, context, file, selffile, parent, header=True):
         # AwkwardForth testing K: test_0637's tests aren't expected to enter here
+        if uproot._awkward_forth.get_forth_obj(context) is not None:
+            raise uproot.interpretation.objects.CannotBeForth()
         classname = cursor.string(chunk, context)
         cursor.skip(1)
         cls = file.class_named(classname)
@@ -937,6 +939,8 @@ class AsRVec(AsContainer):
 
     def read(self, chunk, cursor, context, file, selffile, parent, header=True):
         # AwkwardForth testing O: test_0637's (none! untested! but it's just like AsVector)
+        if uproot._awkward_forth.get_forth_obj(context) is not None:
+            raise uproot.interpretation.objects.CannotBeForth()
         if self._header and header:
             start_cursor = cursor.copy()
             (
@@ -1121,6 +1125,9 @@ class AsVector(AsContainer):
         _value_typename = _content_typename(self._values)
 
         if is_memberwise:
+            if forth_obj is not None:
+                raise uproot.interpretation.objects.CannotBeForth()
+
             # let's hard-code in logic for std::pair<T1,T2> for now
             if not _value_typename.startswith("pair"):
                 raise NotImplementedError(
@@ -1606,6 +1613,8 @@ class AsMap(AsContainer):
             return out
 
         else:
+            if forth_obj is not None:
+                raise uproot.interpretation.objects.CannotBeForth()
             length = cursor.field(chunk, _stl_container_size, context)
             keys, values = [], []
             for _ in range(length):

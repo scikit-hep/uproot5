@@ -150,6 +150,8 @@ class Model_TAxis_v10(uproot.behaviors.TAxis.TAxis, uproot.model.VersionedModel)
     """
 
     def read_members(self, chunk, cursor, context, file):
+        if uproot._awkward_forth.get_forth_obj(context) is not None:
+            raise uproot.interpretation.objects.CannotBeForth()
         if self.is_memberwise:
             raise NotImplementedError(
                 f"""memberwise serialization of {type(self).__name__}
@@ -454,6 +456,8 @@ class Model_TH1_v8(uproot.model.VersionedModel):
     """
 
     def read_members(self, chunk, cursor, context, file):
+        if uproot._awkward_forth.get_forth_obj(context) is not None:
+            raise uproot.interpretation.objects.CannotBeForth()
         if self.is_memberwise:
             raise NotImplementedError(
                 f"""memberwise serialization of {type(self).__name__}
@@ -1027,6 +1031,8 @@ class Model_TH2_v5(uproot.model.VersionedModel):
     """
 
     def read_members(self, chunk, cursor, context, file):
+        if uproot._awkward_forth.get_forth_obj(context) is not None:
+            raise uproot.interpretation.objects.CannotBeForth()
         if self.is_memberwise:
             raise NotImplementedError(
                 f"""memberwise serialization of {type(self).__name__}
@@ -1189,6 +1195,8 @@ class Model_TH3_v6(uproot.model.VersionedModel):
     """
 
     def read_members(self, chunk, cursor, context, file):
+        if uproot._awkward_forth.get_forth_obj(context) is not None:
+            raise uproot.interpretation.objects.CannotBeForth()
         if self.is_memberwise:
             raise NotImplementedError(
                 f"""memberwise serialization of {type(self).__name__}
@@ -1421,6 +1429,8 @@ class Model_TH1C_v3(uproot.behaviors.TH1.TH1, uproot.model.VersionedModel):
     """
 
     def read_members(self, chunk, cursor, context, file):
+        if uproot._awkward_forth.get_forth_obj(context) is not None:
+            raise uproot.interpretation.objects.CannotBeForth()
         if self.is_memberwise:
             raise NotImplementedError(
                 f"""memberwise serialization of {type(self).__name__}
@@ -1582,6 +1592,8 @@ class Model_TH1D_v3(uproot.behaviors.TH1.TH1, uproot.model.VersionedModel):
     """
 
     def read_members(self, chunk, cursor, context, file):
+        if uproot._awkward_forth.get_forth_obj(context) is not None:
+            raise uproot.interpretation.objects.CannotBeForth()
         if self.is_memberwise:
             raise NotImplementedError(
                 f"""memberwise serialization of {type(self).__name__}
@@ -1738,6 +1750,8 @@ class Model_TH1F_v3(uproot.behaviors.TH1.TH1, uproot.model.VersionedModel):
     """
 
     def read_members(self, chunk, cursor, context, file):
+        if uproot._awkward_forth.get_forth_obj(context) is not None:
+            raise uproot.interpretation.objects.CannotBeForth()
         if self.is_memberwise:
             raise NotImplementedError(
                 f"""memberwise serialization of {type(self).__name__}
@@ -1894,6 +1908,8 @@ class Model_TH1I_v3(uproot.behaviors.TH1.TH1, uproot.model.VersionedModel):
     """
 
     def read_members(self, chunk, cursor, context, file):
+        if uproot._awkward_forth.get_forth_obj(context) is not None:
+            raise uproot.interpretation.objects.CannotBeForth()
         if self.is_memberwise:
             raise NotImplementedError(
                 f"""memberwise serialization of {type(self).__name__}
@@ -2055,6 +2071,8 @@ class Model_TH1S_v3(uproot.behaviors.TH1.TH1, uproot.model.VersionedModel):
     """
 
     def read_members(self, chunk, cursor, context, file):
+        if uproot._awkward_forth.get_forth_obj(context) is not None:
+            raise uproot.interpretation.objects.CannotBeForth()
         if self.is_memberwise:
             raise NotImplementedError(
                 f"""memberwise serialization of {type(self).__name__}
@@ -2216,6 +2234,8 @@ class Model_TH2C_v4(uproot.behaviors.TH2.TH2, uproot.model.VersionedModel):
     """
 
     def read_members(self, chunk, cursor, context, file):
+        if uproot._awkward_forth.get_forth_obj(context) is not None:
+            raise uproot.interpretation.objects.CannotBeForth()
         if self.is_memberwise:
             raise NotImplementedError(
                 f"""memberwise serialization of {type(self).__name__}
@@ -2378,6 +2398,8 @@ class Model_TH2D_v4(uproot.behaviors.TH2.TH2, uproot.model.VersionedModel):
     """
 
     def read_members(self, chunk, cursor, context, file):
+        if uproot._awkward_forth.get_forth_obj(context) is not None:
+            raise uproot.interpretation.objects.CannotBeForth()
         if self.is_memberwise:
             raise NotImplementedError(
                 f"""memberwise serialization of {type(self).__name__}
@@ -2535,6 +2557,8 @@ class Model_TH2F_v4(uproot.behaviors.TH2.TH2, uproot.model.VersionedModel):
     """
 
     def read_members(self, chunk, cursor, context, file):
+        if uproot._awkward_forth.get_forth_obj(context) is not None:
+            raise uproot.interpretation.objects.CannotBeForth()
         if self.is_memberwise:
             raise NotImplementedError(
                 f"""memberwise serialization of {type(self).__name__}
@@ -2697,6 +2721,8 @@ class Model_TH2I_v4(uproot.behaviors.TH2.TH2, uproot.model.VersionedModel):
     """
 
     def read_members(self, chunk, cursor, context, file):
+        if uproot._awkward_forth.get_forth_obj(context) is not None:
+            raise uproot.interpretation.objects.CannotBeForth()
         if self.is_memberwise:
             raise NotImplementedError(
                 f"""memberwise serialization of {type(self).__name__}
@@ -2859,6 +2885,8 @@ class Model_TH2S_v4(uproot.behaviors.TH2.TH2, uproot.model.VersionedModel):
     """
 
     def read_members(self, chunk, cursor, context, file):
+        if uproot._awkward_forth.get_forth_obj(context) is not None:
+            raise uproot.interpretation.objects.CannotBeForth()
         if self.is_memberwise:
             raise NotImplementedError(
                 f"""memberwise serialization of {type(self).__name__}
@@ -3021,6 +3049,8 @@ class Model_TH3C_v4(uproot.behaviors.TH3.TH3, uproot.model.VersionedModel):
     """
 
     def read_members(self, chunk, cursor, context, file):
+        if uproot._awkward_forth.get_forth_obj(context) is not None:
+            raise uproot.interpretation.objects.CannotBeForth()
         if self.is_memberwise:
             raise NotImplementedError(
                 f"""memberwise serialization of {type(self).__name__}
@@ -3184,6 +3214,8 @@ class Model_TH3D_v4(uproot.behaviors.TH3.TH3, uproot.model.VersionedModel):
     """
 
     def read_members(self, chunk, cursor, context, file):
+        if uproot._awkward_forth.get_forth_obj(context) is not None:
+            raise uproot.interpretation.objects.CannotBeForth()
         if self.is_memberwise:
             raise NotImplementedError(
                 f"""memberwise serialization of {type(self).__name__}
@@ -3342,6 +3374,8 @@ class Model_TH3F_v4(uproot.behaviors.TH3.TH3, uproot.model.VersionedModel):
     """
 
     def read_members(self, chunk, cursor, context, file):
+        if uproot._awkward_forth.get_forth_obj(context) is not None:
+            raise uproot.interpretation.objects.CannotBeForth()
         if self.is_memberwise:
             raise NotImplementedError(
                 f"""memberwise serialization of {type(self).__name__}
@@ -3505,6 +3539,8 @@ class Model_TH3I_v4(uproot.behaviors.TH3.TH3, uproot.model.VersionedModel):
     """
 
     def read_members(self, chunk, cursor, context, file):
+        if uproot._awkward_forth.get_forth_obj(context) is not None:
+            raise uproot.interpretation.objects.CannotBeForth()
         if self.is_memberwise:
             raise NotImplementedError(
                 f"""memberwise serialization of {type(self).__name__}
@@ -3668,6 +3704,8 @@ class Model_TH3S_v4(uproot.behaviors.TH3.TH3, uproot.model.VersionedModel):
     """
 
     def read_members(self, chunk, cursor, context, file):
+        if uproot._awkward_forth.get_forth_obj(context) is not None:
+            raise uproot.interpretation.objects.CannotBeForth()
         if self.is_memberwise:
             raise NotImplementedError(
                 f"""memberwise serialization of {type(self).__name__}
@@ -3833,6 +3871,8 @@ class Model_TProfile_v7(
     """
 
     def read_members(self, chunk, cursor, context, file):
+        if uproot._awkward_forth.get_forth_obj(context) is not None:
+            raise uproot.interpretation.objects.CannotBeForth()
         if self.is_memberwise:
             raise NotImplementedError(
                 f"""memberwise serialization of {type(self).__name__}
@@ -4071,6 +4111,8 @@ class Model_TProfile2D_v8(
     """
 
     def read_members(self, chunk, cursor, context, file):
+        if uproot._awkward_forth.get_forth_obj(context) is not None:
+            raise uproot.interpretation.objects.CannotBeForth()
         if self.is_memberwise:
             raise NotImplementedError(
                 f"""memberwise serialization of {type(self).__name__}
@@ -4311,6 +4353,8 @@ class Model_TProfile3D_v8(
     """
 
     def read_members(self, chunk, cursor, context, file):
+        if uproot._awkward_forth.get_forth_obj(context) is not None:
+            raise uproot.interpretation.objects.CannotBeForth()
         if self.is_memberwise:
             raise NotImplementedError(
                 f"""memberwise serialization of {type(self).__name__}

@@ -204,22 +204,49 @@ class AsObjects(uproot.interpretation.Interpretation):
             context["forth"].gen = None
 
         if self._complete_forth_code is None:
+            # all threads have to wait until complete_forth_code is ready
             with self._forth_lock:
-                # all threads have to wait until complete_forth_code is ready
+                # another thread might have concluded that this can't be Forth
+                if not self._forth:
+                    return self.basket_array(
+                        data,
+                        byte_offsets,
+                        basket,
+                        branch,
+                        context,
+                        cursor_offset,
+                        library,
+                        options,
+                    )
 
-                if self._complete_forth_code is None:
+                # another thread might have already found the complete Forth code
+                elif self._complete_forth_code is None:
                     context = dict(context)
                     context["path"] = ()
 
-                    # another thread didn't make it while this thread waited
-                    # this thread tries to make it now
-                    output = self._discover_forth(
-                        data, byte_offsets, branch, context, cursor_offset
-                    )
+                    # this thread tries to do it!
+                    try:
+                        output = self._discover_forth(
+                            data, byte_offsets, branch, context, cursor_offset
+                        )
+                    except CannotBeForth:
+                        self._forth = False
+                        context["forth"].gen = None
+                        context["forth"].vm = None
+                        return self.basket_array(
+                            data,
+                            byte_offsets,
+                            basket,
+                            branch,
+                            context,
+                            cursor_offset,
+                            library,
+                            options,
+                        )
 
+                    # Forth discovery was unsuccessful; return Python-derived
+                    # output and maybe another basket will succeed
                     if output is not None:
-                        # Forth discovery was unsuccessful; return Python-derived
-                        # output and maybe another basket will be more fruitful
                         self.hook_after_basket_array(
                             data=data,
                             byte_offsets=byte_offsets,
@@ -370,10 +397,9 @@ input stream
                     branch,
                 )
 
-            def quickie(x):
-                assert isinstance(x, dict)
-                return [x["_name"]] + [quickie(y) for y in x["_children"]]
-
+            # def quickie(x):
+            #     assert isinstance(x, dict)
+            #     return [x["_name"]] + [quickie(y) for y in x["_children"]]
             # print(json.dumps(quickie(context["forth"].gen.awkward_model.get_dict()), indent=2))
             # context["forth"].gen._debug_forth()
 
@@ -398,6 +424,7 @@ input stream
                 self._form = derived_form
 
                 return None  # we should re-read all the data with Forth
+
         # Python output when Forth-Generation not successful
         return output
 
@@ -808,6 +835,14 @@ class CannotBeStrided(Exception):
     Exception used to stop recursion over
     :ref:`uproot.model.Model.strided_interpretation` and
     :ref:`uproot.containers.AsContainer.strided_interpretation` as soon as a
+    non-conforming type is found.
+    """
+
+
+class CannotBeForth(Exception):
+    """
+    Exception used to stop recursion over
+    :ref:`uproot.model.Model.read` as soon as a
     non-conforming type is found.
     """
 

@@ -214,6 +214,8 @@ class Model_TBasket(uproot.model.Model):
         pass
 
     def read_members(self, chunk, cursor, context, file):
+        if uproot._awkward_forth.get_forth_obj(context) is not None:
+            raise uproot.interpretation.objects.CannotBeForth()
         assert isinstance(self._parent, uproot.behaviors.TBranch.TBranch)
         self._basket_num = context.get("basket_num")
 

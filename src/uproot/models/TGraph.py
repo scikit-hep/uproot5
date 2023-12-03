@@ -35,6 +35,8 @@ class Model_TGraph_v4(uproot.behaviors.TGraph.TGraph, uproot.model.VersionedMode
     behaviors = (uproot.behaviors.TGraph.TGraph,)
 
     def read_members(self, chunk, cursor, context, file):
+        if uproot._awkward_forth.get_forth_obj(context) is not None:
+            raise uproot.interpretation.objects.CannotBeForth()
         if self.is_memberwise:
             raise NotImplementedError(
                 "memberwise serialization of {}\nin file {}".format(
@@ -361,6 +363,8 @@ class Model_TGraphErrors_v3(
     behaviors = (uproot.behaviors.TGraphErrors.TGraphErrors,)
 
     def read_members(self, chunk, cursor, context, file):
+        if uproot._awkward_forth.get_forth_obj(context) is not None:
+            raise uproot.interpretation.objects.CannotBeForth()
         if self.is_memberwise:
             raise NotImplementedError(
                 "memberwise serialization of {}\nin file {}".format(
@@ -541,6 +545,8 @@ class Model_TGraphAsymmErrors_v3(
     behaviors = (uproot.behaviors.TGraphAsymmErrors.TGraphAsymmErrors,)
 
     def read_members(self, chunk, cursor, context, file):
+        if uproot._awkward_forth.get_forth_obj(context) is not None:
+            raise uproot.interpretation.objects.CannotBeForth()
         if self.is_memberwise:
             raise NotImplementedError(
                 "memberwise serialization of {}\nin file {}".format(
