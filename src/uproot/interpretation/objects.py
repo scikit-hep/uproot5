@@ -50,7 +50,7 @@ class AsObjects(uproot.interpretation.Interpretation):
         self._model = model
         self._branch = branch
         self._form = None
-        self._forth = False
+        self._forth = True
         self._complete_forth_code = None
         self._forth_lock = threading.Lock()
 
@@ -151,6 +151,7 @@ class AsObjects(uproot.interpretation.Interpretation):
                 library,
                 options,
             )
+
         else:
             output = ObjectArray(
                 self._model, branch, context, byte_offsets, data, cursor_offset

@@ -9,7 +9,6 @@ import awkward as ak
 ROOT = pytest.importorskip("ROOT")
 
 
-@pytest.mark.skip(reason="AwkwardForth generation not implemented for this case.")
 def test_pandas_and_double_nested_vectors_issue_885(tmp_path):
     filename = os.path.join(
         tmp_path, "uproot_test_pandas_and_double_nested_vectors.root"
