@@ -815,6 +815,8 @@ class Model_TStreamerBasicPointer(Model_TStreamerElement):
             # untested as of PR #629
             read_members.extend(
                 [
+                    "        if forth_obj is not None:",
+                    "            raise uproot.interpretation.objects.CannotBeForth()",
                     "        if context.get('speedbump', True):",
                     "            if cursor.bytes(chunk, 1, context)[0] == 2:",
                     "                tmp = numpy.dtype('>i8')",
@@ -926,9 +928,10 @@ class Model_TStreamerBasicType(Model_TStreamerElement):
         read_member_n.append(f"        if member_index == {i}:")
         if self.typename == "Double32_t":
             # untested as of PR #629
-            # FIXME: this doesn't do any AwkwardForth handling at all; it *will* be wrong.
             read_members.extend(
                 [
+                    "        if forth_obj is not None:",
+                    "            raise uproot.interpretation.objects.CannotBeForth()",
                     f"        self._members[{self.name!r}] = cursor.double32(chunk, context)",
                 ]
             )
@@ -938,9 +941,10 @@ class Model_TStreamerBasicType(Model_TStreamerElement):
 
         elif self.typename == "Float16_t":
             # untested as of PR #629
-            # FIXME: this doesn't do any AwkwardForth handling at all; it *will* be wrong.
             read_members.extend(
                 [
+                    "        if forth_obj is not None:",
+                    "            raise uproot.interpretation.objects.CannotBeForth()",
                     f"        self._members[{self.name!r}] = cursor.float16(chunk, 12, context)",
                 ]
             )
@@ -1201,6 +1205,8 @@ class Model_TStreamerLoop(Model_TStreamerElement):
         # untested as of PR #629
         read_members.extend(
             [
+                "        if forth_obj is not None:",
+                "            raise uproot.interpretation.objects.CannotBeForth()",
                 "        cursor.skip(6)",
                 f"        for tmp in range(self.member({self.count_name!r})):",
                 f"            self._members[{self.name!r}] = c({self.typename.rstrip('*')!r}).read(chunk, cursor, uproot._awkward_forth.add_to_path(forth_obj, context, {self.name!r}), file, self._file, self.concrete)",
@@ -1424,6 +1430,8 @@ class TStreamerPointerTypes:
             # AwkwardForth testing H: test_0637's (none! untested!)
             read_members.extend(
                 [
+                    "        if forth_obj is not None:",
+                    "            raise uproot.interpretation.objects.CannotBeForth()",
                     f"        self._members[{self.name!r}] = c({self.typename.rstrip('*')!r}).read(chunk, cursor, uproot._awkward_forth.add_to_path(forth_obj, context, {self.name!r}), file, self._file, self.concrete)",
                     "        if forth_obj is not None:",
                     "            if len(forth_obj.previous_model.children) != 0:",
@@ -1447,6 +1455,8 @@ class TStreamerPointerTypes:
             # AwkwardForth testing I: test_0637's (none! untested!)
             read_members.extend(
                 [
+                    "        if forth_obj is not None:",
+                    "            raise uproot.interpretation.objects.CannotBeForth()",
                     f"        self._members[{self.name!r}] = read_object_any(chunk, cursor, uproot._awkward_forth.add_to_path(forth_obj, context, {self.name!r}), file, self._file, self)",
                     "        if forth_obj is not None:",
                     "            if len(forth_obj.previous_model.children) != 0:",
