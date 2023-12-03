@@ -53,9 +53,7 @@ def _read_nested(
         symbol = uproot._awkward_forth.symbol_dict.get(model)
 
         if forth_obj is not None and symbol is None:
-            raise TypeError(
-                "Cannot be awkward"
-            )  # FIXME: use CannotBeAwkward exception type
+            raise uproot.interpretation.objects.CannotBeForth()
 
         if forth_obj is not None:
             key = uproot._awkward_forth.get_first_key_number(context)

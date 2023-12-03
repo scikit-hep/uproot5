@@ -9,7 +9,7 @@ import uproot
 pytest.importorskip("awkward")
 
 
-@pytest.mark.parametrize("is_forth", [True, False])
+@pytest.mark.parametrize("is_forth", [False, True])
 def test_AnalysisJetsAuxDyn_GhostTrack(is_forth):
     expected_type = '2 * var * var * struct[{m_persKey: uint32, m_persIndex: uint32}, parameters={"__record__": "ElementLink<DataVector<xAOD::IParticle>>"}]'
     expected_data = [
@@ -40,7 +40,7 @@ def test_AnalysisJetsAuxDyn_GhostTrack(is_forth):
             assert interp._complete_forth_code is not None
 
 
-@pytest.mark.parametrize("is_forth", [True, False])
+@pytest.mark.parametrize("is_forth", [False, True])
 def test_TruthBosonAuxDyn_childLinks(is_forth):
     expected_type = '2 * var * var * struct[{m_persKey: uint32, m_persIndex: uint32}, parameters={"__record__": "ElementLink<DataVector<xAOD::TruthParticle_v1>>"}]'
     expected_data = [
@@ -64,7 +64,7 @@ def test_TruthBosonAuxDyn_childLinks(is_forth):
             assert interp._complete_forth_code is not None
 
 
-@pytest.mark.parametrize("is_forth", [True, False])
+@pytest.mark.parametrize("is_forth", [False, True])
 def test_TruthPhotonsAuxDyn_parentLinks(is_forth):
     expected_type = '2 * var * var * struct[{m_persKey: uint32, m_persIndex: uint32}, parameters={"__record__": "ElementLink<DataVector<xAOD::TruthParticle_v1>>"}]'
     expected_data = [
@@ -89,7 +89,7 @@ def test_TruthPhotonsAuxDyn_parentLinks(is_forth):
             assert interp._complete_forth_code is not None
 
 
-@pytest.mark.parametrize("is_forth", [True, False])
+@pytest.mark.parametrize("is_forth", [False, True])
 def test_TruthTopAuxDyn_parentLinks(is_forth):
     expected_type = '2 * var * var * struct[{m_persKey: uint32, m_persIndex: uint32}, parameters={"__record__": "ElementLink<DataVector<xAOD::TruthParticle_v1>>"}]'
     expected_data = [
