@@ -46,9 +46,10 @@ in file {self.file.file_path}"""
         self._members["@fBits"] = int(self._members["@fBits"])
 
         if forth_obj is not None:
+            key = uproot._awkward_forth.get_first_key_number(context)
             skip_length = cursor._index - start_index
             forth_stash = uproot._awkward_forth.Node(
-                "TObject", form_details={"offsets": "i64"}
+                f"node{key} TObject", form_details={"offsets": "i64"}
             )
             forth_stash.add_to_pre(f"{skip_length} stream skip \n")
             forth_obj.add_node_to_model(forth_stash)

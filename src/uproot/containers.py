@@ -780,12 +780,12 @@ in file {selffile.file_path}"""
                     forth_obj.append_form_key(f"node{offsets_num}")
 
                 out = []
-                if forth_obj is not None:
-                    # These two attributes in ForthGenerator need to be the same each iteration, but are changed in .read()
-                    temp_count = forth_obj.get_key_number()
+                # if forth_obj is not None:
+                #     # These two attributes in ForthGenerator need to be the same each iteration, but are changed in .read()
+                #     temp_count = forth_obj.get_key_number()
                 while cursor.displacement(start_cursor) < num_bytes:
                     if forth_obj is not None:
-                        forth_obj.update_key_number(temp_count)
+                        # forth_obj.update_key_number(temp_count)
                         with uproot._awkward_forth.UnwindProtect(
                             forth_obj, forth_stash
                         ):
@@ -852,12 +852,12 @@ in file {selffile.file_path}"""
                     forth_obj.append_form_key(f"node{offsets_num}-offsets")
                     forth_obj.add_node_to_model(forth_stash)
                 out = []
-                if forth_obj is not None:
-                    # These two attributes in ForthGenerator need to be the same each iteration, but are changed in .read()
-                    temp_count = forth_obj.get_key_number()
+                # if forth_obj is not None:
+                #     # These two attributes in ForthGenerator need to be the same each iteration, but are changed in .read()
+                #     temp_count = forth_obj.get_key_number()
                 while cursor.index < chunk.stop:
                     if forth_obj is not None:
-                        forth_obj.update_key_number(temp_count)
+                        # forth_obj.update_key_number(temp_count)
                         with uproot._awkward_forth.UnwindProtect(
                             forth_obj, forth_stash
                         ):
@@ -1525,9 +1525,9 @@ class AsMap(AsContainer):
             length = cursor.field(chunk, _stl_container_size, context)
             if forth_obj is not None:
                 forth_obj.increment_key_number()
-                forth_obj.get_key_number()
+                # forth_obj.get_key_number()
                 forth_obj.increment_key_number()
-                forth_obj.get_key_number()
+                # forth_obj.get_key_number()
                 forth_obj.increment_key_number()
 
                 forth_obj.append_form_key(f"node{key}-offsets")

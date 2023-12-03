@@ -26,7 +26,9 @@ class Model_TDatime(uproot.behaviors.TDatime.TDatime, uproot.model.Model):
     def read_members(self, chunk, cursor, context, file):
         forth_obj = uproot._awkward_forth.get_forth_obj(context)
         if forth_obj is not None:
-            key = forth_obj.get_key_number()
+            # key = forth_obj.get_key_number()
+            key = uproot._awkward_forth.get_first_key_number(context)
+
             forth_obj.increment_key_number()
             forth_stash = uproot._awkward_forth.Node(
                 f"node{key} TDatime :prebuilt",
