@@ -18,6 +18,7 @@ The :doc:`uproot.interpretation.objects.ObjectArray` and
 while an array is being built from ``TBaskets``. Its final form is determined
 by the :doc:`uproot.interpretation.library.Library`.
 """
+from __future__ import annotations
 
 import contextlib
 import threading

@@ -6,7 +6,7 @@ This module interpretations and models for standard containers, such as
 
 See :doc:`uproot.interpretation` and :doc:`uproot.model`.
 """
-
+from __future__ import annotations
 
 import json
 import struct

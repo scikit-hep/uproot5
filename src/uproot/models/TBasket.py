@@ -7,7 +7,7 @@ functionality of basket-reading.
 Includes both "embedded" ``TBaskets`` (as a member of TBranch) and "free"
 ``TBaskets`` (top-level objects, located by ``TKeys``).
 """
-
+from __future__ import annotations
 
 import struct
 

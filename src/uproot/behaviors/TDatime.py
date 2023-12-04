@@ -3,7 +3,7 @@
 """
 This module defines the behaviors of ``TDatime``.
 """
-
+from __future__ import annotations
 
 import uproot
 

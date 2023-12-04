@@ -3,6 +3,9 @@
 import pytest
 import uproot
 import uproot.source.fsspec
+import uproot.source.file
+import uproot.source.xrootd
+import uproot.source.s3
 
 import skhep_testdata
 import queue
@@ -123,6 +126,7 @@ def test_open_fsspec_ssh(handler):
 )
 def test_open_fsspec_xrootd(handler):
     pytest.importorskip("XRootD")
+    pytest.importorskip("fsspec_xrootd")
     with uproot.open(
         "root://eospublic.cern.ch//eos/root-eos/cms_opendata_2012_nanoaod/Run2012B_DoubleMuParked.root",
         handler=handler,
@@ -208,3 +212,27 @@ def test_fsspec_zip(tmp_path):
     ) as branch:
         data = branch.array(library="np")
         assert len(data) == 40
+
+
+# https://github.com/scikit-hep/uproot5/issues/1035
+@pytest.mark.parametrize(
+    "handler",
+    [
+        uproot.source.file.MemmapSource,
+        uproot.source.file.MultithreadedFileSource,
+        uproot.source.fsspec.FSSpecSource,
+        None,
+    ],
+)
+def test_issue_1035(handler):
+    with uproot.open(
+        skhep_testdata.data_path("uproot-issue-798.root"),
+        handler=handler,
+        use_threads=True,
+        num_workers=10,
+    ) as f:
+        for _ in range(25):  # intermittent failure
+            tree = f["CollectionTree"]
+            branch = tree["MuonSpectrometerTrackParticlesAuxDyn.truthParticleLink"]
+            data = branch.array()
+            assert len(data) == 40
