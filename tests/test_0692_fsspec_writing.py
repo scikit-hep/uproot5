@@ -130,13 +130,8 @@ def test_fsspec_writing_ssh(tmp_path, scheme):
 def test_fsspec_writing_memory(tmp_path, scheme):
     uri = f"{scheme}{tmp_path}/file.root"
 
-    # when https://github.com/fsspec/filesystem_spec/pull/1426 is merged this will work, we must remove the catch
-    with pytest.raises(ValueError):
-        with uproot.recreate(uri) as f:
-            f["tree"] = {"x": np.array([1, 2, 3])}
+    with uproot.recreate(uri) as f:
+        f["tree"] = {"x": np.array([1, 2, 3])}
 
-        with uproot.open(uri) as f:
-            assert f["tree"]["x"].array().tolist() == [1, 2, 3]
-
-        if scheme == "simplecache::memory://":
-            raise ValueError("wait for next fsspec release and remove this")
+    with uproot.open(uri) as f:
+        assert f["tree"]["x"].array().tolist() == [1, 2, 3]
