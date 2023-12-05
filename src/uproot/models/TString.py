@@ -45,13 +45,13 @@ in file {self.file.file_path}"""
                     "form_key": f"node{offsets_num}",
                 },
             )
-            nested_forth_stash.add_to_pre(
+            nested_forth_stash.pre_code.append(
                 f" stream !B-> stack dup 255 = if drop stream !I-> stack then dup node{offsets_num}-offsets +<- stack stream #!B-> node{data_num}-data\n"
             )
-            nested_forth_stash.add_to_header(
+            nested_forth_stash.header_code.append(
                 f"output node{offsets_num}-offsets int64\noutput node{data_num}-data uint8\n"
             )
-            nested_forth_stash.add_to_init(f"0 node{offsets_num}-offsets <- stack\n")
+            nested_forth_stash.init_code.append(f"0 node{offsets_num}-offsets <- stack\n")
             forth_obj.add_node(nested_forth_stash)
 
         self._data = cursor.string(chunk, context)

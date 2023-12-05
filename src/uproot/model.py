@@ -798,7 +798,7 @@ class Model:
             self.read_numbytes_version(chunk, cursor, context)
             length = cursor._index - temp_index
             if length != 0 and forth_obj is not None:
-                forth_stash.add_to_pre(f"{length} stream skip\n")
+                forth_stash.pre_code.append(f"{length} stream skip\n")
             if (
                 issubclass(cls, VersionedModel)
                 and self._instance_version != classname_version(cls.__name__)
@@ -837,7 +837,7 @@ class Model:
 
             elif self._instance_version == 0:
                 if forth_obj is not None:
-                    forth_stash.add_to_pre("4 stream skip\n")
+                    forth_stash.pre_code.append("4 stream skip\n")
                 cursor.skip(4)
 
         if context.get("reading", True):
@@ -1321,7 +1321,7 @@ class DispatchByVersion:
                 form_details={"offsets": "i64"},
             )
             bytes_skipped = cursor._index - start_index
-            forth_stash.add_to_pre(f"{bytes_skipped} stream skip \n")
+            forth_stash.pre_code.append(f"{bytes_skipped} stream skip \n")
 
             forth_obj.add_node(forth_stash)
             forth_obj.push_active_node(forth_stash)

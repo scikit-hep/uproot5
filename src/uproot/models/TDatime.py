@@ -41,8 +41,8 @@ class Model_TDatime(uproot.behaviors.TDatime.TDatime, uproot.model.Model):
                     "parameters": {"__record__": "TDatime"},
                 },
             )
-            forth_stash.add_to_header(f"output node{key}-data int32\n")
-            forth_stash.add_to_pre(f"stream !I-> node{key}-data\n")
+            forth_stash.header_code.append(f"output node{key}-data int32\n")
+            forth_stash.pre_code.append(f"stream !I-> node{key}-data\n")
             forth_obj.add_node(forth_stash)
             forth_obj.set_active_node(forth_stash)
         self._members["fDatime"] = cursor.field(chunk, _tdatime_format1, context)

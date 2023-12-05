@@ -66,10 +66,10 @@ def _read_nested(
                 },
             )
 
-            forth_stash.add_to_header(
+            forth_stash.header_code.append(
                 f"output node{key}-data {uproot._awkwardforth.struct_to_dtype_name[symbol]}\n"
             )
-            forth_stash.add_to_pre(f"stream #!{symbol}-> node{key}-data\n")
+            forth_stash.pre_code.append(f"stream #!{symbol}-> node{key}-data\n")
 
             forth_obj.add_node(forth_stash)
 
@@ -496,19 +496,19 @@ class AsString(AsContainer):
             if forth_obj is not None:
                 cursor_jump = cursor._index - start_cursor._index
                 if cursor_jump != 0:
-                    forth_stash.add_to_pre(f"{cursor_jump} stream skip\n")
+                    forth_stash.pre_code.append(f"{cursor_jump} stream skip\n")
 
         if self._length_bytes == "1-5":
             out = cursor.string(chunk, context)
             if forth_obj is not None:
-                forth_stash.add_to_pre(
+                forth_stash.pre_code.append(
                     f"stream !B-> stack dup 255 = if drop stream !I-> stack then dup node{offsets_num}-offsets +<- stack stream #!B-> node{data_num}-data\n"
                 )
         elif self._length_bytes == "4":
             length = cursor.field(chunk, _stl_container_size, context)
             out = cursor.string_with_length(chunk, context, length)
             if forth_obj is not None:
-                forth_stash.add_to_pre(
+                forth_stash.pre_code.append(
                     f"stream !I-> stack dup node{offsets_num}-offsets +<- stack stream #B-> node{data_num}-data\n"
                 )
         else:
@@ -526,10 +526,10 @@ class AsString(AsContainer):
             )
 
         if forth_obj is not None:
-            forth_stash.add_to_header(
+            forth_stash.header_code.append(
                 f"output node{offsets_num}-offsets int64\noutput node{data_num}-data uint8\n"
             )
-            forth_stash.add_to_init(f"0 node{offsets_num}-offsets <- stack\n")
+            forth_stash.init_code.append(f"0 node{offsets_num}-offsets <- stack\n")
             forth_obj.add_node(forth_stash)
 
         return out
@@ -737,7 +737,7 @@ in file {selffile.file_path}"""
             if forth_obj is not None:
                 temp_jump = cursor._index - start_cursor._index
                 if temp_jump != 0:
-                    forth_stash.add_to_pre(f"{temp_jump} stream skip\n")
+                    forth_stash.pre_code.append(f"{temp_jump} stream skip\n")
 
             if isinstance(self._values, numpy.dtype):
                 remainder = chunk.get(
@@ -747,19 +747,19 @@ in file {selffile.file_path}"""
 
             else:
                 if forth_obj is not None:
-                    forth_stash.add_to_header(
+                    forth_stash.header_code.append(
                         f"output node{offsets_num}-offsets int64\n"
                     )
-                    forth_stash.add_to_init(f"0 node{offsets_num}-offsets <- stack\n")
-                    forth_stash.add_to_pre(
+                    forth_stash.init_code.append(f"0 node{offsets_num}-offsets <- stack\n")
+                    forth_stash.pre_code.append(
                         "0 bytestops I-> stack \nbegin\ndup stream pos <>\nwhile\nswap 1 + swap\n"
                     )
                     if len(self.inner_shape) > 0:
-                        forth_stash.add_to_post(
+                        forth_stash.post_code.append(
                             f"repeat\nswap {self.inner_shape[0]} / node{offsets_num}-offsets +<- stack drop\n"
                         )
                     else:
-                        forth_stash.add_to_post(
+                        forth_stash.post_code.append(
                             f"repeat\nswap node{offsets_num}-offsets +<- stack drop\n"
                         )
                     forth_obj.add_node(forth_stash)
@@ -800,7 +800,7 @@ in file {selffile.file_path}"""
         else:
             if self._speedbump:
                 if forth_obj is not None:
-                    forth_stash.add_to_pre("1 stream skip\n")
+                    forth_stash.pre_code.append("1 stream skip\n")
                 cursor.skip(1)
 
             if isinstance(self._values, numpy.dtype):
@@ -809,19 +809,19 @@ in file {selffile.file_path}"""
 
             else:
                 if forth_obj is not None:
-                    forth_stash.add_to_header(
+                    forth_stash.header_code.append(
                         f"output node{offsets_num}-offsets int64\n"
                     )
-                    forth_stash.add_to_init(f"0 node{offsets_num}-offsets <- stack\n")
-                    forth_stash.add_to_pre(
+                    forth_stash.init_code.append(f"0 node{offsets_num}-offsets <- stack\n")
+                    forth_stash.pre_code.append(
                         "0 bytestops I-> stack \nbegin\ndup stream pos <>\nwhile\nswap 1 + swap\n"
                     )
                     if len(self.inner_shape) > 0:
-                        forth_stash.add_to_post(
+                        forth_stash.post_code.append(
                             f"repeat\nswap {self.inner_shape[0]} / node{offsets_num}-offsets +<- stack drop\n"
                         )
                     else:
-                        forth_stash.add_to_post(
+                        forth_stash.post_code.append(
                             f"repeat\nswap node{offsets_num}-offsets +<- stack drop\n"
                         )
                     forth_obj.add_node(forth_stash)
@@ -935,7 +935,7 @@ class AsVectorLike(AsContainer):
                 is_memberwise,
             ) = uproot.deserialization.numbytes_version(chunk, cursor, context)
             if forth_obj is not None:
-                forth_stash.add_to_pre(
+                forth_stash.pre_code.append(
                     f"{cursor._index - start_cursor._index} stream skip\n"
                 )
         else:
@@ -997,15 +997,15 @@ class AsVectorLike(AsContainer):
         else:
             length = cursor.field(chunk, _stl_container_size, context)
             if forth_obj is not None:
-                forth_stash.add_to_header(f"output node{key}-offsets int64\n")
-                forth_stash.add_to_init(f"0 node{key}-offsets <- stack\n")
-                forth_stash.add_to_pre(
+                forth_stash.header_code.append(f"output node{key}-offsets int64\n")
+                forth_stash.init_code.append(f"0 node{key}-offsets <- stack\n")
+                forth_stash.pre_code.append(
                     f"stream !I-> stack\n dup node{key}-offsets +<- stack\n"
                 )
 
                 if not isinstance(self._items, numpy.dtype):
-                    forth_stash.add_to_pre("0 do\n")
-                    forth_stash.add_to_post("loop\n")
+                    forth_stash.pre_code.append("0 do\n")
+                    forth_stash.post_code.append("loop\n")
 
                 forth_obj.add_node(forth_stash)
                 forth_obj.push_active_node(forth_stash)
@@ -1279,26 +1279,26 @@ class AsMap(AsContainer):
             if self._header and header:
                 cursor.skip(6)
                 if forth_obj is not None:
-                    forth_stash.add_to_pre(
+                    forth_stash.pre_code.append(
                         f"{cursor._index-start_cursor._index} stream skip\n"
                     )
 
             length = cursor.field(chunk, _stl_container_size, context)
             if forth_obj is not None:
-                forth_stash.add_to_header(f"output node{key}-offsets int64\n")
-                forth_stash.add_to_init(f"0 node{key}-offsets <- stack\n")
-                forth_stash.add_to_pre(
+                forth_stash.header_code.append(f"output node{key}-offsets int64\n")
+                forth_stash.init_code.append(f"0 node{key}-offsets <- stack\n")
+                forth_stash.pre_code.append(
                     f"stream !I-> stack\n dup node{key}-offsets +<- stack\n"
                 )
             if _has_nested_header(self._keys) and header:
                 cursor.skip(6)
                 if forth_obj is not None:
-                    forth_stash.add_to_pre("6 stream skip\n")
+                    forth_stash.pre_code.append("6 stream skip\n")
             if forth_obj is not None:
                 if not isinstance(self._keys, numpy.dtype):
-                    forth_stash.add_to_pre("dup 0 do\n")
+                    forth_stash.pre_code.append("dup 0 do\n")
                 else:
-                    forth_stash.add_to_pre("dup\n")
+                    forth_stash.pre_code.append("dup\n")
                 forth_obj.add_node(forth_stash)
                 forth_obj.set_active_node(forth_stash)
 
@@ -1320,17 +1320,17 @@ class AsMap(AsContainer):
                 and not isinstance(self._keys, numpy.dtype)
                 and len(forth_stash.children) > 0
             ):
-                forth_stash.children[0].add_to_post("loop\n")
+                forth_stash.children[0].post_code.append("loop\n")
             if _has_nested_header(self._values) and header:
                 cursor.skip(6)
                 if forth_obj is not None and len(forth_stash.children) > 0:
-                    forth_stash.children[0].add_to_post("6 stream skip\n")
+                    forth_stash.children[0].post_code.append("6 stream skip\n")
             if (
                 forth_obj is not None
                 and not isinstance(self._values, numpy.dtype)
                 and len(forth_stash.children) > 0
             ):
-                forth_stash.children[0].add_to_post("0 do\n")
+                forth_stash.children[0].post_code.append("0 do\n")
 
             values = _read_nested(
                 self._values,
@@ -1350,7 +1350,7 @@ class AsMap(AsContainer):
                 and not isinstance(self._values, numpy.dtype)
                 and len(forth_stash.children) > 1
             ):
-                forth_stash.children[1].add_to_post("loop\n")
+                forth_stash.children[1].post_code.append("loop\n")
 
             out = STLMap(keys, values)
 

@@ -146,8 +146,8 @@ class Node:
         self._name = name
         self._pre_code = [] if pre_code is None else pre_code
         self._post_code = [] if post_code is None else post_code
-        self._init_code = "" if init_code is None else init_code
-        self._header_code = "" if header_code is None else header_code
+        self._init_code = [] if init_code is None else init_code
+        self._header_code = [] if header_code is None else header_code
         self._form_details = {} if form_details is None else form_details
         self._field_name = field_name
         self._children = [] if children is None else children
@@ -196,18 +196,6 @@ class Node:
     @property
     def node(self):
         return self
-
-    def add_to_pre(self, code):
-        self._pre_code.append(code)
-
-    def add_to_post(self, code):
-        self._post_code.append(code)
-
-    def add_to_header(self, code):
-        self._header_code += code
-
-    def add_to_init(self, code):
-        self._init_code += code
 
     def add_form_details(self, form_details):
         self._form_details = form_details

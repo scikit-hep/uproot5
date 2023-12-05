@@ -842,11 +842,11 @@ class Model_TStreamerBasicPointer(Model_TStreamerElement):
                     "            key2 = key_number ; key_number += 1",
                     f'            nested_forth_stash = uproot._awkwardforth.Node(f"node{{key}}", field_name={self.name!r}, form_details={{"class": "ListOffsetArray", "offsets": "i64", "content": {{ "class": "NumpyArray", "primitive": f"{{uproot._awkwardforth.struct_to_dtype_name[uproot._awkwardforth.dtype_to_struct[self._dtype{len(dtypes)}]]}}", "inner_shape": [], "parameters": {{}}, "form_key": f"node{{key}}"}}, "form_key": f"node{{key2}}"}})',
                     "            if context.get('speedbump', True):",
-                    "                nested_forth_stash.add_to_pre('1 stream skip \\n')",
-                    f'            nested_forth_stash.add_to_header(f"output node{{key}}-data {{uproot._awkwardforth.struct_to_dtype_name[uproot._awkwardforth.dtype_to_struct[self._dtype{len(dtypes)}]]}}\\n")',
-                    '            nested_forth_stash.add_to_header(f"output node{key2}-offsets int64\\n")',
-                    '            nested_forth_stash.add_to_init(f"0 node{key2}-offsets <- stack\\n")',
-                    f'            nested_forth_stash.add_to_pre(f" var_{self.count_name} @ dup node{{key2}}-offsets +<- stack \\n stream #!{{uproot._awkwardforth.dtype_to_struct[self._dtype{len(dtypes)}]}}-> node{{key}}-data\\n")',
+                    "                nested_forth_stash.pre_code.append('1 stream skip \\n')",
+                    f'            nested_forth_stash.header_code.append(f"output node{{key}}-data {{uproot._awkwardforth.struct_to_dtype_name[uproot._awkwardforth.dtype_to_struct[self._dtype{len(dtypes)}]]}}\\n")',
+                    '            nested_forth_stash.header_code.append(f"output node{key2}-offsets int64\\n")',
+                    '            nested_forth_stash.init_code.append(f"0 node{key2}-offsets <- stack\\n")',
+                    f'            nested_forth_stash.pre_code.append(f" var_{self.count_name} @ dup node{{key2}}-offsets +<- stack \\n stream #!{{uproot._awkwardforth.dtype_to_struct[self._dtype{len(dtypes)}]}}-> node{{key}}-data\\n")',
                     "            forth_obj.add_node(nested_forth_stash)",
                 ]
             )
@@ -979,20 +979,20 @@ class Model_TStreamerBasicType(Model_TStreamerElement):
                             "            key = key_number ; key_number += 1",
                             '            form_key = f"node{key}-data"',
                             f'            nested_forth_stash = uproot._awkwardforth.Node(f"node{{key}}", field_name={fields[-1][0]!r}, form_details={{ "class": "NumpyArray", "primitive": "{uproot._awkwardforth.struct_to_dtype_name[formats[-1][0]]}", "inner_shape": [], "parameters": {{}}, "form_key": f"node{{key}}"}})',
-                            f'            nested_forth_stash.add_to_header(f"output node{{key}}-data {uproot._awkwardforth.struct_to_dtype_name[formats[-1][0]]}\\n")',
+                            f'            nested_forth_stash.header_code.append(f"output node{{key}}-data {uproot._awkwardforth.struct_to_dtype_name[formats[-1][0]]}\\n")',
                             "            forth_obj.add_node(nested_forth_stash)",
                         ]
                     )
                     if fields[-1][0] in COUNT_NAMES:
                         read_members.extend(
                             [
-                                f'            nested_forth_stash.add_to_init(f"variable var_{fields[-1][0]}\\n")',
-                                f'            nested_forth_stash.add_to_pre(f"stream !{formats[-1][0]}-> stack dup var_{fields[-1][0]} ! node{{key}}-data <- stack\\n")',
+                                f'            nested_forth_stash.init_code.append(f"variable var_{fields[-1][0]}\\n")',
+                                f'            nested_forth_stash.pre_code.append(f"stream !{formats[-1][0]}-> stack dup var_{fields[-1][0]} ! node{{key}}-data <- stack\\n")',
                             ]
                         )
                     else:
                         read_members.append(
-                            f'            nested_forth_stash.add_to_pre(f"stream !{formats[-1][0]}-> node{{key}}-data\\n")'
+                            f'            nested_forth_stash.pre_code.append(f"stream !{formats[-1][0]}-> node{{key}}-data\\n")'
                         )
                     read_members.append(
                         f"        self._members[{fields[-1][0]!r}] = cursor.field(chunk, self._format{len(formats) - 1}, context)",
@@ -1007,8 +1007,8 @@ class Model_TStreamerBasicType(Model_TStreamerElement):
                                 "           key = key_number ; key_number += 1",
                                 '           form_key = f"node{key}-data"',
                                 f'           nested_forth_stash = uproot._awkwardforth.Node(f"node{{key}}", field_name={fields[0][i]!r}, form_details={{ "class": "NumpyArray", "primitive": "{uproot._awkwardforth.struct_to_dtype_name[formats[0][i]]}", "inner_shape": [], "parameters": {{}}, "form_key": f"node{{key}}"}})',
-                                f'           nested_forth_stash.add_to_header(f"output {{form_key}} {uproot._awkwardforth.struct_to_dtype_name[formats[0][i]]}\\n")',
-                                f'           nested_forth_stash.add_to_pre(f"stream !{formats[0][i]}-> {{form_key}}\\n")',
+                                f'           nested_forth_stash.header_code.append(f"output {{form_key}} {uproot._awkwardforth.struct_to_dtype_name[formats[0][i]]}\\n")',
+                                f'           nested_forth_stash.pre_code.append(f"stream !{formats[0][i]}-> {{form_key}}\\n")',
                                 "           forth_obj.add_node(nested_forth_stash)",
                             ]
                         )
@@ -1033,10 +1033,10 @@ class Model_TStreamerBasicType(Model_TStreamerElement):
                     "            key = key_number ; key_number += 1",
                     "            key2 = key_number ; key_number += 1",
                     f'            nested_forth_stash = uproot._awkwardforth.Node(f"node{{key}}", field_name={self.name!r}, form_details={{"class": "RegularArray", "size": {self.array_length}, "content": {{ "class": "NumpyArray", "primitive": f"{{uproot._awkwardforth.struct_to_dtype_name[uproot._awkwardforth.dtype_to_struct[self._dtype{len(dtypes)}]]}}", "inner_shape": [], "parameters": {{}}, "form_key": f"node{{key}}"}}, "form_key": f"node{{key2}}"}})',
-                    f'            nested_forth_stash.add_to_header(f"output node{{key}}-data {{uproot._awkwardforth.struct_to_dtype_name[uproot._awkwardforth.dtype_to_struct[self._dtype{len(dtypes)}]]}}\\n")',
-                    '            nested_forth_stash.add_to_header(f"output node{key2}-offsets int64\\n")',
-                    '            nested_forth_stash.add_to_init(f"0 node{key2}-offsets <- stack\\n")',
-                    f'            nested_forth_stash.add_to_pre(f"{self.array_length} dup node{{key2}}-offsets +<- stack \\n stream #!{{uproot._awkwardforth.dtype_to_struct[self._dtype{len(dtypes)}]}}-> node{{key}}-data\\n")',
+                    f'            nested_forth_stash.header_code.append(f"output node{{key}}-data {{uproot._awkwardforth.struct_to_dtype_name[uproot._awkwardforth.dtype_to_struct[self._dtype{len(dtypes)}]]}}\\n")',
+                    '            nested_forth_stash.header_code.append(f"output node{key2}-offsets int64\\n")',
+                    '            nested_forth_stash.init_code.append(f"0 node{key2}-offsets <- stack\\n")',
+                    f'            nested_forth_stash.pre_code.append(f"{self.array_length} dup node{{key2}}-offsets +<- stack \\n stream #!{{uproot._awkwardforth.dtype_to_struct[self._dtype{len(dtypes)}]}}-> node{{key}}-data\\n")',
                     "            forth_obj.add_node(nested_forth_stash)",
                     f"        self._members[{self.name!r}] = cursor.array(chunk, {self.array_length}, self._dtype{len(dtypes)}, context)",
                 ]

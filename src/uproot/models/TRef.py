@@ -169,21 +169,21 @@ in file {self.file.file_path}"""
                     "form_key": f"node{keys[0]}",
                 },
             )
-            forth_stash.add_to_pre("10 stream skip\n")
-            forth_stash.add_to_pre(
+            forth_stash.pre_code.append("10 stream skip\n")
+            forth_stash.pre_code.append(
                 f"stream !B-> stack dup 255 = if drop stream !I-> stack then dup node{keys[1]}-offsets +<- stack stream #!B-> node{keys[2]}-data\n"
             )
-            forth_stash.add_to_pre(
+            forth_stash.pre_code.append(
                 f"stream !I-> stack dup node{keys[3]}-data <- stack\n"
             )
-            forth_stash.add_to_pre("6 stream skip\n")
-            forth_stash.add_to_pre(
+            forth_stash.pre_code.append("6 stream skip\n")
+            forth_stash.pre_code.append(
                 f"dup node{keys[4]}-offsets +<- stack stream #!I-> node{keys[5]}-data\n"
             )
-            forth_stash.add_to_header(
+            forth_stash.header_code.append(
                 f"output node{keys[1]}-offsets int64\noutput node{keys[2]}-data uint8\noutput node{keys[3]}-data int32\noutput node{keys[4]}-offsets int64\noutput node{keys[5]}-data int32\n"
             )
-            forth_stash.add_to_init(
+            forth_stash.init_code.append(
                 f"0 node{keys[1]}-offsets <- stack\n0 node{keys[4]}-offsets <- stack\n"
             )
             forth_obj.add_node(forth_stash)
