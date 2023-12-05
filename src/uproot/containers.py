@@ -853,213 +853,68 @@ in file {selffile.file_path}"""
                 return uproot._util.objectarray1d(out).reshape(-1, *self.inner_shape)
 
 
-class AsRVec(AsContainer):
+class AsVectorLike(AsContainer):
     """
     Args:
         header (bool): Sets the :ref:`uproot.containers.AsContainer.header`.
         values (:doc:`uproot.model.Model` or :doc:`uproot.containers.Container`): Data
             type for data nested in the container.
 
-    A :doc:`uproot.containers.AsContainer` for ``ROOT::VecOps::RVec``.
+    Superclass of :doc:`uproot.containers.AsRVec`,  :doc:`uproot.containers.AsVector`,
+    and :doc:`uproot.containers.AsSet`, which have the same ROOT serialization, but
+    represent different runtime classes. The purpose of this superclass is just to
+    consolidate implementations.
     """
 
     def __init__(self, header, values):
         self.header = header
         if isinstance(values, AsContainer):
-            self._values = values
+            self._items = values
         elif isinstance(values, type) and issubclass(
             values, (uproot.model.Model, uproot.model.DispatchByVersion)
         ):
-            self._values = values
+            self._items = values
         else:
-            self._values = numpy.dtype(values)
+            self._items = numpy.dtype(values)
 
     def __hash__(self):
-        return hash((AsRVec, self._header, self._values))
-
-    @property
-    def values(self):
-        """
-        Data type for data nested in the container.
-        """
-        return self._values
+        return hash((type(self), self._header, self._items))
 
     def __repr__(self):
-        if isinstance(self._values, type):
-            values = self._values.__name__
+        if isinstance(self._items, type):
+            values = self._items.__name__
         else:
-            values = repr(self._values)
-        return f"AsRVec({self._header}, {values})"
+            values = repr(self._items)
+        return f"{type(self).__name__}({self._header}, {values})"
 
     @property
     def cache_key(self):
-        return f"AsRVec({self._header},{_content_cache_key(self._values)})"
-
-    @property
-    def typename(self):
-        return f"RVec<{_content_typename(self._values)}>"
-
-    def awkward_form(self, file, context):
-        awkward = uproot.extras.awkward()
-        return awkward.forms.ListOffsetForm(
-            context["index_format"],
-            uproot._util.awkward_form(self._values, file, context),
+        return (
+            f"{type(self).__name__}({self._header},{_content_cache_key(self._items)})"
         )
 
-    def read(self, chunk, cursor, context, file, selffile, parent, header=True):
-        # AwkwardForth testing O: test_0637's (none! untested! but it's just like AsVector)
-        if uproot._awkward_forth.get_forth_obj(context) is not None:
-            raise uproot.interpretation.objects.CannotBeForth()
-        if self._header and header:
-            start_cursor = cursor.copy()
-            (
-                num_bytes,
-                instance_version,
-                is_memberwise,
-            ) = uproot.deserialization.numbytes_version(chunk, cursor, context)
-        else:
-            is_memberwise = False
-
-        # Note: self._values can also be a NumPy dtype, and not necessarily a class
-        # (e.g. type(self._values) == type)
-        _value_typename = _content_typename(self._values)
-        if is_memberwise:
-            if not issubclass(self._values, uproot.model.DispatchByVersion):
-                raise NotImplementedError(
-                    """streamerless memberwise serialization of class {}({})
-    in file {}""".format(
-                        type(self).__name__, _value_typename, selffile.file_path
-                    )
-                )
-
-            # uninterpreted header
-            cursor.skip(6)
-
-            length = cursor.field(chunk, _stl_container_size, context)
-
-            # no known class version number (maybe in that header? unclear...)
-            model = self._values.new_class(file, "max")
-
-            values = numpy.empty(length, dtype=_stl_object_type)
-
-            # only do anything if we have anything to read...
-            if length > 0:
-                for i in range(length):
-                    values[i] = model.read(
-                        chunk,
-                        cursor,
-                        dict(context, reading=False),
-                        file,
-                        selffile,
-                        parent,
-                    )
-
-                # memberwise reading!
-                for member_index in range(len(values[0].member_names)):
-                    for i in range(length):
-                        values[i].read_member_n(
-                            chunk, cursor, context, file, member_index
-                        )
-        else:
-            length = cursor.field(chunk, _stl_container_size, context)
-
-            values = _read_nested(
-                self._values, length, chunk, cursor, context, file, selffile, parent
-            )
-
-        out = ROOTRVec(values)
-        if self._header and header:
-            uproot.deserialization.numbytes_check(
-                chunk,
-                start_cursor,
-                cursor,
-                num_bytes,
-                self.typename,
-                context,
-                file.file_path,
-            )
-
-        return out
-
-    def __eq__(self, other):
-        if not isinstance(other, AsRVec):
-            return False
-
-        if self.header != other.header:
-            return False
-
-        if isinstance(self.values, numpy.dtype) and isinstance(
-            other.values, numpy.dtype
-        ):
-            return self.values == other.values
-        elif not isinstance(self.values, numpy.dtype) and not isinstance(
-            other.values, numpy.dtype
-        ):
-            return self.values == other.values
-        else:
-            return False
-
-
-class AsVector(AsContainer):
-    """
-    Args:
-        header (bool): Sets the :ref:`uproot.containers.AsContainer.header`.
-        values (:doc:`uproot.model.Model` or :doc:`uproot.containers.Container`): Data
-            type for data nested in the container.
-
-    A :doc:`uproot.containers.AsContainer` for ``std::vector``.
-    """
-
-    def __init__(self, header, values):
-        self.header = header
-        if isinstance(values, AsContainer):
-            self._values = values
-        elif isinstance(values, type) and issubclass(
-            values, (uproot.model.Model, uproot.model.DispatchByVersion)
-        ):
-            self._values = values
-        else:
-            self._values = numpy.dtype(values)
-
-    def __hash__(self):
-        return hash((AsVector, self._header, self._values))
-
-    @property
-    def values(self):
-        """
-        Data type for data nested in the container.
-        """
-        return self._values
-
-    def __repr__(self):
-        if isinstance(self._values, type):
-            values = self._values.__name__
-        else:
-            values = repr(self._values)
-        return f"AsVector({self._header}, {values})"
-
-    @property
-    def cache_key(self):
-        return f"AsVector({self._header},{_content_cache_key(self._values)})"
-
-    @property
-    def typename(self):
-        return f"std::vector<{_content_typename(self._values)}>"
+    _form_parameters = {}
 
     def awkward_form(self, file, context):
         awkward = uproot.extras.awkward()
         return awkward.forms.ListOffsetForm(
             context["index_format"],
-            uproot._util.awkward_form(self._values, file, context),
+            uproot._util.awkward_form(self._items, file, context),
+            parameters=self._form_parameters,
         )
 
     def read(self, chunk, cursor, context, file, selffile, parent, header=True):
         # AwkwardForth testing P: test_0637's 00,03,04,06,07,08,09,10,11,12,13,14,15,16,17,23,24,26,27,28,31,33,36,38,41,42,43,44,45,46,49,50,55,56,57,58,59,60,61,62,63,67,68,72,73,76,77,80
+        # AwkwardForth testing Q: test_0637's 62,63,64,65,69,70,74,75,77
+        # AwkwardForth testing O: test_0637's (none for RVec)
+
         forth_obj = uproot._awkward_forth.get_forth_obj(context)
 
         if forth_obj is not None:
             context = uproot._awkward_forth.add_to_path(
-                forth_obj, context, uproot._awkward_forth.SpecialPathItem("vector")
+                forth_obj,
+                context,
+                uproot._awkward_forth.SpecialPathItem(self._specialpathitem_name),
             )
 
             key = uproot._awkward_forth.get_first_key_number(context)
@@ -1070,7 +925,7 @@ class AsVector(AsContainer):
                 form_details={
                     "class": "ListOffsetArray",
                     "offsets": "i64",
-                    "parameters": {},
+                    "parameters": self._form_parameters,
                     "form_key": node_key,
                 },
             )
@@ -1089,15 +944,15 @@ class AsVector(AsContainer):
         else:
             is_memberwise = False
 
-        # Note: self._values can also be a NumPy dtype, and not necessarily a class
-        # (e.g. type(self._values) == type)
-        _value_typename = _content_typename(self._values)
+        # Note: self._items can also be a NumPy dtype, and not necessarily a class
+        # (e.g. type(self._items) == type)
+        _value_typename = _content_typename(self._items)
 
         if is_memberwise:
             if forth_obj is not None:
                 raise uproot.interpretation.objects.CannotBeForth()
 
-            # let's hard-code in logic for std::pair<T1,T2> for now
+            # FIXME: let's hard-code in logic for std::pair<T1,T2> for now
             if not _value_typename.startswith("pair"):
                 raise NotImplementedError(
                     """memberwise serialization of {}({})
@@ -1106,7 +961,7 @@ class AsVector(AsContainer):
                     )
                 )
 
-            if not issubclass(self._values, uproot.model.DispatchByVersion):
+            if not issubclass(self._items, uproot.model.DispatchByVersion):
                 raise NotImplementedError(
                     """streamerless memberwise serialization of class {}({})
     in file {}""".format(
@@ -1120,7 +975,7 @@ class AsVector(AsContainer):
             length = cursor.field(chunk, _stl_container_size, context)
 
             # no known class version number (maybe in that header? unclear...)
-            model = self._values.new_class(file, "max")
+            model = self._items.new_class(file, "max")
 
             values = numpy.empty(length, dtype=_stl_object_type)
 
@@ -1151,7 +1006,7 @@ class AsVector(AsContainer):
                     f"stream !I-> stack\n dup node{key}-offsets +<- stack\n"
                 )
 
-                if not isinstance(self._values, numpy.dtype):
+                if not isinstance(self._items, numpy.dtype):
                     forth_stash.add_to_pre("0 do\n")
                     forth_stash.add_to_post("loop\n")
 
@@ -1159,7 +1014,7 @@ class AsVector(AsContainer):
                 forth_obj.push_previous_model(forth_stash)
 
             values = _read_nested(
-                self._values,
+                self._items,
                 length,
                 chunk,
                 cursor,
@@ -1174,7 +1029,7 @@ class AsVector(AsContainer):
             if forth_obj is not None:
                 forth_obj.pop_previous_model()
 
-        out = STLVector(values)
+        out = self._container_type(values)
 
         if self._header and header:
             uproot.deserialization.numbytes_check(
@@ -1190,25 +1045,81 @@ class AsVector(AsContainer):
         return out
 
     def __eq__(self, other):
-        if not isinstance(other, AsVector):
+        if not isinstance(other, type(self)):
             return False
 
         if self.header != other.header:
             return False
 
-        if isinstance(self.values, numpy.dtype) and isinstance(
-            other.values, numpy.dtype
+        if isinstance(self._items, numpy.dtype) and isinstance(
+            other._items, numpy.dtype
         ):
-            return self.values == other.values
-        elif not isinstance(self.values, numpy.dtype) and not isinstance(
-            other.values, numpy.dtype
+            return self._items == other._items
+        elif not isinstance(self._items, numpy.dtype) and not isinstance(
+            other._items, numpy.dtype
         ):
-            return self.values == other.values
+            return self._items == other._items
         else:
             return False
 
 
-class AsSet(AsContainer):
+class AsRVec(AsVectorLike):
+    """
+    Args:
+        header (bool): Sets the :ref:`uproot.containers.AsContainer.header`.
+        values (:doc:`uproot.model.Model` or :doc:`uproot.containers.Container`): Data
+            type for data nested in the container.
+
+    A :doc:`uproot.containers.AsContainer` for ``ROOT::VecOps::RVec``.
+    """
+
+    _specialpathitem_name = "RVec"
+
+    @property
+    def typename(self):
+        return f"RVec<{_content_typename(self.values)}>"
+
+    @property
+    def values(self):
+        """
+        Data type for data nested in the container.
+        """
+        return self._items
+
+    @property
+    def _container_type(self):
+        return ROOTRVec
+
+
+class AsVector(AsVectorLike):
+    """
+    Args:
+        header (bool): Sets the :ref:`uproot.containers.AsContainer.header`.
+        values (:doc:`uproot.model.Model` or :doc:`uproot.containers.Container`): Data
+            type for data nested in the container.
+
+    A :doc:`uproot.containers.AsContainer` for ``std::vector``.
+    """
+
+    _specialpathitem_name = "vector"
+
+    @property
+    def typename(self):
+        return f"std::vector<{_content_typename(self.values)}>"
+
+    @property
+    def values(self):
+        """
+        Data type for data nested in the container.
+        """
+        return self._items
+
+    @property
+    def _container_type(self):
+        return STLVector
+
+
+class AsSet(AsVectorLike):
     """
     Args:
         header (bool): Sets the :ref:`uproot.containers.AsContainer.header`.
@@ -1219,146 +1130,26 @@ class AsSet(AsContainer):
     """
 
     def __init__(self, header, keys):
-        self.header = header
-        if isinstance(keys, AsContainer):
-            self._keys = keys
-        elif isinstance(keys, type) and issubclass(
-            keys, (uproot.model.Model, uproot.model.DispatchByVersion)
-        ):
-            self._keys = keys
-        else:
-            self._keys = numpy.dtype(keys)
+        super().__init__(header, keys)
 
-    def __hash__(self):
-        return hash((AsSet, self._header, self._keys))
+    _specialpathitem_name = "set"
+
+    @property
+    def typename(self):
+        return f"std::set<{_content_typename(self.keys)}>"
 
     @property
     def keys(self):
         """
         Data type for data nested in the container.
         """
-        return self._keys
+        return self._items
 
-    def __repr__(self):
-        keys = self._keys.__name__ if isinstance(self._keys, type) else repr(self._keys)
-        return f"AsSet({self._header}, {keys})"
+    _form_parameters = {"__array__": "set"}
 
     @property
-    def cache_key(self):
-        return f"AsSet({self._header},{_content_cache_key(self._keys)})"
-
-    @property
-    def typename(self):
-        return f"std::set<{_content_typename(self._keys)}>"
-
-    def awkward_form(self, file, context):
-        awkward = uproot.extras.awkward()
-        return awkward.forms.ListOffsetForm(
-            context["index_format"],
-            uproot._util.awkward_form(self._keys, file, context),
-            parameters={"__array__": "set"},
-        )
-
-    def read(self, chunk, cursor, context, file, selffile, parent, header=True):
-        # AwkwardForth testing Q: test_0637's 62,63,64,65,69,70,74,75,77
-        forth_obj = uproot._awkward_forth.get_forth_obj(context)
-
-        if forth_obj is not None:
-            context = uproot._awkward_forth.add_to_path(
-                forth_obj, context, uproot._awkward_forth.SpecialPathItem("set")
-            )
-
-            key = uproot._awkward_forth.get_first_key_number(context)
-
-            node_key = f"node{key}"
-            forth_stash = uproot._awkward_forth.Node(
-                node_key,
-                form_details={
-                    "class": "ListOffsetArray",
-                    "offsets": "i64",
-                    "parameters": {"__array__": "set"},
-                    "form_key": node_key,
-                },
-            )
-
-        if self._header and header:
-            start_cursor = cursor.copy()
-            (
-                num_bytes,
-                instance_version,
-                is_memberwise,
-            ) = uproot.deserialization.numbytes_version(chunk, cursor, context)
-            if forth_obj is not None:
-                jump = cursor._index - start_cursor._index
-                if jump != 0:
-                    forth_stash.add_to_pre(f"{jump} stream skip\n")
-        else:
-            is_memberwise = False
-
-        if is_memberwise:
-            raise NotImplementedError(
-                f"""memberwise serialization of {type(self).__name__}
-in file {selffile.file_path}"""
-            )
-
-        length = cursor.field(chunk, _stl_container_size, context)
-
-        if forth_obj is not None:
-            forth_stash.add_to_header(f"output node{key}-offsets int64\n")
-            forth_stash.add_to_init(f"0 node{key}-offsets <- stack\n")
-            forth_stash.add_to_pre(
-                f"stream !I-> stack\ndup node{key}-offsets +<- stack\n"
-            )
-            forth_obj.append_form_key(f"{node_key}-offsets")
-            if not isinstance(self._keys, numpy.dtype):
-                forth_stash.add_to_pre("0 do\n")
-                forth_stash.add_to_post("loop\n")
-
-            forth_obj.add_node_to_model(forth_stash)
-            forth_obj.update_previous_model(forth_stash)
-
-        keys = _read_nested(
-            self._keys,
-            length,
-            chunk,
-            cursor,
-            uproot._awkward_forth.add_to_path(
-                forth_obj, context, uproot._awkward_forth.SpecialPathItem("item")
-            ),
-            file,
-            selffile,
-            parent,
-        )
-        out = STLSet(keys)
-
-        if self._header and header:
-            uproot.deserialization.numbytes_check(
-                chunk,
-                start_cursor,
-                cursor,
-                num_bytes,
-                self.typename,
-                context,
-                file.file_path,
-            )
-
-        return out
-
-    def __eq__(self, other):
-        if not isinstance(other, AsSet):
-            return False
-
-        if self.header != other.header:
-            return False
-
-        if isinstance(self.keys, numpy.dtype) and isinstance(other.keys, numpy.dtype):
-            return self.keys == other.keys
-        elif not isinstance(self.keys, numpy.dtype) and not isinstance(
-            other.keys, numpy.dtype
-        ):
-            return self.keys == other.keys
-        else:
-            return False
+    def _container_type(self):
+        return STLSet
 
 
 def _has_nested_header(obj):
