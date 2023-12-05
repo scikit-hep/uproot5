@@ -330,9 +330,7 @@ class Model_TStreamerInfo(uproot.model.Model):
         # std::pair cannot be strided
         if self.name.startswith("pair<"):
             strided_interpretation = strided_interpretation[:2]
-            strided_interpretation.append(
-                "        raise CannotBeStrided('std::pair')"
-            )
+            strided_interpretation.append("        raise CannotBeStrided('std::pair')")
 
         classname = uproot.model.classname_encode(self.name, self.class_version)
         return "\n".join(
