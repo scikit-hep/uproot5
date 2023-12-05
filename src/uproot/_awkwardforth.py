@@ -102,7 +102,7 @@ class ForthGenerator:
             for child_node in current_node.children:
                 if child_node.name == new_node.name:
                     return
-            current_node.add_child(new_node)
+            current_node.children.append(new_node)
         else:
             for child_node in current_node.children:
                 self.add_node(new_node, child_node, parent_node_name)
@@ -165,6 +165,10 @@ class Node:
     def name(self):
         return self._name
 
+    @name.setter
+    def name(self, new_name):
+        self._name = new_name
+
     @property
     def pre_code(self):
         return self._pre_code
@@ -185,29 +189,21 @@ class Node:
     def form_details(self):
         return self._form_details
 
+    @form_details.setter
+    def form_details(self, form_details):
+        self._form_details = form_details
+
     @property
     def field_name(self):
         return self._field_name
 
+    @field_name.setter
+    def field_name(self, new_name):
+        self._field_name = new_name
+
     @property
     def children(self):
         return self._children
-
-    @property
-    def node(self):
-        return self
-
-    def add_form_details(self, form_details):
-        self._form_details = form_details
-
-    def change_field_name(self, new_name):
-        self._field_name = new_name
-
-    def add_child(self, child):
-        self._children.append(child)
-
-    def change_name(self, new_name):
-        self._name = new_name
 
     def derive_form(self):
         if self._name.endswith(":prebuilt"):

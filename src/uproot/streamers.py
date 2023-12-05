@@ -280,7 +280,7 @@ class Model_TStreamerInfo(uproot.model.Model):
         read_members.extend(
             [
                 "        if forth_obj is not None:",
-                f"           forth_stash.add_form_details({{'class': 'RecordArray', 'parameters': {{'__record__': {self.name!r}}}}})",
+                f"           forth_stash.form_details = {{'class': 'RecordArray', 'parameters': {{'__record__': {self.name!r}}}}}",
             ]
         )
 
@@ -1209,7 +1209,7 @@ class Model_TStreamerLoop(Model_TStreamerElement):
                 f"            self._members[{self.name!r}] = c({self.typename.rstrip('*')!r}).read(chunk, cursor, uproot._awkwardforth.add_to_path(forth_obj, context, {self.name!r}), file, self._file, self.concrete)",
                 "            if forth_obj is not None:",
                 "                if len(forth_obj.active_node.children) != 0:",
-                f"                    forth_obj.active_node.children[-1].change_field_name({self.name!r})",
+                f"                    forth_obj.active_node.children[-1].field_name = {self.name!r}",
             ]
         )
 
@@ -1316,7 +1316,7 @@ class Model_TStreamerSTL(Model_TStreamerElement):
                 f"        self._members[{self.name!r}] = self._stl_container{len(containers)}.read(chunk, cursor, uproot._awkwardforth.add_to_path(forth_obj, context, {self.name!r}), file, self._file, self.concrete)",
                 "        if forth_obj is not None:",
                 "            if len(forth_obj.active_node.children) != 0:",
-                f"                forth_obj.active_node.children[-1].change_field_name({self.name!r})",
+                f"                forth_obj.active_node.children[-1].field_name = {self.name!r}",
             ]
         )
 
@@ -1432,7 +1432,7 @@ class TStreamerPointerTypes:
                     f"        self._members[{self.name!r}] = c({self.typename.rstrip('*')!r}).read(chunk, cursor, uproot._awkwardforth.add_to_path(forth_obj, context, {self.name!r}), file, self._file, self.concrete)",
                     "        if forth_obj is not None:",
                     "            if len(forth_obj.active_node.children) != 0:",
-                    f"                forth_obj.active_node.children[-1].change_field_name({self.name!r})",
+                    f"                forth_obj.active_node.children[-1].field_name = {self.name!r}",
                 ]
             )
 
@@ -1457,7 +1457,7 @@ class TStreamerPointerTypes:
                     f"        self._members[{self.name!r}] = read_object_any(chunk, cursor, uproot._awkwardforth.add_to_path(forth_obj, context, {self.name!r}), file, self._file, self)",
                     "        if forth_obj is not None:",
                     "            if len(forth_obj.active_node.children) != 0:",
-                    f"                forth_obj.active_node.children[-1].change_field_name({self.name!r})",
+                    f"                forth_obj.active_node.children[-1].field_name = {self.name!r}",
                 ]
             )
             read_member_n.append(
@@ -1575,7 +1575,7 @@ class TStreamerObjectTypes:
                 f"        self._members[{self.name!r}] = c({self.typename.rstrip('*')!r}).read(chunk, cursor, uproot._awkwardforth.add_to_path(forth_obj, context, {self.name!r}), file, self._file, self.concrete)",
                 "        if forth_obj is not None:",
                 "            if len(forth_obj.active_node.children) != 0:",
-                f"                forth_obj.active_node.children[-1].change_field_name({self.name!r})",
+                f"                forth_obj.active_node.children[-1].field_name = {self.name!r}",
             ]
         )
 

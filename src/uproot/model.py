@@ -846,7 +846,7 @@ class Model:
             )
             if forth_obj is not None:
                 key = uproot._awkwardforth.get_first_key_number(context)
-                forth_stash.change_name(f"start-of-model {key}")
+                forth_stash.name = f"start-of-model {key}"
                 forth_obj.add_node(forth_stash)
                 forth_obj.push_active_node(forth_stash)
             self.read_members(chunk, cursor, context, file)
