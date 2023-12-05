@@ -53,7 +53,7 @@ in file {self.file.file_path}"""
             )
             forth_stash.add_to_pre(f"{skip_length} stream skip \n")
             forth_obj.add_node_to_model(forth_stash)
-            forth_obj.update_previous_model(forth_stash)
+            forth_obj.set_active_model(forth_stash)
 
     writable = True
 

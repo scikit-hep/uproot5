@@ -53,9 +53,7 @@ class ForthGenerator:
         self.final_code = []
         self.final_header = []
         self.final_init = []
-        self.discovered_form = {"form_key": "TOP", "content": {}, "class": "TOP"}
         self.awkward_model = Node("TOP")
-        self.form_keys = []
         self.previous_model = self.awkward_model
         self.previous_previous_models = []
 
@@ -80,26 +78,22 @@ class ForthGenerator:
                 self.add_node_to_model(new_node, child_node, parent_node_name)
 
     def add_to_header(self, code):
-        self.final_header += code
+        self.final_header.extend(code)
 
     def add_to_init(self, code):
-        self.final_init += code
+        self.final_init.extend(code)
 
     def add_to_final(self, code):
         self.final_code.extend(code)
 
-    def append_form_key(self, key):
-        if key not in self.form_keys:
-            self.form_keys.append(key)
-
-    def update_previous_model(self, model):
+    def set_active_model(self, model):
         self.previous_model = model
 
-    def push_previous_model(self, model):
+    def push_active_model(self, model):
         self.previous_previous_models.append(self.previous_model)
         self.previous_model = model
 
-    def pop_previous_model(self):
+    def pop_active_model(self):
         self.previous_model = self.previous_previous_models.pop()
 
 

@@ -812,7 +812,7 @@ class Model:
                     context["breadcrumbs"] = old_breadcrumbs
                     if forth_obj is not None:
                         forth_obj.add_node_to_model(forth_stash)
-                        forth_obj.push_previous_model(forth_stash)
+                        forth_obj.push_active_model(forth_stash)
                     temp_var = correct_cls.read(
                         chunk,
                         cursor,
@@ -823,7 +823,7 @@ class Model:
                         concrete=concrete,
                     )
                     if forth_obj is not None:
-                        forth_obj.pop_previous_model()
+                        forth_obj.pop_active_model()
 
                     return temp_var
 
@@ -848,10 +848,10 @@ class Model:
                 key = uproot._awkwardforth.get_first_key_number(context)
                 forth_stash.change_name(f"start-of-model {key}")
                 forth_obj.add_node_to_model(forth_stash)
-                forth_obj.push_previous_model(forth_stash)
+                forth_obj.push_active_model(forth_stash)
             self.read_members(chunk, cursor, context, file)
             if forth_obj is not None:
-                forth_obj.pop_previous_model()
+                forth_obj.pop_active_model()
 
             self.hook_after_read_members(
                 chunk=chunk, cursor=cursor, context=context, file=file
@@ -1324,7 +1324,7 @@ class DispatchByVersion:
             forth_stash.add_to_pre(f"{bytes_skipped} stream skip \n")
 
             forth_obj.add_node_to_model(forth_stash)
-            forth_obj.push_previous_model(forth_stash)
+            forth_obj.push_active_model(forth_stash)
 
         if versioned_cls is not None:
             pass
@@ -1357,7 +1357,7 @@ class DispatchByVersion:
         )
 
         if forth_obj is not None:
-            forth_obj.pop_previous_model()
+            forth_obj.pop_active_model()
 
         return temp_var
 

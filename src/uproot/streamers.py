@@ -220,7 +220,7 @@ class Model_TStreamerInfo(uproot.model.Model):
             "            forth_stash = uproot._awkwardforth.Node(f'read-members {key_number}')",
             "            key_number += 1",
             "            forth_obj.add_node_to_model(forth_stash)",
-            "            forth_obj.update_previous_model(forth_stash)",
+            "            forth_obj.set_active_model(forth_stash)",
         ]
         read_member_n = [
             "    def read_member_n(self, chunk, cursor, context, file, member_index):"
@@ -709,10 +709,10 @@ class Model_TStreamerBase(Model_TStreamerElement):
                 "            key = key_number ; key_number += 1",
                 "            nested_forth_stash = uproot._awkwardforth.Node(f'base-class {key}')",
                 "            forth_obj.add_node_to_model(nested_forth_stash)",
-                "            forth_obj.push_previous_model(nested_forth_stash)",
+                "            forth_obj.push_active_model(nested_forth_stash)",
                 f"        self._bases.append(c({self.name!r}, {self.base_version!r}).read(chunk, cursor, uproot._awkwardforth.add_to_path(forth_obj, context, uproot._awkwardforth.SpecialPathItem(f'base-class {{len(self._bases)}}')), file, self._file, self._parent, concrete=self.concrete))",
                 "        if forth_obj is not None:",
-                "            forth_obj.pop_previous_model()",
+                "            forth_obj.pop_active_model()",
             ]
         )
 
@@ -994,11 +994,8 @@ class Model_TStreamerBasicType(Model_TStreamerElement):
                         read_members.append(
                             f'            nested_forth_stash.add_to_pre(f"stream !{formats[-1][0]}-> node{{key}}-data\\n")'
                         )
-                    read_members.extend(
-                        [
-                            "            forth_obj.append_form_key(form_key)",
-                            f"        self._members[{fields[-1][0]!r}] = cursor.field(chunk, self._format{len(formats) - 1}, context)",
-                        ]
+                    read_members.append(
+                        f"        self._members[{fields[-1][0]!r}] = cursor.field(chunk, self._format{len(formats) - 1}, context)",
                     )
 
                 else:
@@ -1013,7 +1010,6 @@ class Model_TStreamerBasicType(Model_TStreamerElement):
                                 f'           nested_forth_stash.add_to_header(f"output {{form_key}} {uproot._awkwardforth.convert_dtype(formats[0][i])}\\n")',
                                 f'           nested_forth_stash.add_to_pre(f"stream !{formats[0][i]}-> {{form_key}}\\n")',
                                 "           forth_obj.add_node_to_model(nested_forth_stash)",
-                                "           forth_obj.append_form_key(form_key)",
                             ]
                         )
 

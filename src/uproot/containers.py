@@ -84,7 +84,7 @@ def _read_nested(
 
         for i in range(length):
             if forth_obj is not None:
-                forth_obj.update_previous_model(original_model)
+                forth_obj.set_active_model(original_model)
 
             if isinstance(model, AsContainer):
                 values[i] = model.read(
@@ -531,8 +531,6 @@ class AsString(AsContainer):
             )
             forth_stash.add_to_init(f"0 node{offsets_num}-offsets <- stack\n")
             forth_obj.add_node_to_model(forth_stash)
-            forth_obj.append_form_key(f"node{data_num}-data")
-            forth_obj.append_form_key(f"node{offsets_num}-offsets")
 
         return out
 
@@ -765,12 +763,11 @@ in file {selffile.file_path}"""
                             f"repeat\nswap node{offsets_num}-offsets +<- stack drop\n"
                         )
                     forth_obj.add_node_to_model(forth_stash)
-                    forth_obj.append_form_key(f"node{offsets_num}")
 
                 out = []
                 while cursor.displacement(start_cursor) < num_bytes:
                     if forth_obj is not None:
-                        forth_obj.push_previous_model(forth_stash)
+                        forth_obj.push_active_model(forth_stash)
                     out.append(
                         self._values.read(
                             chunk,
@@ -786,7 +783,7 @@ in file {selffile.file_path}"""
                         )
                     )
                     if forth_obj is not None:
-                        forth_obj.pop_previous_model()
+                        forth_obj.pop_active_model()
 
                 if self._header and header:
                     uproot.deserialization.numbytes_check(
@@ -827,12 +824,12 @@ in file {selffile.file_path}"""
                         forth_stash.add_to_post(
                             f"repeat\nswap node{offsets_num}-offsets +<- stack drop\n"
                         )
-                    forth_obj.append_form_key(f"node{offsets_num}-offsets")
                     forth_obj.add_node_to_model(forth_stash)
+
                 out = []
                 while cursor.index < chunk.stop:
                     if forth_obj is not None:
-                        forth_obj.push_previous_model(forth_stash)
+                        forth_obj.push_active_model(forth_stash)
                     out.append(
                         self._values.read(
                             chunk,
@@ -848,7 +845,7 @@ in file {selffile.file_path}"""
                         )
                     )
                     if forth_obj is not None:
-                        forth_obj.pop_previous_model()
+                        forth_obj.pop_active_model()
 
                 return uproot._util.objectarray1d(out).reshape(-1, *self.inner_shape)
 
@@ -1011,7 +1008,7 @@ class AsVectorLike(AsContainer):
                     forth_stash.add_to_post("loop\n")
 
                 forth_obj.add_node_to_model(forth_stash)
-                forth_obj.push_previous_model(forth_stash)
+                forth_obj.push_active_model(forth_stash)
 
             values = _read_nested(
                 self._items,
@@ -1027,7 +1024,7 @@ class AsVectorLike(AsContainer):
             )
 
             if forth_obj is not None:
-                forth_obj.pop_previous_model()
+                forth_obj.pop_active_model()
 
         out = self._container_type(values)
 
@@ -1288,7 +1285,6 @@ class AsMap(AsContainer):
 
             length = cursor.field(chunk, _stl_container_size, context)
             if forth_obj is not None:
-                forth_obj.append_form_key(f"node{key}-offsets")
                 forth_stash.add_to_header(f"output node{key}-offsets int64\n")
                 forth_stash.add_to_init(f"0 node{key}-offsets <- stack\n")
                 forth_stash.add_to_pre(
@@ -1304,7 +1300,7 @@ class AsMap(AsContainer):
                 else:
                     forth_stash.add_to_pre("dup\n")
                 forth_obj.add_node_to_model(forth_stash)
-                forth_obj.update_previous_model(forth_stash)
+                forth_obj.set_active_model(forth_stash)
 
             keys = _read_nested(
                 self._keys,

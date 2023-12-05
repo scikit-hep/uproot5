@@ -187,7 +187,7 @@ in file {self.file.file_path}"""
                 f"0 node{keys[1]}-offsets <- stack\n0 node{keys[4]}-offsets <- stack\n"
             )
             forth_obj.add_node_to_model(forth_stash)
-            forth_obj.update_previous_model(forth_stash)
+            forth_obj.set_active_model(forth_stash)
         cursor.skip(10)
         self._members["fName"] = cursor.string(chunk, context)
         self._members["fSize"] = cursor.field(chunk, _trefarray_format1, context)

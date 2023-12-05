@@ -387,11 +387,11 @@ input stream
                 0, origin=-(byte_offsets[i] + cursor_offset)
             )
 
-            context["forth"].gen.push_previous_model(uproot._awkwardforth.Node("TOP"))
+            context["forth"].gen.push_active_model(uproot._awkwardforth.Node("TOP"))
             output[i] = self._model.read(
                 chunk, cursor, context, branch.file, branch.file.detached, branch
             )
-            context["forth"].gen.pop_previous_model()
+            context["forth"].gen.pop_active_model()
 
             # def quickie(x):
             #     assert isinstance(x, dict)
@@ -416,7 +416,6 @@ input stream
     {"".join(context["forth"].gen.final_code)}
     loop
     """
-                self._forth_form_keys = tuple(context["forth"].gen.form_keys)
                 self._form = derived_form
 
                 return None  # we should re-read all the data with Forth
