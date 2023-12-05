@@ -135,7 +135,6 @@ class Node:
     def __init__(
         self,
         name,
-        dtype=None,
         pre_code=None,
         post_code=None,
         init_code=None,
@@ -145,7 +144,6 @@ class Node:
         children=None,
     ):
         self._name = name
-        self._dtype = dtype
         self._pre_code = [] if pre_code is None else pre_code
         self._post_code = [] if post_code is None else post_code
         self._init_code = "" if init_code is None else init_code
