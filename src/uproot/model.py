@@ -787,10 +787,10 @@ class Model:
         context["breadcrumbs"] = (*old_breadcrumbs, self)
 
         self.hook_before_read(chunk=chunk, cursor=cursor, context=context, file=file)
-        forth_obj = uproot._awkward_forth.get_forth_obj(context)
+        forth_obj = uproot._awkwardforth.get_forth_obj(context)
         if forth_obj is not None:
-            forth_stash = uproot._awkward_forth.Node(
-                name=f"wrong-instance-version {uproot._awkward_forth.get_first_key_number(context)}",
+            forth_stash = uproot._awkwardforth.Node(
+                name=f"wrong-instance-version {uproot._awkwardforth.get_first_key_number(context)}",
                 form_details={"offsets": "i64"},
             )
         if context.get("reading", True):
@@ -845,7 +845,7 @@ class Model:
                 chunk=chunk, cursor=cursor, context=context, file=file
             )
             if forth_obj is not None:
-                key = uproot._awkward_forth.get_first_key_number(context)
+                key = uproot._awkwardforth.get_first_key_number(context)
                 forth_stash.change_name(f"start-of-model {key}")
                 forth_obj.add_node_to_model(forth_stash)
                 forth_obj.push_previous_model(forth_stash)
@@ -1314,10 +1314,10 @@ class DispatchByVersion:
 
         versioned_cls = cls.class_of_version(version)
 
-        forth_obj = uproot._awkward_forth.get_forth_obj(context)
+        forth_obj = uproot._awkwardforth.get_forth_obj(context)
         if forth_obj is not None:
-            forth_stash = uproot._awkward_forth.Node(
-                f"dispatch-by-version {uproot._awkward_forth.get_first_key_number(context)}",
+            forth_stash = uproot._awkwardforth.Node(
+                f"dispatch-by-version {uproot._awkwardforth.get_first_key_number(context)}",
                 form_details={"offsets": "i64"},
             )
             bytes_skipped = cursor._index - start_index

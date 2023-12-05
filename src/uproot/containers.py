@@ -15,7 +15,7 @@ from collections.abc import KeysView, Mapping, Sequence, Set, ValuesView
 import numpy
 
 import uproot
-import uproot._awkward_forth
+import uproot._awkwardforth
 
 _stl_container_size = struct.Struct(">I")
 _stl_object_type = numpy.dtype(object)
@@ -47,27 +47,27 @@ def _content_cache_key(content):
 def _read_nested(
     model, length, chunk, cursor, context, file, selffile, parent, header=True
 ):
-    forth_obj = uproot._awkward_forth.get_forth_obj(context)
+    forth_obj = uproot._awkwardforth.get_forth_obj(context)
 
     if isinstance(model, numpy.dtype):
-        symbol = uproot._awkward_forth.symbol_dict.get(model)
+        symbol = uproot._awkwardforth.symbol_dict.get(model)
 
         if forth_obj is not None and symbol is None:
             raise uproot.interpretation.objects.CannotBeForth()
 
         if forth_obj is not None:
-            key = uproot._awkward_forth.get_first_key_number(context)
-            forth_stash = uproot._awkward_forth.Node(
+            key = uproot._awkwardforth.get_first_key_number(context)
+            forth_stash = uproot._awkwardforth.Node(
                 f"node{key}",
                 form_details={
                     "class": "NumpyArray",
-                    "primitive": uproot._awkward_forth.convert_dtype(symbol),
+                    "primitive": uproot._awkwardforth.convert_dtype(symbol),
                     "form_key": f"node{key}",
                 },
             )
 
             forth_stash.add_to_header(
-                f"output node{key}-data {uproot._awkward_forth.convert_dtype(symbol)}\n"
+                f"output node{key}-data {uproot._awkwardforth.convert_dtype(symbol)}\n"
             )
             forth_stash.add_to_pre(f"stream #!{symbol}-> node{key}-data\n")
 
@@ -334,7 +334,7 @@ class AsDynamic(AsContainer):
 
     def read(self, chunk, cursor, context, file, selffile, parent, header=True):
         # AwkwardForth testing K: test_0637's tests aren't expected to enter here
-        if uproot._awkward_forth.get_forth_obj(context) is not None:
+        if uproot._awkwardforth.get_forth_obj(context) is not None:
             raise uproot.interpretation.objects.CannotBeForth()
         classname = cursor.string(chunk, context)
         cursor.skip(1)
@@ -460,16 +460,16 @@ class AsString(AsContainer):
 
     def read(self, chunk, cursor, context, file, selffile, parent, header=True):
         # AwkwardForth testing L: test_0637's 00,03,25,27,30,33,35,36,38,39,45,47,51,56,57,58,60,61,63,65,68,70,71,72,73,74,75,78,79
-        forth_obj = uproot._awkward_forth.get_forth_obj(context)
+        forth_obj = uproot._awkwardforth.get_forth_obj(context)
         if forth_obj:
-            context = uproot._awkward_forth.add_to_path(
-                forth_obj, context, uproot._awkward_forth.SpecialPathItem("string")
+            context = uproot._awkwardforth.add_to_path(
+                forth_obj, context, uproot._awkwardforth.SpecialPathItem("string")
             )
 
-            offsets_num = uproot._awkward_forth.get_first_key_number(context)
+            offsets_num = uproot._awkwardforth.get_first_key_number(context)
             data_num = offsets_num + 1
 
-            forth_stash = uproot._awkward_forth.Node(
+            forth_stash = uproot._awkwardforth.Node(
                 f"node{offsets_num}",
                 form_details={
                     "class": "ListOffsetArray",
@@ -690,14 +690,14 @@ class AsArray(AsContainer):
 
     def read(self, chunk, cursor, context, file, selffile, parent, header=True):
         # AwkwardForth testing N: test_0637's 01,02,23,24,25,26,27,28,30,51,52
-        forth_obj = uproot._awkward_forth.get_forth_obj(context)
+        forth_obj = uproot._awkwardforth.get_forth_obj(context)
 
         if forth_obj is not None:
-            context = uproot._awkward_forth.add_to_path(
-                forth_obj, context, uproot._awkward_forth.SpecialPathItem("array")
+            context = uproot._awkwardforth.add_to_path(
+                forth_obj, context, uproot._awkwardforth.SpecialPathItem("array")
             )
 
-            offsets_num = uproot._awkward_forth.get_first_key_number(context)
+            offsets_num = uproot._awkwardforth.get_first_key_number(context)
 
             if len(self.inner_shape) > 0:
                 temp_form = {
@@ -718,7 +718,7 @@ class AsArray(AsContainer):
                     "form_key": f"node{offsets_num}",
                 }
 
-            forth_stash = uproot._awkward_forth.Node(
+            forth_stash = uproot._awkwardforth.Node(
                 f"node{offsets_num}",
                 form_details=temp_form,
             )
@@ -775,10 +775,10 @@ in file {selffile.file_path}"""
                         self._values.read(
                             chunk,
                             cursor,
-                            uproot._awkward_forth.add_to_path(
+                            uproot._awkwardforth.add_to_path(
                                 forth_obj,
                                 context,
-                                uproot._awkward_forth.SpecialPathItem("item"),
+                                uproot._awkwardforth.SpecialPathItem("item"),
                             ),
                             file,
                             selffile,
@@ -837,10 +837,10 @@ in file {selffile.file_path}"""
                         self._values.read(
                             chunk,
                             cursor,
-                            uproot._awkward_forth.add_to_path(
+                            uproot._awkwardforth.add_to_path(
                                 forth_obj,
                                 context,
-                                uproot._awkward_forth.SpecialPathItem("item"),
+                                uproot._awkwardforth.SpecialPathItem("item"),
                             ),
                             file,
                             selffile,
@@ -908,19 +908,19 @@ class AsVectorLike(AsContainer):
         # AwkwardForth testing Q: test_0637's 62,63,64,65,69,70,74,75,77
         # AwkwardForth testing O: test_0637's (none for RVec)
 
-        forth_obj = uproot._awkward_forth.get_forth_obj(context)
+        forth_obj = uproot._awkwardforth.get_forth_obj(context)
 
         if forth_obj is not None:
-            context = uproot._awkward_forth.add_to_path(
+            context = uproot._awkwardforth.add_to_path(
                 forth_obj,
                 context,
-                uproot._awkward_forth.SpecialPathItem(self._specialpathitem_name),
+                uproot._awkwardforth.SpecialPathItem(self._specialpathitem_name),
             )
 
-            key = uproot._awkward_forth.get_first_key_number(context)
+            key = uproot._awkwardforth.get_first_key_number(context)
 
             node_key = f"node{key}"
-            forth_stash = uproot._awkward_forth.Node(
+            forth_stash = uproot._awkwardforth.Node(
                 node_key,
                 form_details={
                     "class": "ListOffsetArray",
@@ -1018,8 +1018,8 @@ class AsVectorLike(AsContainer):
                 length,
                 chunk,
                 cursor,
-                uproot._awkward_forth.add_to_path(
-                    forth_obj, context, uproot._awkward_forth.SpecialPathItem("item")
+                uproot._awkwardforth.add_to_path(
+                    forth_obj, context, uproot._awkwardforth.SpecialPathItem("item")
                 ),
                 file,
                 selffile,
@@ -1247,15 +1247,15 @@ class AsMap(AsContainer):
 
     def read(self, chunk, cursor, context, file, selffile, parent, header=True):
         # AwkwardForth testing R: test_0637's 00,33,35,39,47,48,66,67,68,69,70,71,72,73,74,75,76,77,78,79
-        forth_obj = uproot._awkward_forth.get_forth_obj(context)
+        forth_obj = uproot._awkwardforth.get_forth_obj(context)
         if forth_obj is not None:
-            context = uproot._awkward_forth.add_to_path(
-                forth_obj, context, uproot._awkward_forth.SpecialPathItem("map")
+            context = uproot._awkwardforth.add_to_path(
+                forth_obj, context, uproot._awkwardforth.SpecialPathItem("map")
             )
 
-            key = uproot._awkward_forth.get_first_key_number(context)
+            key = uproot._awkwardforth.get_first_key_number(context)
 
-            forth_stash = uproot._awkward_forth.Node(
+            forth_stash = uproot._awkwardforth.Node(
                 f"node{key}",
                 form_details={
                     "class": "ListOffsetArray",
@@ -1311,8 +1311,8 @@ class AsMap(AsContainer):
                 length,
                 chunk,
                 cursor,
-                uproot._awkward_forth.add_to_path(
-                    forth_obj, context, uproot._awkward_forth.SpecialPathItem("keys")
+                uproot._awkwardforth.add_to_path(
+                    forth_obj, context, uproot._awkwardforth.SpecialPathItem("keys")
                 ),
                 file,
                 selffile,
@@ -1341,8 +1341,8 @@ class AsMap(AsContainer):
                 length,
                 chunk,
                 cursor,
-                uproot._awkward_forth.add_to_path(
-                    forth_obj, context, uproot._awkward_forth.SpecialPathItem("values")
+                uproot._awkwardforth.add_to_path(
+                    forth_obj, context, uproot._awkwardforth.SpecialPathItem("values")
                 ),
                 file,
                 selffile,

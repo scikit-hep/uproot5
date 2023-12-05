@@ -24,7 +24,7 @@ class Model_TObject(uproot.model.Model):
         pass
 
     def read_members(self, chunk, cursor, context, file):
-        forth_obj = uproot._awkward_forth.get_forth_obj(context)
+        forth_obj = uproot._awkwardforth.get_forth_obj(context)
         start_index = cursor._index
 
         if self.is_memberwise:
@@ -46,9 +46,9 @@ in file {self.file.file_path}"""
         self._members["@fBits"] = int(self._members["@fBits"])
 
         if forth_obj is not None:
-            key = uproot._awkward_forth.get_first_key_number(context)
+            key = uproot._awkwardforth.get_first_key_number(context)
             skip_length = cursor._index - start_index
-            forth_stash = uproot._awkward_forth.Node(
+            forth_stash = uproot._awkwardforth.Node(
                 f"node{key} TObject", form_details={"offsets": "i64"}
             )
             forth_stash.add_to_pre(f"{skip_length} stream skip \n")

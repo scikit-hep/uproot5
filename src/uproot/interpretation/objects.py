@@ -27,7 +27,7 @@ import threading
 import numpy
 
 import uproot
-import uproot._awkward_forth
+import uproot._awkwardforth
 
 
 class AsObjects(uproot.interpretation.Interpretation):
@@ -201,7 +201,7 @@ class AsObjects(uproot.interpretation.Interpretation):
         if not hasattr(context["forth"], "vm"):
             # context["forth"] is a threading.local()
             context["forth"].vm = None
-            context["forth"].gen = uproot._awkward_forth.Forth_Generator(self)
+            context["forth"].gen = uproot._awkwardforth.Forth_Generator(self)
         else:
             context["forth"].gen = None
 
@@ -387,7 +387,7 @@ input stream
                 0, origin=-(byte_offsets[i] + cursor_offset)
             )
 
-            context["forth"].gen.push_previous_model(uproot._awkward_forth.Node("TOP"))
+            context["forth"].gen.push_previous_model(uproot._awkwardforth.Node("TOP"))
             output[i] = self._model.read(
                 chunk, cursor, context, branch.file, branch.file.detached, branch
             )

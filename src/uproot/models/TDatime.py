@@ -24,10 +24,10 @@ class Model_TDatime(uproot.behaviors.TDatime.TDatime, uproot.model.Model):
         pass
 
     def read_members(self, chunk, cursor, context, file):
-        forth_obj = uproot._awkward_forth.get_forth_obj(context)
+        forth_obj = uproot._awkwardforth.get_forth_obj(context)
         if forth_obj is not None:
-            key = uproot._awkward_forth.get_first_key_number(context)
-            forth_stash = uproot._awkward_forth.Node(
+            key = uproot._awkwardforth.get_first_key_number(context)
+            forth_stash = uproot._awkwardforth.Node(
                 f"node{key} TDatime :prebuilt",
                 form_details={
                     "class": "RecordArray",

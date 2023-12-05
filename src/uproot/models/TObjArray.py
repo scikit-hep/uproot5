@@ -28,7 +28,7 @@ class Model_TObjArray(uproot.model.Model, Sequence):
     """
 
     def read_members(self, chunk, cursor, context, file):
-        if uproot._awkward_forth.get_forth_obj(context) is not None:
+        if uproot._awkwardforth.get_forth_obj(context) is not None:
             raise uproot.interpretation.objects.CannotBeForth()
         if self.is_memberwise:
             raise NotImplementedError(
@@ -111,7 +111,7 @@ class Model_TObjArrayOfTBaskets(Model_TObjArray):
     """
 
     def read_members(self, chunk, cursor, context, file):
-        if uproot._awkward_forth.get_forth_obj(context) is not None:
+        if uproot._awkwardforth.get_forth_obj(context) is not None:
             raise uproot.interpretation.objects.CannotBeForth()
         if self.is_memberwise:
             raise NotImplementedError(

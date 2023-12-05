@@ -117,16 +117,16 @@ class Model_TRefArray(uproot.model.Model, Sequence):
         return self._members["fName"]
 
     def read_members(self, chunk, cursor, context, file):
-        forth_obj = uproot._awkward_forth.get_forth_obj(context)
+        forth_obj = uproot._awkwardforth.get_forth_obj(context)
         if self.is_memberwise:
             raise NotImplementedError(
                 f"""memberwise serialization of {type(self).__name__}
 in file {self.file.file_path}"""
             )
         if forth_obj is not None:
-            key_number = uproot._awkward_forth.get_first_key_number(context)
+            key_number = uproot._awkwardforth.get_first_key_number(context)
             keys = [key_number + i for i in range(6)]
-            forth_stash = uproot._awkward_forth.Node(
+            forth_stash = uproot._awkwardforth.Node(
                 f"node{keys[0]} TRef :prebuilt",
                 form_details={
                     "class": "RecordArray",

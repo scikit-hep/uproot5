@@ -25,7 +25,7 @@ class Model_TLeaf_v2(uproot.model.VersionedModel):
     """
 
     def read_members(self, chunk, cursor, context, file):
-        if uproot._awkward_forth.get_forth_obj(context) is not None:
+        if uproot._awkwardforth.get_forth_obj(context) is not None:
             raise uproot.interpretation.objects.CannotBeForth()
         if self.is_memberwise:
             raise NotImplementedError(
@@ -92,7 +92,7 @@ class Model_TLeafO_v1(uproot.model.VersionedModel):
     """
 
     def read_members(self, chunk, cursor, context, file):
-        if uproot._awkward_forth.get_forth_obj(context) is not None:
+        if uproot._awkwardforth.get_forth_obj(context) is not None:
             raise uproot.interpretation.objects.CannotBeForth()
         if self.is_memberwise:
             raise NotImplementedError(
@@ -151,7 +151,7 @@ class Model_TLeafB_v1(uproot.model.VersionedModel):
     """
 
     def read_members(self, chunk, cursor, context, file):
-        if uproot._awkward_forth.get_forth_obj(context) is not None:
+        if uproot._awkwardforth.get_forth_obj(context) is not None:
             raise uproot.interpretation.objects.CannotBeForth()
         if self.is_memberwise:
             raise NotImplementedError(
@@ -210,7 +210,7 @@ class Model_TLeafS_v1(uproot.model.VersionedModel):
     """
 
     def read_members(self, chunk, cursor, context, file):
-        if uproot._awkward_forth.get_forth_obj(context) is not None:
+        if uproot._awkwardforth.get_forth_obj(context) is not None:
             raise uproot.interpretation.objects.CannotBeForth()
         if self.is_memberwise:
             raise NotImplementedError(
@@ -269,7 +269,7 @@ class Model_TLeafI_v1(uproot.model.VersionedModel):
     """
 
     def read_members(self, chunk, cursor, context, file):
-        if uproot._awkward_forth.get_forth_obj(context) is not None:
+        if uproot._awkwardforth.get_forth_obj(context) is not None:
             raise uproot.interpretation.objects.CannotBeForth()
         if self.is_memberwise:
             raise NotImplementedError(
@@ -328,7 +328,7 @@ class Model_TLeafG_v1(uproot.model.VersionedModel):
     """
 
     def read_members(self, chunk, cursor, context, file):
-        if uproot._awkward_forth.get_forth_obj(context) is not None:
+        if uproot._awkwardforth.get_forth_obj(context) is not None:
             raise uproot.interpretation.objects.CannotBeForth()
         if self.is_memberwise:
             raise NotImplementedError(
@@ -375,7 +375,7 @@ class Model_TLeafL_v1(uproot.model.VersionedModel):
     """
 
     def read_members(self, chunk, cursor, context, file):
-        if uproot._awkward_forth.get_forth_obj(context) is not None:
+        if uproot._awkwardforth.get_forth_obj(context) is not None:
             raise uproot.interpretation.objects.CannotBeForth()
         if self.is_memberwise:
             raise NotImplementedError(
@@ -434,7 +434,7 @@ class Model_TLeafF_v1(uproot.model.VersionedModel):
     """
 
     def read_members(self, chunk, cursor, context, file):
-        if uproot._awkward_forth.get_forth_obj(context) is not None:
+        if uproot._awkwardforth.get_forth_obj(context) is not None:
             raise uproot.interpretation.objects.CannotBeForth()
         if self.is_memberwise:
             raise NotImplementedError(
@@ -493,7 +493,7 @@ class Model_TLeafD_v1(uproot.model.VersionedModel):
     """
 
     def read_members(self, chunk, cursor, context, file):
-        if uproot._awkward_forth.get_forth_obj(context) is not None:
+        if uproot._awkwardforth.get_forth_obj(context) is not None:
             raise uproot.interpretation.objects.CannotBeForth()
         if self.is_memberwise:
             raise NotImplementedError(
@@ -552,7 +552,7 @@ class Model_TLeafC_v1(uproot.model.VersionedModel):
     """
 
     def read_members(self, chunk, cursor, context, file):
-        if uproot._awkward_forth.get_forth_obj(context) is not None:
+        if uproot._awkwardforth.get_forth_obj(context) is not None:
             raise uproot.interpretation.objects.CannotBeForth()
         if self.is_memberwise:
             raise NotImplementedError(
@@ -609,7 +609,7 @@ class Model_TLeafF16_v1(uproot.model.VersionedModel):
     """
 
     def read_members(self, chunk, cursor, context, file):
-        if uproot._awkward_forth.get_forth_obj(context) is not None:
+        if uproot._awkwardforth.get_forth_obj(context) is not None:
             raise uproot.interpretation.objects.CannotBeForth()
         if self.is_memberwise:
             raise NotImplementedError(
@@ -651,7 +651,7 @@ class Model_TLeafD32_v1(uproot.model.VersionedModel):
     """
 
     def read_members(self, chunk, cursor, context, file):
-        if uproot._awkward_forth.get_forth_obj(context) is not None:
+        if uproot._awkwardforth.get_forth_obj(context) is not None:
             raise uproot.interpretation.objects.CannotBeForth()
         if self.is_memberwise:
             raise NotImplementedError(
@@ -696,7 +696,7 @@ class Model_TLeafElement_v1(uproot.model.VersionedModel):
     """
 
     def read_members(self, chunk, cursor, context, file):
-        if uproot._awkward_forth.get_forth_obj(context) is not None:
+        if uproot._awkwardforth.get_forth_obj(context) is not None:
             raise uproot.interpretation.objects.CannotBeForth()
         if self.is_memberwise:
             raise NotImplementedError(

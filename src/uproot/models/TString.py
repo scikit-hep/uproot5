@@ -6,7 +6,7 @@ This module defines a versionless model of ``TString``.
 from __future__ import annotations
 
 import uproot
-import uproot._awkward_forth
+import uproot._awkwardforth
 
 
 class Model_TString(uproot.model.Model, str):
@@ -25,11 +25,11 @@ class Model_TString(uproot.model.Model, str):
                 f"""memberwise serialization of {type(self).__name__}
 in file {self.file.file_path}"""
             )
-        forth_obj = uproot._awkward_forth.get_forth_obj(context)
+        forth_obj = uproot._awkwardforth.get_forth_obj(context)
         if forth_obj is not None:
-            offsets_num = uproot._awkward_forth.get_first_key_number(context)
+            offsets_num = uproot._awkwardforth.get_first_key_number(context)
             data_num = offsets_num + 1
-            nested_forth_stash = uproot._awkward_forth.Node(
+            nested_forth_stash = uproot._awkwardforth.Node(
                 f"node{offsets_num} TString",
                 form_details={
                     "class": "ListOffsetArray",
