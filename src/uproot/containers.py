@@ -50,7 +50,7 @@ def _read_nested(
     forth_obj = uproot._awkwardforth.get_forth_obj(context)
 
     if isinstance(model, numpy.dtype):
-        symbol = uproot._awkwardforth.symbol_dict.get(model)
+        symbol = uproot._awkwardforth.dtype_to_struct.get(model)
 
         if forth_obj is not None and symbol is None:
             raise uproot.interpretation.objects.CannotBeForth()
@@ -61,13 +61,13 @@ def _read_nested(
                 f"node{key}",
                 form_details={
                     "class": "NumpyArray",
-                    "primitive": uproot._awkwardforth.convert_dtype(symbol),
+                    "primitive": uproot._awkwardforth.struct_to_dtype_name[symbol],
                     "form_key": f"node{key}",
                 },
             )
 
             forth_stash.add_to_header(
-                f"output node{key}-data {uproot._awkwardforth.convert_dtype(symbol)}\n"
+                f"output node{key}-data {uproot._awkwardforth.struct_to_dtype_name[symbol]}\n"
             )
             forth_stash.add_to_pre(f"stream #!{symbol}-> node{key}-data\n")
 

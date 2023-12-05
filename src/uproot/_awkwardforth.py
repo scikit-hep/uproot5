@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import numpy as np
 
-symbol_dict = {
+dtype_to_struct = {
     np.dtype("bool"): "?",
     np.dtype(">u1"): "B",
     np.dtype(">u2"): "H",
@@ -19,6 +19,20 @@ symbol_dict = {
     np.dtype(">i8"): "q",
     np.dtype(">f4"): "f",
     np.dtype(">f8"): "d",
+}
+
+struct_to_dtype_name = {
+    "?": "bool",
+    "B": "uint8",
+    "H": "uint16",
+    "I": "uint32",
+    "Q": "uint64",
+    "b": "int8",
+    "h": "int16",
+    "i": "int32",
+    "q": "int64",
+    "f": "float32",
+    "d": "float64",
 }
 
 
@@ -295,38 +309,3 @@ class Node:
                     out["fields"].append(descendant.field_name)
                     out["contents"].append(child.derive_form())
             return out
-
-
-def convert_dtype(format):
-    """Takes datatype codes from classses and returns the full datatype name.
-
-    Args:
-        format (string): The datatype in the dynamic class
-
-    Returns:
-        string: The datatype in words.
-    """
-    if format == "?":
-        return "bool"
-    elif format == "B":
-        return "uint8"
-    elif format == "H":
-        return "uint16"
-    elif format == "I":
-        return "uint32"
-    elif format == "Q":
-        return "uint64"
-    elif format == "b":
-        return "int8"
-    elif format == "h":
-        return "int16"
-    elif format == "i":
-        return "int32"
-    elif format == "q":
-        return "int64"
-    elif format == "f":
-        return "float32"
-    elif format == "d":
-        return "float64"
-    else:
-        raise AssertionError(f"unexpected format type: {format!r}")
