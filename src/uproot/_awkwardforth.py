@@ -47,7 +47,7 @@ def get_first_key_number(context, extra_fields=()):
     return abs(hash(context["path"] + extra_fields))
 
 
-class Forth_Generator:
+class ForthGenerator:
     def __init__(self, interp):
         self._interp = interp
         self.final_code = []

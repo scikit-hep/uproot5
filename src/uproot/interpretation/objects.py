@@ -201,7 +201,7 @@ class AsObjects(uproot.interpretation.Interpretation):
         if not hasattr(context["forth"], "vm"):
             # context["forth"] is a threading.local()
             context["forth"].vm = None
-            context["forth"].gen = uproot._awkwardforth.Forth_Generator(self)
+            context["forth"].gen = uproot._awkwardforth.ForthGenerator(self)
         else:
             context["forth"].gen = None
 
