@@ -80,11 +80,11 @@ def _read_nested(
 
         if forth_obj is not None:
             # These two attributes in ForthGenerator need to be the same each iteration, but are changed in .read()
-            prev_model = forth_obj.previous_model
+            original_model = forth_obj.previous_model
 
         for i in range(length):
             if forth_obj is not None:
-                forth_obj.update_previous_model(prev_model)
+                forth_obj.update_previous_model(original_model)
 
             if isinstance(model, AsContainer):
                 values[i] = model.read(
@@ -770,38 +770,23 @@ in file {selffile.file_path}"""
                 out = []
                 while cursor.displacement(start_cursor) < num_bytes:
                     if forth_obj is not None:
-                        with uproot._awkward_forth.UnwindProtect(
-                            forth_obj, forth_stash
-                        ):
-                            out.append(
-                                self._values.read(
-                                    chunk,
-                                    cursor,
-                                    uproot._awkward_forth.add_to_path(
-                                        forth_obj,
-                                        context,
-                                        uproot._awkward_forth.SpecialPathItem("item"),
-                                    ),
-                                    file,
-                                    selffile,
-                                    parent,
-                                )
-                            )
-                    else:
-                        out.append(
-                            self._values.read(
-                                chunk,
-                                cursor,
-                                uproot._awkward_forth.add_to_path(
-                                    forth_obj,
-                                    context,
-                                    uproot._awkward_forth.SpecialPathItem("item"),
-                                ),
-                                file,
-                                selffile,
-                                parent,
-                            )
+                        forth_obj.push_previous_model(forth_stash)
+                    out.append(
+                        self._values.read(
+                            chunk,
+                            cursor,
+                            uproot._awkward_forth.add_to_path(
+                                forth_obj,
+                                context,
+                                uproot._awkward_forth.SpecialPathItem("item"),
+                            ),
+                            file,
+                            selffile,
+                            parent,
                         )
+                    )
+                    if forth_obj is not None:
+                        forth_obj.pop_previous_model()
 
                 if self._header and header:
                     uproot.deserialization.numbytes_check(
@@ -847,38 +832,24 @@ in file {selffile.file_path}"""
                 out = []
                 while cursor.index < chunk.stop:
                     if forth_obj is not None:
-                        with uproot._awkward_forth.UnwindProtect(
-                            forth_obj, forth_stash
-                        ):
-                            out.append(
-                                self._values.read(
-                                    chunk,
-                                    cursor,
-                                    uproot._awkward_forth.add_to_path(
-                                        forth_obj,
-                                        context,
-                                        uproot._awkward_forth.SpecialPathItem("item"),
-                                    ),
-                                    file,
-                                    selffile,
-                                    parent,
-                                )
-                            )
-                    else:
-                        out.append(
-                            self._values.read(
-                                chunk,
-                                cursor,
-                                uproot._awkward_forth.add_to_path(
-                                    forth_obj,
-                                    context,
-                                    uproot._awkward_forth.SpecialPathItem("item"),
-                                ),
-                                file,
-                                selffile,
-                                parent,
-                            )
+                        forth_obj.push_previous_model(forth_stash)
+                    out.append(
+                        self._values.read(
+                            chunk,
+                            cursor,
+                            uproot._awkward_forth.add_to_path(
+                                forth_obj,
+                                context,
+                                uproot._awkward_forth.SpecialPathItem("item"),
+                            ),
+                            file,
+                            selffile,
+                            parent,
                         )
+                    )
+                    if forth_obj is not None:
+                        forth_obj.pop_previous_model()
+
                 return uproot._util.objectarray1d(out).reshape(-1, *self.inner_shape)
 
 
@@ -1185,8 +1156,7 @@ class AsVector(AsContainer):
                     forth_stash.add_to_post("loop\n")
 
                 forth_obj.add_node_to_model(forth_stash)
-                hold_previous_model = forth_obj.previous_model
-                forth_obj.update_previous_model(forth_stash)
+                forth_obj.push_previous_model(forth_stash)
 
             values = _read_nested(
                 self._values,
@@ -1202,7 +1172,7 @@ class AsVector(AsContainer):
             )
 
             if forth_obj is not None:
-                forth_obj.update_previous_model(hold_previous_model)
+                forth_obj.pop_previous_model()
 
         out = STLVector(values)
 

@@ -56,6 +56,7 @@ class Forth_Generator:
         self.awkward_model = Node("TOP")
         self.form_keys = []
         self.previous_model = self.awkward_model
+        self.previous_previous_models = []
 
     def _debug_forth(self):
         self._interp._debug_forth(self)
@@ -92,6 +93,13 @@ class Forth_Generator:
 
     def update_previous_model(self, model):
         self.previous_model = model
+
+    def push_previous_model(self, model):
+        self.previous_previous_models.append(self.previous_model)
+        self.previous_model = model
+
+    def pop_previous_model(self):
+        self.previous_model = self.previous_previous_models.pop()
 
 
 def get_forth_obj(context):
@@ -282,20 +290,6 @@ class Node:
                     out["fields"].append(descendant.field_name)
                     out["contents"].append(child.derive_form())
             return out
-
-
-class UnwindProtect:
-    def __init__(self, forth_obj, temporary_model):
-        self.forth_obj = forth_obj
-        self.temporary_model = temporary_model
-        self.old_model = None
-
-    def __enter__(self):
-        self.old_model = self.forth_obj.previous_model
-        self.forth_obj.update_previous_model(self.temporary_model)
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.forth_obj.update_previous_model(self.old_model)
 
 
 def convert_dtype(format):

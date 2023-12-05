@@ -386,17 +386,11 @@ input stream
                 0, origin=-(byte_offsets[i] + cursor_offset)
             )
 
-            with uproot._awkward_forth.UnwindProtect(
-                context["forth"].gen, uproot._awkward_forth.Node("TOP")
-            ):
-                output[i] = self._model.read(
-                    chunk,
-                    cursor,
-                    context,
-                    branch.file,
-                    branch.file.detached,
-                    branch,
-                )
+            context["forth"].gen.push_previous_model(uproot._awkward_forth.Node("TOP"))
+            output[i] = self._model.read(
+                chunk, cursor, context, branch.file, branch.file.detached, branch
+            )
+            context["forth"].gen.pop_previous_model()
 
             # def quickie(x):
             #     assert isinstance(x, dict)

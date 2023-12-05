@@ -708,10 +708,10 @@ class Model_TStreamerBase(Model_TStreamerElement):
                 "            key = key_number ; key_number += 1",
                 "            nested_forth_stash = uproot._awkward_forth.Node(f'base-class {key}')",
                 "            forth_obj.add_node_to_model(nested_forth_stash)",
-                "            with uproot._awkward_forth.UnwindProtect(forth_obj, nested_forth_stash):",
-                f"                 self._bases.append(c({self.name!r}, {self.base_version!r}).read(chunk, cursor, uproot._awkward_forth.add_to_path(forth_obj, context, uproot._awkward_forth.SpecialPathItem(f'base-class {{len(self._bases)}}')), file, self._file, self._parent, concrete=self.concrete))",
-                "        else:"
-                f"            self._bases.append(c({self.name!r}, {self.base_version!r}).read(chunk, cursor, context, file, self._file, self._parent, concrete=self.concrete))",
+                "            forth_obj.push_previous_model(nested_forth_stash)",
+                f"        self._bases.append(c({self.name!r}, {self.base_version!r}).read(chunk, cursor, uproot._awkward_forth.add_to_path(forth_obj, context, uproot._awkward_forth.SpecialPathItem(f'base-class {{len(self._bases)}}')), file, self._file, self._parent, concrete=self.concrete))",
+                "        if forth_obj is not None:",
+                "            forth_obj.pop_previous_model()",
             ]
         )
 
