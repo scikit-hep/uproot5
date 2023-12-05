@@ -13,7 +13,7 @@ and sometimes freeing data.
 
 See :doc:`uproot.writing._cascade` for a general overview of the cascading writer concept.
 """
-
+from __future__ import annotations
 
 import datetime
 import math
@@ -111,7 +111,7 @@ class Tree:
             branch_datashape = None
 
             if isinstance(branch_type, Mapping) and all(
-                uproot._util.isstr(x) for x in branch_type
+                isinstance(x, str) for x in branch_type
             ):
                 branch_dict = branch_type
 
@@ -119,10 +119,7 @@ class Tree:
                 try:
                     if uproot._util.from_module(branch_type, "awkward"):
                         raise TypeError
-                    if (
-                        uproot._util.isstr(branch_type)
-                        and branch_type.strip() == "bytes"
-                    ):
+                    if isinstance(branch_type, str) and branch_type.strip() == "bytes":
                         raise TypeError
                     branch_dtype = numpy.dtype(branch_type)
 
@@ -545,7 +542,7 @@ class Tree:
 
         if provided is None:
             if not isinstance(data, Mapping) or not all(
-                uproot._util.isstr(x) for x in data
+                isinstance(x, str) for x in data
             ):
                 raise TypeError(
                     "'extend' requires a mapping from branch name (str) to arrays"

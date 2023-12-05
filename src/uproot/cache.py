@@ -11,7 +11,7 @@ policy that limits the number of items in the cache (used as an
 The :doc:`uproot.cache.LRUArrayCache` implements the same policy, limiting the
 total number of bytes, as reported by ``nbytes``.
 """
-
+from __future__ import annotations
 
 import threading
 from collections.abc import MutableMapping

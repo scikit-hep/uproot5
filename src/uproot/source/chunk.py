@@ -30,6 +30,9 @@ class Resource:
     :doc:`uproot.source.futures.ResourceFuture`.
     """
 
+    def __init__(self):
+        self._file_path = None
+
     @property
     def file_path(self) -> str:
         """
@@ -48,6 +51,14 @@ class Source:
     the file in parallel. Stopping these threads is part of the act of closing
     the file.
     """
+
+    def __init__(self):
+        self._num_requested_bytes = 0
+        self._num_requests = 0
+        self._num_requested_chunks = 0
+        self._file_path = None
+        self._num_bytes = None
+        self._executor = None
 
     def chunk(self, start: int, stop: int) -> Chunk:
         """
@@ -139,6 +150,9 @@ class Source:
         True if the associated file/connection/thread pool is closed; False
         otherwise.
         """
+        if self._executor is None:
+            return True
+
         return self._executor.closed
 
 

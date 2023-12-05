@@ -64,16 +64,16 @@ import pathlib
             ),
         ),
         (
-            "ssh://user@host:port/path/to/file:object",
+            "ssh://user@host:22/path/to/file:object",
             (
-                "ssh://user@host:port/path/to/file",
+                "ssh://user@host:22/path/to/file",
                 "object",
             ),
         ),
         (
-            "ssh://user@host:port/path/to/file",
+            "ssh://user@host:50230/path/to/file",
             (
-                "ssh://user@host:port/path/to/file",
+                "ssh://user@host:50230/path/to/file",
                 None,
             ),
         ),
@@ -96,6 +96,27 @@ import pathlib
             (
                 "00376186-543E-E311-8D30-002618943857.root",
                 None,
+            ),
+        ),
+        (
+            "zip://uproot-issue121.root::file:///tmp/pytest-of-runner/pytest-0/test_fsspec_zip0/uproot-issue121.root.zip:Events/MET_pt",
+            (
+                "zip://uproot-issue121.root::file:///tmp/pytest-of-runner/pytest-0/test_fsspec_zip0/uproot-issue121.root.zip",
+                "Events/MET_pt",
+            ),
+        ),
+        (
+            "simplecache::zip://uproot-issue121.root::file:///tmp/pytest-of-runner/pytest-0/test_fsspec_zip0/uproot-issue121.root.zip:Events/MET_pt",
+            (
+                "simplecache::zip://uproot-issue121.root::file:///tmp/pytest-of-runner/pytest-0/test_fsspec_zip0/uproot-issue121.root.zip",
+                "Events/MET_pt",
+            ),
+        ),
+        (
+            r"zip://uproot-issue121.root::file://C:\Users\runneradmin\AppData\Local\Temp\pytest-of-runneradmin\pytest-0\test_fsspec_zip0\uproot-issue121.root.zip:Events/MET_pt",
+            (
+                r"zip://uproot-issue121.root::file://C:\Users\runneradmin\AppData\Local\Temp\pytest-of-runneradmin\pytest-0\test_fsspec_zip0\uproot-issue121.root.zip",
+                "Events/MET_pt",
             ),
         ),
     ],

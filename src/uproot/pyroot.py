@@ -19,7 +19,7 @@ possible to
 This module also makes it possible for PyROOT objects to be added to ROOT files
 that Uproot is writing (regardless of whether Uproot could read such objects).
 """
-
+from __future__ import annotations
 
 import threading
 import uuid

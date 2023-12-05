@@ -60,15 +60,18 @@ dev = [
 test = [
   "lz4",
   "minio",
-  "aiohttp; python_version<\"3.12\"",
+  "aiohttp; python_version<\"3.12\"",  # asyncio not available
   "fsspec",
   "fsspec-xrootd",
+  "s3fs; python_version<\"3.12\"",  # asyncio not available
+  "paramiko",
   "pytest>=6",
   "pytest-timeout",
   "pytest-rerunfailures",
   "requests",
   "scikit-hep-testdata",
-  "xxhash"
+  "xxhash",
+  "rangehttpserver"
 ]
 
 [project.urls]
@@ -137,6 +140,9 @@ select = [
   "YTT"  # flake8-2020
 ]
 src = ["src"]
+
+[tool.ruff.lint]
+isort.required-imports = ["from __future__ import annotations"]
 
 [tool.ruff.mccabe]
 max-complexity = 100

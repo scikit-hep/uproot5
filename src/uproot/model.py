@@ -16,7 +16,7 @@ The :doc:`uproot.model.UnknownClass` and
 not be modeled, either because the class has no streamer or no streamer for its
 version.
 """
-
+from __future__ import annotations
 
 import re
 import sys
@@ -591,8 +591,8 @@ class Model:
 
         The ``cls`` arguments may be Python classes or C++ classname strings to match.
         """
-        cpp_names = [classname_regularize(x) for x in cls if uproot._util.isstr(x)]
-        py_types = tuple(x for x in cls if not uproot._util.isstr(x))
+        cpp_names = [classname_regularize(x) for x in cls if isinstance(x, str)]
+        py_types = tuple(x for x in cls if not isinstance(x, str))
 
         out = []
         for x in getattr(self, "_bases", []):
@@ -610,8 +610,8 @@ class Model:
 
         The ``cls`` arguments may be Python classes or C++ classname strings to match.
         """
-        cpp_names = [classname_regularize(x) for x in cls if uproot._util.isstr(x)]
-        py_types = tuple(x for x in cls if not uproot._util.isstr(x))
+        cpp_names = [classname_regularize(x) for x in cls if isinstance(x, str)]
+        py_types = tuple(x for x in cls if not isinstance(x, str))
 
         if isinstance(self, py_types) or any(self.classname == n for n in cpp_names):
             return True

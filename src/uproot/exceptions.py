@@ -4,6 +4,7 @@
 This module defines Uproot-specific exceptions, such as
 :doc:`uproot.exceptions.KeyInFileError`.
 """
+from __future__ import annotations
 
 import uproot
 

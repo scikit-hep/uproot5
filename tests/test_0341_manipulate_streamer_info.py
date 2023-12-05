@@ -2,7 +2,6 @@
 
 import os
 
-import numpy as np
 import pytest
 
 import uproot
@@ -80,7 +79,7 @@ def test_with_mkdir(tmp_path):
         f6.mkdir("three")
 
 
-def test_add_streamers1(tmp_path):
+def test_add_streamers_1(tmp_path):
     has_TObjString = os.path.join(tmp_path, "has_TObjString.root")
 
     f_TObjString = ROOT.TFile(has_TObjString, "recreate")
@@ -120,7 +119,7 @@ def test_add_streamers1(tmp_path):
     f4.Close()
 
 
-def test_add_streamers2(tmp_path):
+def test_add_streamers_2(tmp_path):
     has_histogram = os.path.join(tmp_path, "has_histogram.root")
 
     f_histogram = ROOT.TFile(has_histogram, "recreate")
@@ -208,7 +207,7 @@ def test_add_streamers2(tmp_path):
     f3.Close()
 
 
-def test_add_streamers3(tmp_path):
+def test_add_streamers_3(tmp_path):
     has_TObjString = os.path.join(tmp_path, "has_TObjString.root")
 
     f_TObjString = ROOT.TFile(has_TObjString, "recreate")

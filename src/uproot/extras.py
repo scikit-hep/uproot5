@@ -7,7 +7,7 @@ required by an Uproot installation. (Uproot only requires NumPy).
 If a library cannot be imported, these functions raise ``ModuleNotFoundError`` with
 error messages containing instructions on how to install the library.
 """
-
+from __future__ import annotations
 
 import atexit
 import importlib.metadata as importlib_metadata
@@ -158,16 +158,6 @@ def xrootd_version():
             return importlib_metadata.version("pyxrootd")
         except ModuleNotFoundError:
             return None
-
-
-def lzma():
-    """
-    Imports and returns ``lzma`` (which is part of the Python 3 standard
-    library, but not Python 2).
-    """
-    import lzma
-
-    return lzma
 
 
 def lz4_block():

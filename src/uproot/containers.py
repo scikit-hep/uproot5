@@ -6,7 +6,7 @@ This module interpretations and models for standard containers, such as
 
 See :doc:`uproot.interpretation` and :doc:`uproot.model`.
 """
-
+from __future__ import annotations
 
 import struct
 import types
@@ -110,7 +110,7 @@ def _read_nested(
 
 
 def _tostring(value):
-    if uproot._util.isstr(value):
+    if isinstance(value, str):
         return repr(value)
     else:
         return str(value)

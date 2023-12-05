@@ -3,7 +3,7 @@
 """
 This module defines a versionless model for ``THashList``.
 """
-
+from __future__ import annotations
 
 import uproot
 

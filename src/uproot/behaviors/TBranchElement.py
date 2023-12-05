@@ -4,7 +4,7 @@
 This module defines the behaviors of ``TBranchElement``, which is entirely inherited from
 functions in :doc:`uproot.behaviors.TBranch.TBranch`.
 """
-
+from __future__ import annotations
 
 import uproot
 

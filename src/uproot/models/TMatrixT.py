@@ -3,7 +3,7 @@
 """
 This module defines versioned models for ``TLeaf`` and its subclasses.
 """
-
+from __future__ import annotations
 
 import struct
 

@@ -18,7 +18,7 @@ as well, which might be in another TDirectory if it's a subdirectory, etc. If th
 updates were not organized, redundant overwrites or even infinite cycles could occur.
 Thus, the structure of the cascade tree must be carefully laid out.
 """
-
+from __future__ import annotations
 
 import datetime
 import math

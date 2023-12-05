@@ -12,6 +12,7 @@ to extract items from this namespace generate new :doc:`uproot.model.DynamicMode
 classes, which are used as a container in which data from pickled
 :doc:`uproot.model.VersionedModel` instances are filled.
 """
+from __future__ import annotations
 
 
 def __getattr__(name):
