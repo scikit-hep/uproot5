@@ -311,17 +311,17 @@ class AsObjects(uproot.interpretation.Interpretation):
         if only_base != node.name.startswith("base-class "):
             return
 
-        forth_obj.add_to_header(node.header_code)
-        forth_obj.add_to_init(node.init_code)
+        forth_obj.final_header.extend(node.header_code)
+        forth_obj.final_init.extend(node.init_code)
 
         if node.name.startswith("read-members "):
             for child in node.children:
                 self._assemble_forth(forth_obj, child, only_base=True)
-        forth_obj.add_to_final(node.pre_code)
+        forth_obj.final_code.extend(node.pre_code)
         for child in node.children:
             self._assemble_forth(forth_obj, child)
 
-        forth_obj.add_to_final(node.post_code)
+        forth_obj.final_code.extend(node.post_code)
 
     def _any_NULL(self, form):
         # Recursion through form.
@@ -344,7 +344,7 @@ class AsObjects(uproot.interpretation.Interpretation):
             return False
 
     def _debug_forth(self, forth_obj):
-        self._assemble_forth(forth_obj, forth_obj.awkward_model.children[0])
+        self._assemble_forth(forth_obj, forth_obj.model.children[0])
         expected_form = self._model.awkward_form(
             self._branch.file,
             {
@@ -360,7 +360,7 @@ class AsObjects(uproot.interpretation.Interpretation):
 {expected_form}
 
 DISCOVERED FORM:
-{json.dumps(forth_obj.awkward_model.derive_form(), indent=4)}
+{json.dumps(forth_obj.model.derive_form(), indent=4)}
 
 FORTH CODE:
 input stream
@@ -387,23 +387,23 @@ input stream
                 0, origin=-(byte_offsets[i] + cursor_offset)
             )
 
-            context["forth"].gen.push_active_model(uproot._awkwardforth.Node("TOP"))
+            context["forth"].gen.push_active_node(uproot._awkwardforth.Node("TOP"))
             output[i] = self._model.read(
                 chunk, cursor, context, branch.file, branch.file.detached, branch
             )
-            context["forth"].gen.pop_active_model()
+            context["forth"].gen.pop_active_node()
 
             # def quickie(x):
             #     assert isinstance(x, dict)
             #     return [x["_name"]] + [quickie(y) for y in x["_children"]]
-            # print(json.dumps(quickie(context["forth"].gen.awkward_model.get_dict()), indent=2))
+            # print(json.dumps(quickie(context["forth"].gen.model.get_dict()), indent=2))
             # context["forth"].gen._debug_forth()
 
-            derived_form = context["forth"].gen.awkward_model.derive_form()
+            derived_form = context["forth"].gen.model.derive_form()
             if not self._any_NULL(derived_form):
                 context["forth"].prereaddone = True
                 self._assemble_forth(
-                    context["forth"].gen, context["forth"].gen.awkward_model.children[0]
+                    context["forth"].gen, context["forth"].gen.model.children[0]
                 )
                 self._complete_forth_code = f"""input stream
     input byteoffsets

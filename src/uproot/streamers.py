@@ -219,8 +219,8 @@ class Model_TStreamerInfo(uproot.model.Model):
             "            key_number = uproot._awkwardforth.get_first_key_number(context)",
             "            forth_stash = uproot._awkwardforth.Node(f'read-members {key_number}')",
             "            key_number += 1",
-            "            forth_obj.add_node_to_model(forth_stash)",
-            "            forth_obj.set_active_model(forth_stash)",
+            "            forth_obj.add_node(forth_stash)",
+            "            forth_obj.set_active_node(forth_stash)",
         ]
         read_member_n = [
             "    def read_member_n(self, chunk, cursor, context, file, member_index):"
@@ -708,11 +708,11 @@ class Model_TStreamerBase(Model_TStreamerElement):
                 "        if forth_obj is not None:",
                 "            key = key_number ; key_number += 1",
                 "            nested_forth_stash = uproot._awkwardforth.Node(f'base-class {key}')",
-                "            forth_obj.add_node_to_model(nested_forth_stash)",
-                "            forth_obj.push_active_model(nested_forth_stash)",
+                "            forth_obj.add_node(nested_forth_stash)",
+                "            forth_obj.push_active_node(nested_forth_stash)",
                 f"        self._bases.append(c({self.name!r}, {self.base_version!r}).read(chunk, cursor, uproot._awkwardforth.add_to_path(forth_obj, context, uproot._awkwardforth.SpecialPathItem(f'base-class {{len(self._bases)}}')), file, self._file, self._parent, concrete=self.concrete))",
                 "        if forth_obj is not None:",
-                "            forth_obj.pop_active_model()",
+                "            forth_obj.pop_active_node()",
             ]
         )
 
@@ -847,7 +847,7 @@ class Model_TStreamerBasicPointer(Model_TStreamerElement):
                     '            nested_forth_stash.add_to_header(f"output node{key2}-offsets int64\\n")',
                     '            nested_forth_stash.add_to_init(f"0 node{key2}-offsets <- stack\\n")',
                     f'            nested_forth_stash.add_to_pre(f" var_{self.count_name} @ dup node{{key2}}-offsets +<- stack \\n stream #!{{uproot._awkwardforth.symbol_dict[self._dtype{len(dtypes)}]}}-> node{{key}}-data\\n")',
-                    "            forth_obj.add_node_to_model(nested_forth_stash)",
+                    "            forth_obj.add_node(nested_forth_stash)",
                 ]
             )
 
@@ -980,7 +980,7 @@ class Model_TStreamerBasicType(Model_TStreamerElement):
                             '            form_key = f"node{key}-data"',
                             f'            nested_forth_stash = uproot._awkwardforth.Node(f"node{{key}}", field_name={fields[-1][0]!r}, form_details={{ "class": "NumpyArray", "primitive": "{uproot._awkwardforth.convert_dtype(formats[-1][0])}", "inner_shape": [], "parameters": {{}}, "form_key": f"node{{key}}"}})',
                             f'            nested_forth_stash.add_to_header(f"output node{{key}}-data {uproot._awkwardforth.convert_dtype(formats[-1][0])}\\n")',
-                            "            forth_obj.add_node_to_model(nested_forth_stash)",
+                            "            forth_obj.add_node(nested_forth_stash)",
                         ]
                     )
                     if fields[-1][0] in COUNT_NAMES:
@@ -1009,7 +1009,7 @@ class Model_TStreamerBasicType(Model_TStreamerElement):
                                 f'           nested_forth_stash = uproot._awkwardforth.Node(f"node{{key}}", field_name={fields[0][i]!r}, form_details={{ "class": "NumpyArray", "primitive": "{uproot._awkwardforth.convert_dtype(formats[0][i])}", "inner_shape": [], "parameters": {{}}, "form_key": f"node{{key}}"}})',
                                 f'           nested_forth_stash.add_to_header(f"output {{form_key}} {uproot._awkwardforth.convert_dtype(formats[0][i])}\\n")',
                                 f'           nested_forth_stash.add_to_pre(f"stream !{formats[0][i]}-> {{form_key}}\\n")',
-                                "           forth_obj.add_node_to_model(nested_forth_stash)",
+                                "           forth_obj.add_node(nested_forth_stash)",
                             ]
                         )
 
@@ -1037,7 +1037,7 @@ class Model_TStreamerBasicType(Model_TStreamerElement):
                     '            nested_forth_stash.add_to_header(f"output node{key2}-offsets int64\\n")',
                     '            nested_forth_stash.add_to_init(f"0 node{key2}-offsets <- stack\\n")',
                     f'            nested_forth_stash.add_to_pre(f"{self.array_length} dup node{{key2}}-offsets +<- stack \\n stream #!{{uproot._awkwardforth.symbol_dict[self._dtype{len(dtypes)}]}}-> node{{key}}-data\\n")',
-                    "            forth_obj.add_node_to_model(nested_forth_stash)",
+                    "            forth_obj.add_node(nested_forth_stash)",
                     f"        self._members[{self.name!r}] = cursor.array(chunk, {self.array_length}, self._dtype{len(dtypes)}, context)",
                 ]
             )
@@ -1208,8 +1208,8 @@ class Model_TStreamerLoop(Model_TStreamerElement):
                 f"        for tmp in range(self.member({self.count_name!r})):",
                 f"            self._members[{self.name!r}] = c({self.typename.rstrip('*')!r}).read(chunk, cursor, uproot._awkwardforth.add_to_path(forth_obj, context, {self.name!r}), file, self._file, self.concrete)",
                 "            if forth_obj is not None:",
-                "                if len(forth_obj.previous_model.children) != 0:",
-                f"                    forth_obj.previous_model.children[-1].change_field_name({self.name!r})",
+                "                if len(forth_obj.active_node.children) != 0:",
+                f"                    forth_obj.active_node.children[-1].change_field_name({self.name!r})",
             ]
         )
 
@@ -1315,8 +1315,8 @@ class Model_TStreamerSTL(Model_TStreamerElement):
             [
                 f"        self._members[{self.name!r}] = self._stl_container{len(containers)}.read(chunk, cursor, uproot._awkwardforth.add_to_path(forth_obj, context, {self.name!r}), file, self._file, self.concrete)",
                 "        if forth_obj is not None:",
-                "            if len(forth_obj.previous_model.children) != 0:",
-                f"                forth_obj.previous_model.children[-1].change_field_name({self.name!r})",
+                "            if len(forth_obj.active_node.children) != 0:",
+                f"                forth_obj.active_node.children[-1].change_field_name({self.name!r})",
             ]
         )
 
@@ -1431,8 +1431,8 @@ class TStreamerPointerTypes:
                     "            raise uproot.interpretation.objects.CannotBeForth()",
                     f"        self._members[{self.name!r}] = c({self.typename.rstrip('*')!r}).read(chunk, cursor, uproot._awkwardforth.add_to_path(forth_obj, context, {self.name!r}), file, self._file, self.concrete)",
                     "        if forth_obj is not None:",
-                    "            if len(forth_obj.previous_model.children) != 0:",
-                    f"                forth_obj.previous_model.children[-1].change_field_name({self.name!r})",
+                    "            if len(forth_obj.active_node.children) != 0:",
+                    f"                forth_obj.active_node.children[-1].change_field_name({self.name!r})",
                 ]
             )
 
@@ -1456,8 +1456,8 @@ class TStreamerPointerTypes:
                     "            raise uproot.interpretation.objects.CannotBeForth()",
                     f"        self._members[{self.name!r}] = read_object_any(chunk, cursor, uproot._awkwardforth.add_to_path(forth_obj, context, {self.name!r}), file, self._file, self)",
                     "        if forth_obj is not None:",
-                    "            if len(forth_obj.previous_model.children) != 0:",
-                    f"                forth_obj.previous_model.children[-1].change_field_name({self.name!r})",
+                    "            if len(forth_obj.active_node.children) != 0:",
+                    f"                forth_obj.active_node.children[-1].change_field_name({self.name!r})",
                 ]
             )
             read_member_n.append(
@@ -1574,8 +1574,8 @@ class TStreamerObjectTypes:
             [
                 f"        self._members[{self.name!r}] = c({self.typename.rstrip('*')!r}).read(chunk, cursor, uproot._awkwardforth.add_to_path(forth_obj, context, {self.name!r}), file, self._file, self.concrete)",
                 "        if forth_obj is not None:",
-                "            if len(forth_obj.previous_model.children) != 0:",
-                f"                forth_obj.previous_model.children[-1].change_field_name({self.name!r})",
+                "            if len(forth_obj.active_node.children) != 0:",
+                f"                forth_obj.active_node.children[-1].change_field_name({self.name!r})",
             ]
         )
 

@@ -52,7 +52,7 @@ in file {self.file.file_path}"""
                 f"output node{offsets_num}-offsets int64\noutput node{data_num}-data uint8\n"
             )
             nested_forth_stash.add_to_init(f"0 node{offsets_num}-offsets <- stack\n")
-            forth_obj.add_node_to_model(nested_forth_stash)
+            forth_obj.add_node(nested_forth_stash)
 
         self._data = cursor.string(chunk, context)
 

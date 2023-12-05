@@ -52,8 +52,8 @@ in file {self.file.file_path}"""
                 f"node{key} TObject", form_details={"offsets": "i64"}
             )
             forth_stash.add_to_pre(f"{skip_length} stream skip \n")
-            forth_obj.add_node_to_model(forth_stash)
-            forth_obj.set_active_model(forth_stash)
+            forth_obj.add_node(forth_stash)
+            forth_obj.set_active_node(forth_stash)
 
     writable = True
 

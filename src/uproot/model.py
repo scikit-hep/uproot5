@@ -811,8 +811,8 @@ class Model:
                     cursor.move_to(self._cursor.index)
                     context["breadcrumbs"] = old_breadcrumbs
                     if forth_obj is not None:
-                        forth_obj.add_node_to_model(forth_stash)
-                        forth_obj.push_active_model(forth_stash)
+                        forth_obj.add_node(forth_stash)
+                        forth_obj.push_active_node(forth_stash)
                     temp_var = correct_cls.read(
                         chunk,
                         cursor,
@@ -823,7 +823,7 @@ class Model:
                         concrete=concrete,
                     )
                     if forth_obj is not None:
-                        forth_obj.pop_active_model()
+                        forth_obj.pop_active_node()
 
                     return temp_var
 
@@ -847,11 +847,11 @@ class Model:
             if forth_obj is not None:
                 key = uproot._awkwardforth.get_first_key_number(context)
                 forth_stash.change_name(f"start-of-model {key}")
-                forth_obj.add_node_to_model(forth_stash)
-                forth_obj.push_active_model(forth_stash)
+                forth_obj.add_node(forth_stash)
+                forth_obj.push_active_node(forth_stash)
             self.read_members(chunk, cursor, context, file)
             if forth_obj is not None:
-                forth_obj.pop_active_model()
+                forth_obj.pop_active_node()
 
             self.hook_after_read_members(
                 chunk=chunk, cursor=cursor, context=context, file=file
@@ -1323,8 +1323,8 @@ class DispatchByVersion:
             bytes_skipped = cursor._index - start_index
             forth_stash.add_to_pre(f"{bytes_skipped} stream skip \n")
 
-            forth_obj.add_node_to_model(forth_stash)
-            forth_obj.push_active_model(forth_stash)
+            forth_obj.add_node(forth_stash)
+            forth_obj.push_active_node(forth_stash)
 
         if versioned_cls is not None:
             pass
@@ -1357,7 +1357,7 @@ class DispatchByVersion:
         )
 
         if forth_obj is not None:
-            forth_obj.pop_active_model()
+            forth_obj.pop_active_node()
 
         return temp_var
 

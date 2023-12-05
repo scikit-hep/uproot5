@@ -71,7 +71,7 @@ def _read_nested(
             )
             forth_stash.add_to_pre(f"stream #!{symbol}-> node{key}-data\n")
 
-            forth_obj.add_node_to_model(forth_stash)
+            forth_obj.add_node(forth_stash)
 
         return cursor.array(chunk, length, model, context)
 
@@ -80,11 +80,11 @@ def _read_nested(
 
         if forth_obj is not None:
             # These two attributes in ForthGenerator need to be the same each iteration, but are changed in .read()
-            original_model = forth_obj.previous_model
+            original_model = forth_obj.active_node
 
         for i in range(length):
             if forth_obj is not None:
-                forth_obj.set_active_model(original_model)
+                forth_obj.set_active_node(original_model)
 
             if isinstance(model, AsContainer):
                 values[i] = model.read(
@@ -530,7 +530,7 @@ class AsString(AsContainer):
                 f"output node{offsets_num}-offsets int64\noutput node{data_num}-data uint8\n"
             )
             forth_stash.add_to_init(f"0 node{offsets_num}-offsets <- stack\n")
-            forth_obj.add_node_to_model(forth_stash)
+            forth_obj.add_node(forth_stash)
 
         return out
 
@@ -762,12 +762,12 @@ in file {selffile.file_path}"""
                         forth_stash.add_to_post(
                             f"repeat\nswap node{offsets_num}-offsets +<- stack drop\n"
                         )
-                    forth_obj.add_node_to_model(forth_stash)
+                    forth_obj.add_node(forth_stash)
 
                 out = []
                 while cursor.displacement(start_cursor) < num_bytes:
                     if forth_obj is not None:
-                        forth_obj.push_active_model(forth_stash)
+                        forth_obj.push_active_node(forth_stash)
                     out.append(
                         self._values.read(
                             chunk,
@@ -783,7 +783,7 @@ in file {selffile.file_path}"""
                         )
                     )
                     if forth_obj is not None:
-                        forth_obj.pop_active_model()
+                        forth_obj.pop_active_node()
 
                 if self._header and header:
                     uproot.deserialization.numbytes_check(
@@ -824,12 +824,12 @@ in file {selffile.file_path}"""
                         forth_stash.add_to_post(
                             f"repeat\nswap node{offsets_num}-offsets +<- stack drop\n"
                         )
-                    forth_obj.add_node_to_model(forth_stash)
+                    forth_obj.add_node(forth_stash)
 
                 out = []
                 while cursor.index < chunk.stop:
                     if forth_obj is not None:
-                        forth_obj.push_active_model(forth_stash)
+                        forth_obj.push_active_node(forth_stash)
                     out.append(
                         self._values.read(
                             chunk,
@@ -845,7 +845,7 @@ in file {selffile.file_path}"""
                         )
                     )
                     if forth_obj is not None:
-                        forth_obj.pop_active_model()
+                        forth_obj.pop_active_node()
 
                 return uproot._util.objectarray1d(out).reshape(-1, *self.inner_shape)
 
@@ -1007,8 +1007,8 @@ class AsVectorLike(AsContainer):
                     forth_stash.add_to_pre("0 do\n")
                     forth_stash.add_to_post("loop\n")
 
-                forth_obj.add_node_to_model(forth_stash)
-                forth_obj.push_active_model(forth_stash)
+                forth_obj.add_node(forth_stash)
+                forth_obj.push_active_node(forth_stash)
 
             values = _read_nested(
                 self._items,
@@ -1024,7 +1024,7 @@ class AsVectorLike(AsContainer):
             )
 
             if forth_obj is not None:
-                forth_obj.pop_active_model()
+                forth_obj.pop_active_node()
 
         out = self._container_type(values)
 
@@ -1299,8 +1299,8 @@ class AsMap(AsContainer):
                     forth_stash.add_to_pre("dup 0 do\n")
                 else:
                     forth_stash.add_to_pre("dup\n")
-                forth_obj.add_node_to_model(forth_stash)
-                forth_obj.set_active_model(forth_stash)
+                forth_obj.add_node(forth_stash)
+                forth_obj.set_active_node(forth_stash)
 
             keys = _read_nested(
                 self._keys,

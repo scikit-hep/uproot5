@@ -50,21 +50,37 @@ def get_first_key_number(context, extra_fields=()):
 class ForthGenerator:
     def __init__(self, interp):
         self._interp = interp
-        self.final_code = []
-        self.final_header = []
-        self.final_init = []
-        self.awkward_model = Node("TOP")
-        self.previous_model = self.awkward_model
-        self.previous_previous_models = []
+        self._active_node = self._top_node = Node("TOP")
+        self._stack_of_active_nodes = []
+        self._final_code = []
+        self._final_header = []
+        self._final_init = []
 
-    def _debug_forth(self):
-        self._interp._debug_forth(self)
+    @property
+    def model(self):
+        return self._top_node
 
-    def add_node_to_model(self, new_node, current_node=None, parent_node_name=None):
+    @property
+    def active_node(self):
+        return self._active_node
+
+    @property
+    def final_code(self):
+        return self._final_code
+
+    @property
+    def final_header(self):
+        return self._final_header
+
+    @property
+    def final_init(self):
+        return self._final_init
+
+    def add_node(self, new_node, current_node=None, parent_node_name=None):
         if current_node is None:
-            current_node = self.awkward_model
+            current_node = self._top_node
         if parent_node_name is None:
-            parent_node_name = self.previous_model.name
+            parent_node_name = self._active_node.name
 
         if (
             parent_node_name == current_node.name
@@ -75,26 +91,20 @@ class ForthGenerator:
             current_node.add_child(new_node)
         else:
             for child_node in current_node.children:
-                self.add_node_to_model(new_node, child_node, parent_node_name)
+                self.add_node(new_node, child_node, parent_node_name)
 
-    def add_to_header(self, code):
-        self.final_header.extend(code)
+    def set_active_node(self, model):
+        self._active_node = model
 
-    def add_to_init(self, code):
-        self.final_init.extend(code)
+    def push_active_node(self, model):
+        self._stack_of_active_nodes.append(self._active_node)
+        self._active_node = model
 
-    def add_to_final(self, code):
-        self.final_code.extend(code)
+    def pop_active_node(self):
+        self._active_node = self._stack_of_active_nodes.pop()
 
-    def set_active_model(self, model):
-        self.previous_model = model
-
-    def push_active_model(self, model):
-        self.previous_previous_models.append(self.previous_model)
-        self.previous_model = model
-
-    def pop_active_model(self):
-        self.previous_model = self.previous_previous_models.pop()
+    def _debug_forth(self):
+        self._interp._debug_forth(self)
 
 
 def get_forth_obj(context):
