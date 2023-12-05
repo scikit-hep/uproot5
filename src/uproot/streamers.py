@@ -13,7 +13,7 @@ import sys
 import numpy
 
 import uproot
-import uproot._awkward_forth
+import uproot._awkwardforth as af
 
 COUNT_NAMES = []
 
@@ -210,19 +210,18 @@ class Model_TStreamerInfo(uproot.model.Model):
                 COUNT_NAMES.append(element.member("fCountName"))
         read_members = [
             "    def read_members(self, chunk, cursor, context, file):",
-            "        import uproot._awkward_forth",
             "        if self.is_memberwise:",
             "            raise NotImplementedError(",
             '                f"memberwise serialization of {type(self).__name__}\\nin file {self.file.file_path}"',
             "            )",
+            "        forth_obj = af.get_forth_obj(context)",
+            "        if forth_obj is not None:",
+            "            key_number = af.get_first_key_number(context)",
+            "            forth_stash = af.Node(f'read-members {key_number}')",
+            "            key_number += 1",
+            "            forth_obj.add_node(forth_stash)",
+            "            forth_obj.set_active_node(forth_stash)",
         ]
-        read_members.append(
-            """
-        forth_stash = uproot._awkward_forth.forth_stash(context)
-        if forth_stash is not None:
-            forth_obj = forth_stash.get_gen_obj()
-            content = {}"""
-        )
         read_member_n = [
             "    def read_member_n(self, chunk, cursor, context, file, member_index):"
         ]
@@ -230,7 +229,7 @@ class Model_TStreamerInfo(uproot.model.Model):
             "    @classmethod",
             "    def strided_interpretation(cls, file, header=False, tobject_header=True, breadcrumbs=(), original=None):",
             "        if cls in breadcrumbs:",
-            "            raise uproot.interpretation.objects.CannotBeStrided('classes that can contain members of the same type cannot be strided because the depth of instances is unbounded')",
+            "            raise CannotBeStrided('classes that can contain members of the same type cannot be strided because the depth of instances is unbounded')",
             "        breadcrumbs = breadcrumbs + (cls,)",
             "        members = [(None, None)]",
             "        if header:",
@@ -242,7 +241,7 @@ class Model_TStreamerInfo(uproot.model.Model):
             "    def awkward_form(cls, file, context):",
             "        from awkward.forms import NumpyForm, ListOffsetForm, RegularForm, RecordForm",
             "        if cls in context['breadcrumbs']:",
-            "            raise uproot.interpretation.objects.CannotBeAwkward('classes that can contain members of the same type cannot be Awkward Arrays because the depth of instances is unbounded')",
+            "            raise CannotBeAwkward('classes that can contain members of the same type cannot be Awkward Arrays because the depth of instances is unbounded')",
             "        context = context.copy()",
             "        context['breadcrumbs'] = context['breadcrumbs'] + (cls,)",
             "        contents = {}",
@@ -258,6 +257,7 @@ class Model_TStreamerInfo(uproot.model.Model):
         base_names_versions = []
         member_names = []
         class_flags = {}
+
         for i in range(len(self._members["fElements"])):
             self._members["fElements"][i].class_code(
                 self,
@@ -276,17 +276,14 @@ class Model_TStreamerInfo(uproot.model.Model):
                 member_names,
                 class_flags,
             )
+
         read_members.extend(
             [
-                "        if forth_stash is not None:",
-                "            if forth_obj.should_add_form():",
-                f"                forth_obj.add_form({{'class': 'RecordArray', 'contents': content, 'parameters': {{'__record__': {self.name!r}}}}}, len(content))",
-                "            temp = forth_obj.add_node('dynamic', forth_stash.get_attrs(), \"i64\", 0, None)",
+                "        if forth_obj is not None:",
+                f"           forth_stash.form_details = {{'class': 'RecordArray', 'parameters': {{'__record__': {self.name!r}}}}}",
             ]
         )
-        if len(read_members) == 1:
-            # untested as of PR #629
-            read_members.append("        pass")
+
         if len(read_member_n) == 1:
             read_member_n.append("        pass")
 
@@ -333,9 +330,7 @@ class Model_TStreamerInfo(uproot.model.Model):
         # std::pair cannot be strided
         if self.name.startswith("pair<"):
             strided_interpretation = strided_interpretation[:2]
-            strided_interpretation.append(
-                "        raise uproot.interpretation.objects.CannotBeStrided('std::pair')"
-            )
+            strided_interpretation.append("        raise CannotBeStrided('std::pair')")
 
         classname = uproot.model.classname_encode(self.name, self.class_version)
         return "\n".join(
@@ -415,7 +410,6 @@ class Model_TStreamerInfo(uproot.model.Model):
                 concrete=self.concrete,
             )
         )
-        context["cancel_forth"] = True
         self._bases[0]._members["fName"] = _canonical_typename(
             self._bases[0]._members["fName"]
         )
@@ -535,7 +529,6 @@ class Model_TStreamerElement(uproot.model.Model):
                 concrete=self.concrete,
             )
         )
-        context["cancel_forth"] = True
         (
             self._members["fType"],
             self._members["fSize"],
@@ -637,21 +630,20 @@ class Model_TStreamerArtificial(Model_TStreamerElement):
         # untested as of PR #629
         read_members.extend(
             [
-                '        context["cancel_forth"] = True',
-                f"        raise uproot.deserialization.DeserializationError('not implemented: class members defined by {type(self).__name__} of type {self.typename} in member {self.name} of class {streamerinfo.name}', chunk, cursor, context, file.file_path)",
+                f"        raise DeserializationError('not implemented: class members defined by {type(self).__name__} of type {self.typename} in member {self.name} of class {streamerinfo.name}', chunk, cursor, context, file.file_path)",
             ]
         )
 
         read_member_n.append(
-            f"            raise uproot.deserialization.DeserializationError('not implemented: class members defined by {type(self).__name__} of type {self.typename} in member {self.name} of class {streamerinfo.name}', chunk, cursor, context, file.file_path)"
+            f"            raise DeserializationError('not implemented: class members defined by {type(self).__name__} of type {self.typename} in member {self.name} of class {streamerinfo.name}', chunk, cursor, context, file.file_path)"
         )
 
         strided_interpretation.append(
-            f"        raise uproot.interpretation.objects.CannotBeStrided('not implemented: class members defined by {type(self).__name__} of type {self.typename} in member {self.name} of class {streamerinfo.name}')"
+            f"        raise CannotBeStrided('not implemented: class members defined by {type(self).__name__} of type {self.typename} in member {self.name} of class {streamerinfo.name}')"
         )
 
         awkward_form.append(
-            f"        raise uproot.interpretation.objects.CannotBeAwkward('not implemented: class members defined by {type(self).__name__} of type {self.typename} in member {self.name} of class {streamerinfo.name}')"
+            f"        raise CannotBeAwkward('not implemented: class members defined by {type(self).__name__} of type {self.typename} in member {self.name} of class {streamerinfo.name}')"
         )
 
 
@@ -708,33 +700,19 @@ class Model_TStreamerBase(Model_TStreamerElement):
     ):
         read_member_n.append(f"        if member_index == {i}:")
 
-        # AwkwardForth testing: test_0637's 01,02,08,09,11,12,13,15,16,29,38,45,46,49,50
+        # AwkwardForth testing B: test_0637's 01,02,08,09,11,12,13,15,16,29,38,45,46,49,50
         read_members.extend(
             [
-                "        if forth_stash is not None:",
-                "            temp_node, temp_node_top, temp_form, temp_form_top, temp_prev_form = forth_obj.replace_form_and_model(None, {'name': 'TOP', 'content': {}})",
-                f"        self._bases.append(c({self.name!r}, {self.base_version!r}).read(chunk, cursor, context, file, self._file, self._parent, concrete=self.concrete))",
-                "        if forth_stash is not None and not context['cancel_forth']:",
-                "            temp_prev_form1 = forth_obj.prev_form",
-                "            temp_form1 = forth_obj.top_form",
-                "            temp_model1 = forth_obj.top_node",
-                "            temp_model_ref = forth_obj.awkward_model",
-                "            forth_obj.awkward_model = temp_node",
-                "            forth_obj.top_node = temp_node_top",
-                "            forth_obj.aform = temp_form",
-                "            forth_obj.prev_form = temp_prev_form",
-                "            forth_obj.top_form = temp_form_top",
-                "            temp_model1 = temp_model1['content']",
-                "            forth_obj.add_node_whole(temp_model1, temp_model_ref)",
-                "            content.update(temp_form1['contents'])",
-                "            forth_obj.enable_adding()",
+                "        if forth_obj is not None:",
+                "            key = key_number ; key_number += 1",
+                "            nested_forth_stash = af.Node(f'base-class {key}')",
+                "            forth_obj.add_node(nested_forth_stash)",
+                "            forth_obj.push_active_node(nested_forth_stash)",
+                f"        self._bases.append(c({self.name!r}, {self.base_version!r}).read(chunk, cursor, af.add_to_path(forth_obj, context, af.SpecialPathItem(f'base-class {{len(self._bases)}}')), file, self._file, self._parent, concrete=self.concrete))",
+                "        if forth_obj is not None:",
+                "            forth_obj.pop_active_node()",
             ]
         )
-
-        ### FIXME: what is this commented-out code for?
-        # read_members.append(
-        #    "        if forth_stash is not None:\n                temp_form = forth_obj.get_temp_form_top()\n                content.update(temp_form['contents'])\n                forth_obj.set_dummy_none(temp_top_dummy, temp_dummy, temp_top_flag)\n"
-        # )
 
         read_member_n.append(
             f"            self._bases.append(c({self.name!r}, {self.base_version!r}).read(chunk, cursor, context, file, self._file, self._parent, concrete=self.concrete))"
@@ -836,6 +814,8 @@ class Model_TStreamerBasicPointer(Model_TStreamerElement):
             # untested as of PR #629
             read_members.extend(
                 [
+                    "        if forth_obj is not None:",
+                    "            raise CannotBeForth()",
                     "        if context.get('speedbump', True):",
                     "            if cursor.bytes(chunk, 1, context)[0] == 2:",
                     "                tmp = numpy.dtype('>i8')",
@@ -850,34 +830,29 @@ class Model_TStreamerBasicPointer(Model_TStreamerElement):
             )
 
         else:
-            # AwkwardForth testing: test_0637's 29,44,56
+            # AwkwardForth testing C: test_0637's 29,44,56
             read_members.extend(
                 [
                     "        if context.get('speedbump', True):",
                     "            cursor.skip(1)",
-                    "            if forth_stash is not None:",
-                    "                forth_stash.add_to_pre('1 stream skip \\n')",
-                    "        if forth_stash is not None:",
-                    "            key = forth_obj.get_keys(1)",
-                    "            key2 = forth_obj.get_keys(1)",
-                    '            form_key = f"node{key}-data"',
-                    '            form_key2 = f"node{key2}-offsets"',
-                    f'            forth_stash.add_to_header(f"output node{{key}}-data {{uproot._awkward_forth.convert_dtype(uproot._awkward_forth.symbol_dict[self._dtype{len(dtypes)}])}}\\n")',
-                    '            forth_stash.add_to_header(f"output node{key2}-offsets int64\\n")',
-                    '            forth_stash.add_to_init(f"0 node{key2}-offsets <- stack\\n")',
-                    f'            content[{self.name!r}] = {{"class": "ListOffsetArray", "offsets": "i64", "content": {{ "class": "NumpyArray", "primitive": f"{{uproot._awkward_forth.convert_dtype(uproot._awkward_forth.symbol_dict[self._dtype{len(dtypes)}])}}", "inner_shape": [], "parameters": {{}}, "form_key": f"node{{key}}"}}, "form_key": f"node{{key2}}"}}',
-                    f'            forth_stash.add_to_pre(f" var_{self.count_name} @ dup node{{key2}}-offsets +<- stack \\n stream #!{{uproot._awkward_forth.symbol_dict[self._dtype{len(dtypes)}]}}-> node{{key}}-data\\n")',
-                    "            if forth_obj.should_add_form():",
-                    "                forth_obj.add_form_key(form_key)",
-                    "                forth_obj.add_form_key(form_key2)",
+                    "        if forth_obj is not None:",
+                    "            key = key_number ; key_number += 1",
+                    "            key2 = key_number ; key_number += 1",
+                    f'            nested_forth_stash = af.Node(f"node{{key}}", field_name={self.name!r}, form_details={{"class": "ListOffsetArray", "offsets": "i64", "content": {{ "class": "NumpyArray", "primitive": f"{{af.struct_to_dtype_name[af.dtype_to_struct[self._dtype{len(dtypes)}]]}}", "inner_shape": [], "parameters": {{}}, "form_key": f"node{{key}}"}}, "form_key": f"node{{key2}}"}})',
+                    "            if context.get('speedbump', True):",
+                    "                nested_forth_stash.pre_code.append('1 stream skip \\n')",
+                    f'            nested_forth_stash.header_code.append(f"output node{{key}}-data {{af.struct_to_dtype_name[af.dtype_to_struct[self._dtype{len(dtypes)}]]}}\\n")',
+                    '            nested_forth_stash.header_code.append(f"output node{key2}-offsets int64\\n")',
+                    '            nested_forth_stash.init_code.append(f"0 node{key2}-offsets <- stack\\n")',
+                    f'            nested_forth_stash.pre_code.append(f" var_{self.count_name} @ dup node{{key2}}-offsets +<- stack \\n stream #!{{af.dtype_to_struct[self._dtype{len(dtypes)}]}}-> node{{key}}-data\\n")',
+                    "            forth_obj.add_node(nested_forth_stash)",
                 ]
             )
+
             read_member_n.extend(
                 [
                     "            if context.get('speedbump', True):",
                     "                cursor.skip(1)",
-                    "                if forth_stash is not None:",
-                    "                    forth_stash.add_to_pre('1 stream skip \\n')",
                 ]
             )
 
@@ -889,7 +864,7 @@ class Model_TStreamerBasicPointer(Model_TStreamerElement):
         )
 
         strided_interpretation.append(
-            f"        raise uproot.interpretation.objects.CannotBeStrided('class members defined by {type(self).__name__} of type {self.typename} in member {self.name} of class {streamerinfo.name}')"
+            f"        raise CannotBeStrided('class members defined by {type(self).__name__} of type {self.typename} in member {self.name} of class {streamerinfo.name}')"
         )
 
         awkward_form.append(
@@ -954,7 +929,8 @@ class Model_TStreamerBasicType(Model_TStreamerElement):
             # untested as of PR #629
             read_members.extend(
                 [
-                    '        context["cancel_forth"] = True',
+                    "        if forth_obj is not None:",
+                    "            raise CannotBeForth()",
                     f"        self._members[{self.name!r}] = cursor.double32(chunk, context)",
                 ]
             )
@@ -966,7 +942,8 @@ class Model_TStreamerBasicType(Model_TStreamerElement):
             # untested as of PR #629
             read_members.extend(
                 [
-                    '        context["cancel_forth"] = True',
+                    "        if forth_obj is not None:",
+                    "            raise CannotBeForth()",
                     f"        self._members[{self.name!r}] = cursor.float16(chunk, 12, context)",
                 ]
             )
@@ -993,58 +970,50 @@ class Model_TStreamerBasicType(Model_TStreamerElement):
                 or elements[i + 1].array_length != 0
             ):
                 if len(fields[-1]) == 1:
-                    # AwkwardForth testing: test_0637's 01,02,29,38,44,56
+                    # AwkwardForth testing D: test_0637's 01,02,29,38,44,56
                     read_members.extend(
                         [
-                            "        if forth_stash is not None:",
-                            "            key = forth_obj.get_keys(1)",
+                            "        if forth_obj is not None:",
+                            "            key = key_number ; key_number += 1",
                             '            form_key = f"node{key}-data"',
-                            f'            forth_stash.add_to_header(f"output node{{key}}-data {uproot._awkward_forth.convert_dtype(formats[-1][0])}\\n")',
-                            f'            content[{fields[-1][0]!r}] = {{ "class": "NumpyArray", "primitive": "{uproot._awkward_forth.convert_dtype(formats[-1][0])}", "inner_shape": [], "parameters": {{}}, "form_key": f"node{{key}}"}}',
+                            f'            nested_forth_stash = af.Node(f"node{{key}}", field_name={fields[-1][0]!r}, form_details={{ "class": "NumpyArray", "primitive": "{af.struct_to_dtype_name[formats[-1][0]]}", "inner_shape": [], "parameters": {{}}, "form_key": f"node{{key}}"}})',
+                            f'            nested_forth_stash.header_code.append(f"output node{{key}}-data {af.struct_to_dtype_name[formats[-1][0]]}\\n")',
+                            "            forth_obj.add_node(nested_forth_stash)",
                         ]
                     )
                     if fields[-1][0] in COUNT_NAMES:
                         read_members.extend(
                             [
-                                f'            forth_stash.add_to_init(f"variable var_{fields[-1][0]}\\n")',
-                                f'            forth_stash.add_to_pre(f"stream !{formats[-1][0]}-> stack dup var_{fields[-1][0]} ! node{{key}}-data <- stack\\n")',
+                                f'            nested_forth_stash.init_code.append(f"variable var_{fields[-1][0]}\\n")',
+                                f'            nested_forth_stash.pre_code.append(f"stream !{formats[-1][0]}-> stack dup var_{fields[-1][0]} ! node{{key}}-data <- stack\\n")',
                             ]
                         )
                     else:
                         read_members.append(
-                            f'            forth_stash.add_to_pre(f"stream !{formats[-1][0]}-> node{{key}}-data\\n")'
+                            f'            nested_forth_stash.pre_code.append(f"stream !{formats[-1][0]}-> node{{key}}-data\\n")'
                         )
-
-                    read_members.extend(
-                        [
-                            "            if forth_obj.should_add_form():",
-                            "                forth_obj.add_form_key(form_key)",
-                            f"        self._members[{fields[-1][0]!r}] = cursor.field(chunk, self._format{len(formats) - 1}, context)",
-                        ]
+                    read_members.append(
+                        f"        self._members[{fields[-1][0]!r}] = cursor.field(chunk, self._format{len(formats) - 1}, context)",
                     )
 
                 else:
-                    read_members.append("        if forth_stash is not None:")
+                    # AwkwardForth testing E: test_0637's 01,02,05,08,09,11,12,13,15,16,29,35,39,45,46,47,49,50,56
+                    read_members.append("        if forth_obj is not None:")
                     for i in range(len(formats[0])):
                         read_members.extend(
                             [
-                                "           key = forth_obj.get_keys(1)",
+                                "           key = key_number ; key_number += 1",
                                 '           form_key = f"node{key}-data"',
-                                f'           forth_stash.add_to_header(f"output node{{key}}-data {uproot._awkward_forth.convert_dtype(formats[0][i])}\\n")',
-                                ### FIXME: what is this commented-out code?
-                                # '           forth_stash.add_to_init(f"0 node{key}-offsets <- stack\\n")',
-                                f'           content[{fields[0][i]!r}] = {{ "class": "NumpyArray", "primitive": "{uproot._awkward_forth.convert_dtype(formats[0][i])}", "inner_shape": [], "parameters": {{}}, "form_key": f"node{{key}}"}}',
-                                f'           forth_stash.add_to_pre(f"stream !{formats[0][i]}-> node{{key}}-data\\n")',
-                                "           if forth_obj.should_add_form():",
-                                "               forth_obj.add_form_key(form_key)",
+                                f'           nested_forth_stash = af.Node(f"node{{key}}", field_name={fields[0][i]!r}, form_details={{ "class": "NumpyArray", "primitive": "{af.struct_to_dtype_name[formats[0][i]]}", "inner_shape": [], "parameters": {{}}, "form_key": f"node{{key}}"}})',
+                                f'           nested_forth_stash.header_code.append(f"output {{form_key}} {af.struct_to_dtype_name[formats[0][i]]}\\n")',
+                                f'           nested_forth_stash.pre_code.append(f"stream !{formats[0][i]}-> {{form_key}}\\n")',
+                                "           forth_obj.add_node(nested_forth_stash)",
                             ]
                         )
 
                     assign_members = ", ".join(
                         f"self._members[{x!r}]" for x in fields[-1]
                     )
-
-                    # AwkwardForth testing: test_0637's 01,02,05,08,09,11,12,13,15,16,29,35,39,45,46,47,49,50,56
 
                     read_members.append(
                         f"\n        {assign_members} = cursor.fields(chunk, self._format{len(formats) - 1}, context)"
@@ -1055,22 +1024,18 @@ class Model_TStreamerBasicType(Model_TStreamerElement):
             )
 
         else:
-            # AwkwardForth testing: test_0637's 44,56
+            # AwkwardForth testing F: test_0637's 44,56
             read_members.extend(
                 [
-                    "        if forth_stash is not None:",
-                    "            key = forth_obj.get_keys(1)",
-                    "            key2 = forth_obj.get_keys(1)",
-                    '            form_key = f"node{key}-data"',
-                    '            form_key2 = f"node{key2}-offsets"',
-                    f'            forth_stash.add_to_header(f"output node{{key}}-data {{uproot._awkward_forth.convert_dtype(uproot._awkward_forth.symbol_dict[self._dtype{len(dtypes)}])}}\\n")',
-                    '            forth_stash.add_to_header(f"output node{key2}-offsets int64\\n")',
-                    '            forth_stash.add_to_init(f"0 node{key2}-offsets <- stack\\n")',
-                    f'            content[{self.name!r}] = {{"class": "RegularArray", "size": {self.array_length}, "content": {{ "class": "NumpyArray", "primitive": f"{{uproot._awkward_forth.convert_dtype(uproot._awkward_forth.symbol_dict[self._dtype{len(dtypes)}])}}", "inner_shape": [], "parameters": {{}}, "form_key": f"node{{key}}"}}, "form_key": f"node{{key2}}"}}',
-                    f'            forth_stash.add_to_pre(f"{self.array_length} dup node{{key2}}-offsets +<- stack \\n stream #!{{uproot._awkward_forth.symbol_dict[self._dtype{len(dtypes)}]}}-> node{{key}}-data\\n")\n',
-                    "            if forth_obj.should_add_form():",
-                    "                forth_obj.add_form_key(form_key)",
-                    "                forth_obj.add_form_key(form_key2)",
+                    "        if forth_obj is not None:",
+                    "            key = key_number ; key_number += 1",
+                    "            key2 = key_number ; key_number += 1",
+                    f'            nested_forth_stash = af.Node(f"node{{key}}", field_name={self.name!r}, form_details={{"class": "RegularArray", "size": {self.array_length}, "content": {{ "class": "NumpyArray", "primitive": f"{{af.struct_to_dtype_name[af.dtype_to_struct[self._dtype{len(dtypes)}]]}}", "inner_shape": [], "parameters": {{}}, "form_key": f"node{{key}}"}}, "form_key": f"node{{key2}}"}})',
+                    f'            nested_forth_stash.header_code.append(f"output node{{key}}-data {{af.struct_to_dtype_name[af.dtype_to_struct[self._dtype{len(dtypes)}]]}}\\n")',
+                    '            nested_forth_stash.header_code.append(f"output node{key2}-offsets int64\\n")',
+                    '            nested_forth_stash.init_code.append(f"0 node{key2}-offsets <- stack\\n")',
+                    f'            nested_forth_stash.pre_code.append(f"{self.array_length} dup node{{key2}}-offsets +<- stack \\n stream #!{{af.dtype_to_struct[self._dtype{len(dtypes)}]}}-> node{{key}}-data\\n")',
+                    "            forth_obj.add_node(nested_forth_stash)",
                     f"        self._members[{self.name!r}] = cursor.array(chunk, {self.array_length}, self._dtype{len(dtypes)}, context)",
                 ]
             )
@@ -1079,19 +1044,6 @@ class Model_TStreamerBasicType(Model_TStreamerElement):
 
             read_member_n.extend(
                 [
-                    "            if forth_stash is not None:",
-                    "                key = forth_obj.get_keys(1)",
-                    "                key2 = forth_obj.get_keys(1)",
-                    '                form_key = f"node{key}-data"',
-                    '                form_key2 = f"node{key2}-offsets"',
-                    f'                forth_stash.add_to_header(f"output node{{key}}-data {{uproot._awkward_forth.convert_dtype(uproot._awkward_forth.symbol_dict[self._dtype{len(dtypes)}])}}\\n")',
-                    '                forth_stash.add_to_header(f"output node{key2}-offsets int64\\n")',
-                    '                forth_stash.add_to_init(f"0 node{key2}-offsets <- stack\\n")',
-                    f'                content[{self.name!r}] = {{"class": "ListOffsetArray", "offsets": "i64", "content": {{ "class": "NumpyArray", "primitive": f"{{uproot._awkward_forth.convert_dtype(uproot._awkward_forth.symbol_dict[self._dtype{len(dtypes)}])}}", "inner_shape": [], "parameters": {{}}, "form_key": f"node{{key}}"}}, "form_key": f"node{{key2}}"}}',
-                    f'                forth_stash.add_to_pre(f"{self.array_length} dup node{{key2}}-offsets +<- stack \\n stream #!{{uproot._awkward_forth.symbol_dict[self._dtype{len(dtypes)}]}}-> node{{key}}-data\\n")\n',
-                    "                if forth_obj.should_add_form():",
-                    "                    forth_obj.add_form_key(form_key)",
-                    "                    forth_obj.add_form_key(form_key2)",
                     f"            self._members[{self.name!r}] = cursor.array(chunk, {self.array_length}, self._dtype{len(dtypes)}, context)",
                 ]
             )
@@ -1102,7 +1054,7 @@ class Model_TStreamerBasicType(Model_TStreamerElement):
             )
         else:
             strided_interpretation.append(
-                f"        raise uproot.interpretation.objects.CannotBeStrided('class members defined by {type(self).__name__} of type {self.typename} in member {self.name} of class {streamerinfo.name}')"
+                f"        raise CannotBeStrided('class members defined by {type(self).__name__} of type {self.typename} in member {self.name} of class {streamerinfo.name}')"
             )
 
         if self.array_length == 0:
@@ -1248,15 +1200,19 @@ class Model_TStreamerLoop(Model_TStreamerElement):
         # untested as of PR #629
         read_members.extend(
             [
-                '        context["cancel_forth"] = True',
+                "        if forth_obj is not None:",
+                "            raise CannotBeForth()",
                 "        cursor.skip(6)",
                 f"        for tmp in range(self.member({self.count_name!r})):",
-                f"            self._members[{self.name!r}] = c({self.typename.rstrip('*')!r}).read(chunk, cursor, context, file, self._file, self.concrete)",
+                f"            self._members[{self.name!r}] = c({self.typename.rstrip('*')!r}).read(chunk, cursor, af.add_to_path(forth_obj, context, {self.name!r}), file, self._file, self.concrete)",
+                "            if forth_obj is not None:",
+                "                if len(forth_obj.active_node.children) != 0:",
+                f"                    forth_obj.active_node.children[-1].field_name = {self.name!r}",
             ]
         )
 
         strided_interpretation.append(
-            f"        raise uproot.interpretation.objects.CannotBeStrided('class members defined by {type(self).__name__} of type {self.typename} in member {self.name} of class {streamerinfo.name}')"
+            f"        raise CannotBeStrided('class members defined by {type(self).__name__} of type {self.typename} in member {self.name} of class {streamerinfo.name}')"
         )
 
         awkward_form.extend(
@@ -1352,29 +1308,13 @@ class Model_TStreamerSTL(Model_TStreamerElement):
             string_header=True,
         )
 
-        # AwkwardForth testing: test_0637's 35,38,39,44,45,47,50,56
+        # AwkwardForth testing G: test_0637's 35,38,39,44,45,47,50,56
         read_members.extend(
             [
-                "        if forth_stash is not None:",
-                "            temp_node, temp_node_top, temp_form, temp_form_top, temp_prev_form = forth_obj.replace_form_and_model(None, {'name': 'TOP', 'content': {}})",
-                f"        self._members[{self.name!r}] = self._stl_container{len(containers)}.read(chunk, cursor, context, file, self._file, self.concrete)",
-                "        if forth_stash is not None:",
-                "            temp_prev_form1 = forth_obj.prev_form",
-                "            temp_form1 = forth_obj.top_form",
-                "            temp_model1 = forth_obj.top_node",
-                "            temp_model_ref = forth_obj.awkward_model",
-                "            forth_obj.awkward_model = temp_node",
-                "            forth_obj.prev_form = temp_prev_form",
-                "            forth_obj.top_node = temp_node_top",
-                "            forth_obj.aform = temp_form",
-                "            forth_obj.top_form = temp_form_top",
-                "            temp_model1 = temp_model1['content']",
-                f"            content[{self.name!r}] = temp_form1",
-                "            pre,post,init,header = forth_obj.get_code_recursive(temp_model1)",
-                "            forth_stash.add_to_header(header)",
-                "            forth_stash.add_to_pre(pre)",
-                "            forth_stash.add_to_post(post)",
-                "            forth_stash.add_to_init(init)",
+                f"        self._members[{self.name!r}] = self._stl_container{len(containers)}.read(chunk, cursor, af.add_to_path(forth_obj, context, {self.name!r}), file, self._file, self.concrete)",
+                "        if forth_obj is not None:",
+                "            if len(forth_obj.active_node.children) != 0:",
+                f"                forth_obj.active_node.children[-1].field_name = {self.name!r}",
             ]
         )
 
@@ -1482,12 +1422,15 @@ class TStreamerPointerTypes:
         read_member_n.append(f"        if member_index == {i}:")
 
         if self.fType == uproot.const.kObjectp or self.fType == uproot.const.kAnyp:
-            # AwkwardForth testing: test_0637's (none! untested!)
-
+            # AwkwardForth testing H: test_0637's (none! untested!)
             read_members.extend(
                 [
-                    '        context["cancel_forth"] = True',
-                    f"        self._members[{self.name!r}] = c({self.typename.rstrip('*')!r}).read(chunk, cursor, context, file, self._file, self.concrete)",
+                    "        if forth_obj is not None:",
+                    "            raise CannotBeForth()",
+                    f"        self._members[{self.name!r}] = c({self.typename.rstrip('*')!r}).read(chunk, cursor, af.add_to_path(forth_obj, context, {self.name!r}), file, self._file, self.concrete)",
+                    "        if forth_obj is not None:",
+                    "            if len(forth_obj.active_node.children) != 0:",
+                    f"                forth_obj.active_node.children[-1].field_name = {self.name!r}",
                 ]
             )
 
@@ -1504,26 +1447,32 @@ class TStreamerPointerTypes:
             )
 
         elif self.fType == uproot.const.kObjectP or self.fType == uproot.const.kAnyP:
-            # AwkwardForth testing: test_0637's (none! untested!)
-
-            read_members.append(
-                f"        self._members[{self.name!r}] = read_object_any(chunk, cursor, context, file, self._file, self)"
+            # AwkwardForth testing I: test_0637's (none! untested!)
+            read_members.extend(
+                [
+                    "        if forth_obj is not None:",
+                    "            raise CannotBeForth()",
+                    f"        self._members[{self.name!r}] = read_object_any(chunk, cursor, af.add_to_path(forth_obj, context, {self.name!r}), file, self._file, self)",
+                    "        if forth_obj is not None:",
+                    "            if len(forth_obj.active_node.children) != 0:",
+                    f"                forth_obj.active_node.children[-1].field_name = {self.name!r}",
+                ]
             )
             read_member_n.append(
                 f"            self._members[{self.name!r}] = read_object_any(chunk, cursor, context, file, self._file, self)"
             )
             strided_interpretation.append(
-                f"        raise uproot.interpretation.objects.CannotBeStrided('class members defined by {type(self).__name__} of type {self.typename} in member {self.name} of class {streamerinfo.name}')"
+                f"        raise CannotBeStrided('class members defined by {type(self).__name__} of type {self.typename} in member {self.name} of class {streamerinfo.name}')"
             )
             class_flags["has_read_object_any"] = True
 
         else:
             # untested as of PR #629
             read_members.append(
-                f"        raise uproot.deserialization.DeserializationError('not implemented: class members defined by {type(self).__name__} with fType {self.fType}', chunk, cursor, context, file.file_path)"
+                f"        raise DeserializationError('not implemented: class members defined by {type(self).__name__} with fType {self.fType}', chunk, cursor, context, file.file_path)"
             )
             read_member_n.append(
-                f"            raise uproot.deserialization.DeserializationError('not implemented: class members defined by {type(self).__name__} with fType {self.fType}', chunk, cursor, context, file.file_path)"
+                f"            raise DeserializationError('not implemented: class members defined by {type(self).__name__} with fType {self.fType}', chunk, cursor, context, file.file_path)"
             )
 
         member_names.append(self.name)
@@ -1618,29 +1567,13 @@ class TStreamerObjectTypes:
     ):
         read_member_n.append(f"        if member_index == {i}:")
 
-        # AwkwardForth testing: test_0637's 01,02,29,45,46,49,50,56
+        # AwkwardForth testing J: test_0637's 01,02,29,45,46,49,50,56
         read_members.extend(
             [
-                "        if forth_stash is not None:",
-                "            temp_node, temp_node_top, temp_form, temp_form_top, temp_prev_form = forth_obj.replace_form_and_model(None, {'name': 'TOP', 'content': {}})",
-                f"        self._members[{self.name!r}] = c({self.typename.rstrip('*')!r}).read(chunk, cursor, context, file, self._file, self.concrete)",
-                "        if forth_stash is not None:",
-                "            temp_prev_form1 = forth_obj.prev_form",
-                "            temp_form1 = forth_obj.top_form",
-                "            temp_model1 = forth_obj.top_node",
-                "            temp_model_ref = forth_obj.awkward_model",
-                "            forth_obj.awkward_model = temp_node",
-                "            forth_obj.prev_form = temp_prev_form",
-                "            forth_obj.top_node = temp_node_top",
-                "            forth_obj.aform = temp_form",
-                "            forth_obj.top_form = temp_form_top",
-                "            temp_model1 = temp_model1['content']",
-                f"            content[{self.name!r}] = temp_form1",
-                "            pre,post,init,header = forth_obj.get_code_recursive(temp_model1)",
-                "            forth_stash.add_to_header(header)",
-                "            forth_stash.add_to_pre(pre)",
-                "            forth_stash.add_to_post(post)",
-                "            forth_stash.add_to_init(init)",
+                f"        self._members[{self.name!r}] = c({self.typename.rstrip('*')!r}).read(chunk, cursor, af.add_to_path(forth_obj, context, {self.name!r}), file, self._file, self.concrete)",
+                "        if forth_obj is not None:",
+                "            if len(forth_obj.active_node.children) != 0:",
+                f"                forth_obj.active_node.children[-1].field_name = {self.name!r}",
             ]
         )
 

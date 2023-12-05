@@ -3079,7 +3079,6 @@ def _ranges_or_baskets_to_arrays(
         else:
             notifications.put(basket)
 
-    # all threads (if multithreaded), per branch, share a thread-local context for Forth
     forth_context = {x: threading.local() for x in branchid_interpretation}
 
     def basket_to_array(basket):
