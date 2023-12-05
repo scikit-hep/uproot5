@@ -393,12 +393,6 @@ input stream
             )
             context["forth"].gen.pop_active_node()
 
-            # def quickie(x):
-            #     assert isinstance(x, dict)
-            #     return [x["_name"]] + [quickie(y) for y in x["_children"]]
-            # print(json.dumps(quickie(context["forth"].gen.model.get_dict()), indent=2))
-            # context["forth"].gen._debug_forth()
-
             derived_form = context["forth"].gen.model.derive_form()
             if not self._any_NULL(derived_form):
                 context["forth"].prereaddone = True

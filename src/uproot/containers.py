@@ -750,7 +750,9 @@ in file {selffile.file_path}"""
                     forth_stash.header_code.append(
                         f"output node{offsets_num}-offsets int64\n"
                     )
-                    forth_stash.init_code.append(f"0 node{offsets_num}-offsets <- stack\n")
+                    forth_stash.init_code.append(
+                        f"0 node{offsets_num}-offsets <- stack\n"
+                    )
                     forth_stash.pre_code.append(
                         "0 bytestops I-> stack \nbegin\ndup stream pos <>\nwhile\nswap 1 + swap\n"
                     )
@@ -812,7 +814,9 @@ in file {selffile.file_path}"""
                     forth_stash.header_code.append(
                         f"output node{offsets_num}-offsets int64\n"
                     )
-                    forth_stash.init_code.append(f"0 node{offsets_num}-offsets <- stack\n")
+                    forth_stash.init_code.append(
+                        f"0 node{offsets_num}-offsets <- stack\n"
+                    )
                     forth_stash.pre_code.append(
                         "0 bytestops I-> stack \nbegin\ndup stream pos <>\nwhile\nswap 1 + swap\n"
                     )

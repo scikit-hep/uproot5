@@ -5,6 +5,8 @@ This module defines utilities for adding components to the forth reader.
 """
 from __future__ import annotations
 
+import json
+
 import numpy as np
 
 dtype_to_struct = {
@@ -152,14 +154,20 @@ class Node:
         self._field_name = field_name
         self._children = [] if children is None else children
 
-    def __str__(self) -> str:
-        return self._name
-
-    def get_dict(self):
-        dictionary = vars(self).copy()
-        children_dicts = [i.get_dict() for i in self._children]
-        dictionary["_children"] = children_dicts
-        return dictionary
+    def __str__(self, indent="") -> str:
+        children = (",\n" + indent).join(
+            x.__str__(indent + "  ") for x in self._children
+        )
+        if len(self._children) != 0:
+            children = "\n" + indent + "  " + children + "\n" + indent
+        return f"""Node({self._name!r},
+{indent}  pre={''.join(self._pre_code)!r},
+{indent}  post={''.join(self._post_code)!r},
+{indent}  init={''.join(self._init_code)!r},
+{indent}  header={''.join(self._header_code)!r},
+{indent}  form_details={json.dumps(self._form_details)},
+{indent}  field_name={self._field_name!r},
+{indent}  children=[{children}])"""
 
     @property
     def name(self):
@@ -260,9 +268,6 @@ class Node:
             return self._children[0].derive_form()
 
         else:
-            # import json
-            # print(json.dumps(self.get_dict(), indent=4))
-
             out = dict(self._form_details)
             out["class"] = "RecordArray"
             out["fields"] = []

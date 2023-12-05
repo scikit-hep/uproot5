@@ -51,7 +51,9 @@ in file {self.file.file_path}"""
             nested_forth_stash.header_code.append(
                 f"output node{offsets_num}-offsets int64\noutput node{data_num}-data uint8\n"
             )
-            nested_forth_stash.init_code.append(f"0 node{offsets_num}-offsets <- stack\n")
+            nested_forth_stash.init_code.append(
+                f"0 node{offsets_num}-offsets <- stack\n"
+            )
             forth_obj.add_node(nested_forth_stash)
 
         self._data = cursor.string(chunk, context)
