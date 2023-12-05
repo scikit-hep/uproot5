@@ -387,11 +387,10 @@ input stream
                 0, origin=-(byte_offsets[i] + cursor_offset)
             )
 
-            context["forth"].gen.push_active_node(uproot._awkwardforth.Node("TOP"))
+            context["forth"].gen.reset_active_node()
             output[i] = self._model.read(
                 chunk, cursor, context, branch.file, branch.file.detached, branch
             )
-            context["forth"].gen.pop_active_node()
 
             derived_form = context["forth"].gen.model.derive_form()
             if not self._any_NULL(derived_form):

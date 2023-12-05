@@ -109,6 +109,10 @@ class ForthGenerator:
             for child_node in current_node.children:
                 self.add_node(new_node, child_node, parent_node_name)
 
+    def reset_active_node(self):
+        self._active_node = self._top_node
+        self._stack_of_active_nodes = []
+
     def set_active_node(self, model):
         self._active_node = model
 
