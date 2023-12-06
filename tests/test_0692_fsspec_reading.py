@@ -166,6 +166,30 @@ def test_open_fsspec_xrootd(handler):
         assert (data == 194778).all()
 
 
+# https://github.com/scikit-hep/uproot5/issues/1054
+@pytest.mark.parametrize(
+    "handler",
+    [
+        uproot.source.file.MemmapSource,
+        uproot.source.file.MultithreadedFileSource,
+        uproot.source.fsspec.FSSpecSource,
+        None,
+    ],
+)
+def test_issue_1054(handler):
+    root_filename = "uproot-issue121.root"
+    local_path = str(skhep_testdata.data_path(root_filename))
+    local_path_new = local_path[: -len(root_filename)] + "file:with:colons.root"
+    os.rename(local_path, local_path_new)
+    with uproot.open(local_path_new, handler=handler) as f:
+        data = f["Events/MET_pt"].array(library="np")
+        assert len(data) == 40
+
+    with uproot.open(local_path_new + ":Events", handler=handler) as tree:
+        data = tree["MET_pt"].array(library="np")
+        assert len(data) == 40
+
+
 def test_fsspec_chunks(server):
     pytest.importorskip("aiohttp")
 
