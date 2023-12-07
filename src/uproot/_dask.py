@@ -1045,7 +1045,7 @@ def _report_failure(exception, *args, **kwargs):
                 "kwargs": [[k, repr(v)] for k, v in kwargs.items()],
                 "exception": type(exception).__name__,
                 "message": str(exception),
-                "fqdn": socket.fqdn(),
+                "fqdn": socket.getfqdn(),
                 "hostname": socket.gethostname(),
             }
         ]
@@ -1062,7 +1062,7 @@ def _report_success(duration, *args, **kwargs):
                 "kwargs": [[k, repr(v)] for k, v in kwargs.items()],
                 "exception": None,
                 "message": None,
-                "fqdn": socket.fqdn(),
+                "fqdn": socket.getfqdn(),
                 "hostname": socket.gethostname(),
             }
         ]
