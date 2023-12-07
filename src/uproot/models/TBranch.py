@@ -42,7 +42,8 @@ class Model_TBranch_v10(uproot.behaviors.TBranch.TBranch, uproot.model.Versioned
     behaviors = (uproot.behaviors.TBranch.TBranch,)
 
     def read_members(self, chunk, cursor, context, file):
-        context["cancel_forth"] = True
+        if uproot._awkwardforth.get_forth_obj(context) is not None:
+            raise uproot.interpretation.objects.CannotBeForth()
         if self.is_memberwise:
             raise NotImplementedError(
                 f"""memberwise serialization of {type(self).__name__}
@@ -170,6 +171,8 @@ class Model_TBranch_v11(uproot.behaviors.TBranch.TBranch, uproot.model.Versioned
     behaviors = (uproot.behaviors.TBranch.TBranch,)
 
     def read_members(self, chunk, cursor, context, file):
+        if uproot._awkwardforth.get_forth_obj(context) is not None:
+            raise uproot.interpretation.objects.CannotBeForth()
         if self.is_memberwise:
             raise NotImplementedError(
                 f"""memberwise serialization of {type(self).__name__}
@@ -299,6 +302,8 @@ class Model_TBranch_v12(uproot.behaviors.TBranch.TBranch, uproot.model.Versioned
     behaviors = (uproot.behaviors.TBranch.TBranch,)
 
     def read_members(self, chunk, cursor, context, file):
+        if uproot._awkwardforth.get_forth_obj(context) is not None:
+            raise uproot.interpretation.objects.CannotBeForth()
         if self.is_memberwise:
             raise NotImplementedError(
                 f"""memberwise serialization of {type(self).__name__}
@@ -429,6 +434,8 @@ class Model_TBranch_v13(uproot.behaviors.TBranch.TBranch, uproot.model.Versioned
     behaviors = (uproot.behaviors.TBranch.TBranch,)
 
     def read_members(self, chunk, cursor, context, file):
+        if uproot._awkwardforth.get_forth_obj(context) is not None:
+            raise uproot.interpretation.objects.CannotBeForth()
         if self.is_memberwise:
             raise NotImplementedError(
                 f"""memberwise serialization of {type(self).__name__}
@@ -588,6 +595,8 @@ class Model_TBranchElement_v8(
     behaviors = (uproot.behaviors.TBranch.TBranch,)
 
     def read_members(self, chunk, cursor, context, file):
+        if uproot._awkwardforth.get_forth_obj(context) is not None:
+            raise uproot.interpretation.objects.CannotBeForth()
         if self.is_memberwise:
             raise NotImplementedError(
                 f"""memberwise serialization of {type(self).__name__}
@@ -660,6 +669,8 @@ class Model_TBranchElement_v9(
     behaviors = (uproot.behaviors.TBranch.TBranch,)
 
     def read_members(self, chunk, cursor, context, file):
+        if uproot._awkwardforth.get_forth_obj(context) is not None:
+            raise uproot.interpretation.objects.CannotBeForth()
         if self.is_memberwise:
             raise NotImplementedError(
                 f"""memberwise serialization of {type(self).__name__}
@@ -732,6 +743,8 @@ class Model_TBranchElement_v10(
     behaviors = (uproot.behaviors.TBranch.TBranch,)
 
     def read_members(self, chunk, cursor, context, file):
+        if uproot._awkwardforth.get_forth_obj(context) is not None:
+            raise uproot.interpretation.objects.CannotBeForth()
         if self.is_memberwise:
             raise NotImplementedError(
                 f"""memberwise serialization of {type(self).__name__}
@@ -813,6 +826,8 @@ class Model_TBranchObject_v1(
     behaviors = (uproot.behaviors.TBranch.TBranch,)
 
     def read_members(self, chunk, cursor, context, file):
+        if uproot._awkwardforth.get_forth_obj(context) is not None:
+            raise uproot.interpretation.objects.CannotBeForth()
         if self.is_memberwise:
             raise NotImplementedError(
                 f"""memberwise serialization of {type(self).__name__}
