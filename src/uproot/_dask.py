@@ -1035,11 +1035,12 @@ class UprootReadMixin:
         raise NotImplementedError
 
 
-def _report_failure(exception, *args, **kwargs):
+def _report_failure(exception, call_time, *args, **kwargs):
     awkward = uproot.extras.awkward()
     return awkward.Array(
         [
             {
+                "call_time": call_time,
                 "duration": None,
                 "args": [repr(a) for a in args],
                 "kwargs": [[k, repr(v)] for k, v in kwargs.items()],
@@ -1057,6 +1058,7 @@ def _report_success(duration, *args, **kwargs):
     return awkward.Array(
         [
             {
+                "call_time": None,
                 "duration": duration,
                 "args": [repr(a) for a in args],
                 "kwargs": [[k, repr(v)] for k, v in kwargs.items()],
@@ -1069,13 +1071,14 @@ def _report_success(duration, *args, **kwargs):
     )
 
 
-def time_it(f):
+def with_time_info(f):
     @functools.wraps(f)
     def wrapper(*args, **kwargs):
-        start = time.time()
+        call_time = time.time_ns()
+        start = time.monotonic()
         result = f(*args, **kwargs)
-        end = time.monotonic()
-        return result, (end - start)
+        stop = time.monotonic()
+        return result, call_time, (stop - start)
 
     return wrapper
 
@@ -1114,11 +1117,13 @@ class _UprootRead(UprootReadMixin):
         i, start, stop = i_start_stop
         if self.return_report:
             try:
-                result, time = time_it(self._call_impl)(i, start, stop)
+                result, call_time, duration = with_time_info(self._call_impl)(
+                    i, start, stop
+                )
                 return (
                     result,
                     _report_success(
-                        time,
+                        duration,
                         self.ttrees[i],
                         start,
                         stop,
@@ -1129,6 +1134,7 @@ class _UprootRead(UprootReadMixin):
                     self.mock_empty(backend="cpu"),
                     _report_failure(
                         err,
+                        call_time,
                         self.ttrees[i],
                         start,
                         stop,
