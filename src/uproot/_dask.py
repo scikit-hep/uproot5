@@ -895,6 +895,7 @@ class UprootReadMixin:
     form_mapping_info: ImplementsFormMappingInfo
     common_keys: frozenset[str]
     interp_options: dict[str, Any]
+    report: bool
 
     def read_tree(self, tree: HasBranches, start: int, stop: int) -> AwkArray:
         assert start <= stop
@@ -1154,7 +1155,7 @@ class _UprootOpenAndRead(UprootReadMixin):
         self.base_form = base_form
         self.expected_form = expected_form
         self.form_mapping_info = form_mapping_info
-        self.report = (self.report,)
+        self.report = report
 
     def __call__(self, blockwise_args) -> AwkArray:
         (
