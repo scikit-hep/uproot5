@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import functools
 import math
+import time
 from collections.abc import Callable, Iterable, Mapping
 
 try:
@@ -1024,7 +1026,8 @@ class UprootReadMixin:
 
 
 def _report_failure(exception, *args, **kwargs):
-    return ak.Array(
+    awkward = uproot.extras.awkward()
+    return awkward.Array(
         [
             {
                 "duration": None,
@@ -1038,7 +1041,8 @@ def _report_failure(exception, *args, **kwargs):
 
 
 def _report_success(duration, *args, **kwargs):
-    return ak.Array(
+    awkward = uproot.extras.awkward()
+    return awkward.Array(
         [
             {
                 "duration": duration,
