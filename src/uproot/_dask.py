@@ -1023,6 +1023,45 @@ class UprootReadMixin:
         raise NotImplementedError
 
 
+def _report_failure(exception, *args, **kwargs):
+    return ak.Array(
+        [
+            {
+                "duration": None,
+                "args": [repr(a) for a in args],
+                "kwargs": [[k, repr(v)] for k, v in kwargs.items()],
+                "exception": type(exception).__name__,
+                "message": str(exception),
+            }
+        ]
+    )
+
+
+def _report_success(duration, *args, **kwargs):
+    return ak.Array(
+        [
+            {
+                "duration": duration,
+                "args": [repr(a) for a in args],
+                "kwargs": [[k, repr(v)] for k, v in kwargs.items()],
+                "exception": None,
+                "message": None,
+            }
+        ]
+    )
+
+
+def time_it(f):
+    @functools.wraps(f)
+    def wrapper(*args, **kwargs):
+        start = time.time()
+        result = f(*args, **kwargs)
+        end = time.time()
+        return result, (end - start)
+
+    return wrapper
+
+
 class _UprootRead(UprootReadMixin):
     def __init__(
         self,
@@ -1032,6 +1071,7 @@ class _UprootRead(UprootReadMixin):
         base_form: Form,
         expected_form: Form,
         form_mapping_info: ImplementsFormMappingInfo,
+        report: bool,
     ) -> None:
         self.ttrees = ttrees
         self.common_keys = frozenset(common_keys)
@@ -1039,6 +1079,11 @@ class _UprootRead(UprootReadMixin):
         self.base_form = base_form
         self.expected_form = expected_form
         self.form_mapping_info = form_mapping_info
+        self.report = report
+
+    @property
+    def return_report(self) -> bool:
+        return self.report
 
     def project_keys(self: T, keys: frozenset[str]) -> T:
         return _UprootRead(
@@ -1048,10 +1093,34 @@ class _UprootRead(UprootReadMixin):
             self.base_form,
             self.expected_form,
             self.form_mapping_info,
+            self.report,
         )
 
     def __call__(self, i_start_stop) -> AwkArray:
         i, start, stop = i_start_stop
+
+        if self.return_report:
+            try:
+                result, time = time_it(self.read_tree)(self.ttrees[i], start, stop)
+                return (
+                    result,
+                    _report_success(
+                        time,
+                        self.ttrees[i],
+                        start,
+                        stop,
+                    ),
+                )
+            except self.allowed_exceptions as err:
+                return (
+                    self.mock_empty(),
+                    _report_failure(
+                        err,
+                        self.ttrees[i],
+                        start,
+                        stop,
+                    ),
+                )
 
         return self.read_tree(self.ttrees[i], start, stop)
 
@@ -1067,6 +1136,7 @@ class _UprootOpenAndRead(UprootReadMixin):
         base_form: Form,
         expected_form: Form,
         form_mapping_info: ImplementsFormMappingInfo,
+        report: bool,
     ) -> None:
         self.custom_classes = custom_classes
         self.allow_missing = allow_missing
@@ -1076,6 +1146,7 @@ class _UprootOpenAndRead(UprootReadMixin):
         self.base_form = base_form
         self.expected_form = expected_form
         self.form_mapping_info = form_mapping_info
+        self.report = (self.report,)
 
     def __call__(self, blockwise_args) -> AwkArray:
         (
@@ -1114,6 +1185,29 @@ which has {num_entries} entries"""
             )
 
         assert start <= stop
+
+        if self.return_report:
+            try:
+                result, time = time_it(self.read_tree)(ttree, start, stop)
+                return (
+                    result,
+                    _report_success(
+                        time,
+                        ttree,
+                        start,
+                        stop,
+                    ),
+                )
+            except self.allowed_exceptions as err:
+                return (
+                    self.mock_empty(),
+                    _report_failure(
+                        err,
+                        ttree,
+                        start,
+                        stop,
+                    ),
+                )
 
         return self.read_tree(ttree, start, stop)
 
@@ -1326,17 +1420,8 @@ which has {entry_stop} entries"""
         base_form=base_form,
         expected_form=expected_form,
         form_mapping_info=form_mapping_info,
+        report=report,
     )
-
-    if report is not None:
-        return dask_awkward.from_map(
-            fn,
-            partition_args,
-            divisions=tuple(divisions),
-            label="from-uproot",
-            empty_on_raise=(OSError,),
-            empty_backend="cpu",
-        )
 
     return dask_awkward.from_map(
         fn,
@@ -1431,17 +1516,8 @@ def _get_dak_array_delay_open(
         base_form=base_form,
         expected_form=expected_form,
         form_mapping_info=form_mapping_info,
+        report=report,
     )
-
-    if report is not None:
-        return dask_awkward.from_map(
-            fn,
-            partition_args,
-            divisions=None if divisions is None else tuple(divisions),
-            label="from-uproot",
-            empty_on_raise=(OSError,),
-            empty_backend="cpu",
-        )
 
     return dask_awkward.from_map(
         fn,
