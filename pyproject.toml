@@ -59,6 +59,8 @@ dev = [
 ]
 test = [
   "lz4",
+  "xxhash",
+  "zstandard",
   "minio",
   "aiohttp; python_version<\"3.12\"",  # asyncio not available
   "fsspec",
@@ -70,7 +72,6 @@ test = [
   "pytest-rerunfailures",
   "requests",
   "scikit-hep-testdata",
-  "xxhash",
   "rangehttpserver"
 ]
 
