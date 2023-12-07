@@ -1082,6 +1082,10 @@ class _UprootRead(UprootReadMixin):
         self.report = report
 
     @property
+    def allowed_exceptions(self):
+        return (OSError,)
+
+    @property
     def return_report(self) -> bool:
         return self.report
 
