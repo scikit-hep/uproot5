@@ -1110,12 +1110,11 @@ class _UprootRead(UprootReadMixin):
             self.report,
         )
 
-    def __call__(self, i_start_stop) -> AwkArray:
+    def __call__(self, i_start_stop):
         i, start, stop = i_start_stop
-
         if self.return_report:
             try:
-                result, time = time_it(self.read_tree)(self.ttrees[i], start, stop)
+                result, time = time_it(self._call_impl)(i, start, stop)
                 return (
                     result,
                     _report_success(
@@ -1127,7 +1126,7 @@ class _UprootRead(UprootReadMixin):
                 )
             except self.allowed_exceptions as err:
                 return (
-                    self.mock_empty(),
+                    self.mock_empty(backend="cpu"),
                     _report_failure(
                         err,
                         self.ttrees[i],
@@ -1136,6 +1135,9 @@ class _UprootRead(UprootReadMixin):
                     ),
                 )
 
+        return self._call_impl(i, start, stop)
+
+    def _call_impl(self, i, start, stop):
         return self.read_tree(self.ttrees[i], start, stop)
 
 
@@ -1162,14 +1164,9 @@ class _UprootOpenAndRead(UprootReadMixin):
         self.form_mapping_info = form_mapping_info
         self.report = report
 
-    def __call__(self, blockwise_args) -> AwkArray:
-        (
-            file_path,
-            object_path,
-            i_step_or_start,
-            n_steps_or_stop,
-            is_chunk,
-        ) = blockwise_args
+    def _call_impl(
+        self, file_path, object_path, i_step_or_start, n_steps_or_stop, is_chunk
+    ):
         ttree = uproot._util.regularize_object_path(
             file_path,
             object_path,
@@ -1200,30 +1197,49 @@ which has {num_entries} entries"""
 
         assert start <= stop
 
+        return self.read_tree(ttree, start, stop)
+
+    def __call__(self, blockwise_args):
+        (
+            file_path,
+            object_path,
+            i_step_or_start,
+            n_steps_or_stop,
+            is_chunk,
+        ) = blockwise_args
+
         if self.return_report:
             try:
-                result, time = time_it(self.read_tree)(ttree, start, stop)
+                result, time = time_it(self._call_impl)(
+                    file_path, object_path, i_step_or_start, n_steps_or_stop, is_chunk
+                )
                 return (
                     result,
                     _report_success(
                         time,
-                        ttree,
-                        start,
-                        stop,
+                        file_path,
+                        object_path,
+                        i_step_or_start,
+                        n_steps_or_stop,
+                        is_chunk,
                     ),
                 )
             except self.allowed_exceptions as err:
                 return (
-                    self.mock_empty(),
+                    self.mock_empty(backend="cpu"),
                     _report_failure(
                         err,
-                        ttree,
-                        start,
-                        stop,
+                        file_path,
+                        object_path,
+                        i_step_or_start,
+                        n_steps_or_stop,
+                        is_chunk,
                     ),
                 )
 
-        return self.read_tree(ttree, start, stop)
+        return self._call_impl(
+            file_path, object_path, i_step_or_start, n_steps_or_stop, is_chunk
+        )
 
     def project_keys(self: T, keys: frozenset[str]) -> T:
         return _UprootOpenAndRead(
