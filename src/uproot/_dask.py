@@ -1071,14 +1071,13 @@ def _report_success(duration, *args, **kwargs):
     )
 
 
-def with_time_info(f):
+def with_duration(f):
     @functools.wraps(f)
     def wrapper(*args, **kwargs):
-        call_time = time.time_ns()
         start = time.monotonic()
         result = f(*args, **kwargs)
         stop = time.monotonic()
-        return result, call_time, (stop - start)
+        return result, (stop - start)
 
     return wrapper
 
@@ -1116,10 +1115,9 @@ class _UprootRead(UprootReadMixin):
     def __call__(self, i_start_stop):
         i, start, stop = i_start_stop
         if self.return_report:
+            call_time = time.time_ns()
             try:
-                result, call_time, duration = with_time_info(self._call_impl)(
-                    i, start, stop
-                )
+                result, duration = with_duration(self._call_impl)(i, start, stop)
                 return (
                     result,
                     _report_success(
@@ -1215,8 +1213,9 @@ which has {num_entries} entries"""
         ) = blockwise_args
 
         if self.return_report:
+            call_time = time.time_ns()
             try:
-                result, call_time, duration = with_time_info(self._call_impl)(
+                result, duration = with_duration(self._call_impl)(
                     file_path, object_path, i_step_or_start, n_steps_or_stop, is_chunk
                 )
                 return (
