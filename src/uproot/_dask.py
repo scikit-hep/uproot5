@@ -1216,13 +1216,13 @@ which has {num_entries} entries"""
 
         if self.return_report:
             try:
-                result, time = time_it(self._call_impl)(
+                result, call_time, duration = with_time_info(self._call_impl)(
                     file_path, object_path, i_step_or_start, n_steps_or_stop, is_chunk
                 )
                 return (
                     result,
                     _report_success(
-                        time,
+                        duration,
                         file_path,
                         object_path,
                         i_step_or_start,
@@ -1235,6 +1235,7 @@ which has {num_entries} entries"""
                     self.mock_empty(backend="cpu"),
                     _report_failure(
                         err,
+                        call_time,
                         file_path,
                         object_path,
                         i_step_or_start,
