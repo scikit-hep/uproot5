@@ -898,6 +898,14 @@ class UprootReadMixin:
     interp_options: dict[str, Any]
     report: bool
 
+    @property
+    def allowed_exceptions(self):
+        return (OSError,)
+
+    @property
+    def return_report(self) -> bool:
+        return self.report
+
     def read_tree(self, tree: HasBranches, start: int, stop: int) -> AwkArray:
         assert start <= stop
 
@@ -1090,14 +1098,6 @@ class _UprootRead(UprootReadMixin):
         self.expected_form = expected_form
         self.form_mapping_info = form_mapping_info
         self.report = report
-
-    @property
-    def allowed_exceptions(self):
-        return (OSError,)
-
-    @property
-    def return_report(self) -> bool:
-        return self.report
 
     def project_keys(self: T, keys: frozenset[str]) -> T:
         return _UprootRead(
