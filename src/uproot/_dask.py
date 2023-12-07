@@ -1062,8 +1062,8 @@ def _report_success(duration, *args, **kwargs):
                 "kwargs": [[k, repr(v)] for k, v in kwargs.items()],
                 "exception": None,
                 "message": None,
-                "fqdn": socket.getfqdn(),
-                "hostname": socket.gethostname(),
+                "fqdn": None,
+                "hostname": None,
             }
         ]
     )
