@@ -1072,7 +1072,7 @@ def _report_success(duration, *args, **kwargs):
 def time_it(f):
     @functools.wraps(f)
     def wrapper(*args, **kwargs):
-        start = time.monotonic()
+        start = time.time()
         result = f(*args, **kwargs)
         end = time.monotonic()
         return result, (end - start)
