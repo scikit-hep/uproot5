@@ -15,6 +15,8 @@ import requests
 import os
 import sys
 
+is_windows = sys.platform.startswith("win")
+
 
 @pytest.mark.parametrize(
     "urlpath, source_class",
@@ -176,6 +178,7 @@ def test_open_fsspec_xrootd(handler):
         None,
     ],
 )
+@pytest.mark.skipif(is_windows, reason="Windows does not support : in filenames")
 def test_issue_1054(handler):
     root_filename = "uproot-issue121.root"
     local_path = str(skhep_testdata.data_path(root_filename))
