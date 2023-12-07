@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import functools
 import math
-import time
 import socket
+import time
 from collections.abc import Callable, Iterable, Mapping
 
 try:
