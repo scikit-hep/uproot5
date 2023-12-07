@@ -3,6 +3,7 @@ from __future__ import annotations
 import functools
 import math
 import time
+import socket
 from collections.abc import Callable, Iterable, Mapping
 
 try:
@@ -40,7 +41,7 @@ def dask(
     allow_missing=False,
     open_files=True,
     form_mapping=None,
-    report=None,
+    report=False,
     **options,
 ):
     """
@@ -1036,6 +1037,8 @@ def _report_failure(exception, *args, **kwargs):
                 "kwargs": [[k, repr(v)] for k, v in kwargs.items()],
                 "exception": type(exception).__name__,
                 "message": str(exception),
+                "fqdn": socket.fqdn(),
+                "hostname": socket.gethostname(),
             }
         ]
     )
@@ -1051,6 +1054,8 @@ def _report_success(duration, *args, **kwargs):
                 "kwargs": [[k, repr(v)] for k, v in kwargs.items()],
                 "exception": None,
                 "message": None,
+                "fqdn": socket.fqdn(),
+                "hostname": socket.gethostname(),
             }
         ]
     )
@@ -1059,9 +1064,9 @@ def _report_success(duration, *args, **kwargs):
 def time_it(f):
     @functools.wraps(f)
     def wrapper(*args, **kwargs):
-        start = time.time()
+        start = time.monotonic()
         result = f(*args, **kwargs)
-        end = time.time()
+        end = time.monotonic()
         return result, (end - start)
 
     return wrapper
@@ -1230,6 +1235,7 @@ which has {num_entries} entries"""
             self.base_form,
             self.expected_form,
             self.form_mapping_info,
+            self.report,
         )
 
 
