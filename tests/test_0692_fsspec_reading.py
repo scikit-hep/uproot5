@@ -189,6 +189,10 @@ def test_issue_1054(handler):
         data = tree["MET_pt"].array(library="np")
         assert len(data) == 40
 
+    with uproot.open(local_path_new + ":Events/MET_pt", handler=handler) as branch:
+        data = branch.array(library="np")
+        assert len(data) == 40
+
 
 def test_fsspec_chunks(server):
     pytest.importorskip("aiohttp")
