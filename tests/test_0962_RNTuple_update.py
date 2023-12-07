@@ -37,7 +37,10 @@ def test_new_support_RNTuple_split_int16_reading():
         assert np.all(np.unique(df.one_integers[: len(df.one_integers) // 2]) == [2])
         assert np.all(np.unique(df.one_integers[len(df.one_integers) / 2 + 1 :]) == [1])
 
+
 pytest.importorskip("zstandard")
+
+
 def test_new_support_RNTuple_event_data():
     with uproot.open(
         "https://xrootd-local.unl.edu:1094//store/user/AGC/nanoaod-rntuple/zstd/TT_TuneCUETP8M1_13TeV-powheg-pythia8/cmsopendata2015_ttbar_19980_PU25nsData2015v1_76X_mcRun2_asymptotic_v12_ext3-v1_00000_0000.root"
