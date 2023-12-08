@@ -41,7 +41,7 @@ def dask(
     allow_missing=False,
     open_files=True,
     form_mapping=None,
-    report=False,
+    allow_read_errors_with_report=False,
     **options,
 ):
     """
@@ -95,6 +95,10 @@ def dask(
         form_mapping (Callable[awkward.forms.Form] -> awkward.forms.Form | None): If not none
             and library="ak" then apply this remapping function to the awkward form of the input
             data. The form keys of the desired form should be available data in the input form.
+        allow_read_errors_with_report (bool): If True, catch OSError exceptions and return an
+            empty array for these nodes in the task graph. The return of this function then
+            becomes a two element tuple, where the first return is the dask-awkward collection
+            of interest and the second return is a report dask-awkward collection.
         options: See below.
 
     Returns dask equivalents of the backends supported by uproot. If ``library='np'``,
@@ -263,7 +267,7 @@ def dask(
                 interp_options,
                 form_mapping,
                 steps_per_file,
-                report,
+                allow_read_errors_with_report,
             )
         else:
             return _get_dak_array_delay_open(
@@ -279,7 +283,7 @@ def dask(
                 interp_options,
                 form_mapping,
                 steps_per_file,
-                report,
+                allow_read_errors_with_report,
             )
     else:
         raise NotImplementedError()
@@ -896,7 +900,7 @@ class UprootReadMixin:
     form_mapping_info: ImplementsFormMappingInfo
     common_keys: frozenset[str]
     interp_options: dict[str, Any]
-    report: bool
+    allow_read_errors_with_report: bool
 
     @property
     def allowed_exceptions(self):
@@ -904,7 +908,7 @@ class UprootReadMixin:
 
     @property
     def return_report(self) -> bool:
-        return self.report
+        return self.allow_read_errors_with_report
 
     def read_tree(self, tree: HasBranches, start: int, stop: int) -> AwkArray:
         assert start <= stop
@@ -1091,7 +1095,7 @@ class _UprootRead(UprootReadMixin):
         base_form: Form,
         expected_form: Form,
         form_mapping_info: ImplementsFormMappingInfo,
-        report: bool,
+        allow_read_errors_with_report: bool,
     ) -> None:
         self.ttrees = ttrees
         self.common_keys = frozenset(common_keys)
@@ -1099,7 +1103,7 @@ class _UprootRead(UprootReadMixin):
         self.base_form = base_form
         self.expected_form = expected_form
         self.form_mapping_info = form_mapping_info
-        self.report = report
+        self.allow_read_errors_with_report = allow_read_errors_with_report
 
     def project_keys(self: T, keys: frozenset[str]) -> T:
         return _UprootRead(
@@ -1109,7 +1113,7 @@ class _UprootRead(UprootReadMixin):
             self.base_form,
             self.expected_form,
             self.form_mapping_info,
-            self.report,
+            self.allow_read_errors_with_report,
         )
 
     def __call__(self, i_start_stop):
@@ -1156,7 +1160,7 @@ class _UprootOpenAndRead(UprootReadMixin):
         base_form: Form,
         expected_form: Form,
         form_mapping_info: ImplementsFormMappingInfo,
-        report: bool,
+        allow_read_errors_with_report: bool,
     ) -> None:
         self.custom_classes = custom_classes
         self.allow_missing = allow_missing
@@ -1166,7 +1170,7 @@ class _UprootOpenAndRead(UprootReadMixin):
         self.base_form = base_form
         self.expected_form = expected_form
         self.form_mapping_info = form_mapping_info
-        self.report = report
+        self.allow_read_errors_with_report = allow_read_errors_with_report
 
     def _call_impl(
         self, file_path, object_path, i_step_or_start, n_steps_or_stop, is_chunk
@@ -1257,7 +1261,7 @@ which has {num_entries} entries"""
             self.base_form,
             self.expected_form,
             self.form_mapping_info,
-            self.report,
+            self.allow_read_errors_with_report,
         )
 
 
@@ -1294,7 +1298,7 @@ def _get_dak_array(
     interp_options,
     form_mapping,
     steps_per_file,
-    report,
+    allow_read_errors_with_report,
 ):
     dask_awkward = uproot.extras.dask_awkward()
     awkward = uproot.extras.awkward()
@@ -1457,7 +1461,7 @@ which has {entry_stop} entries"""
         base_form=base_form,
         expected_form=expected_form,
         form_mapping_info=form_mapping_info,
-        report=report,
+        allow_read_errors_with_report=allow_read_errors_with_report,
     )
 
     return dask_awkward.from_map(
@@ -1481,7 +1485,7 @@ def _get_dak_array_delay_open(
     interp_options,
     form_mapping,
     steps_per_file,
-    report,
+    allow_read_errors_with_report,
 ):
     dask_awkward = uproot.extras.dask_awkward()
     awkward = uproot.extras.awkward()
@@ -1553,7 +1557,7 @@ def _get_dak_array_delay_open(
         base_form=base_form,
         expected_form=expected_form,
         form_mapping_info=form_mapping_info,
-        report=report,
+        allow_read_errors_with_report=allow_read_errors_with_report,
     )
 
     return dask_awkward.from_map(
