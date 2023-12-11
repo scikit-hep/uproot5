@@ -15,6 +15,8 @@ import requests
 import os
 import sys
 
+is_windows = sys.platform.startswith("win")
+
 
 @pytest.mark.parametrize(
     "urlpath, source_class",
@@ -164,6 +166,61 @@ def test_open_fsspec_xrootd(handler):
         data = f["Events/run"].array(library="np", entry_stop=20)
         assert len(data) == 20
         assert (data == 194778).all()
+
+
+@pytest.mark.parametrize(
+    "handler",
+    [
+        uproot.source.file.MemmapSource,
+        uproot.source.file.MultithreadedFileSource,
+        uproot.source.fsspec.FSSpecSource,
+        None,
+    ],
+)
+@pytest.mark.skipif(
+    is_windows, reason="Windows does not support colons (':') in filenames"
+)
+def test_issue_1054_filename_colons(handler):
+    root_filename = "uproot-issue121.root"
+    local_path = str(skhep_testdata.data_path(root_filename))
+    local_path_new = local_path[: -len(root_filename)] + "file:with:colons.root"
+    os.rename(local_path, local_path_new)
+    with uproot.open(local_path_new, handler=handler) as f:
+        data = f["Events/MET_pt"].array(library="np")
+        assert len(data) == 40
+
+    with uproot.open(local_path_new + ":Events", handler=handler) as tree:
+        data = tree["MET_pt"].array(library="np")
+        assert len(data) == 40
+
+    with uproot.open(local_path_new + ":Events/MET_pt", handler=handler) as branch:
+        data = branch.array(library="np")
+        assert len(data) == 40
+
+
+@pytest.mark.parametrize(
+    "handler",
+    [
+        uproot.source.file.MemmapSource,
+        uproot.source.file.MultithreadedFileSource,
+        uproot.source.fsspec.FSSpecSource,
+        None,
+    ],
+)
+def test_issue_1054_object_path_split(handler):
+    root_filename = "uproot-issue121.root"
+    local_path = str(skhep_testdata.data_path(root_filename))
+    with uproot.open(local_path, handler=handler) as f:
+        data = f["Events/MET_pt"].array(library="np")
+        assert len(data) == 40
+
+    with uproot.open(local_path + ":Events", handler=handler) as tree:
+        data = tree["MET_pt"].array(library="np")
+        assert len(data) == 40
+
+    with uproot.open(local_path + ":Events/MET_pt", handler=handler) as branch:
+        data = branch.array(library="np")
+        assert len(data) == 40
 
 
 def test_fsspec_chunks(server):
