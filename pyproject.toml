@@ -79,15 +79,12 @@ test = [
 Download = "https://github.com/scikit-hep/uproot5/releases"
 Homepage = "https://github.com/scikit-hep/uproot5"
 
-[tool.hatch.version]
-source = "vcs"
-path = "src/uproot/__init__.py"
-
 [tool.hatch.build.hooks.vcs]
 version-file = "src/uproot/version.py"
 
-[tool.setuptools_scm]
-write_to = "src/uproot/_version.py"
+[tool.hatch.version]
+path = "src/uproot/__init__.py"
+source = "vcs"
 
 [tool.isort]
 profile = "black"
@@ -158,3 +155,6 @@ max-complexity = 100
 [tool.ruff.per-file-ignores]
 "dev/*" = ["T20"]
 "src/uproot/*/file.py" = ["SIM115"]
+
+[tool.setuptools_scm]
+write_to = "src/uproot/_version.py"
