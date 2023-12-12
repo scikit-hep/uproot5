@@ -80,7 +80,14 @@ Download = "https://github.com/scikit-hep/uproot5/releases"
 Homepage = "https://github.com/scikit-hep/uproot5"
 
 [tool.hatch.version]
-path = "src/uproot/version.py"
+source = "vcs"
+path = "src/uproot/__init__.py"
+
+[tool.hatch.build.hooks.vcs]
+version-file = "src/uproot/version.py"
+
+[tool.setuptools_scm]
+write_to = "src/uproot/_version.py"
 
 [tool.isort]
 profile = "black"
