@@ -287,11 +287,6 @@ def regularize_path(path):
     return path
 
 
-# These schemes may not appear in fsspec if the corresponding libraries are not installed (e.g. s3fs)
-_remote_schemes = ["root", "s3", "http", "https"]
-_schemes = list({*_remote_schemes, *fsspec.available_protocols()})
-
-
 def file_object_path_split(urlpath: str) -> tuple[str, str | None]:
     """
     Split a path with a colon into a file path and an object-in-file path.
@@ -831,17 +826,21 @@ def _regularize_files_inner(files, parse_colon, counter, HasBranches, steps_allo
             file_path, object_path = files, None
 
         parsed_url = urlparse(file_path)
-
-        if (
-            parsed_url.scheme.lower() in _remote_schemes
-            and parsed_url.scheme.lower() not in ["root"]
-        ):
-            yield file_path, object_path, maybe_steps
-        elif "://" in file_path:
-            files = [file.full_name for file in fsspec.open_files(files)]
-            for file in files:
-                yield file, object_path, maybe_steps
+        scheme = parsed_url.scheme
+        if scheme in fsspec.available_protocols():
+            # user specified a protocol, so we use fsspec to expand the glob and return the full paths
+            file_names_full = [file.full_name for file in fsspec.open_files(files)]
+            # https://github.com/fsspec/filesystem_spec/issues/1459
+            # Not all protocols return the full_name attribute correctly (if they have url parameters)
+            for file_name_full in file_names_full:
+                yield file_name_full, object_path, maybe_steps
+        elif scheme != "":
+            # user specified a protocol, but it's not supported by fsspec (e.g. user does not have s3fs installed)
+            raise ValueError(
+                f"Protocol {scheme} is not supported by fsspec. Please install the corresponding package."
+            )
         else:
+            # no protocol, default to local file system
             expanded = os.path.expanduser(file_path)
             if _regularize_files_isglob.search(expanded) is None:
                 yield file_path, object_path, maybe_steps

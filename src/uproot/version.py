@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import re
 
-__version__ = "5.2.0rc3"
+__version__ = "5.2.0rc4"
 version = __version__
 version_info = tuple(re.split(r"[-\.]", __version__))
 
