@@ -825,20 +825,16 @@ def _regularize_files_inner(files, parse_colon, counter, HasBranches, steps_allo
         else:
             file_path, object_path = files, None
 
+        # This parses the windows drive letter as a scheme!
         parsed_url = urlparse(file_path)
         scheme = parsed_url.scheme
-        if scheme in fsspec.available_protocols():
+        if "://" in file_path and scheme not in ("file", "local"):
             # user specified a protocol, so we use fsspec to expand the glob and return the full paths
             file_names_full = [file.full_name for file in fsspec.open_files(files)]
             # https://github.com/fsspec/filesystem_spec/issues/1459
             # Not all protocols return the full_name attribute correctly (if they have url parameters)
             for file_name_full in file_names_full:
                 yield file_name_full, object_path, maybe_steps
-        elif scheme != "":
-            # user specified a protocol, but it's not supported by fsspec (e.g. user does not have s3fs installed)
-            raise ValueError(
-                f"Protocol {scheme} is not supported by fsspec. Please install the corresponding package."
-            )
         else:
             # no protocol, default to local file system
             expanded = os.path.expanduser(file_path)
