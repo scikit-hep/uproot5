@@ -388,3 +388,20 @@ def test_issue_1035(handler):
             branch = tree["MuonSpectrometerTrackParticlesAuxDyn.truthParticleLink"]
             data = branch.array()
             assert len(data) == 40
+
+
+@pytest.mark.network
+@pytest.mark.xrootd
+def test_fsspec_xrootd_iterate():
+    pytest.importorskip("XRootD")
+    pytest.importorskip("fsspec_xrootd")
+    iterator = uproot.iterate(
+        {
+            "root://eospublic.cern.ch//eos/root-eos/cms_opendata_2012_nanoaod/Run2012B_*.root": "Events"
+        },
+        ["PV_x"],
+        handler=uproot.source.fsspec.FSSpecSource,
+    )
+
+    for _ in iterator:
+        ...
