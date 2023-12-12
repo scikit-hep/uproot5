@@ -832,7 +832,10 @@ def _regularize_files_inner(files, parse_colon, counter, HasBranches, steps_allo
 
         parsed_url = urlparse(file_path)
 
-        if parsed_url.scheme.lower() in _remote_schemes:
+        if (
+            parsed_url.scheme.lower() in _remote_schemes
+            and parsed_url.scheme.lower() not in ["root"]
+        ):
             yield file_path, object_path, maybe_steps
         elif "://" in file_path:
             files = [file.full_name for file in fsspec.open_files(files)]
