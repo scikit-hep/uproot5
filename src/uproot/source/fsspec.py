@@ -61,6 +61,7 @@ class FSSpecSource(uproot.source.chunk.Source):
         return f"<{type(self).__name__} {path} at 0x{id(self):012x}>"
 
     def __getstate__(self):
+        self._fh = None
         state = dict(self.__dict__)
         state.pop("_executor")
         state.pop("_file")
