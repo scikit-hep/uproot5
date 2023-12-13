@@ -31,7 +31,7 @@ class FSSpecSource(uproot.source.chunk.Source):
         self._fs, self._file_path = fsspec.core.url_to_fs(
             file_path, **self.extract_fsspec_options(options)
         )
-        
+
         # What should we do when there is a chain of filesystems?
         self._async_impl = self._fs.async_impl
 
