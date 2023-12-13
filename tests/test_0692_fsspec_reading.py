@@ -392,7 +392,14 @@ def test_issue_1035(handler):
 
 @pytest.mark.network
 @pytest.mark.xrootd
-def test_fsspec_globbing_xrootd():
+@pytest.mark.parametrize(
+    "handler",
+    [
+        uproot.source.fsspec.FSSpecSource,
+        None,
+    ],
+)
+def test_fsspec_globbing_xrootd(handler):
     pytest.importorskip("XRootD")
     pytest.importorskip("fsspec_xrootd")
     iterator = uproot.iterate(
@@ -400,7 +407,7 @@ def test_fsspec_globbing_xrootd():
             "root://eospublic.cern.ch//eos/root-eos/cms_opendata_2012_nanoaod/Run2012B_*.root": "Events"
         },
         ["PV_x"],
-        handler=uproot.source.fsspec.FSSpecSource,
+        handler=handler,
     )
 
     arrays = [array for array in iterator]
@@ -408,7 +415,37 @@ def test_fsspec_globbing_xrootd():
     assert len(arrays) == 2
 
 
-def test_fsspec_globbing_s3():
+@pytest.mark.network
+@pytest.mark.xrootd
+@pytest.mark.parametrize(
+    "handler",
+    [
+        uproot.source.fsspec.FSSpecSource,
+        None,
+    ],
+)
+def test_fsspec_globbing_xrootd_no_files(handler):
+    pytest.importorskip("XRootD")
+    pytest.importorskip("fsspec_xrootd")
+    iterator = uproot.iterate(
+        {
+            "root://eospublic.cern.ch//eos/root-eos/cms_opendata_2012_nanoaod/*/ThisFileShouldNotExist.root": "Events"
+        },
+        ["PV_x"],
+        handler=handler,
+    )
+    with pytest.raises(FileNotFoundError):
+        arrays = [array for array in iterator]
+
+
+@pytest.mark.parametrize(
+    "handler",
+    [
+        uproot.source.fsspec.FSSpecSource,
+        None,
+    ],
+)
+def test_fsspec_globbing_s3(handler):
     pytest.importorskip("s3fs")
     if sys.version_info < (3, 11):
         pytest.skip(
@@ -419,7 +456,7 @@ def test_fsspec_globbing_s3():
         {"s3://pivarski-princeton/pythia_ppZee_run17emb.*.root": "PicoDst"},
         ["Event/Event.mEventId"],
         anon=True,
-        handler=uproot.source.fsspec.FSSpecSource,
+        handler=handler,
     )
 
     # if more files are added that match the glob, this test needs to be updated
