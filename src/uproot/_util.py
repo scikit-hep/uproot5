@@ -287,11 +287,6 @@ def regularize_path(path):
     return path
 
 
-# These schemes may not appear in fsspec if the corresponding libraries are not installed (e.g. s3fs)
-_remote_schemes = ["root", "s3", "http", "https"]
-_schemes = list({*_remote_schemes, *fsspec.available_protocols()})
-
-
 def file_object_path_split(urlpath: str) -> tuple[str, str | None]:
     """
     Split a path with a colon into a file path and an object-in-file path.
@@ -815,7 +810,9 @@ def regularize_steps(steps):
     return out.tolist()
 
 
-def _regularize_files_inner(files, parse_colon, counter, HasBranches, steps_allowed):
+def _regularize_files_inner(
+    files, parse_colon, counter, HasBranches, steps_allowed, **options
+):
     files2 = regularize_path(files)
 
     maybe_steps = None
@@ -830,12 +827,24 @@ def _regularize_files_inner(files, parse_colon, counter, HasBranches, steps_allo
         else:
             file_path, object_path = files, None
 
+        # This parses the windows drive letter as a scheme!
         parsed_url = urlparse(file_path)
-
-        if parsed_url.scheme.lower() in _remote_schemes:
-            yield file_path, object_path, maybe_steps
-
+        scheme = parsed_url.scheme
+        if "://" in file_path and scheme not in ("file", "local"):
+            # user specified a protocol, so we use fsspec to expand the glob and return the full paths
+            file_names_full = [
+                file.full_name
+                for file in fsspec.open_files(
+                    files,
+                    **uproot.source.fsspec.FSSpecSource.extract_fsspec_options(options),
+                )
+            ]
+            # https://github.com/fsspec/filesystem_spec/issues/1459
+            # Not all protocols return the full_name attribute correctly (if they have url parameters)
+            for file_name_full in file_names_full:
+                yield file_name_full, object_path, maybe_steps
         else:
+            # no protocol, default to local file system
             expanded = os.path.expanduser(file_path)
             if _regularize_files_isglob.search(expanded) is None:
                 yield file_path, object_path, maybe_steps
@@ -885,6 +894,7 @@ def _regularize_files_inner(files, parse_colon, counter, HasBranches, steps_allo
                 counter,
                 HasBranches,
                 steps_allowed,
+                **options,
             ):
                 yield file_path, object_path, maybe_steps
 
@@ -892,7 +902,7 @@ def _regularize_files_inner(files, parse_colon, counter, HasBranches, steps_allo
         for file in files:
             counter[0] += 1
             for file_path, object_path, maybe_steps in _regularize_files_inner(
-                file, parse_colon, counter, HasBranches, steps_allowed
+                file, parse_colon, counter, HasBranches, steps_allowed, **options
             ):
                 yield file_path, object_path, maybe_steps
 
@@ -905,7 +915,7 @@ def _regularize_files_inner(files, parse_colon, counter, HasBranches, steps_allo
         )
 
 
-def regularize_files(files, steps_allowed):
+def regularize_files(files, steps_allowed, **options):
     """
     Common code for regularizing the possible file inputs accepted by uproot so they can be used by uproot internal functions.
     """
@@ -915,7 +925,7 @@ def regularize_files(files, steps_allowed):
     seen = set()
     counter = [0]
     for file_path, object_path, maybe_steps in _regularize_files_inner(
-        files, True, counter, HasBranches, steps_allowed
+        files, True, counter, HasBranches, steps_allowed, **options
     ):
         if isinstance(file_path, str):
             key = (counter[0], file_path, object_path)

@@ -906,7 +906,6 @@ in file {self.file.file_path}"""
 uproot.classes["TTree"] = Model_TTree
 uproot.classes["ROOT::TIOFeatures"] = Model_ROOT_3a3a_TIOFeatures
 
-
 fEntriesStruct = struct.Struct(">q")
 
 
