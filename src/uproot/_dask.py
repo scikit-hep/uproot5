@@ -161,7 +161,7 @@ def dask(
       array from ``TTrees``.
     """
 
-    files = uproot._util.regularize_files(files, steps_allowed=True)
+    files = uproot._util.regularize_files(files, steps_allowed=True, **options)
 
     is_3arg = [len(x) == 3 for x in files]
     if any(is_3arg):
