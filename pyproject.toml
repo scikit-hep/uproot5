@@ -62,10 +62,10 @@ test = [
   "xxhash",
   "zstandard",
   "minio",
-  "aiohttp; python_version<\"3.12\"",  # asyncio not available
+  "aiohttp",
   "fsspec",
   "fsspec-xrootd",
-  "s3fs; python_version<\"3.12\"",  # asyncio not available
+  "s3fs",
   "paramiko",
   "pytest>=6",
   "pytest-timeout",
