@@ -392,7 +392,7 @@ def test_issue_1035(handler):
 
 @pytest.mark.network
 @pytest.mark.xrootd
-def test_fsspec_xrootd_iterate():
+def test_fsspec_globbing_xrootd():
     pytest.importorskip("XRootD")
     pytest.importorskip("fsspec_xrootd")
     iterator = uproot.iterate(
@@ -403,5 +403,27 @@ def test_fsspec_xrootd_iterate():
         handler=uproot.source.fsspec.FSSpecSource,
     )
 
-    for _ in iterator:
-        ...
+    arrays = [array for array in iterator]
+    # if more files are added that match the glob, this test needs to be updated
+    assert len(arrays) == 2
+
+
+def test_fsspec_globbing_s3():
+    pytest.importorskip("s3fs")
+    if sys.version_info < (3, 11):
+        pytest.skip(
+            "https://github.com/scikit-hep/uproot5/pull/1012",
+        )
+
+    iterator = uproot.iterate(
+        {"s3://pivarski-princeton/pythia_ppZee_run17emb.*.root": "PicoDst"},
+        ["Event/Event.mEventId"],
+        anon=True,
+        handler=uproot.source.fsspec.FSSpecSource,
+    )
+
+    # if more files are added that match the glob, this test needs to be updated
+    arrays = [array for array in iterator]
+    assert len(arrays) == 1
+    for array in arrays:
+        assert len(array) == 8004
