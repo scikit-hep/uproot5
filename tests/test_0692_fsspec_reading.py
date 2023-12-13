@@ -427,3 +427,26 @@ def test_fsspec_globbing_s3():
     assert len(arrays) == 1
     for array in arrays:
         assert len(array) == 8004
+
+
+@pytest.mark.parametrize(
+    "handler",
+    [
+        uproot.source.fsspec.FSSpecSource,
+        None,
+    ],
+)
+def test_fsspec_globbing_http(handler):
+    pytest.importorskip("aiohttp")
+
+    # Globbing does not work with http filesystems and will return an empty list of files
+    # We leave this test here to be notified when this feature is added
+    iterator = uproot.iterate(
+        {
+            "https://github.com/scikit-hep/scikit-hep-testdata/raw/main/src/skhep_testdata/data/uproot-issue*.root": "Events"
+        },
+        ["MET_pt"],
+        handler=handler,
+    )
+    with pytest.raises(FileNotFoundError):
+        arrays = [array for array in iterator]
