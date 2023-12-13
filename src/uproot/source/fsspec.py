@@ -64,7 +64,6 @@ class FSSpecSource(uproot.source.chunk.Source):
         state = dict(self.__dict__)
         state.pop("_executor")
         state.pop("_file")
-        state.pop("_fh")
         return state
 
     def __setstate__(self, state):
