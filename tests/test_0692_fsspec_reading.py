@@ -388,3 +388,102 @@ def test_issue_1035(handler):
             branch = tree["MuonSpectrometerTrackParticlesAuxDyn.truthParticleLink"]
             data = branch.array()
             assert len(data) == 40
+
+
+@pytest.mark.network
+@pytest.mark.xrootd
+@pytest.mark.parametrize(
+    "handler",
+    [
+        uproot.source.fsspec.FSSpecSource,
+        None,
+    ],
+)
+def test_fsspec_globbing_xrootd(handler):
+    pytest.importorskip("XRootD")
+    pytest.importorskip("fsspec_xrootd")
+    iterator = uproot.iterate(
+        {
+            "root://eospublic.cern.ch//eos/root-eos/cms_opendata_2012_nanoaod/Run2012B_*.root": "Events"
+        },
+        ["PV_x"],
+        handler=handler,
+    )
+
+    arrays = [array for array in iterator]
+    # if more files are added that match the glob, this test needs to be updated
+    assert len(arrays) == 2
+
+
+@pytest.mark.network
+@pytest.mark.xrootd
+@pytest.mark.parametrize(
+    "handler",
+    [
+        uproot.source.fsspec.FSSpecSource,
+        None,
+    ],
+)
+def test_fsspec_globbing_xrootd_no_files(handler):
+    pytest.importorskip("XRootD")
+    pytest.importorskip("fsspec_xrootd")
+    iterator = uproot.iterate(
+        {
+            "root://eospublic.cern.ch//eos/root-eos/cms_opendata_2012_nanoaod/*/ThisFileShouldNotExist.root": "Events"
+        },
+        ["PV_x"],
+        handler=handler,
+    )
+    with pytest.raises(FileNotFoundError):
+        arrays = [array for array in iterator]
+
+
+@pytest.mark.parametrize(
+    "handler",
+    [
+        uproot.source.fsspec.FSSpecSource,
+        None,
+    ],
+)
+def test_fsspec_globbing_s3(handler):
+    pytest.importorskip("s3fs")
+    if sys.version_info < (3, 11):
+        pytest.skip(
+            "https://github.com/scikit-hep/uproot5/pull/1012",
+        )
+
+    iterator = uproot.iterate(
+        {"s3://pivarski-princeton/pythia_ppZee_run17emb.*.root": "PicoDst"},
+        ["Event/Event.mEventId"],
+        anon=True,
+        handler=handler,
+    )
+
+    # if more files are added that match the glob, this test needs to be updated
+    arrays = [array for array in iterator]
+    assert len(arrays) == 1
+    for array in arrays:
+        assert len(array) == 8004
+
+
+@pytest.mark.parametrize(
+    "handler",
+    [
+        uproot.source.fsspec.FSSpecSource,
+        None,
+    ],
+)
+def test_fsspec_globbing_http(handler):
+    pytest.importorskip("aiohttp")
+
+    # Globbing does not work with http filesystems and will return an empty list of files
+    # We leave this test here to be notified when this feature is added
+    iterator = uproot.iterate(
+        {
+            "https://github.com/scikit-hep/scikit-hep-testdata/raw/main/src/skhep_testdata/data/uproot-issue*.root": "Events"
+        },
+        ["MET_pt"],
+        handler=handler,
+    )
+    with pytest.raises(FileNotFoundError):
+        arrays = [array for array in iterator]
