@@ -395,9 +395,11 @@ def test_issue_1035(handler):
 @pytest.mark.parametrize(
     "filename",
     [
-        {"root://eospublic.cern.ch//eos/root-eos/cms_opendata_2012_nanoaod/Run2012B_*.root": "Events"},
+        {
+            "root://eospublic.cern.ch//eos/root-eos/cms_opendata_2012_nanoaod/Run2012B_*.root": "Events"
+        },
         "root://eospublic.cern.ch//eos/root-eos/cms_opendata_2012_nanoaod/Run2012B_*.root:Events",
-    ]
+    ],
 )
 @pytest.mark.parametrize(
     "handler",
