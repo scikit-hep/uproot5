@@ -393,19 +393,24 @@ def test_issue_1035(handler):
 @pytest.mark.network
 @pytest.mark.xrootd
 @pytest.mark.parametrize(
+    "filename",
+    [
+        {"root://eospublic.cern.ch//eos/root-eos/cms_opendata_2012_nanoaod/Run2012B_*.root": "Events"},
+        "root://eospublic.cern.ch//eos/root-eos/cms_opendata_2012_nanoaod/Run2012B_*.root:Events",
+    ]
+)
+@pytest.mark.parametrize(
     "handler",
     [
         uproot.source.fsspec.FSSpecSource,
         None,
     ],
 )
-def test_fsspec_globbing_xrootd(handler):
+def test_fsspec_globbing_xrootd(handler, filename):
     pytest.importorskip("XRootD")
     pytest.importorskip("fsspec_xrootd")
     iterator = uproot.iterate(
-        {
-            "root://eospublic.cern.ch//eos/root-eos/cms_opendata_2012_nanoaod/Run2012B_*.root": "Events"
-        },
+        filename,
         ["PV_x"],
         handler=handler,
     )
