@@ -157,9 +157,6 @@ def test_open_fsspec_ssh(handler):
     ],
 )
 def test_open_fsspec_xrootd(handler, xrootd_server):
-    pytest.importorskip("XRootD")
-    pytest.importorskip("fsspec_xrootd")
-
     filename = "uproot-issue121.root"
     remote_path, local_path = xrootd_server
     with open(skhep_testdata.data_path(filename), "rb") as f_read:
