@@ -1251,3 +1251,74 @@ In addition, each TBranch of the TTree can have a different compression setting:
     {'x': None, 'ny': None, 'y': ZLIB(4)}
 
 Changes to the compression setting only affect TBaskets written after the change (with :ref:`uproot.writing.writable.WritableTree.extend`; see above).
+
+Using fsspec for reading and writing files
+--------------------------
+
+Since version `5.2.0 <https://github.com/scikit-hep/uproot5/releases/tag/v5.2.0>`_, uproot supports reading and writing files using `fsspec <https://filesystem-spec.readthedocs.io/en/latest/>`_.
+This allows you to read and write files from a variety of sources, including cloud storage, HTTP, and more.
+
+Usage of fsspec as a source is the default behaviour since 5.2.0, but the user is able to manually specify the source by passing a `uproot.source.chunk.Source` class to the `handler` argument of different uproot methods, such as `uproot.open`, `uproot.iterate`, `uproot.concatenate`, etc.
+
+In general the user should not need to worry about the source, as uproot will automatically choose the best source for the given path.
+
+In some cases it may provide a performance benefit to manually specify the source, for example when opening a file from a local path, specifying `handler=uproot.source.file.MemmapSource` (instead of the default `handler=uproot.source.fsspec.FSSpecSource`) may reduce the time to open the file at the cost of using more memory.
+
+Any fsspec protocol should work for reading, while only the protocols supporting writing will work for writing.
+
+fsspec is a dependency of uproot, but in order to use some protocols, the user may need to install additional dependencies.
+For example, in order to open S3 files, the user needs to have `s3fs <https://github.com/fsspec/s3fs>`_ installed.
+When attempting to open a file with a protocol that is not supported, uproot will raise an exception with a helpful message pointing towards the missing dependency.
+
+For some protocols, such as `s3` or `ssh`, fsspec may need additional options, such as credentials. These can be directly passed as keyword arguments to the uproot function, and will be passed to fsspec.
+
+reading
+~~~~~~~
+
+Opening a file via S3:
+
+.. code-block:: python
+
+    >>> with uproot.open("s3://pivarski-princeton/pythia_ppZee_run17emb.picoDst.root:PicoDst",
+    >>>    anon=True) as f:
+    >>>    ...
+
+In this case, the `anon=True` option is required by `s3fs <https://github.com/fsspec/s3fs>`_ to open the file (if aws credentials are not set).
+
+Opening a file via SSH:
+
+In order to open a file over SSH, `paramiko <https://github.com/paramiko/paramiko>`_ needs to be installed (technically any other library that implements the protocol for fsspec would work, such as `sshfs <https://github.com/fsspec/sshfs>`_ for ssh).
+
+Some parameters can be directly passed in the url scheme, such as ssh user and host:
+
+.. code-block:: python
+
+    >>> with uproot.open("ssh://user@host:port/file.root") as f:
+    >>>    ...
+
+globbing
+~~~~~~~~
+
+Some protocols support glob expressions, which can be used in the same way they are used in the local filesystem.
+
+Opening multiple files via globbing over XROOTD:
+
+.. code-block:: python
+
+    >>> iterator = uproot.iterate("root://host.domain.com/path/to/files/*.root")
+
+Not all protocols that support reading support globbing, for example, http does not support globbing and will return an empty list of files instead.
+
+This feature comes directly as a consequence of the fsspec integration, so requests for globbing support should be directed to fsspec or the specific protocol implementation (it may not be technically possible for some protocols).
+
+writing
+~~~~~~~
+
+The same syntax used for writing uproot files can be used for writing files over different protocols via fsspec.
+Just specify the protocol in the path (`ssh://...`) and any necessary options as keyword arguments.
+If the protocol does not support writing, a `NotImplementedError` will be raised.
+
+local cache
+~~~~~~~~~~~
+
+fsspec supports caching files locally, which can be useful for repeated access to the same file. It can also be used for remote writing files, to avoid writing to the remote file until the file is closed. Additional information is available `in the fsspec docs <https://filesystem-spec.readthedocs.io/en/latest/features.html?highlight=simplecache#caching-files-locally>`_.
