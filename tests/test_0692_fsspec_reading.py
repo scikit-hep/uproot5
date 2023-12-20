@@ -156,16 +156,24 @@ def test_open_fsspec_ssh(handler):
         None,
     ],
 )
-def test_open_fsspec_xrootd(handler):
+def test_open_fsspec_xrootd(handler, xrootd_server):
     pytest.importorskip("XRootD")
     pytest.importorskip("fsspec_xrootd")
+
+    filename = "uproot-issue121.root"
+    remote_path, local_path = xrootd_server
+    with open(skhep_testdata.data_path(filename), "rb") as f_read:
+        with open(os.path.join(local_path, filename), "wb") as f_write:
+            f_write.write(f_read.read())
+
+    print(remote_path, local_path)
+
     with uproot.open(
-        "root://eospublic.cern.ch//eos/root-eos/cms_opendata_2012_nanoaod/Run2012B_DoubleMuParked.root",
+        os.path.join(remote_path, filename),
         handler=handler,
     ) as f:
-        data = f["Events/run"].array(library="np", entry_stop=20)
-        assert len(data) == 20
-        assert (data == 194778).all()
+        data = f["Events/MET_pt"].array(library="np")
+        assert len(data) == 40
 
 
 @pytest.mark.parametrize(
