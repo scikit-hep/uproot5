@@ -480,14 +480,14 @@ def test_fsspec_globbing_s3(handler):
         "simplecache::root",
     ],
 )
-def test_fsspec_cache_xrootd(protocol):
+def test_fsspec_cache_xrootd(protocol, tmp_path):
     pytest.importorskip("XRootD")
     pytest.importorskip("fsspec_xrootd")
 
-    if "cache" in protocol:
-        pytest.skip("not implemented yet")
+    cache_path = str(tmp_path / "cache")
     with uproot.open(
         f"{protocol}://eospublic.cern.ch//eos/root-eos/cms_opendata_2012_nanoaod/Run2012B_DoubleMuParked.root",
+        simplecache={"cache_storage": cache_path},
     ) as f:
         data = f["Events/run"].array(library="np", entry_stop=20)
         assert len(data) == 20
