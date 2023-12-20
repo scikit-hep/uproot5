@@ -474,6 +474,27 @@ def test_fsspec_globbing_s3(handler):
 
 
 @pytest.mark.parametrize(
+    "protocol",
+    [
+        "root",
+        "simplecache::root",
+    ],
+)
+def test_fsspec_cache_xrootd(protocol):
+    pytest.importorskip("XRootD")
+    pytest.importorskip("fsspec_xrootd")
+
+    if "cache" in protocol:
+        pytest.skip("not implemented yet")
+    with uproot.open(
+        f"{protocol}://eospublic.cern.ch//eos/root-eos/cms_opendata_2012_nanoaod/Run2012B_DoubleMuParked.root",
+    ) as f:
+        data = f["Events/run"].array(library="np", entry_stop=20)
+        assert len(data) == 20
+        assert (data == 194778).all()
+
+
+@pytest.mark.parametrize(
     "handler",
     [
         uproot.source.fsspec.FSSpecSource,
