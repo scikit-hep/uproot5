@@ -495,6 +495,38 @@ def test_fsspec_cache_xrootd(protocol):
 
 
 @pytest.mark.parametrize(
+    "protocol_prefix",  # http scheme is already included in the server fixture
+    [
+        "",
+        "simplecache::",
+    ],
+)
+def test_fsspec_cache_http(server, protocol_prefix):
+    pytest.importorskip("aiohttp")
+
+    url = f"{protocol_prefix}{server}/uproot-issue121.root"
+    print(url)
+    with uproot.open(
+        url,
+    ) as f:
+        data = f["Events/MET_pt"].array(library="np")
+        assert len(data) == 40
+
+
+def test_fsspec_cache_http_directory(server, tmp_path):
+    pytest.importorskip("aiohttp")
+
+    url = f"simplecache::{server}/uproot-issue121.root"
+    print(tmp_path)
+    with uproot.open(
+        url,
+        simplecache={"cache_storage": tmp_path},
+    ) as f:
+        data = f["Events/MET_pt"].array(library="np")
+        assert len(data) == 40
+
+
+@pytest.mark.parametrize(
     "handler",
     [
         uproot.source.fsspec.FSSpecSource,
