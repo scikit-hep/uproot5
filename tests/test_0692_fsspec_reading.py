@@ -474,24 +474,30 @@ def test_fsspec_globbing_s3(handler):
 
 
 @pytest.mark.parametrize(
-    "protocol",
+    "protocol_prefix",
     [
-        "root",
-        "simplecache::root",
+        "",
+        "simplecache::",
     ],
 )
-def test_fsspec_cache_xrootd(protocol, tmp_path):
+def test_fsspec_cache_xrootd(protocol_prefix, xrootd_server, tmp_path):
     pytest.importorskip("XRootD")
     pytest.importorskip("fsspec_xrootd")
 
+    remote_path, local_path = xrootd_server
+    filename = "uproot-issue121.root"
+    with open(skhep_testdata.data_path(filename), "rb") as f_read:
+        with open(os.path.join(local_path, filename), "wb") as f_write:
+            f_write.write(f_read.read())
+    remote_file_path = os.path.join(remote_path, filename)  # starts with "root://"
+
     cache_path = str(tmp_path / "cache")
     with uproot.open(
-        f"{protocol}://eospublic.cern.ch//eos/root-eos/cms_opendata_2012_nanoaod/Run2012B_DoubleMuParked.root",
+        protocol_prefix + remote_file_path,
         simplecache={"cache_storage": cache_path},
     ) as f:
-        data = f["Events/run"].array(library="np", entry_stop=20)
-        assert len(data) == 20
-        assert (data == 194778).all()
+        data = f["Events/MET_pt"].array(library="np")
+        assert len(data) == 40
 
 
 @pytest.mark.parametrize(
