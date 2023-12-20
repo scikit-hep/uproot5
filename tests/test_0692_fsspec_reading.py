@@ -516,14 +516,17 @@ def test_fsspec_cache_http(server, protocol_prefix):
 def test_fsspec_cache_http_directory(server, tmp_path):
     pytest.importorskip("aiohttp")
 
+    cache_directory = str(tmp_path / "cache")
     url = f"simplecache::{server}/uproot-issue121.root"
     print(tmp_path)
     with uproot.open(
         url,
-        simplecache={"cache_storage": tmp_path},
+        simplecache={"cache_storage": cache_directory},
     ) as f:
         data = f["Events/MET_pt"].array(library="np")
         assert len(data) == 40
+
+    assert len(os.listdir(cache_directory)) == 1
 
 
 @pytest.mark.parametrize(
