@@ -47,10 +47,10 @@ def test_invalid_handler(to_open, handler):
         uproot.open(to_open, handler=handler)
 
 
-def test_open_fsspec_http(server):
+def test_open_fsspec_http(http_server):
     pytest.importorskip("aiohttp")
 
-    url = f"{server}/uproot-issue121.root"
+    url = f"{http_server}/uproot-issue121.root"
     with uproot.open(
         url,
         handler=uproot.source.fsspec.FSSpecSource,
@@ -223,10 +223,10 @@ def test_issue_1054_object_path_split(handler):
         assert len(data) == 40
 
 
-def test_fsspec_chunks(server):
+def test_fsspec_chunks(http_server):
     pytest.importorskip("aiohttp")
 
-    url = f"{server}/uproot-issue121.root"
+    url = f"{http_server}/uproot-issue121.root"
 
     notifications = queue.Queue()
     with uproot.source.fsspec.FSSpecSource(url) as source:

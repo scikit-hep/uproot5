@@ -184,8 +184,8 @@ def test_http_port(use_threads):
 
 
 @pytest.mark.parametrize("use_threads", [True, False])
-def test_http_size(server, use_threads):
-    url = f"{server}/uproot-issue121.root"
+def test_http_size(http_server, use_threads):
+    url = f"{http_server}/uproot-issue121.root"
     with uproot.source.http.HTTPSource(
         url,
         timeout=10,
@@ -282,8 +282,8 @@ def test_no_multipart_fail(use_threads, num_workers):
 
 
 @pytest.mark.parametrize("use_threads, num_workers", [(True, 1), (True, 2), (False, 0)])
-def test_fallback(server, use_threads, num_workers):
-    url = f"{server}/uproot-issue121.root"
+def test_fallback(http_server, use_threads, num_workers):
+    url = f"{http_server}/uproot-issue121.root"
     with uproot.source.http.HTTPSource(
         url,
         timeout=10,

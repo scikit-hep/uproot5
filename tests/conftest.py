@@ -67,7 +67,7 @@ def serve():
 
 
 @pytest.fixture(scope="module")
-def server():
+def http_server():
     with serve() as server_url:
         yield server_url
 
