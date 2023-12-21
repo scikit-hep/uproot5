@@ -64,8 +64,8 @@ def test_memmap(tmpdir):
             expected.pop((chunk.start, chunk.stop))
 
 
-def test_http_multipart(server):
-    url = f"{server}/uproot-issue121.root"
+def test_http_multipart(http_server):
+    url = f"{http_server}/uproot-issue121.root"
     notifications = queue.Queue()
     with uproot.source.http.HTTPSource(
         url, timeout=10, num_fallback_workers=1, use_threads=True
@@ -79,8 +79,8 @@ def test_http_multipart(server):
             expected.pop((chunk.start, chunk.stop))
 
 
-def test_http(server):
-    url = f"{server}/uproot-issue121.root"
+def test_http(http_server):
+    url = f"{http_server}/uproot-issue121.root"
     notifications = queue.Queue()
     with uproot.source.http.MultithreadedHTTPSource(
         url, timeout=10, num_workers=1, use_threads=True
@@ -94,8 +94,8 @@ def test_http(server):
             expected.pop((chunk.start, chunk.stop))
 
 
-def test_http_workers(server):
-    url = f"{server}/uproot-issue121.root"
+def test_http_workers(http_server):
+    url = f"{http_server}/uproot-issue121.root"
     notifications = queue.Queue()
     with uproot.source.http.MultithreadedHTTPSource(
         url, timeout=10, num_workers=2, use_threads=True
@@ -109,8 +109,8 @@ def test_http_workers(server):
             expected.pop((chunk.start, chunk.stop))
 
 
-def test_http_fallback(server):
-    url = f"{server}/uproot-issue121.root"
+def test_http_fallback(http_server):
+    url = f"{http_server}/uproot-issue121.root"
     notifications = queue.Queue()
     with uproot.source.http.HTTPSource(
         url,
@@ -127,8 +127,8 @@ def test_http_fallback(server):
             expected.pop((chunk.start, chunk.stop))
 
 
-def test_http_fallback_workers(server):
-    url = f"{server}/uproot-issue121.root"
+def test_http_fallback_workers(http_server):
+    url = f"{http_server}/uproot-issue121.root"
     notifications = queue.Queue()
     with uproot.source.http.HTTPSource(
         url,

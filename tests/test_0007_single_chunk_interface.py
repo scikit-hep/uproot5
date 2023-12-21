@@ -77,8 +77,8 @@ def test_memmap(tmpdir):
     "num_workers",
     [1, 2],
 )
-def test_http(server, num_workers):
-    url = f"{server}/uproot-issue121.root"
+def test_http(http_server, num_workers):
+    url = f"{http_server}/uproot-issue121.root"
     with uproot.source.http.MultithreadedHTTPSource(
         url, num_workers=num_workers, timeout=10, use_threads=True
     ) as source:
@@ -103,8 +103,8 @@ def test_http_fail(num_workers):
             source.chunk(0, 100)
 
 
-def test_http_multipart(server):
-    url = f"{server}/uproot-issue121.root"
+def test_http_multipart(http_server):
+    url = f"{http_server}/uproot-issue121.root"
     with uproot.source.http.HTTPSource(
         url, timeout=10, num_fallback_workers=1, use_threads=True
     ) as source:

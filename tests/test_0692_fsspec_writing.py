@@ -93,10 +93,10 @@ def test_issue_1029(tmp_path):
         assert f["tree_2"]["y"].array().tolist() == [4, 5, 6]
 
 
-def test_fsspec_writing_http(server):
+def test_fsspec_writing_http(http_server):
     pytest.importorskip("aiohttp")
 
-    uri = f"{server}/file.root"
+    uri = f"{http_server}/file.root"
 
     with pytest.raises(NotImplementedError):
         # TODO: review this when fsspec supports writing to http
