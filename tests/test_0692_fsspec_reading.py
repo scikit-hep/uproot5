@@ -512,10 +512,10 @@ def test_fsspec_cache_xrootd(protocol_prefix, xrootd_server, tmp_path):
         "simplecache::",
     ],
 )
-def test_fsspec_cache_http(server, protocol_prefix):
+def test_fsspec_cache_http(http_server, protocol_prefix):
     pytest.importorskip("aiohttp")
 
-    url = f"{protocol_prefix}{server}/uproot-issue121.root"
+    url = f"{protocol_prefix}{http_server}/uproot-issue121.root"
     print(url)
     with uproot.open(
         url,
@@ -524,11 +524,11 @@ def test_fsspec_cache_http(server, protocol_prefix):
         assert len(data) == 40
 
 
-def test_fsspec_cache_http_directory(server, tmp_path):
+def test_fsspec_cache_http_directory(http_server, tmp_path):
     pytest.importorskip("aiohttp")
 
     cache_directory = str(tmp_path / "cache")
-    url = f"simplecache::{server}/uproot-issue121.root"
+    url = f"simplecache::{http_server}/uproot-issue121.root"
     print(tmp_path)
     with uproot.open(
         url,
