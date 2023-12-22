@@ -65,9 +65,6 @@ jobs:
       - name: Pip install the package
         run: python -m pip install .[test,dev]
 
-      - name: Pip install fsspec-xrootd from github branch - REMOVE ME DEBUG ONLY
-        run: python -m pip install git+https://github.com/CoffeaTeam/fsspec-xrootd.git@simplecache
-
       - name: Run pytest
         run: |
           python -m pytest -vv tests --reruns 10 --reruns-delay 30 --only-rerun "(?i)http|ssl|timeout|expired|connection|socket"
@@ -91,9 +88,6 @@ jobs:
 
       - name: Pip install the package
         run: python -m pip install .[test,dev]
-
-      - name: Pip install fsspec-xrootd from github branch - REMOVE ME DEBUG ONLY
-        run: python -m pip install git+https://github.com/CoffeaTeam/fsspec-xrootd.git@simplecache
 
       - name: Run pytest
         run: |
