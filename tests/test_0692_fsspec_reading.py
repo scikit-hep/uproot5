@@ -479,6 +479,68 @@ def test_fsspec_globbing_s3(handler):
 
 
 @pytest.mark.parametrize(
+    "protocol_prefix",
+    [
+        "",
+        "simplecache::",
+    ],
+)
+def test_fsspec_cache_xrootd(protocol_prefix, xrootd_server, tmp_path):
+    pytest.importorskip("XRootD")
+    pytest.importorskip("fsspec_xrootd")
+
+    remote_path, local_path = xrootd_server
+    filename = "uproot-issue121.root"
+    with open(skhep_testdata.data_path(filename), "rb") as f_read:
+        with open(os.path.join(local_path, filename), "wb") as f_write:
+            f_write.write(f_read.read())
+    remote_file_path = os.path.join(remote_path, filename)  # starts with "root://"
+
+    cache_path = str(tmp_path / "cache")
+    with uproot.open(
+        protocol_prefix + remote_file_path,
+        simplecache={"cache_storage": cache_path},
+    ) as f:
+        data = f["Events/MET_pt"].array(library="np")
+        assert len(data) == 40
+
+
+@pytest.mark.parametrize(
+    "protocol_prefix",  # http scheme is already included in the server fixture
+    [
+        "",
+        "simplecache::",
+    ],
+)
+def test_fsspec_cache_http(http_server, protocol_prefix):
+    pytest.importorskip("aiohttp")
+
+    url = f"{protocol_prefix}{http_server}/uproot-issue121.root"
+    print(url)
+    with uproot.open(
+        url,
+    ) as f:
+        data = f["Events/MET_pt"].array(library="np")
+        assert len(data) == 40
+
+
+def test_fsspec_cache_http_directory(http_server, tmp_path):
+    pytest.importorskip("aiohttp")
+
+    cache_directory = str(tmp_path / "cache")
+    url = f"simplecache::{http_server}/uproot-issue121.root"
+    print(tmp_path)
+    with uproot.open(
+        url,
+        simplecache={"cache_storage": cache_directory},
+    ) as f:
+        data = f["Events/MET_pt"].array(library="np")
+        assert len(data) == 40
+
+    assert len(os.listdir(cache_directory)) == 1
+
+
+@pytest.mark.parametrize(
     "handler",
     [
         uproot.source.fsspec.FSSpecSource,
