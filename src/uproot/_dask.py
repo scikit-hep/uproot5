@@ -42,6 +42,7 @@ def dask(
     open_files=True,
     form_mapping=None,
     allow_read_errors_with_report=False,
+    known_base_form=None,
     **options,
 ):
     """
@@ -99,6 +100,8 @@ def dask(
             empty array for these nodes in the task graph. The return of this function then
             becomes a two element tuple, where the first return is the dask-awkward collection
             of interest and the second return is a report dask-awkward collection.
+        known_base_form (awkward.forms.Form | None): If not none use this form instead of opening
+            one file to determine the dataset's form. Only available with open_files=False.
         options: See below.
 
     Returns dask equivalents of the backends supported by uproot. If ``library='np'``,
@@ -200,6 +203,9 @@ def dask(
     else:
         steps_per_file = 1
 
+    if known_base_form is not None and open_files:
+        raise TypeError("known_base_form must be None if open_files is True")
+
     if library.name == "pd":
         raise NotImplementedError()
 
@@ -279,6 +285,7 @@ def dask(
                 form_mapping,
                 steps_per_file,
                 allow_read_errors_with_report,
+                known_base_form,
             )
     else:
         raise NotImplementedError()
@@ -1481,26 +1488,30 @@ def _get_dak_array_delay_open(
     form_mapping,
     steps_per_file,
     allow_read_errors_with_report,
+    known_base_form,
 ):
     dask_awkward = uproot.extras.dask_awkward()
     awkward = uproot.extras.awkward()
 
     ffile_path, fobject_path = files[0][0:2]
 
-    obj = uproot._util.regularize_object_path(
-        ffile_path, fobject_path, custom_classes, allow_missing, real_options
-    )
-    common_keys = obj.keys(
-        recursive=recursive,
-        filter_name=filter_name,
-        filter_typename=filter_typename,
-        filter_branch=filter_branch,
-        full_paths=full_paths,
-    )
-
-    base_form = _get_ttree_form(
-        awkward, obj, common_keys, interp_options.get("ak_add_doc")
-    )
+    if known_base_form is not None:
+        common_keys = list(known_base_form.fields)
+        base_form = known_base_form
+    else:
+        obj = uproot._util.regularize_object_path(
+            ffile_path, fobject_path, custom_classes, allow_missing, real_options
+        )
+        common_keys = obj.keys(
+            recursive=recursive,
+            filter_name=filter_name,
+            filter_typename=filter_typename,
+            filter_branch=filter_branch,
+            full_paths=full_paths,
+        )
+        base_form = _get_ttree_form(
+            awkward, obj, common_keys, interp_options.get("ak_add_doc")
+        )
 
     divisions = [0]
     partition_args = []
