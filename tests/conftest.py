@@ -1,10 +1,13 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot5/blob/main/LICENSE
-
+import shutil
+import subprocess
 import pytest
 import threading
 import contextlib
 import skhep_testdata
 from functools import partial
+import os
+import time
 
 # The base http server does not support range requests. Watch https://github.com/python/cpython/issues/86809 for updates
 from http.server import HTTPServer
@@ -20,7 +23,7 @@ def reset_classes():
 
 
 @contextlib.contextmanager
-def serve():
+def serve_http():
     # serve files from the skhep_testdata cache directory.
     # This directory is initially empty and files are downloaded on demand
     class Handler(RangeRequestHandler):
@@ -66,6 +69,28 @@ def serve():
 
 
 @pytest.fixture(scope="module")
-def server():
-    with serve() as server_url:
+def http_server():
+    with serve_http() as server_url:
         yield server_url
+
+
+@pytest.fixture(scope="module")
+def tests_directory() -> str:
+    return os.path.dirname(os.path.realpath(__file__))
+
+
+@pytest.fixture(scope="module")
+def xrootd_server(tmpdir_factory):
+    pytest.importorskip("XRootD")
+    pytest.importorskip("fsspec_xrootd")
+
+    server_dir = tmpdir_factory.mktemp("server")
+    temp_path = os.path.join(server_dir, "Folder")
+    os.mkdir(temp_path)
+    xrootd = shutil.which("xrootd")
+    proc = subprocess.Popen([xrootd, server_dir])
+    time.sleep(2)  # give it some startup
+    yield "root://localhost/" + str(temp_path), temp_path
+    proc.terminate()
+    proc.wait(timeout=10)
+    shutil.rmtree(server_dir)

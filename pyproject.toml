@@ -37,6 +37,7 @@ dependencies = [
   "awkward>=2.4.6",
   "importlib-metadata;python_version<\"3.8\"",
   "numpy",
+  "fsspec",
   "packaging",
   "typing_extensions>=4.1.0; python_version < \"3.11\""
 ]
@@ -53,7 +54,7 @@ requires-python = ">=3.8"
 dev = [
   "boost_histogram>=0.13",
   "dask-awkward>=2023.12.1",
-  "dask[array]",
+  "dask[array,distributed]",
   "hist>=1.2",
   "pandas",
   "awkward-pandas"
@@ -63,10 +64,9 @@ test = [
   "xxhash",
   "zstandard",
   "minio",
-  "aiohttp; python_version<\"3.12\"",  # asyncio not available
-  "fsspec",
+  "aiohttp",
   "fsspec-xrootd",
-  "s3fs; python_version<\"3.12\"",  # asyncio not available
+  "s3fs",
   "paramiko",
   "pytest>=6",
   "pytest-timeout",
