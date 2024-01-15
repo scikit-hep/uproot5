@@ -1,21 +1,25 @@
-# Write out dask-awkward arrays as root files for a full input 
+# Write out dask-awkward arrays as root files for a full input
 # dataset at a time (partitioned into chunks of some size)
-import uproot._dask
-from pathlib import Path
-import awkward as ak
-from dask_awkward.lib.core import Array, Scalar, map_partitions, new_scalar_object
-from dask.base import tokenize
-from dask.blockwise import BlockIndex
-from fsspec import AbstractFileSystem
-from fsspec.core import get_fs_token_paths, url_to_fs
-from dask.highlevelgraph import HighLevelGraph
-from dask_awkward.layers.layers import AwkwardMaterializedLayer
+from __future__ import annotations
 
 import math
-from typing import TYPE_CHECKING, Any, Literal, TypeVar, Union, overload
+from typing import Any
+
+import awkward as ak
+from dask.base import tokenize
+from dask.blockwise import BlockIndex
+from dask.highlevelgraph import HighLevelGraph
+from dask_awkward.layers.layers import AwkwardMaterializedLayer
+from dask_awkward.lib.core import map_partitions, new_scalar_object
+from fsspec import AbstractFileSystem
+from fsspec.core import url_to_fs
+
+import uproot._dask
+
 
 class _ToROOTFn:
     from fsspec import AbstractFileSystem
+
     def __init__(
         self,
         fs: AbstractFileSystem,
@@ -47,132 +51,122 @@ class _ToROOTFn:
             filename, data, **self.kwargs, storage_options=self.storage_options
         )
 
-import awkward as ak
-from dask_awkward.lib.core import Array, Scalar, map_partitions, new_scalar_object
-from dask.base import tokenize
-from dask.blockwise import BlockIndex
-from fsspec import AbstractFileSystem
-from fsspec.core import get_fs_token_paths, url_to_fs
-from dask.highlevelgraph import HighLevelGraph
-from dask_awkward.layers.layers import AwkwardMaterializedLayer
-
 
 def dask_write(
+    array,
+    destination,
+    tree_name="tree",
+    branch_types=None,
+    compute=True,
+    storage_options=None,
+    title="",
+    field_name=lambda outer, inner: inner if outer == "" else outer + "_" + inner,
+    initial_basket_capacity=10,
+    counter_name=lambda counted: "n" + counted,
+    resize_factor=10.0,
+    compression="lz4",
+    compression_level=1,
+    prefix: str | None = None,
+):
+    """
+    This will create one output file per partition?
+
+    Parameters
+    ----------
+    array
+        The :obj:`dask_awkward.Array` collection to write to disk.
+    destination
+        Where to store the output; this can be a local filesystem path
+        or a remote filesystem path.
+    name
+        ttree name
+    compute
+        If ``True``, immediately compute the result (write data to disk). If ``False`` a Scalar collection will be returned such that ``compute`` can be explicitly called.
+    prefix
+        An addition prefix for output files. If ``None`` all parts
+        inside the destination directory will be named ``?``; if
+        defined, the names will be ``f"{prefix}-partN.parquet"``.
+
+    Returns
+    -------
+    Scalar | None
+        If ``compute`` is ``False`` a :obj:`dask_awkward.Scalar`
+        object is returned such that it can be computed later. If
+        ``compute`` is ``True``, the collection is immediately
+        computed (and data will be written to disk) and ``None`` is
+        returned.
+
+    Examples
+    --------
+
+    >>> import awkward as ak
+    >>> import dask_awkward as dak
+    >>> a = ak.Array([{"a": [1,2,3]}, {"a": [4, 5]}])
+    >>> d = dak.from_awkward(a, npartitions=2)
+    >>> d.nparatitions
+    >>> uproot._dask_write.(d )
+
+    """
+    fs, path = url_to_fs(destination, **(storage_options or {}))
+    name = f"write-root-{tokenize(fs, array, destination)}"
+
+    map_res = map_partitions(
+        _ToROOTFn(
+            fs=fs,
+            path=path,
+            npartitions=array.npartitions,
+            prefix=prefix,
+            tree_name=tree_name,
+            branch_types=branch_types,
+            compression=compression,
+            compression_level=compression_level,
+            title=title,
+            field_name=field_name,
+            counter_name=counter_name,
+            resize_factor=resize_factor,
+            initial_basket_capacity=initial_basket_capacity,
+        ),
         array,
-        destination,
-        tree_name="tree",
-        branch_types=None,
-        compute=True,
-        storage_options=None,
-        title="",
-        field_name=lambda outer, inner: inner if outer == "" else outer + "_" + inner,
-        initial_basket_capacity=10,
-        counter_name=lambda counted: "n" + counted,
-        resize_factor=10.0,
-        compression="lz4",
-        compression_level=1,
-        prefix: str | None = None,
-    ):
-        """
-        This will create one output file per partition?
+        BlockIndex((array.npartitions,)),
+        label="to-root",
+        meta=array._meta,
+    )
+    map_res.dask.layers[map_res.name].annotations = {"ak_output": True}
 
-        Parameters
-        ----------
-        array
-            The :obj:`dask_awkward.Array` collection to write to disk.
-        destination
-            Where to store the output; this can be a local filesystem path
-            or a remote filesystem path.
-        name
-            ttree name
-        compute
-            If ``True``, immediately compute the result (write data to disk). If ``False`` a Scalar collection will be returned such that ``compute`` can be explicitly called. 
-        prefix
-            An addition prefix for output files. If ``None`` all parts 
-            inside the destination directory will be named ``?``; if 
-            defined, the names will be ``f"{prefix}-partN.parquet"``.
+    dsk = {}
+    final_name = name + "-finalize"
+    dsk[(final_name, 0)] = (lambda *_: None, map_res.__dask_keys__())
 
-        Returns
-        -------
-        Scalar | None
-            If ``compute`` is ``False`` a :obj:`dask_awkward.Scalar`
-            object is returned such that it can be computed later. If
-            ``compute`` is ``True``, the collection is immediately
-            computed (and data will be written to disk) and ``None`` is
-            returned.
-
-        Examples
-        --------
-
-        >>> import awkward as ak
-        >>> import dask_awkward as dak
-        >>> a = ak.Array([{"a": [1,2,3]}, {"a": [4, 5]}])
-        >>> d = dak.from_awkward(a, npartitions=2)
-        >>> d.nparatitions
-        >>> uproot._dask_write.(d )
-
-        """
-        fs, path = url_to_fs(destination, **(storage_options or {}))
-        name = f"write-root-{tokenize(fs, array, destination)}"
-
-        # need to write out dask awkward arrays as root files for full input dataset
-        # at a time (partitioned into chunks of some size).
+    graph = HighLevelGraph.from_collections(
+        final_name,
+        AwkwardMaterializedLayer(dsk, previous_layer_names=[map_res.name]),
+        dependencies=[map_res],
+    )
+    out = new_scalar_object(graph, final_name, dtype="f8")
+    if compute:
+        out.compute()
+        return None
+    else:
+        return out
 
 
-# First map_partitions argument:     
-    # base_fn : Callable
-        # Function to apply on all partitions, this will get wrapped to
-        # handle kwargs, including dask collections.
-# Then: 
-    # *args : Collections and function arguments
-    #         Arguments passed to the function. Partitioned arguments (i.e.
-    #         Dask collections) will have `fn` applied to each partition.
-    #         Array collection arguments they must be compatibly
-    #         partitioned.
-
-    
-        map_res = map_partitions(
-            _ToROOTFn(            
-                fs=fs,
-                path=path,
-                npartitions=array.npartitions,
-                prefix=prefix,
-                tree_name=tree_name,
-                branch_types=branch_types,
-                compression=compression,
-                compression_level=compression_level,
-                title=title,
-                field_name=field_name,
-                counter_name=counter_name,
-                resize_factor=resize_factor,
-                initial_basket_capacity=initial_basket_capacity,
-            ),
-            array,
-            BlockIndex((array.npartitions,)),
-            label="to-root",
-            meta=array._meta,
-        )
-        map_res.dask.layers[map_res.name].annotations = {"ak_output": True}
-
-        dsk = {}
-        final_name = name + "-finalize"
-        dsk[(final_name, 0)] = (lambda *_: None, map_res.__dask_keys__())
-
-        graph = HighLevelGraph.from_collections(
-            final_name,
-            AwkwardMaterializedLayer(dsk, previous_layer_names=[map_res.name]),
-            dependencies=[map_res],
-        )
-        out = new_scalar_object(graph, final_name, dtype="f8")
-        if compute:
-            out.compute()
-            return None
-        else:
-            return out
-
-def make_root(destination, array, tree_name, branch_types, compression, compression_level, title, counter_name, field_name, initial_basket_capacity, resize_factor, storage_options):
+def make_root(
+    destination,
+    array,
+    tree_name,
+    branch_types,
+    compression,
+    compression_level,
+    title,
+    counter_name,
+    field_name,
+    initial_basket_capacity,
+    resize_factor,
+    storage_options,
+):
     print(destination)
     import uproot
+
     if compression in ("LZMA", "lzma"):
         compression_code = uproot.const.kLZMA
     elif compression in ("ZLIB", "zlib"):
@@ -203,3 +197,39 @@ def make_root(destination, array, tree_name, branch_types, compression, compress
         resize_factor=resize_factor,
     )
     out_file[tree_name].extend({name: array[name] for name in array.fields})
+
+
+# Testing
+import dask_awkward as dak
+import fsspec
+from skhep_testdata import data_path
+
+fs = fsspec.filesystem("file")
+tmpdir = "my-output"
+files = fs.ls(tmpdir)
+
+
+def simple_test():
+    a = ak.Array([{"a": [1, 2, 3]}, {"a": [4, 5]}])
+    d = dak.from_awkward(a, npartitions=2)
+    dask_write(d, tmpdir, prefix="data")
+    f = uproot.open("/Users/zobil/Documents/uproot5/my-output/data-part0.root")
+    print(f["tree"]["a"].arrays())  # >>> import os
+    f1 = uproot.open("/Users/zobil/Documents/uproot5/my-output/data-part1.root")
+    print(f1["tree"]["a"].arrays())
+
+
+def HZZ_test():
+    a = uproot.open(data_path("uproot-HZZ.root"))["events"].arrays()
+    d = dak.from_awkward(ak.from_iter(a), 2)
+    f = uproot.open("/Users/zobil/Documents/uproot5/my-output/data-part0.root")
+    f1 = uproot.open("/Users/zobil/Documents/uproot5/my-output/data-part1.root")
+
+
+HZZ_test()
+import os
+
+assert [os.path.basename(_) for _ in sorted(files)] == [
+    "part0.parquet",
+    "part1.parquet",
+]
