@@ -5,6 +5,7 @@ sphinx:
 
 build:
   os: ubuntu-22.04
+  tools: python
 
 python:
   version: 3.7
