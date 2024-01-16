@@ -9,10 +9,6 @@ build:
     python: '3.7'
 
 python:
-<<<<<<< HEAD
-=======
-  version: '3.7'
->>>>>>> cbb1110725e6247ae766cf8b942162e7dfc14c00
   install:
     - requirements: docs-sphinx/requirements.txt
     - method: pip
