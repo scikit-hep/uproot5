@@ -4,11 +4,19 @@ import pytest
 import skhep_testdata
 
 import uproot
+import uproot.source.fsspec
+import uproot.source.object
 
 
-def test():
+@pytest.mark.parametrize(
+    "handler",
+    [None, uproot.source.object.ObjectSource],
+)
+def test_read_from_file_like_object(handler):
     with open(skhep_testdata.data_path("uproot-Zmumu.root"), "rb") as f:
-        assert uproot.open({f: "events"})["px1"].array(library="np")[:10].tolist() == [
+        assert uproot.open({f: "events"}, handler=handler)["px1"].array(library="np")[
+            :10
+        ].tolist() == [
             -41.1952876442,
             35.1180497674,
             35.1180497674,

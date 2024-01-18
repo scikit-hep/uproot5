@@ -106,7 +106,7 @@ def get_num_bytes(file_path: str, parsed_url: urllib.parse.ParseResult, timeout)
                 response = connection.getresponse()
                 break
         else:
-            raise OSError(
+            raise http.client.HTTPException(
                 """remote server responded with status {} (redirect) without a 'location'
 for URL {}""".format(
                     response.status, file_path
@@ -119,7 +119,7 @@ for URL {}""".format(
 
     if response.status != 200:
         connection.close()
-        raise OSError(
+        raise http.client.HTTPException(
             """HTTP response was {}, rather than 200, in attempt to get file size
 in file {}""".format(
                 response.status, file_path
@@ -132,7 +132,7 @@ in file {}""".format(
             return int(x)
     else:
         connection.close()
-        raise OSError(
+        raise http.client.HTTPException(
             """response headers did not include content-length: {}
 in file {}""".format(
                 dict(response.getheaders()), file_path
@@ -216,7 +216,7 @@ class HTTPResource(uproot.source.chunk.Resource):
                     )
                     return self.get(redirect, start, stop)
 
-            raise OSError(
+            raise http.client.HTTPException(
                 """remote server responded with status {} (redirect) without a 'location'
 for URL {}""".format(
                     response.status, self._file_path
@@ -225,7 +225,7 @@ for URL {}""".format(
 
         if response.status != 206:
             connection.close()
-            raise OSError(
+            raise http.client.HTTPException(
                 """remote server responded with status {}, rather than 206 (range requests)
 for URL {}""".format(
                     response.status, self._file_path
@@ -289,16 +289,14 @@ for URL {}""".format(
         """
         connection = make_connection(source.parsed_url, source.timeout)
 
-        range_strings = []
-        for start, stop in ranges:
-            range_strings.append(f"{start}-{stop - 1}")
-
+        range_header = {
+            "Range": "bytes="
+            + ",".join([f"{start}-{stop - 1}" for start, stop in ranges])
+        }
         connection.request(
             "GET",
             full_path(source.parsed_url),
-            headers=dict(
-                {"Range": "bytes=" + ", ".join(range_strings)}, **source.auth_headers
-            ),
+            headers=dict(**range_header, **source.auth_headers),
         )
 
         def task(resource):
@@ -317,14 +315,14 @@ for URL {}""".format(
                                 "GET",
                                 full_path(redirect_url),
                                 headers={
-                                    "Range": "bytes=" + ", ".join(range_strings),
+                                    **range_header,
                                     **source.auth_headers,
                                 },
                             )
                             task(resource)
                             return
 
-                    raise OSError(
+                    raise http.client.HTTPException(
                         """remote server responded with status {} (redirect) without a 'location'
 for URL {}""".format(
                             response.status, source.file_path
@@ -430,7 +428,7 @@ for URL {}""".format(
             data = response_buffer.read(length)
 
             if len(data) != length:
-                raise OSError(
+                raise http.client.HTTPException(
                     """wrong chunk length {} (expected {}) for byte range {} "
                     "in HTTP multipart
 for URL {}""".format(
@@ -456,7 +454,7 @@ for URL {}""".format(
                     else:
                         range_string = range_string.decode("utf-8", "surrogateescape")
                         expecting = ", ".join(f"{a}-{b - 1}" for a, b in futures)
-                        raise OSError(
+                        raise http.client.HTTPException(
                             """unrecognized byte range in headers of HTTP multipart: {}
 
     expecting: {}
@@ -565,6 +563,8 @@ class HTTPSource(uproot.source.chunk.Source):
     ResourceClass = HTTPResource
 
     def __init__(self, file_path: str, **options):
+        options = dict(uproot.reading.open.defaults, **options)
+
         self._num_fallback_workers = options["num_fallback_workers"]
         self._timeout = options["timeout"]
         self._num_requests = 0
@@ -609,7 +609,7 @@ class HTTPSource(uproot.source.chunk.Source):
         if len(self._file_path) > 10:
             path = repr("..." + self._file_path[-10:])
         fallback = ""
-        if self._fallback is not None:
+        if getattr(self, "_fallback", None) is not None:
             fallback = " with fallback"
         return f"<{type(self).__name__} {path}{fallback} at 0x{id(self):012x}>"
 
@@ -714,8 +714,7 @@ class HTTPSource(uproot.source.chunk.Source):
 
     def _set_fallback(self):
         self._fallback = MultithreadedHTTPSource(
-            self._file_path,
-            **self._fallback_options,  # NOTE: a comma after **fallback_options breaks Python 2
+            self._file_path, **self._fallback_options
         )
 
 
@@ -762,7 +761,7 @@ class MultithreadedHTTPSource(uproot.source.chunk.MultithreadedSource):
             self._executor = uproot.source.futures.ResourceThreadPoolExecutor(
                 [
                     HTTPResource(self._file_path, self._timeout)
-                    for x in range(self._num_workers)
+                    for _ in range(self._num_workers)
                 ]
             )
         else:

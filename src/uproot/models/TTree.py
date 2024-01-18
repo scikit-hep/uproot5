@@ -6,7 +6,7 @@ This module defines versioned models for ``TTree``.
 See :doc:`uproot.behaviors.TBranch` for definitions of ``TTree``-reading
 functions.
 """
-
+from __future__ import annotations
 
 import struct
 
@@ -46,7 +46,8 @@ class Model_TTree_v16(uproot.behaviors.TTree.TTree, uproot.model.VersionedModel)
     behaviors = (uproot.behaviors.TTree.TTree,)
 
     def read_members(self, chunk, cursor, context, file):
-        context["cancel_forth"] = True
+        if uproot._awkwardforth.get_forth_obj(context) is not None:
+            raise uproot.interpretation.objects.CannotBeForth()
         if self.is_memberwise:
             raise NotImplementedError(
                 f"""memberwise serialization of {type(self).__name__}
@@ -197,6 +198,8 @@ class Model_TTree_v17(uproot.behaviors.TTree.TTree, uproot.model.VersionedModel)
     behaviors = (uproot.behaviors.TTree.TTree,)
 
     def read_members(self, chunk, cursor, context, file):
+        if uproot._awkwardforth.get_forth_obj(context) is not None:
+            raise uproot.interpretation.objects.CannotBeForth()
         if self.is_memberwise:
             raise NotImplementedError(
                 f"""memberwise serialization of {type(self).__name__}
@@ -348,6 +351,8 @@ class Model_TTree_v18(uproot.behaviors.TTree.TTree, uproot.model.VersionedModel)
     behaviors = (uproot.behaviors.TTree.TTree,)
 
     def read_members(self, chunk, cursor, context, file):
+        if uproot._awkwardforth.get_forth_obj(context) is not None:
+            raise uproot.interpretation.objects.CannotBeForth()
         if self.is_memberwise:
             raise NotImplementedError(
                 f"""memberwise serialization of {type(self).__name__}
@@ -505,6 +510,8 @@ class Model_TTree_v19(uproot.behaviors.TTree.TTree, uproot.model.VersionedModel)
     behaviors = (uproot.behaviors.TTree.TTree,)
 
     def read_members(self, chunk, cursor, context, file):
+        if uproot._awkwardforth.get_forth_obj(context) is not None:
+            raise uproot.interpretation.objects.CannotBeForth()
         if self.is_memberwise:
             raise NotImplementedError(
                 f"""memberwise serialization of {type(self).__name__}
@@ -678,6 +685,8 @@ class Model_TTree_v20(uproot.behaviors.TTree.TTree, uproot.model.VersionedModel)
     behaviors = (uproot.behaviors.TTree.TTree,)
 
     def read_members(self, chunk, cursor, context, file):
+        if uproot._awkwardforth.get_forth_obj(context) is not None:
+            raise uproot.interpretation.objects.CannotBeForth()
         if self.is_memberwise:
             raise NotImplementedError(
                 f"""memberwise serialization of {type(self).__name__}
@@ -883,6 +892,8 @@ class Model_ROOT_3a3a_TIOFeatures(uproot.model.Model):
     """
 
     def read_members(self, chunk, cursor, context, file):
+        if uproot._awkwardforth.get_forth_obj(context) is not None:
+            raise uproot.interpretation.objects.CannotBeForth()
         if self.is_memberwise:
             raise NotImplementedError(
                 f"""memberwise serialization of {type(self).__name__}
@@ -895,7 +906,6 @@ in file {self.file.file_path}"""
 uproot.classes["TTree"] = Model_TTree
 uproot.classes["ROOT::TIOFeatures"] = Model_ROOT_3a3a_TIOFeatures
 
-
 fEntriesStruct = struct.Struct(">q")
 
 
@@ -905,6 +915,8 @@ class Model_TTree_NumEntries(uproot.model.Model):
     """
 
     def read_members(self, chunk, cursor, context, file):
+        if uproot._awkwardforth.get_forth_obj(context) is not None:
+            raise uproot.interpretation.objects.CannotBeForth()
         if self.is_memberwise:
             raise NotImplementedError(
                 f"""memberwise serialization of {type(self).__name__}
@@ -949,7 +961,7 @@ def num_entries(paths):
 
     if isinstance(paths, dict):
         paths = list(paths.items())
-    elif not uproot._util.isstr(paths):
+    elif not isinstance(paths, str):
         paths = [(uproot._util.file_object_path_split(path)) for path in paths]
     else:
         paths = [uproot._util.file_object_path_split(paths)]

@@ -11,7 +11,7 @@ need to be tweaked by new types, type combinations, and serialization methods
 observed in ROOT files (perhaps forever), unless a systematic study can be
 performed to exhaustively discover all cases.
 """
-
+from __future__ import annotations
 
 import ast
 import numbers
@@ -910,6 +910,20 @@ def _parse_node(tokens, i, typename, file, quote, header, inner_header):
             i + 1,
             _parse_maybe_quote(f"uproot.containers.AsString({header})", quote),
         )
+
+    elif (
+        has2
+        and tokens[i].group(0) == "const"
+        and (
+            tokens[i + 1].group(0) == "string"
+            or _simplify_token(tokens[i + 1]) == "std::string"
+        )
+    ):
+        return (
+            i + 2,
+            _parse_maybe_quote(f"uproot.containers.AsString({header})", quote),
+        )
+
     elif tokens[i].group(0) == "TString":
         return (
             i + 1,

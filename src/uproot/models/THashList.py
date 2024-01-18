@@ -3,7 +3,7 @@
 """
 This module defines a versionless model for ``THashList``.
 """
-
+from __future__ import annotations
 
 import uproot
 
@@ -17,7 +17,8 @@ class Model_THashList(uproot.model.Model):
         pass
 
     def read_members(self, chunk, cursor, context, file):
-        context["cancel_forth"] = True
+        if uproot._awkwardforth.get_forth_obj(context) is not None:
+            raise uproot.interpretation.objects.CannotBeForth()
         if self.is_memberwise:
             raise NotImplementedError(
                 f"""memberwise serialization of {type(self).__name__}

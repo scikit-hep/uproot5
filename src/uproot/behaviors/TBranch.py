@@ -10,7 +10,7 @@ Most of the functionality of TTree-reading is implemented here.
 See :doc:`uproot.models.TBranch` for deserialization of the ``TBranch``
 objects themselves.
 """
-
+from __future__ import annotations
 
 import queue
 import re
@@ -21,6 +21,7 @@ from collections.abc import Iterable, Mapping, MutableMapping
 import numpy
 
 import uproot
+import uproot.interpretation.grouped
 import uproot.language.python
 from uproot._util import no_filter
 
@@ -63,7 +64,7 @@ def iterate(
     report=False,
     custom_classes=None,
     allow_missing=False,
-    **options,  # NOTE: a comma after **options breaks Python 2
+    **options,
 ):
     """
     Args:
@@ -153,11 +154,6 @@ def iterate(
     Options (type; default):
 
     * handler (:doc:`uproot.source.chunk.Source` class; None)
-    * file_handler (:doc:`uproot.source.chunk.Source` class; None) (Deprecated: Use `handler` instead. If set, this will take precedence over `handler`)
-    * xrootd_handler (:doc:`uproot.source.chunk.Source` class; None) (Deprecated: Use `handler` instead. If set, this will take precedence over `handler`)
-    * s3_handler (:doc:`uproot.source.chunk.Source` class; None) (Deprecated: Use `handler` instead. If set, this will take precedence over `handler`)
-    * http_handler (:doc:`uproot.source.chunk.Source` class; None) (Deprecated: Use `handler` instead. If set, this will take precedence over `handler`)
-    * object_handler (:doc:`uproot.source.chunk.Source` class; None) (Deprecated: Use `handler` instead. If set, this will take precedence over `handler`)
     * timeout (float for HTTP, int for XRootD; 30)
     * max_num_elements (None or int; None)
     * num_workers (int; 1)
@@ -178,7 +174,7 @@ def iterate(
       array from ``TTrees``.
     * :doc:`uproot._dask.dask`: returns an unevaluated Dask array from ``TTrees``.
     """
-    files = uproot._util.regularize_files(files, steps_allowed=False)
+    files = uproot._util.regularize_files(files, steps_allowed=False, **options)
     decompression_executor, interpretation_executor = _regularize_executors(
         decompression_executor, interpretation_executor, None
     )
@@ -243,7 +239,7 @@ def concatenate(
     how=None,
     custom_classes=None,
     allow_missing=False,
-    **options,  # NOTE: a comma after **options breaks Python 2
+    **options,
 ):
     """
     Args:
@@ -327,11 +323,6 @@ def concatenate(
     Options (type; default):
 
     * handler (:doc:`uproot.source.chunk.Source` class; None)
-    * file_handler (:doc:`uproot.source.chunk.Source` class; None) (Deprecated: Use `handler` instead. If set, this will take precedence over `handler`)
-    * xrootd_handler (:doc:`uproot.source.chunk.Source` class; None) (Deprecated: Use `handler` instead. If set, this will take precedence over `handler`)
-    * s3_handler (:doc:`uproot.source.chunk.Source` class; None) (Deprecated: Use `handler` instead. If set, this will take precedence over `handler`)
-    * http_handler (:doc:`uproot.source.chunk.Source` class; None) (Deprecated: Use `handler` instead. If set, this will take precedence over `handler`)
-    * object_handler (:doc:`uproot.source.chunk.Source` class; None) (Deprecated: Use `handler` instead. If set, this will take precedence over `handler`)
     * timeout (float for HTTP, int for XRootD; 30)
     * max_num_elements (None or int; None)
     * num_workers (int; 1)
@@ -349,7 +340,7 @@ def concatenate(
       single concatenated array from ``TTrees``.
     * :doc:`uproot._dask.dask`: returns an unevaluated Dask array from ``TTrees``.
     """
-    files = uproot._util.regularize_files(files, steps_allowed=False)
+    files = uproot._util.regularize_files(files, steps_allowed=False, **options)
     decompression_executor, interpretation_executor = _regularize_executors(
         decompression_executor, interpretation_executor, None
     )
@@ -1617,7 +1608,7 @@ class HasBranches(Mapping):
 
         if uproot._util.isint(where):
             return self.branches[where]
-        elif uproot._util.isstr(where):
+        elif isinstance(where, str):
             where = uproot._util.ensure_str(where)
         else:
             raise TypeError(f"where must be an integer or a string, not {where!r}")
@@ -1809,7 +1800,10 @@ class TBranch(HasBranches):
         checked = set()
         for _, context in expression_context:
             for branch in context["branches"]:
-                if branch.cache_key not in checked:
+                if branch.cache_key not in checked and not isinstance(
+                    branchid_interpretation[branch.cache_key],
+                    uproot.interpretation.grouped.AsGrouped,
+                ):
                     checked.add(branch.cache_key)
                     for (
                         basket_num,
@@ -2666,11 +2660,11 @@ def _regularize_executors(decompression_executor, interpretation_executor, file)
 def _regularize_array_cache(array_cache, file):
     if isinstance(array_cache, MutableMapping):
         return array_cache
-    elif uproot._util.isstr(array_cache) and array_cache == "inherit":
+    elif isinstance(array_cache, str) and array_cache == "inherit":
         return file._array_cache
     elif array_cache is None:
         return None
-    elif uproot._util.isint(array_cache) or uproot._util.isstr(array_cache):
+    elif uproot._util.isint(array_cache) or isinstance(array_cache, str):
         return uproot.cache.LRUArrayCache(array_cache)
     else:
         raise TypeError("array_cache must be None, a MutableMapping, or a memory size")
@@ -2895,7 +2889,7 @@ def _regularize_expressions(
                     branchname,
                 )
 
-    elif uproot._util.isstr(expressions):
+    elif isinstance(expressions, str):
         _regularize_expression(
             hasbranches,
             expressions,
@@ -2917,7 +2911,7 @@ def _regularize_expressions(
         else:
             items = []
             for expression in expressions:
-                if uproot._util.isstr(expression):
+                if isinstance(expression, str):
                     items.append((expression, None))
                 elif isinstance(expression, tuple) and len(expression) == 2:
                     items.append(expression)
@@ -2972,7 +2966,7 @@ def _regularize_expressions(
 
     if cut is None:
         pass
-    elif uproot._util.isstr(cut):
+    elif isinstance(cut, str):
         _regularize_expression(
             hasbranches,
             cut,
@@ -3075,7 +3069,6 @@ def _ranges_or_baskets_to_arrays(
         else:
             notifications.put(basket)
 
-    # all threads (if multithreaded), per branch, share a thread-local context for Forth
     forth_context = {x: threading.local() for x in branchid_interpretation}
 
     def basket_to_array(basket):

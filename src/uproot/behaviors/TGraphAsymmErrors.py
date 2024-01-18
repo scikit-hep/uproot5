@@ -3,7 +3,7 @@
 """
 This module defines the behaviors of ``TGraphAsymmErrors``.
 """
-
+from __future__ import annotations
 
 import numpy
 

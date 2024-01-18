@@ -3,9 +3,8 @@
 """
 This module defines versionless models of ``TRef`` and ``TRefArray``.
 """
+from __future__ import annotations
 
-
-import json
 import struct
 from collections.abc import Sequence
 
@@ -118,55 +117,77 @@ class Model_TRefArray(uproot.model.Model, Sequence):
         return self._members["fName"]
 
     def read_members(self, chunk, cursor, context, file):
-        forth_stash = uproot._awkward_forth.forth_stash(context)
-        if forth_stash is not None:
-            forth_obj = forth_stash.get_gen_obj()
-            # raise NotImplementedError
+        forth_obj = uproot._awkwardforth.get_forth_obj(context)
         if self.is_memberwise:
             raise NotImplementedError(
                 f"""memberwise serialization of {type(self).__name__}
 in file {self.file.file_path}"""
             )
-        if forth_stash is not None:
-            form_keys = forth_obj.get_keys(6)
-
-            forth_stash.add_to_pre("10 stream skip\n")
-            forth_stash.add_to_pre(
-                f"stream !B-> stack dup 255 = if drop stream !I-> stack then dup node{form_keys[1]}-offsets +<- stack stream #!B-> node{form_keys[2]}-data\n"
+        if forth_obj is not None:
+            key_number = uproot._awkwardforth.get_first_key_number(context)
+            keys = [key_number + i for i in range(6)]
+            forth_stash = uproot._awkwardforth.Node(
+                f"node{keys[0]} TRef :prebuilt",
+                form_details={
+                    "class": "RecordArray",
+                    "contents": {
+                        "fName": {
+                            "class": "ListOffsetArray",
+                            "offsets": "i64",
+                            "content": {
+                                "class": "NumpyArray",
+                                "primitive": "uint8",
+                                "inner_shape": [],
+                                "parameters": {"__array__": "char"},
+                                "form_key": f"node{keys[2]}",
+                            },
+                            "parameters": {"__array__": "string"},
+                            "form_key": f"node{keys[1]}",
+                        },
+                        "fSize": {
+                            "class": "NumpyArray",
+                            "primitive": "int32",
+                            "inner_shape": [],
+                            "parameters": {},
+                            "form_key": f"node{keys[3]}",
+                        },
+                        "refs": {
+                            "class": "ListOffsetArray",
+                            "offsets": "i64",
+                            "content": {
+                                "class": "NumpyArray",
+                                "primitive": "int32",
+                                "inner_shape": [],
+                                "parameters": {},
+                                "form_key": f"node{keys[5]}",
+                            },
+                            "parameters": {},
+                            "form_key": f"node{keys[4]}",
+                        },
+                    },
+                    "parameters": {"__record__": "TRefArray"},
+                    "form_key": f"node{keys[0]}",
+                },
             )
-            forth_stash.add_to_pre(
-                f"stream !I-> stack dup node{form_keys[3]}-data <- stack\n"
+            forth_stash.pre_code.append("10 stream skip\n")
+            forth_stash.pre_code.append(
+                f"stream !B-> stack dup 255 = if drop stream !I-> stack then dup node{keys[1]}-offsets +<- stack stream #!B-> node{keys[2]}-data\n"
             )
-            forth_stash.add_to_pre("6 stream skip\n")
-            forth_stash.add_to_pre(
-                f"dup node{form_keys[4]}-offsets +<- stack stream #!I-> node{form_keys[5]}-data\n"
+            forth_stash.pre_code.append(
+                f"stream !I-> stack dup node{keys[3]}-data <- stack\n"
             )
-            keys = [
-                f"node{form_keys[1]}-offsets",
-                f"node{form_keys[3]}-data",
-                f"node{form_keys[4]}-offsets",
-                f"node{form_keys[2]}-data",
-                f"node{form_keys[5]}-data",
-            ]
-            if forth_obj.should_add_form():
-                for elem in keys:
-                    forth_obj.add_form_key(elem)
-                temp_aform = f'{{"class": "RecordArray", "contents": {{"fName": {{"class": "ListOffsetArray", "offsets": "i64", "content": {{"class": "NumpyArray", "primitive": "uint8", "inner_shape": [], "parameters": {{"__array__": "char"}}, "form_key": "node{form_keys[2]}"}}, "parameters": {{"__array__": "string"}}, "form_key": "node{form_keys[1]}"}}, "fSize": {{"class": "NumpyArray", "primitive": "int32", "inner_shape": [], "parameters": {{}}, "form_key": "node{form_keys[3]}"}}, "refs": {{"class": "ListOffsetArray", "offsets": "i64", "content": {{"class": "NumpyArray", "primitive": "int32", "inner_shape": [], "parameters": {{}}, "form_key": "node{form_keys[5]}"}}, "parameters": {{}}, "form_key": "node{form_keys[4]}"}}}}, "parameters": {{"__record__": "TRefArray"}}, "form_key": "node{form_keys[0]}"}}'
-                forth_obj.add_form(json.loads(temp_aform))
-                forth_stash.add_to_header(
-                    f"output node{form_keys[1]}-offsets int64\noutput node{form_keys[2]}-data uint8\noutput node{form_keys[3]}-data int32\noutput node{form_keys[4]}-offsets int64\noutput node{form_keys[5]}-data int32\n"
-                )
-                forth_stash.add_to_init(
-                    f"0 node{form_keys[1]}-offsets <- stack\n0 node{form_keys[4]}-offsets <- stack\n"
-                )
-            forth_obj.add_node(
-                f"node{form_keys[0]}",
-                forth_stash.get_attrs(),
-                "i64",
-                1,
-                None,
+            forth_stash.pre_code.append("6 stream skip\n")
+            forth_stash.pre_code.append(
+                f"dup node{keys[4]}-offsets +<- stack stream #!I-> node{keys[5]}-data\n"
             )
-
+            forth_stash.header_code.append(
+                f"output node{keys[1]}-offsets int64\noutput node{keys[2]}-data uint8\noutput node{keys[3]}-data int32\noutput node{keys[4]}-offsets int64\noutput node{keys[5]}-data int32\n"
+            )
+            forth_stash.init_code.append(
+                f"0 node{keys[1]}-offsets <- stack\n0 node{keys[4]}-offsets <- stack\n"
+            )
+            forth_obj.add_node(forth_stash)
+            forth_obj.set_active_node(forth_stash)
         cursor.skip(10)
         self._members["fName"] = cursor.string(chunk, context)
         self._members["fSize"] = cursor.field(chunk, _trefarray_format1, context)

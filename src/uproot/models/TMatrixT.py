@@ -3,7 +3,7 @@
 """
 This module defines versioned models for ``TLeaf`` and its subclasses.
 """
-
+from __future__ import annotations
 
 import struct
 
@@ -22,7 +22,8 @@ class Model_TMatrixTSym_3c_double_3e__v5(uproot.model.VersionedModel):
     """
 
     def read_members(self, chunk, cursor, context, file):
-        context["cancel_forth"] = True
+        if uproot._awkwardforth.get_forth_obj(context) is not None:
+            raise uproot.interpretation.objects.CannotBeForth()
         if self.is_memberwise:
             raise NotImplementedError(
                 "memberwise serialization of {}\nin file {}".format(

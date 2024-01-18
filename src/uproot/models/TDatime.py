@@ -3,14 +3,13 @@
 """
 This module defines versioned models for ``TDatime``.
 """
-
+from __future__ import annotations
 
 import struct
 
 import numpy
 
 import uproot
-import uproot._awkward_forth
 import uproot.behaviors.TDatime
 
 _tdatime_format1 = struct.Struct(">I")
@@ -25,17 +24,12 @@ class Model_TDatime(uproot.behaviors.TDatime.TDatime, uproot.model.Model):
         pass
 
     def read_members(self, chunk, cursor, context, file):
-        forth_stash = uproot._awkward_forth.forth_stash(context)
-        if forth_stash is not None:
-            forth_obj = forth_stash.get_gen_obj()
-            key = forth_obj.get_keys(1)
-            form_key = f"node{key}-data"
-            forth_stash.add_to_header(f"output node{key}-data int32\n")
-            forth_stash.add_to_pre(f"stream !I-> node{key}-data\n")
-            form_key = f"node{key}-data"
-            if forth_obj.should_add_form():
-                forth_obj.add_form_key(form_key)
-                temp_aform = {
+        forth_obj = uproot._awkwardforth.get_forth_obj(context)
+        if forth_obj is not None:
+            key = uproot._awkwardforth.get_first_key_number(context)
+            forth_stash = uproot._awkwardforth.Node(
+                f"node{key} TDatime :prebuilt",
+                form_details={
                     "class": "RecordArray",
                     "contents": {
                         "fDatime": {
@@ -45,16 +39,12 @@ class Model_TDatime(uproot.behaviors.TDatime.TDatime, uproot.model.Model):
                         }
                     },
                     "parameters": {"__record__": "TDatime"},
-                }
-                forth_obj.add_form(temp_aform)
-            temp_form = forth_obj.add_node(
-                f"node{key}",
-                forth_stash.get_attrs(),
-                "i64",
-                0,
-                None,
+                },
             )
-            forth_obj.go_to(temp_form)
+            forth_stash.header_code.append(f"output node{key}-data int32\n")
+            forth_stash.pre_code.append(f"stream !I-> node{key}-data\n")
+            forth_obj.add_node(forth_stash)
+            forth_obj.set_active_node(forth_stash)
         self._members["fDatime"] = cursor.field(chunk, _tdatime_format1, context)
 
     @classmethod

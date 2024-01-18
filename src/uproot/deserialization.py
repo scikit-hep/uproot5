@@ -7,7 +7,7 @@ This module defines low-level routines for deserialization, including
 :doc:`uproot.deserialization.read_object_any`, which manages references to
 previously read objects.
 """
-
+from __future__ import annotations
 
 import struct
 import sys
@@ -67,6 +67,11 @@ def compile_class(file, classes, class_code, class_name):
         return cls
 
     new_scope["c"] = c
+    new_scope["af"] = uproot._awkwardforth
+    new_scope["DeserializationError"] = uproot.deserialization.DeserializationError
+    new_scope["CannotBeStrided"] = uproot.interpretation.objects.CannotBeStrided
+    new_scope["CannotBeForth"] = uproot.interpretation.objects.CannotBeForth
+    new_scope["CannotBeAwkward"] = uproot.interpretation.objects.CannotBeAwkward
 
     try:
         _actually_compile(class_code, new_scope)

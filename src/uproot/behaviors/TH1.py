@@ -4,7 +4,7 @@
 This module defines the behaviors of ``TH1`` and its subclasses (not including ``TH2``,
 ``TH3``, or ``TProfile``).
 """
-
+from __future__ import annotations
 
 import numpy
 

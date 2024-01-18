@@ -12,6 +12,7 @@ The :doc:`uproot.interpretation.strings.StringArray` class only holds data while
 an array is being built from ``TBaskets``. Its final form is determined by the
 :doc:`uproot.interpretation.library.Library`.
 """
+from __future__ import annotations
 
 import struct
 import threading

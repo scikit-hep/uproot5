@@ -1,9 +1,7 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot5/blob/main/LICENSE
 
 import os
-import sys
 
-import numpy
 import pytest
 
 import uproot
@@ -75,36 +73,40 @@ def test_memmap(tmpdir):
         )
 
 
-@pytest.mark.skip(reason="RECHECK: example.com is flaky, too")
+@pytest.mark.parametrize(
+    "num_workers",
+    [1, 2],
+)
+def test_http(http_server, num_workers):
+    url = f"{http_server}/uproot-issue121.root"
+    with uproot.source.http.MultithreadedHTTPSource(
+        url, num_workers=num_workers, timeout=10, use_threads=True
+    ) as source:
+        for start, stop in [(0, 100), (50, 55), (200, 400)]:
+            chunk = source.chunk(start, stop)
+            assert len(tobytes(chunk.raw_data)) == stop - start
+
+
+@pytest.mark.parametrize(
+    "num_workers",
+    [1, 2],
+)
 @pytest.mark.network
-def test_http():
-    for num_workers in [1, 2]:
+def test_http_fail(num_workers):
+    with pytest.raises(Exception):
         with uproot.source.http.MultithreadedHTTPSource(
-            "https://example.com", num_workers=num_workers, timeout=10, use_threads=True
+            "https://wonky.cern/does-not-exist",
+            num_workers=num_workers,
+            timeout=0.1,
+            use_threads=True,
         ) as source:
-            for start, stop in [(0, 100), (50, 55), (200, 400)]:
-                chunk = source.chunk(start, stop)
-                assert len(tobytes(chunk.raw_data)) == stop - start
+            source.chunk(0, 100)
 
 
-@pytest.mark.network
-def test_http_fail():
-    for num_workers in [1, 2]:
-        with pytest.raises(Exception):
-            with uproot.source.http.MultithreadedHTTPSource(
-                "https://wonky.cern/does-not-exist",
-                num_workers=num_workers,
-                timeout=0.1,
-                use_threads=True,
-            ) as source:
-                source.chunk(0, 100)
-
-
-@pytest.mark.skip(reason="RECHECK: example.com is flaky, too")
-@pytest.mark.network
-def test_http_multipart():
+def test_http_multipart(http_server):
+    url = f"{http_server}/uproot-issue121.root"
     with uproot.source.http.HTTPSource(
-        "https://example.com", timeout=10, num_fallback_workers=1, use_threads=True
+        url, timeout=10, num_fallback_workers=1, use_threads=True
     ) as source:
         for start, stop in [(0, 100), (50, 55), (200, 400)]:
             chunk = source.chunk(start, stop)
@@ -123,9 +125,6 @@ def test_http_multipart_fail():
             tobytes(source.chunk(0, 100).raw_data)
 
 
-@pytest.mark.skip(
-    reason="RECHECK: Run2012B_DoubleMuParked.root is super-flaky right now"
-)
 @pytest.mark.network
 @pytest.mark.xrootd
 def test_xrootd():
@@ -145,9 +144,6 @@ def test_xrootd():
         assert one[:4] == b"root"
 
 
-@pytest.mark.skip(
-    reason="RECHECK: Run2012B_DoubleMuParked.root is super-flaky right now"
-)
 @pytest.mark.network
 @pytest.mark.xrootd
 def test_xrootd_worker():
@@ -167,9 +163,6 @@ def test_xrootd_worker():
         assert one[:4] == b"root"
 
 
-@pytest.mark.skip(
-    reason="RECHECK: Run2012B_DoubleMuParked.root is super-flaky right now"
-)
 @pytest.mark.network
 @pytest.mark.xrootd
 def test_xrootd_vectorread():

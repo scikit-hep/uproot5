@@ -12,17 +12,20 @@ import glob
 import itertools
 import numbers
 import os
-import pathlib
-import platform
 import re
 import warnings
 from collections.abc import Iterable
-from urllib.parse import unquote, urlparse
+from pathlib import Path
+from typing import IO
+from urllib.parse import urlparse
 
+import fsspec
 import numpy
 import packaging.version
 
-win = platform.system().lower().startswith("win")
+import uproot.source.chunk
+import uproot.source.fsspec
+import uproot.source.object
 
 
 def tobytes(array):
@@ -36,7 +39,7 @@ def tobytes(array):
         return array.tostring()
 
 
-def isint(x):
+def isint(x) -> bool:
     """
     Returns True if and only if ``x`` is an integer (including NumPy, not
     including bool).
@@ -46,7 +49,7 @@ def isint(x):
     )
 
 
-def isnum(x):
+def isnum(x) -> bool:
     """
     Returns True if and only if ``x`` is a number (including NumPy, not
     including bool).
@@ -56,14 +59,7 @@ def isnum(x):
     )
 
 
-def isstr(x):
-    """
-    Returns True if and only if ``x`` is a string (including Python 2 unicode).
-    """
-    return isinstance(x, str)
-
-
-def ensure_str(x):
+def ensure_str(x) -> str:
     """
     Ensures that ``x`` is a string (decoding with 'surrogateescape' if necessary).
     """
@@ -97,7 +93,21 @@ def ensure_numpy(array, types=(numpy.bool_, numpy.integer, numpy.floating)):
         return out
 
 
-def parse_version(version):
+def is_file_like(
+    obj, readable: bool = False, writable: bool = False, seekable: bool = False
+) -> bool:
+    return (
+        all(
+            callable(getattr(obj, attr, None))
+            for attr in ("read", "write", "seek", "tell", "flush")
+        )
+        and (not readable or not hasattr(obj, "readable") or obj.readable())
+        and (not writable or not hasattr(obj, "writable") or obj.writable())
+        and (not seekable or not hasattr(obj, "seekable") or obj.seekable())
+    )
+
+
+def parse_version(version: str):
     """
     Converts a semver string into a Version object that can be compared with
     ``<``, ``>=``, etc.
@@ -108,7 +118,7 @@ def parse_version(version):
     return packaging.version.parse(version)
 
 
-def from_module(obj, module_name):
+def from_module(obj, module_name: str) -> bool:
     """
     Returns True if ``obj`` is an instance of a class from a module
     given by name.
@@ -147,7 +157,7 @@ def _regularize_filter_regex_flags(flags):
     return flagsbyte
 
 
-def no_filter(x):
+def no_filter(x) -> bool:
     """
     A filter that accepts anything (always returns True).
     """
@@ -166,7 +176,7 @@ def regularize_filter(filter):
         return no_filter
     elif callable(filter):
         return filter
-    elif isstr(filter):
+    elif isinstance(filter, str):
         m = _regularize_filter_regex.match(filter)
         if m is not None:
             regex, flags = m.groups()
@@ -207,7 +217,7 @@ def regularize_rename(rename):
     elif callable(rename):
         return rename
 
-    elif isstr(rename):
+    elif isinstance(rename, str):
         m = _regularize_filter_regex_rename.match(rename)
         if m is not None:
             regex, trans, flags = m.groups()
@@ -222,7 +232,7 @@ def regularize_rename(rename):
     elif isinstance(rename, Iterable) and not isinstance(rename, bytes):
         rules = []
         for x in rename:
-            if isstr(x):
+            if isinstance(x, str):
                 m = _regularize_filter_regex_rename.match(x)
                 if m is not None:
                     regex, trans, flags = m.groups()
@@ -277,30 +287,12 @@ def regularize_path(path):
     return path
 
 
-_windows_drive_letter_ending = re.compile(r".*\b[A-Za-z]$")
-_windows_absolute_path_pattern = re.compile(r"^[A-Za-z]:[\\/]")
-_windows_absolute_path_pattern_slash = re.compile(r"^[\\/][A-Za-z]:[\\/]")
-
-_remote_schemes = ["root", "s3", "http", "https"]
-_schemes = ["file", *_remote_schemes]
-
-try:
-    # TODO: remove this try/except when fsspec becomes a required dependency
-    import fsspec
-
-    _schemes = list({*_schemes, *fsspec.available_protocols()})
-except ImportError:
-    pass
-
-_uri_scheme = re.compile("^(" + "|".join([re.escape(x) for x in _schemes]) + ")://")
-
-
-def file_object_path_split(path: str) -> tuple[str, str | None]:
+def file_object_path_split(urlpath: str) -> tuple[str, str | None]:
     """
     Split a path with a colon into a file path and an object-in-file path.
 
     Args:
-        path: The path to split. Example: ``"https://localhost:8888/file.root:tree"``
+        urlpath: The path to split. Example: ``"https://localhost:8888/file.root:tree"``
 
     Returns:
         A tuple of the file path and the object-in-file path. If there is no
@@ -308,229 +300,65 @@ def file_object_path_split(path: str) -> tuple[str, str | None]:
         Example: ``("https://localhost:8888/file.root", "tree")``
     """
 
-    path: str = regularize_path(path)
-    path = path.strip()
+    urlpath: str = regularize_path(urlpath).strip()
+    obj = None
 
-    if "://" not in path:
-        # assume it's a local file path
-        parts = path.split(":")
-        if pathlib.PureWindowsPath(path).drive:
-            # Windows absolute path
-            assert len(parts) >= 2, f"could not split object from windows path {path}"
-            parts = [parts[0] + ":" + parts[1]] + parts[2:]
-    elif _uri_scheme.match(path):
-        # if not a local path, attempt to match a URI scheme
-        parsed_url = urlparse(path)
-        parts = parsed_url.path.split(":")
-    else:
-        # invalid scheme
-        scheme = path.split("://")[0]
-        raise ValueError(
-            f"Invalid URI scheme: '{scheme}://' in {path}. Available schemes: {', '.join(_schemes)}."
-        )
+    separator = "::"
+    parts = urlpath.split(separator)
+    object_regex = re.compile(r"(.+\.root):(.*$)")
+    for i, part in enumerate(reversed(parts)):
+        match = object_regex.match(part)
+        if match:
+            obj = re.sub(r"/+", "/", match.group(2).strip().lstrip("/")).rstrip("/")
+            parts[-i - 1] = match.group(1)
+            break
 
-    if len(parts) == 1:
-        obj = None
-    elif len(parts) == 2:
-        obj = parts[1]
-        # remove the object from the path (including the colon)
-        path = path[: -len(obj) - 1]
-        obj = obj.strip()
-    else:
-        raise ValueError(f"could not split object from path {path}")
-
-    return path, obj
+    urlpath = separator.join(parts)
+    return urlpath, obj
 
 
-def file_path_to_source_class(file_path, options):
+def file_path_to_source_class(
+    file_path_or_object: str | Path | IO, options: dict
+) -> tuple[type[uproot.source.chunk.Source], str | IO]:
     """
     Use a file path to get the :doc:`uproot.source.chunk.Source` class that would read it.
 
     Returns a tuple of (class, file_path) where the class is a subclass of :doc:`uproot.source.chunk.Source`.
-
-    The "handler" option is the preferred way to specify a custom source class.
-    The "*_handler" options are for backwards compatibility and will override the "handler" option if set.
     """
-    import uproot.source.chunk
 
-    file_path = regularize_path(file_path)
+    file_path_or_object: str | IO = regularize_path(file_path_or_object)
 
-    out = options["handler"]
-    if out is not None:
-        if not (isinstance(out, type) and issubclass(out, uproot.source.chunk.Source)):
-            raise TypeError(
-                f"'handler' is not a class object inheriting from Source: {out!r}"
-            )
-        # check if "object_handler" is set
+    source_cls = options["handler"]
+    if source_cls is not None and not (
+        isinstance(source_cls, type)
+        and issubclass(source_cls, uproot.source.chunk.Source)
+    ):
+        raise TypeError(
+            f"'handler' is not a class object inheriting from Source: {source_cls!r}"
+        )
+
+    # Infer the source class from the file path
+    if all(
+        callable(getattr(file_path_or_object, attr, None)) for attr in ("read", "seek")
+    ):
+        # need a very soft object check for ubuntu python3.8 pyroot ci tests, cannot use uproot._util.is_file_like
         if (
-            options["object_handler"] is not None
-            or options["file_handler"] is not None
-            or options["xrootd_handler"] is not None
-            or options["s3_handler"] is not None
-            or options["http_handler"] is not None
+            source_cls is not None
+            and source_cls is not uproot.source.object.ObjectSource
         ):
-            # These options will override the "handler" option for backwards compatibility
-            warnings.warn(
-                """In version 5.2.0, the '*_handler' argument ('http_handler`, 's3_handler', etc.) will be removed from 'uproot.open'. Use 'handler' instead.""",
-                stacklevel=1,
-            )
-        else:
-            return out, file_path
-
-    if (
-        not isstr(file_path)
-        and hasattr(file_path, "read")
-        and hasattr(file_path, "seek")
-    ):
-        out = options["object_handler"]
-        if out is None:
-            out = uproot.source.object.ObjectSource
-        else:
-            warnings.warn(
-                f"""In version 5.2.0, the 'object_handler' argument will be removed from 'uproot.open'. Use
-uproot.open(..., handler={out!r})
-instead.
-
-To raise these warnings as errors (and get stack traces to find out where they're called), run
-import warnings
-warnings.filterwarnings("error", module="uproot.*")
-after the first `import uproot` or use `@pytest.mark.filterwarnings("error:::uproot.*")` in pytest.""",
-                DeprecationWarning,
-                stacklevel=1,
-            )
-        if not (isinstance(out, type) and issubclass(out, uproot.source.chunk.Source)):
             raise TypeError(
-                f"'object_handler' is not a class object inheriting from Source: {out!r}"
+                f"'handler' is not ObjectSource for a file-like object: {source_cls!r}"
             )
-
-        return out, file_path
-
-    windows_absolute_path = None
-    if win and _windows_absolute_path_pattern.match(file_path) is not None:
-        windows_absolute_path = file_path
-
-    parsed_url = urlparse(file_path)
-    if parsed_url.scheme.upper() == "FILE":
-        parsed_url_path = unquote(parsed_url.path)
+        return uproot.source.object.ObjectSource, file_path_or_object
+    elif isinstance(file_path_or_object, str):
+        source_cls = (
+            uproot.source.fsspec.FSSpecSource if source_cls is None else source_cls
+        )
+        return source_cls, file_path_or_object
     else:
-        parsed_url_path = parsed_url.path
-
-    if win and windows_absolute_path is None:
-        if _windows_absolute_path_pattern.match(parsed_url_path) is not None:
-            windows_absolute_path = parsed_url_path
-        elif _windows_absolute_path_pattern_slash.match(parsed_url_path) is not None:
-            windows_absolute_path = parsed_url_path[1:]
-
-    if (
-        parsed_url.scheme.upper() == "FILE"
-        or len(parsed_url.scheme) == 0
-        or windows_absolute_path is not None
-    ):
-        if windows_absolute_path is None:
-            if parsed_url.netloc.upper() == "LOCALHOST":
-                file_path = parsed_url_path
-            else:
-                file_path = parsed_url.netloc + parsed_url_path
-        else:
-            file_path = windows_absolute_path
-
-        out = options["file_handler"]
-        if out is None:
-            out = uproot.source.file.MemmapSource
-        else:
-            warnings.warn(
-                f"""In version 5.2.0, the 'file_handler' argument will be removed from 'uproot.open'. Use
-    uproot.open(..., handler={out!r}
-    instead.
-
-    To raise these warnings as errors (and get stack traces to find out where they're called), run
-    import warnings
-    warnings.filterwarnings("error", module="uproot.*")
-    after the first `import uproot` or use `@pytest.mark.filterwarnings("error:::uproot.*")` in pytest.""",
-                DeprecationWarning,
-                stacklevel=1,
-            )
-
-        if not (isinstance(out, type) and issubclass(out, uproot.source.chunk.Source)):
-            raise TypeError(
-                "'file_handler' is not a class object inheriting from Source: "
-                + repr(out)
-            )
-        return out, os.path.expanduser(file_path)
-
-    elif parsed_url.scheme.upper() == "ROOT":
-        out = options["xrootd_handler"]
-        if out is None:
-            out = uproot.source.xrootd.XRootDSource
-        else:
-            warnings.warn(
-                f"""In version 5.2.0, the 'xrootd_handler' argument will be removed from 'uproot.open'. Use
-    uproot.open(..., handler={out!r}
-    instead.
-
-    To raise these warnings as errors (and get stack traces to find out where they're called), run
-    import warnings
-    warnings.filterwarnings("error", module="uproot.*")
-    after the first `import uproot` or use `@pytest.mark.filterwarnings("error:::uproot.*")` in pytest.""",
-                DeprecationWarning,
-                stacklevel=1,
-            )
-        if not (isinstance(out, type) and issubclass(out, uproot.source.chunk.Source)):
-            raise TypeError(
-                "'xrootd_handler' is not a class object inheriting from Source: "
-                + repr(out)
-            )
-        return out, file_path
-
-    elif parsed_url.scheme.upper() in {"S3"}:
-        out = options["s3_handler"]
-        if out is None:
-            out = uproot.source.s3.S3Source
-        else:
-            warnings.warn(
-                f"""In version 5.2.0, the 's3_handler' argument will be removed from 'uproot.open'. Use
-uproot.open(..., handler={out!r}
-instead.
-
-To raise these warnings as errors (and get stack traces to find out where they're called), run
-import warnings
-warnings.filterwarnings("error", module="uproot.*")
-after the first `import uproot` or use `@pytest.mark.filterwarnings("error:::uproot.*")` in pytest.""",
-                DeprecationWarning,
-                stacklevel=1,
-            )
-        if not (isinstance(out, type) and issubclass(out, uproot.source.chunk.Source)):
-            raise TypeError(
-                "'s3' is not a class object inheriting from Source: " + repr(out)
-            )
-        return out, file_path
-
-    elif parsed_url.scheme.upper() in {"HTTP", "HTTPS"}:
-        out = options["http_handler"]
-        if out is None:
-            out = uproot.source.http.HTTPSource
-        else:
-            warnings.warn(
-                f"""In version 5.2.0, the 'http_handler' argument will be removed from 'uproot.open'. Use
-uproot.open(..., handler={out!r}
-instead.
-
-To raise these warnings as errors (and get stack traces to find out where they're called), run
-import warnings
-warnings.filterwarnings("error", module="uproot.*")
-after the first `import uproot` or use `@pytest.mark.filterwarnings("error:::uproot.*")` in pytest.""",
-                DeprecationWarning,
-                stacklevel=1,
-            )
-        if not (isinstance(out, type) and issubclass(out, uproot.source.chunk.Source)):
-            raise TypeError(
-                "'http_handler' is not a class object inheriting from Source: "
-                + repr(out)
-            )
-        return out, file_path
-
-    else:
-        raise ValueError(f"URI scheme not recognized: {file_path}")
+        raise TypeError(
+            f"file_path is not a string or file-like object: {file_path_or_object!r}"
+        )
 
 
 if isinstance(__builtins__, dict):
@@ -574,12 +402,12 @@ Functions that accept many files (uproot.iterate, etc.) also allow:
     )
 
 
-def memory_size(data, error_message=None):
+def memory_size(data, error_message=None) -> int:
     """
     Regularizes strings like '## kB' and plain integer number of bytes to
     an integer number of bytes.
     """
-    if isstr(data):
+    if isinstance(data, str):
         m = re.match(
             r"^\s*([+-]?(\d+(\.\d*)?|\.\d+)(e[+-]?\d+)?)\s*([kmgtpezy]?b)\s*$",
             data,
@@ -865,7 +693,7 @@ def damerau_levenshtein(a, b, ratio=False):
     # Modified Damerau-Levenshtein distance. Adds a middling penalty
     # for capitalization.
     # https://en.wikipedia.org/wiki/Damerau%E2%80%93Levenshtein_distance
-    M = [[0] * (len(b) + 1) for i in range(len(a) + 1)]
+    M = [[0] * (len(b) + 1) for _ in range(len(a) + 1)]
 
     for i in range(len(a) + 1):
         M[i][0] = i
@@ -897,7 +725,7 @@ def damerau_levenshtein(a, b, ratio=False):
                     # Transpose only
                     M[i][j] = min(M[i][j], M[i - 2][j - 2] + 1)
                 else:
-                    # Traspose and capitalization
+                    # Transpose and capitalization
                     M[i][j] = min(M[i][j], M[i - 2][j - 2] + 1.5)
 
     if not ratio:
@@ -982,27 +810,41 @@ def regularize_steps(steps):
     return out.tolist()
 
 
-def _regularize_files_inner(files, parse_colon, counter, HasBranches, steps_allowed):
+def _regularize_files_inner(
+    files, parse_colon, counter, HasBranches, steps_allowed, **options
+):
     files2 = regularize_path(files)
 
     maybe_steps = None
 
-    if isstr(files2) and not isstr(files):
+    if isinstance(files2, str) and not isinstance(files, str):
         parse_colon = False
         files = files2
 
-    if isstr(files):
+    if isinstance(files, str):
         if parse_colon:
             file_path, object_path = file_object_path_split(files)
         else:
             file_path, object_path = files, None
 
+        # This parses the windows drive letter as a scheme!
         parsed_url = urlparse(file_path)
-
-        if parsed_url.scheme.lower() in _remote_schemes:
-            yield file_path, object_path, maybe_steps
-
+        scheme = parsed_url.scheme
+        if "://" in file_path and scheme not in ("file", "local"):
+            # user specified a protocol, so we use fsspec to expand the glob and return the full paths
+            file_names_full = [
+                file.full_name
+                for file in fsspec.open_files(
+                    file_path,
+                    **uproot.source.fsspec.FSSpecSource.extract_fsspec_options(options),
+                )
+            ]
+            # https://github.com/fsspec/filesystem_spec/issues/1459
+            # Not all protocols return the full_name attribute correctly (if they have url parameters)
+            for file_name_full in file_names_full:
+                yield file_name_full, object_path, maybe_steps
         else:
+            # no protocol, default to local file system
             expanded = os.path.expanduser(file_path)
             if _regularize_files_isglob.search(expanded) is None:
                 yield file_path, object_path, maybe_steps
@@ -1052,6 +894,7 @@ def _regularize_files_inner(files, parse_colon, counter, HasBranches, steps_allo
                 counter,
                 HasBranches,
                 steps_allowed,
+                **options,
             ):
                 yield file_path, object_path, maybe_steps
 
@@ -1059,7 +902,7 @@ def _regularize_files_inner(files, parse_colon, counter, HasBranches, steps_allo
         for file in files:
             counter[0] += 1
             for file_path, object_path, maybe_steps in _regularize_files_inner(
-                file, parse_colon, counter, HasBranches, steps_allowed
+                file, parse_colon, counter, HasBranches, steps_allowed, **options
             ):
                 yield file_path, object_path, maybe_steps
 
@@ -1072,7 +915,7 @@ def _regularize_files_inner(files, parse_colon, counter, HasBranches, steps_allo
         )
 
 
-def regularize_files(files, steps_allowed):
+def regularize_files(files, steps_allowed, **options):
     """
     Common code for regularizing the possible file inputs accepted by uproot so they can be used by uproot internal functions.
     """
@@ -1082,9 +925,9 @@ def regularize_files(files, steps_allowed):
     seen = set()
     counter = [0]
     for file_path, object_path, maybe_steps in _regularize_files_inner(
-        files, True, counter, HasBranches, steps_allowed
+        files, True, counter, HasBranches, steps_allowed, **options
     ):
-        if isstr(file_path):
+        if isinstance(file_path, str):
             key = (counter[0], file_path, object_path)
             if key not in seen:
                 out.append((file_path, object_path))
@@ -1121,7 +964,7 @@ def regularize_object_path(
             object_cache=None,
             array_cache=None,
             custom_classes=custom_classes,
-            **options,  # NOTE: a comma after **options breaks Python 2
+            **options,
         ).root_directory
         if object_path is None:
             trees = file.keys(filter_classname="TTree", cycle=False)

@@ -7,7 +7,7 @@ functionality of basket-reading.
 Includes both "embedded" ``TBaskets`` (as a member of TBranch) and "free"
 ``TBaskets`` (top-level objects, located by ``TKeys``).
 """
-
+from __future__ import annotations
 
 import struct
 
@@ -214,7 +214,8 @@ class Model_TBasket(uproot.model.Model):
         pass
 
     def read_members(self, chunk, cursor, context, file):
-        context["cancel_forth"] = True
+        if uproot._awkwardforth.get_forth_obj(context) is not None:
+            raise uproot.interpretation.objects.CannotBeForth()
         assert isinstance(self._parent, uproot.behaviors.TBranch.TBranch)
         self._basket_num = context.get("basket_num")
 

@@ -2,10 +2,6 @@
 
 import os
 import queue
-import sys
-from io import StringIO
-
-import numpy
 import pytest
 
 import uproot
@@ -68,12 +64,11 @@ def test_memmap(tmpdir):
             expected.pop((chunk.start, chunk.stop))
 
 
-@pytest.mark.skip(reason="RECHECK: example.com is flaky, too")
-@pytest.mark.network
-def test_http_multipart():
+def test_http_multipart(http_server):
+    url = f"{http_server}/uproot-issue121.root"
     notifications = queue.Queue()
     with uproot.source.http.HTTPSource(
-        "https://example.com", timeout=10, num_fallback_workers=1, use_threads=True
+        url, timeout=10, num_fallback_workers=1, use_threads=True
     ) as source:
         chunks = source.chunks(
             [(0, 100), (50, 55), (200, 400)], notifications=notifications
@@ -84,12 +79,11 @@ def test_http_multipart():
             expected.pop((chunk.start, chunk.stop))
 
 
-@pytest.mark.skip(reason="RECHECK: example.com is flaky, too")
-@pytest.mark.network
-def test_http():
+def test_http(http_server):
+    url = f"{http_server}/uproot-issue121.root"
     notifications = queue.Queue()
     with uproot.source.http.MultithreadedHTTPSource(
-        "https://example.com", timeout=10, num_workers=1, use_threads=True
+        url, timeout=10, num_workers=1, use_threads=True
     ) as source:
         chunks = source.chunks(
             [(0, 100), (50, 55), (200, 400)], notifications=notifications
@@ -100,12 +94,11 @@ def test_http():
             expected.pop((chunk.start, chunk.stop))
 
 
-@pytest.mark.skip(reason="RECHECK: example.com is flaky, too")
-@pytest.mark.network
-def test_http_workers():
+def test_http_workers(http_server):
+    url = f"{http_server}/uproot-issue121.root"
     notifications = queue.Queue()
     with uproot.source.http.MultithreadedHTTPSource(
-        "https://example.com", timeout=10, num_workers=2, use_threads=True
+        url, timeout=10, num_workers=2, use_threads=True
     ) as source:
         chunks = source.chunks(
             [(0, 100), (50, 55), (200, 400)], notifications=notifications
@@ -116,11 +109,11 @@ def test_http_workers():
             expected.pop((chunk.start, chunk.stop))
 
 
-@pytest.mark.network
-def test_http_fallback():
+def test_http_fallback(http_server):
+    url = f"{http_server}/uproot-issue121.root"
     notifications = queue.Queue()
     with uproot.source.http.HTTPSource(
-        "https://scikit-hep.org/uproot3/examples/Zmumu.root",
+        url,
         timeout=10,
         num_fallback_workers=1,
         use_threads=True,
@@ -134,11 +127,11 @@ def test_http_fallback():
             expected.pop((chunk.start, chunk.stop))
 
 
-@pytest.mark.network
-def test_http_fallback_workers():
+def test_http_fallback_workers(http_server):
+    url = f"{http_server}/uproot-issue121.root"
     notifications = queue.Queue()
     with uproot.source.http.HTTPSource(
-        "https://scikit-hep.org/uproot3/examples/Zmumu.root",
+        url,
         timeout=10,
         num_fallback_workers=5,
         use_threads=True,
@@ -152,9 +145,6 @@ def test_http_fallback_workers():
             expected.pop((chunk.start, chunk.stop))
 
 
-@pytest.mark.skip(
-    reason="RECHECK: Run2012B_DoubleMuParked.root is super-flaky right now"
-)
 @pytest.mark.network
 @pytest.mark.xrootd
 def test_xrootd():
@@ -175,9 +165,6 @@ def test_xrootd():
             expected.pop((chunk.start, chunk.stop))
 
 
-@pytest.mark.skip(
-    reason="RECHECK: Run2012B_DoubleMuParked.root is super-flaky right now"
-)
 @pytest.mark.network
 @pytest.mark.xrootd
 def test_xrootd_workers():
@@ -198,9 +185,6 @@ def test_xrootd_workers():
             expected.pop((chunk.start, chunk.stop))
 
 
-@pytest.mark.skip(
-    reason="RECHECK: Run2012B_DoubleMuParked.root is super-flaky right now"
-)
 @pytest.mark.network
 @pytest.mark.xrootd
 def test_xrootd_vectorread():

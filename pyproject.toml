@@ -1,7 +1,8 @@
 [build-system]
 build-backend = "hatchling.build"
 requires = [
-  "hatchling"
+  "hatchling",
+  "hatch-vcs"
 ]
 
 [project]
@@ -36,6 +37,7 @@ dependencies = [
   "awkward>=2.4.6",
   "importlib-metadata;python_version<\"3.8\"",
   "numpy",
+  "fsspec",
   "packaging",
   "typing_extensions>=4.1.0; python_version < \"3.11\""
 ]
@@ -51,32 +53,39 @@ requires-python = ">=3.8"
 [project.optional-dependencies]
 dev = [
   "boost_histogram>=0.13",
-  "dask-awkward>=2023.10.0",
-  "dask[array]",
+  "dask-awkward>=2023.12.1",
+  "dask[array,distributed]",
   "hist>=1.2",
   "pandas",
   "awkward-pandas"
 ]
 test = [
   "lz4",
+  "xxhash",
+  "zstandard",
   "minio",
-  "aiohttp; python_version<\"3.12\"",
-  "fsspec",
+  "aiohttp",
   "fsspec-xrootd",
+  "s3fs",
+  "paramiko",
   "pytest>=6",
   "pytest-timeout",
   "pytest-rerunfailures",
   "requests",
   "scikit-hep-testdata",
-  "xxhash"
+  "rangehttpserver"
 ]
 
 [project.urls]
 Download = "https://github.com/scikit-hep/uproot5/releases"
 Homepage = "https://github.com/scikit-hep/uproot5"
 
+[tool.hatch.build.hooks.vcs]
+version-file = "src/uproot/version.py"
+
 [tool.hatch.version]
-path = "src/uproot/version.py"
+path = "src/uproot/__init__.py"
+source = "vcs"
 
 [tool.isort]
 profile = "black"
@@ -138,9 +147,15 @@ select = [
 ]
 src = ["src"]
 
+[tool.ruff.lint]
+isort.required-imports = ["from __future__ import annotations"]
+
 [tool.ruff.mccabe]
 max-complexity = 100
 
 [tool.ruff.per-file-ignores]
 "dev/*" = ["T20"]
 "src/uproot/*/file.py" = ["SIM115"]
+
+[tool.setuptools_scm]
+write_to = "src/uproot/_version.py"
