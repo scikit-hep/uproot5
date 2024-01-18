@@ -856,8 +856,7 @@ class Pandas(Library):
 
         elif isinstance(how, str) or how is None:
             arrays, names = _pandas_only_series(pandas, arrays, expression_context)
-            # return pandas.DataFrame(data=arrays, columns=names)
-            return _pandas_memory_efficient(pandas, arrays, names)
+            return pandas.DataFrame(data=arrays, columns=names)
 
         else:
             raise TypeError(
