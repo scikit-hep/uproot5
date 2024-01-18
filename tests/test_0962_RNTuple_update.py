@@ -39,12 +39,12 @@ def test_new_support_RNTuple_split_int16_reading():
 
 
 pytest.importorskip("zstandard")
+
+
 @pytest.mark.xfail(
     reason="Uproot can now read the data from event files (CMS/Atlas), but this test fails because the column matching logic is wrong.",
-    strict=True
+    strict=True,
 )
-
-
 def test_new_support_RNTuple_event_data():
     with uproot.open(
         "https://xrootd-local.unl.edu:1094//store/user/AGC/nanoaod-rntuple/zstd/TT_TuneCUETP8M1_13TeV-powheg-pythia8/cmsopendata2015_ttbar_19980_PU25nsData2015v1_76X_mcRun2_asymptotic_v12_ext3-v1_00000_0000.root"
