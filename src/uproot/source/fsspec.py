@@ -6,6 +6,9 @@ import asyncio
 import concurrent.futures
 import queue
 
+import fsspec
+import fsspec.asyn
+
 import uproot
 import uproot.source.chunk
 import uproot.source.futures
@@ -24,31 +27,28 @@ class FSSpecSource(uproot.source.chunk.Source):
     """
 
     def __init__(self, file_path: str, **options):
-        import fsspec.core
-
-        options = dict(uproot.reading.open.defaults, **options)
-        storage_options = {
-            k: v
-            for k, v in options.items()
-            if k not in uproot.reading.open.defaults.keys()
-        }
-
-        self._fs, self._file_path = fsspec.core.url_to_fs(file_path, **storage_options)
+        super().__init__()
+        self._fs, self._file_path = fsspec.core.url_to_fs(
+            file_path, **self.extract_fsspec_options(options)
+        )
 
         # What should we do when there is a chain of filesystems?
         self._async_impl = self._fs.async_impl
 
-        self._executor = None
         self._file = None
         self._fh = None
-
-        self._num_requests = 0
-        self._num_requested_chunks = 0
-        self._num_requested_bytes = 0
 
         self._open()
 
         self.__enter__()
+
+    @classmethod
+    def extract_fsspec_options(cls, options: dict) -> dict:
+        uproot_default_options = dict(uproot.reading.open.defaults)
+        options = dict(uproot_default_options, **options)
+        return {
+            k: v for k, v in options.items() if k not in uproot_default_options.keys()
+        }
 
     def _open(self):
         self._executor = FSSpecLoopExecutor()
@@ -61,6 +61,7 @@ class FSSpecSource(uproot.source.chunk.Source):
         return f"<{type(self).__name__} {path} at 0x{id(self):012x}>"
 
     def __getstate__(self):
+        self._fh = None
         state = dict(self.__dict__)
         state.pop("_executor")
         state.pop("_file")
@@ -200,8 +201,6 @@ class FSSpecSource(uproot.source.chunk.Source):
 class FSSpecLoopExecutor(uproot.source.futures.Executor):
     @property
     def loop(self) -> asyncio.AbstractEventLoop:
-        import fsspec.asyn
-
         return fsspec.asyn.get_loop()
 
     def submit(self, coroutine) -> concurrent.futures.Future:
