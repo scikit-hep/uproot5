@@ -181,6 +181,9 @@ Thanks especially to the gracious help of Uproot contributors (including the [or
       <td align="center" valign="top" width="14.28%"><a href="http://glepage.com"><img src="https://avatars.githubusercontent.com/u/33058747?v=4?s=100" width="100px;" alt="Gaétan Lepage"/><br /><sub><b>Gaétan Lepage</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot5/commits?author=GaetanLepage" title="Tests">⚠️</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/HaarigerHarald"><img src="https://avatars.githubusercontent.com/u/8050292?v=4?s=100" width="100px;" alt="HaarigerHarald"/><br /><sub><b>HaarigerHarald</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot5/commits?author=HaarigerHarald" title="Code">💻</a></td>
     </tr>
+    <tr>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/bnavigator"><img src="https://avatars.githubusercontent.com/u/4623504?v=4?s=100" width="100px;" alt="Ben Greiner"/><br /><sub><b>Ben Greiner</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot5/commits?author=bnavigator" title="Tests">⚠️</a></td>
+    </tr>
   </tbody>
 </table>
 
