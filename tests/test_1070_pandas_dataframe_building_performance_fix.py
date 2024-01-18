@@ -6,8 +6,9 @@ import skhep_testdata
 
 
 def test_pandas_performance_many_branches(tmp_path):
-    for array in uproot.iterate(skhep_testdata.data_path("uproot-issue-1070.root:tree"), step_size=100, library="pandas"):
+    for array in uproot.iterate(
+        skhep_testdata.data_path("uproot-issue-1070.root:tree"),
+        step_size=100,
+        library="pandas",
+    ):
         pass
-
-
-        
