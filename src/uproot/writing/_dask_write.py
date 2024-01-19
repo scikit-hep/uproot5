@@ -15,7 +15,6 @@ import uproot
 
 
 class _ToROOTFn:
-    from fsspec import AbstractFileSystem
 
     def __init__(
         self,
@@ -45,7 +44,9 @@ class _ToROOTFn:
             filename = f"{self.prefix}-{filename}"
         filename = f"{self.protocol}://{self.path}/{filename}"
         return to_root(
-            filename, data, **self.kwargs, storage_options=self.storage_options
+            filename,
+            data,
+            **self.kwargs,
         )
 
 
@@ -61,7 +62,7 @@ def dask_write(
     initial_basket_capacity=10,
     counter_name=lambda counted: "n" + counted,
     resize_factor=10.0,
-    compression="lz4",
+    compression="zlib",
     compression_level=1,
     prefix: str | None = None,
 ):
@@ -122,13 +123,13 @@ def dask_write(
             initial_basket_capacity=initial_basket_capacity,
         ),
         array,
-        BlockIndex((array.npartitions,)),
+        BlockIndex(
+            (array.npartitions,)
+        ),  # class to provide current block index at each block of the operation...
         label="to-root",
         meta=array._meta,
     )
-
     map_res.dask.layers[map_res.name].annotations = {"ak_output": True}
-
     dsk = {}
     final_name = name + "-finalize"
     dsk[(final_name, 0)] = (lambda *_: None, map_res.__dask_keys__())
@@ -146,7 +147,7 @@ def dask_write(
         return out
 
 
-def to_root(
+def to_root(  # user-defined groups for ak.zip?
     destination,
     array,
     tree_name,
@@ -177,8 +178,10 @@ def to_root(
             compression_code, compression_level
         ),
     )
+
     if not branch_types:
         branch_types = {name: array[name].type for name in array.fields}
+
     out_file.mktree(
         tree_name,
         branch_types,
@@ -188,4 +191,5 @@ def to_root(
         initial_basket_capacity=initial_basket_capacity,
         resize_factor=resize_factor,
     )
+
     out_file[tree_name].extend({name: array[name] for name in array.fields})
