@@ -1,11 +1,8 @@
-# Write out dask-awkward arrays as root files for a full input
-# dataset at a time (partitioned into chunks of some size)
 from __future__ import annotations
 
 import math
 from typing import Any
 
-import awkward as ak
 from dask.base import tokenize
 from dask.blockwise import BlockIndex
 from dask.highlevelgraph import HighLevelGraph
@@ -14,7 +11,7 @@ from dask_awkward.lib.core import map_partitions, new_scalar_object
 from fsspec import AbstractFileSystem
 from fsspec.core import url_to_fs
 
-import uproot._dask
+import uproot
 
 
 class _ToROOTFn:
@@ -47,7 +44,7 @@ class _ToROOTFn:
         if self.prefix is not None:
             filename = f"{self.prefix}-{filename}"
         filename = f"{self.protocol}://{self.path}/{filename}"
-        return make_root(
+        return to_root(
             filename, data, **self.kwargs, storage_options=self.storage_options
         )
 
@@ -69,8 +66,6 @@ def dask_write(
     prefix: str | None = None,
 ):
     """
-    This will create one output file per partition?
-
     Parameters
     ----------
     array
@@ -85,7 +80,7 @@ def dask_write(
     prefix
         An addition prefix for output files. If ``None`` all parts
         inside the destination directory will be named ``?``; if
-        defined, the names will be ``f"{prefix}-partN.parquet"``.
+        defined, the names will be ``f"{prefix}-partN.root"``.
 
     Returns
     -------
@@ -102,9 +97,9 @@ def dask_write(
     >>> import awkward as ak
     >>> import dask_awkward as dak
     >>> a = ak.Array([{"a": [1,2,3]}, {"a": [4, 5]}])
-    >>> d = dak.from_awkward(a, npartitions=2)
+    >>> d = dask_write(a, npartitions=2)
     >>> d.nparatitions
-    >>> uproot._dask_write.(d )
+    >>> uproot.dask_write(d)
 
     """
     fs, path = url_to_fs(destination, **(storage_options or {}))
@@ -131,6 +126,7 @@ def dask_write(
         label="to-root",
         meta=array._meta,
     )
+
     map_res.dask.layers[map_res.name].annotations = {"ak_output": True}
 
     dsk = {}
@@ -150,7 +146,7 @@ def dask_write(
         return out
 
 
-def make_root(
+def to_root(
     destination,
     array,
     tree_name,
@@ -162,11 +158,7 @@ def make_root(
     field_name,
     initial_basket_capacity,
     resize_factor,
-    storage_options,
 ):
-    print(destination)
-    import uproot
-
     if compression in ("LZMA", "lzma"):
         compression_code = uproot.const.kLZMA
     elif compression in ("ZLIB", "zlib"):
@@ -197,39 +189,3 @@ def make_root(
         resize_factor=resize_factor,
     )
     out_file[tree_name].extend({name: array[name] for name in array.fields})
-
-
-# Testing
-import dask_awkward as dak
-import fsspec
-from skhep_testdata import data_path
-
-fs = fsspec.filesystem("file")
-tmpdir = "my-output"
-files = fs.ls(tmpdir)
-
-
-def simple_test():
-    a = ak.Array([{"a": [1, 2, 3]}, {"a": [4, 5]}])
-    d = dak.from_awkward(a, npartitions=2)
-    dask_write(d, tmpdir, prefix="data")
-    f = uproot.open("/Users/zobil/Documents/uproot5/my-output/data-part0.root")
-    print(f["tree"]["a"].arrays())  # >>> import os
-    f1 = uproot.open("/Users/zobil/Documents/uproot5/my-output/data-part1.root")
-    print(f1["tree"]["a"].arrays())
-
-
-def HZZ_test():
-    a = uproot.open(data_path("uproot-HZZ.root"))["events"].arrays()
-    d = dak.from_awkward(ak.from_iter(a), 2)
-    f = uproot.open("/Users/zobil/Documents/uproot5/my-output/data-part0.root")
-    f1 = uproot.open("/Users/zobil/Documents/uproot5/my-output/data-part1.root")
-
-
-HZZ_test()
-import os
-
-assert [os.path.basename(_) for _ in sorted(files)] == [
-    "part0.parquet",
-    "part1.parquet",
-]

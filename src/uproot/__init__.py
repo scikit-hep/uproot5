@@ -123,6 +123,7 @@ from uproot.writing import WritableDirectory
 from uproot.writing import WritableTree
 from uproot.writing import WritableBranch
 from uproot.writing import to_writable
+from uproot.writing import dask_write
 
 import uproot.models.TObject
 import uproot.models.TString
