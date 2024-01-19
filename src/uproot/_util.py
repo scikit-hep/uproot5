@@ -835,7 +835,7 @@ def _regularize_files_inner(
             file_names_full = [
                 file.full_name
                 for file in fsspec.open_files(
-                    files,
+                    file_path,
                     **uproot.source.fsspec.FSSpecSource.extract_fsspec_options(options),
                 )
             ]
