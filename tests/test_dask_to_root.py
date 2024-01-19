@@ -9,10 +9,13 @@ da = pytest.importorskip("dask.array")
 dask_awkward = pytest.importorskip("dask_awkward")
 math = pytest.importorskip("math")
 
+
 def simple_test(partitions):
     arr = ak.Array([{"a": [1, 2, 3]}, {"a": [4, 5]}])
     dask_arr = dask_awkward.from_awkward(arr, npartitions=partitions)
-    uproot.dask_write(dask_arr, "/Users/zobil/Documents/uproot5/src/uproot/my-output", prefix="data")
+    uproot.dask_write(
+        dask_arr, "/Users/zobil/Documents/uproot5/src/uproot/my-output", prefix="data"
+    )
     file_1 = uproot.open(
         "/Users/zobil/Documents/uproot5/src/uproot/my-output/data-part0.root"
     )
