@@ -15,7 +15,6 @@ import uproot
 
 
 class _ToROOTFn:
-
     def __init__(
         self,
         fs: AbstractFileSystem,
@@ -44,19 +43,17 @@ class _ToROOTFn:
             filename = f"{self.prefix}-{filename}"
         filename = f"{self.protocol}://{self.path}/{filename}"
         return to_root(
-            filename,
-            data,
-            **self.kwargs,
+            filename, data, **self.kwargs, storage_options=self.storage_options
         )
 
 
 def dask_write(
     array,
     destination,
-    tree_name="tree",
-    branch_types=None,
     compute=True,
     storage_options=None,
+    prefix: str | None = None,
+    tree_name="tree",
     title="",
     field_name=lambda outer, inner: inner if outer == "" else outer + "_" + inner,
     initial_basket_capacity=10,
@@ -64,43 +61,38 @@ def dask_write(
     resize_factor=10.0,
     compression="zlib",
     compression_level=1,
-    prefix: str | None = None,
 ):
     """
-    Parameters
-    ----------
-    array
-        The :obj:`dask_awkward.Array` collection to write to disk.
-    destination
-        Where to store the output; this can be a local filesystem path
-        or a remote filesystem path.
-    name
-        ttree name
-    compute
-        If ``True``, immediately compute the result (write data to disk). If ``False`` a Scalar collection will be returned such that ``compute`` can be explicitly called.
-    prefix
-        An addition prefix for output files. If ``None`` all parts
-        inside the destination directory will be named ``?``; if
-        defined, the names will be ``f"{prefix}-partN.root"``.
+    Args:
+        array (`dask_awkward.Array`): The :obj:`dask_awkward.Array` collection to write to disk.
+        destination (path-like): Where to store the output; this can be a local filesystem path
+            or a remote filesystem path.
+        compute (bool): If ``True``, immediately compute the result (write data to disk). If ``False`` a Scalar collection will be returned such that ``compute`` can be explicitly called.
+        prefix (str): An addition prefix for output files. If ``None`` all parts
+            inside the destination directory will be named ``?``; if
+            defined, the names will be ``f"{prefix}-partN.root"``.
+        tree_name (str): Name of ttree to be written to. Default is "tree".
+        title (str): Title of ttree to be written to. Default is "".
+        field_name (callable of str \u2192 str): Function to generate TBranch
+            names for columns of an Awkward record array or a Pandas DataFrame.
+        initial_basket_capacity (int): Number of TBaskets that can be written to the
+            TTree without rewriting the TTree metadata to make room.
+        resize_factor (float): When the TTree metadata needs to be rewritten,
+            this specifies how many more TBasket slots to allocate as a multiplicative
+            factor.
+        compression (:doc:`uproot.compression.Compression` or None): Compression algorithm
+            and level for new objects added to the file. Can be updated after creating
+            the :doc:`uproot.writing.writable.WritableFile`. Default is ``uproot.ZLIB(1)``.
 
-    Returns
-    -------
-    Scalar | None
-        If ``compute`` is ``False`` a :obj:`dask_awkward.Scalar`
-        object is returned such that it can be computed later. If
-        ``compute`` is ``True``, the collection is immediately
-        computed (and data will be written to disk) and ``None`` is
-        returned.
+    Writes a dask-awkward array to a set of ROOT files. Data is written to a TTree
 
-    Examples
-    --------
-
-    >>> import awkward as ak
-    >>> import dask_awkward as dak
-    >>> a = ak.Array([{"a": [1,2,3]}, {"a": [4, 5]}])
-    >>> d = dask_write(a, npartitions=2)
-    >>> d.nparatitions
-    >>> uproot.dask_write(d)
+    .. code-block:: python
+        import awkward as ak
+        import dask_awkward as dak
+        a = ak.Array([{"a": [1,2,3]}, {"a": [4, 5]}])
+        d = dask_write(a, npartitions=2)
+        d.nparatitions
+        uproot.dask_write(d)
 
     """
     fs, path = url_to_fs(destination, **(storage_options or {}))
@@ -113,7 +105,6 @@ def dask_write(
             npartitions=array.npartitions,
             prefix=prefix,
             tree_name=tree_name,
-            branch_types=branch_types,
             compression=compression,
             compression_level=compression_level,
             title=title,
@@ -151,7 +142,6 @@ def to_root(  # user-defined groups for ak.zip?
     destination,
     array,
     tree_name,
-    branch_types,
     compression,
     compression_level,
     title,
@@ -159,6 +149,7 @@ def to_root(  # user-defined groups for ak.zip?
     field_name,
     initial_basket_capacity,
     resize_factor,
+    storage_options,
 ):
     if compression in ("LZMA", "lzma"):
         compression_code = uproot.const.kLZMA
@@ -177,10 +168,10 @@ def to_root(  # user-defined groups for ak.zip?
         compression=uproot.compression.Compression.from_code_pair(
             compression_code, compression_level
         ),
+        **(storage_options or {}),
     )
 
-    if not branch_types:
-        branch_types = {name: array[name].type for name in array.fields}
+    branch_types = {name: array[name].type for name in array.fields}
 
     out_file.mktree(
         tree_name,
