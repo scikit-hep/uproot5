@@ -15,6 +15,7 @@ import uproot
 
 
 class _ToROOTFn:
+    
     def __init__(
         self,
         fs: AbstractFileSystem,
