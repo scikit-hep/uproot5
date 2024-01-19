@@ -237,14 +237,14 @@ in file {self.file.file_path}"""
     def col_form(self, field_id):
         ak = uproot.extras.awkward()
 
-        if field_id in self._column_recorrds_dict:
-            rel_crs = self._column_recorrds_dict[field_id]["rel_crs"]
-            rel_crs_idxs = self._column_recorrds_dict[field_id]["rel_crs_idxs"]
+        if field_id in self._column_records_dict:
+            rel_crs = self._column_records_dict[field_id]["rel_crs"]
+            rel_crs_idxs = self._column_records_dict[field_id]["rel_crs_idxs"]
         elif field_id in self._alias_columns_dict:
-            rel_crs = self._column_recorrds_dict[self._alias_columns_dict[field_id]][
+            rel_crs = self._column_records_dict[self._alias_columns_dict[field_id]][
                 "rel_crs"
             ]
-            rel_crs_idxs = self._column_recorrds_dict[
+            rel_crs_idxs = self._column_records_dict[
                 self._alias_columns_dict[field_id]
             ]["rel_crs_idxs"]
         else:
@@ -460,17 +460,17 @@ in file {self.file.file_path}"""
             el.field_id: el.physical_id
             for i, el in enumerate(self.header.alias_columns)
         }
-        self._column_recorrds_dict = {}
-        self._column_recorrds_dict = {
+        self._column_records_dict = {}
+        self._column_records_dict = {
             el.field_id: {
                 "rel_crs": [
-                    *(self._column_recorrds_dict.get(el.field_id) or {}).get(
+                    *(self._column_records_dict.get(el.field_id) or {}).get(
                         "rel_crs", []
                     ),
                     el,
                 ],
                 "rel_crs_idxs": [
-                    *(self._column_recorrds_dict.get(el.field_id) or {}).get(
+                    *(self._column_records_dict.get(el.field_id) or {}).get(
                         "rel_crs_idxs", []
                     ),
                     i,
@@ -492,7 +492,7 @@ in file {self.file.file_path}"""
         for key in target_cols:
             if "column" in key:
                 key_nr = int(key.split("-")[1])
-                if key_nr in self._column_recorrds_dict:
+                if key_nr in self._column_records_dict:
                     id = key_nr
                 elif key_nr in self._alias_columns_dict:
                     id = self._alias_columns_dict[key_nr]
@@ -503,7 +503,7 @@ in file {self.file.file_path}"""
                         )
                     )
 
-                dtype_byte = self._column_recorrds_dict[id]["rel_crs"][0].type
+                dtype_byte = self._column_records_dict[id]["rel_crs"][0].type
                 content = self.read_col_pages(
                     id, range(start_cluster_idx, stop_cluster_idx)
                 )
