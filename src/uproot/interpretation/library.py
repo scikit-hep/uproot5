@@ -856,7 +856,18 @@ class Pandas(Library):
 
         elif isinstance(how, str) or how is None:
             arrays, names = _pandas_only_series(pandas, arrays, expression_context)
-            return pandas.DataFrame(data=arrays, columns=names)
+            if len(arrays) == 0:
+                return pandas.DataFrame()
+            else:
+                arrays = {
+                    k: v
+                    if isinstance(v, (pandas.Series, pandas.DataFrame))
+                    else pandas.Series(v, name=k)
+                    for k, v in arrays.items()
+                }
+                out = pandas.concat(arrays, axis=1, ignore_index=True)
+                out.columns = names
+                return out
 
         else:
             raise TypeError(
