@@ -34,7 +34,11 @@ def test_classname_encoding(tmpdir):
     ) == ("namespace::some.deep<templated, thing>", None)
 
 
-def test_file_header():
+@pytest.mark.parametrize("use_isal", [False, True])
+def test_file_header(use_isal):
+    if use_isal:
+        pytest.importorskip("isal")
+    uproot.ZLIB.use_isal = use_isal
     filename = skhep_testdata.data_path("uproot-Zmumu.root")
     file = uproot.reading.ReadOnlyFile(filename)
     assert repr(file.compression) == "ZLIB(4)"

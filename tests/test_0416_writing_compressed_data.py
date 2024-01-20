@@ -11,7 +11,11 @@ import uproot
 ROOT = pytest.importorskip("ROOT")
 
 
-def test_ZLIB():
+@pytest.mark.parametrize("use_isal", [False, True])
+def test_ZLIB(use_isal):
+    if use_isal:
+        pytest.importorskip("isal")
+    uproot.ZLIB.use_isal = use_isal
     for _ in range(2):
         with uproot.open(skhep_testdata.data_path("uproot-Zmumu-zlib.root"))[
             "events"
@@ -42,7 +46,7 @@ def test_LZMA():
 
 
 def test_LZ4():
-    pytest.importorskip("lz4")
+    pytest.importorskip("cramjam")
 
     for _ in range(2):
         with uproot.open(skhep_testdata.data_path("uproot-Zmumu-lz4.root"))[
@@ -58,7 +62,7 @@ def test_LZ4():
 
 
 def test_ZSTD():
-    pytest.importorskip("zstandard")
+    pytest.importorskip("cramjam")
 
     for _ in range(2):
         with uproot.open(skhep_testdata.data_path("uproot-Zmumu-zstd.root"))[
@@ -73,7 +77,12 @@ def test_ZSTD():
             ]
 
 
-def test_histogram_ZLIB(tmp_path):
+@pytest.mark.parametrize("use_isal", [False, True])
+def test_histogram_ZLIB(tmp_path, use_isal):
+    if use_isal:
+        pytest.importorskip("isal")
+    uproot.ZLIB.use_isal = use_isal
+
     newfile = os.path.join(tmp_path, "newfile.root")
 
     SIZE = 2**21
@@ -122,7 +131,7 @@ def test_histogram_LZMA(tmp_path):
 
 
 def test_histogram_LZ4(tmp_path):
-    pytest.importorskip("lz4")
+    pytest.importorskip("cramjam")
 
     newfile = os.path.join(tmp_path, "newfile.root")
 
@@ -147,7 +156,7 @@ def test_histogram_LZ4(tmp_path):
 
 
 def test_histogram_ZSTD(tmp_path):
-    pytest.importorskip("zstandard")
+    pytest.importorskip("cramjam")
 
     newfile = os.path.join(tmp_path, "newfile.root")
 
@@ -216,7 +225,7 @@ def test_flattree_LZMA(tmp_path):
 
 
 def test_flattree_LZ4(tmp_path):
-    pytest.importorskip("lz4")
+    pytest.importorskip("cramjam")
 
     newfile = os.path.join(tmp_path, "newfile.root")
 
@@ -239,7 +248,7 @@ def test_flattree_LZ4(tmp_path):
 
 
 def test_flattree_ZSTD(tmp_path):
-    pytest.importorskip("zstandard")
+    pytest.importorskip("cramjam")
 
     newfile = os.path.join(tmp_path, "newfile.root")
 
@@ -309,7 +318,7 @@ def test_jaggedtree_LZMA(tmp_path):
 
 
 def test_jaggedtree_LZ4(tmp_path):
-    pytest.importorskip("lz4")
+    pytest.importorskip("cramjam")
     ak = pytest.importorskip("awkward")
 
     newfile = os.path.join(tmp_path, "newfile.root")
@@ -333,7 +342,7 @@ def test_jaggedtree_LZ4(tmp_path):
 
 
 def test_jaggedtree_ZSTD(tmp_path):
-    pytest.importorskip("zstandard")
+    pytest.importorskip("cramjam")
     ak = pytest.importorskip("awkward")
 
     newfile = os.path.join(tmp_path, "newfile.root")
@@ -356,7 +365,12 @@ def test_jaggedtree_ZSTD(tmp_path):
     f3.Close()
 
 
-def test_multicompression_1(tmp_path):
+@pytest.mark.parametrize("use_isal", [False, True])
+def test_multicompression_1(tmp_path, use_isal):
+    if use_isal:
+        pytest.importorskip("isal")
+    uproot.ZLIB.use_isal = use_isal
+
     newfile = os.path.join(tmp_path, "newfile.root")
 
     branch1 = np.arange(100)
@@ -383,7 +397,12 @@ def test_multicompression_1(tmp_path):
     f3.Close()
 
 
-def test_multicompression_2(tmp_path):
+@pytest.mark.parametrize("use_isal", [False, True])
+def test_multicompression_2(tmp_path, use_isal):
+    if use_isal:
+        pytest.importorskip("isal")
+    uproot.ZLIB.use_isal = use_isal
+
     newfile = os.path.join(tmp_path, "newfile.root")
 
     branch1 = np.arange(100)
@@ -409,7 +428,12 @@ def test_multicompression_2(tmp_path):
     f3.Close()
 
 
-def test_multicompression_3(tmp_path):
+@pytest.mark.parametrize("use_isal", [False, True])
+def test_multicompression_3(tmp_path, use_isal):
+    if use_isal:
+        pytest.importorskip("isal")
+    uproot.ZLIB.use_isal = use_isal
+
     newfile = os.path.join(tmp_path, "newfile.root")
 
     branch1 = np.arange(100)
@@ -436,7 +460,12 @@ def test_multicompression_3(tmp_path):
     f3.Close()
 
 
-def test_multicompression_4(tmp_path):
+@pytest.mark.parametrize("use_isal", [False, True])
+def test_multicompression_4(tmp_path, use_isal):
+    if use_isal:
+        pytest.importorskip("isal")
+    uproot.ZLIB.use_isal = use_isal
+
     newfile = os.path.join(tmp_path, "newfile.root")
 
     branch1 = np.arange(100)
@@ -461,7 +490,12 @@ def test_multicompression_4(tmp_path):
     f3.Close()
 
 
-def test_multicompression_5(tmp_path):
+@pytest.mark.parametrize("use_isal", [False, True])
+def test_multicompression_5(tmp_path, use_isal):
+    if use_isal:
+        pytest.importorskip("isal")
+    uproot.ZLIB.use_isal = use_isal
+
     newfile = os.path.join(tmp_path, "newfile.root")
 
     branch1 = np.arange(100)

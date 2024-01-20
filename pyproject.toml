@@ -60,9 +60,9 @@ dev = [
   "awkward-pandas"
 ]
 test = [
-  "lz4",
+  "cramjam",
+  "isal",
   "xxhash",
-  "zstandard",
   "minio",
   "aiohttp",
   "fsspec-xrootd",
