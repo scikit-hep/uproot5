@@ -18,14 +18,16 @@ The :doc:`uproot.interpretation.objects.ObjectArray` and
 while an array is being built from ``TBaskets``. Its final form is determined
 by the :doc:`uproot.interpretation.library.Library`.
 """
+from __future__ import annotations
 
 import contextlib
+import json
 import threading
 
 import numpy
 
 import uproot
-import uproot._awkward_forth
+import uproot._awkwardforth
 
 
 class AsObjects(uproot.interpretation.Interpretation):
@@ -48,11 +50,10 @@ class AsObjects(uproot.interpretation.Interpretation):
     def __init__(self, model, branch=None):
         self._model = model
         self._branch = branch
-        self._forth = True
-        self._forth_lock = threading.Lock()
-        self._forth_form_keys = None
-        self._complete_forth_code = None
         self._form = None
+        self._forth = True
+        self._complete_forth_code = None
+        self._forth_lock = threading.Lock()
 
     @property
     def model(self):
@@ -107,10 +108,7 @@ class AsObjects(uproot.interpretation.Interpretation):
         context = self._make_context(
             context, index_format, header, tobject_header, breadcrumbs
         )
-        if isinstance(self._model, type):
-            return self._model.awkward_form(self._branch.file, context)
-        else:
-            return self._model.awkward_form(self._branch.file, context)
+        return self._model.awkward_form(self._branch.file, context)
 
     def basket_array(
         self,
@@ -154,6 +152,7 @@ class AsObjects(uproot.interpretation.Interpretation):
                 library,
                 options,
             )
+
         else:
             output = ObjectArray(
                 self._model, branch, context, byte_offsets, data, cursor_offset
@@ -202,22 +201,54 @@ class AsObjects(uproot.interpretation.Interpretation):
         if not hasattr(context["forth"], "vm"):
             # context["forth"] is a threading.local()
             context["forth"].vm = None
-            context["forth"].gen = uproot._awkward_forth.ForthGenerator()
+            context["forth"].gen = uproot._awkwardforth.ForthGenerator(self)
+        else:
+            context["forth"].gen = None
 
         if self._complete_forth_code is None:
+            # all threads have to wait until complete_forth_code is ready
             with self._forth_lock:
-                # all threads have to wait until complete_forth_code is ready
-
-                if self._complete_forth_code is None:
-                    # another thread didn't make it while this thread waited
-                    # this thread tries to make it now
-                    output = self._discover_forth(
-                        data, byte_offsets, branch, context, cursor_offset
+                # another thread might have concluded that this can't be Forth
+                if not self._forth:
+                    return self.basket_array(
+                        data,
+                        byte_offsets,
+                        basket,
+                        branch,
+                        context,
+                        cursor_offset,
+                        library,
+                        options,
                     )
 
+                # another thread might have already found the complete Forth code
+                elif self._complete_forth_code is None:
+                    context = dict(context)
+                    context["path"] = ()
+
+                    # this thread tries to do it!
+                    try:
+                        output = self._discover_forth(
+                            data, byte_offsets, branch, context, cursor_offset
+                        )
+                    except CannotBeForth:
+                        self._forth = False
+                        context["forth"].gen = None
+                        context["forth"].vm = None
+                        return self.basket_array(
+                            data,
+                            byte_offsets,
+                            basket,
+                            branch,
+                            context,
+                            cursor_offset,
+                            library,
+                            options,
+                        )
+
+                    # Forth discovery was unsuccessful; return Python-derived
+                    # output and maybe another basket will succeed
                     if output is not None:
-                        # Forth discovery was unsuccessful; return Python-derived
-                        # output and maybe another basket will be more fruitful
                         self.hook_after_basket_array(
                             data=data,
                             byte_offsets=byte_offsets,
@@ -248,9 +279,7 @@ class AsObjects(uproot.interpretation.Interpretation):
                 ) from err
 
         # get data using Forth
-        byte_start = byte_offsets[0]
-        byte_stop = byte_offsets[-1]
-        temp_data = data[byte_start:byte_stop]
+        temp_data = data[byte_offsets[0] : byte_offsets[-1]]
         context["forth"].vm.begin(
             {
                 "stream": numpy.array(temp_data),
@@ -278,7 +307,25 @@ class AsObjects(uproot.interpretation.Interpretation):
 
         return output
 
+    def _assemble_forth(self, forth_obj, node, only_base=False):
+        if only_base != node.name.startswith("base-class "):
+            return
+
+        forth_obj.final_header.extend(node.header_code)
+        forth_obj.final_init.extend(node.init_code)
+
+        if node.name.startswith("read-members "):
+            for child in node.children:
+                self._assemble_forth(forth_obj, child, only_base=True)
+        forth_obj.final_code.extend(node.pre_code)
+        for child in node.children:
+            self._assemble_forth(forth_obj, child)
+
+        forth_obj.final_code.extend(node.post_code)
+
     def _any_NULL(self, form):
+        # Recursion through form.
+        # If NULL is found anywhere, return False as Forth is not fully discovered.
         if form == "NULL":
             return True
         else:
@@ -296,44 +343,62 @@ class AsObjects(uproot.interpretation.Interpretation):
                         return True
             return False
 
+    def _debug_forth(self, forth_obj):
+        self._assemble_forth(forth_obj, forth_obj.model.children[0])
+        expected_form = self._model.awkward_form(
+            self._branch.file,
+            {
+                "index_format": "i64",
+                "header": False,
+                "tobject_header": False,
+                "breadcrumbs": (),
+            },
+        )
+
+        raise Exception(
+            f"""EXPECTED FORM:
+{expected_form}
+
+DISCOVERED FORM:
+{json.dumps(forth_obj.model.derive_form(), indent=4)}
+
+FORTH CODE:
+input stream
+    input byteoffsets
+    input bytestops
+    {"".join(forth_obj.final_header)}
+    {"".join(forth_obj.final_init)}
+    0 do
+    byteoffsets I-> stack
+    stream seek
+    {"".join(forth_obj.final_code)}
+    loop
+    """
+        )
+
     def _discover_forth(self, data, byte_offsets, branch, context, cursor_offset):
         output = numpy.empty(len(byte_offsets) - 1, dtype=numpy.dtype(object))
-        context["cancel_forth"] = False
 
         for i in range(len(byte_offsets) - 1):
-            byte_start = byte_offsets[i]
-            byte_stop = byte_offsets[i + 1]
-            temp_data = data[byte_start:byte_stop]
-            chunk = uproot.source.chunk.Chunk.wrap(branch.file.source, temp_data)
+            chunk = uproot.source.chunk.Chunk.wrap(
+                branch.file.source, data[byte_offsets[i] : byte_offsets[i + 1]]
+            )
             cursor = uproot.source.cursor.Cursor(
-                0, origin=-(byte_start + cursor_offset)
+                0, origin=-(byte_offsets[i] + cursor_offset)
             )
 
-            if "forth" in context.keys():
-                context["forth"].gen.count_obj = 0
-
+            context["forth"].gen.reset_active_node()
             output[i] = self._model.read(
-                chunk,
-                cursor,
-                context,
-                branch.file,
-                branch.file.detached,
-                branch,
+                chunk, cursor, context, branch.file, branch.file.detached, branch
             )
 
-            if context["cancel_forth"] and "forth" in context.keys():
-                del context["forth"]
-
-            if "forth" in context.keys():
-                context["forth"].gen.awkward_model = context["forth"].gen.top_node
-
-                discovered_form = context["forth"].gen.top_form
-                if not self._any_NULL(discovered_form):
-                    context["forth"].prereaddone = True
-                    self._assemble_forth(
-                        context["forth"].gen, context["forth"].gen.top_node["content"]
-                    )
-                    self._complete_forth_code = f"""input stream
+            derived_form = context["forth"].gen.model.derive_form()
+            if not self._any_NULL(derived_form):
+                context["forth"].prereaddone = True
+                self._assemble_forth(
+                    context["forth"].gen, context["forth"].gen.model.children[0]
+                )
+                self._complete_forth_code = f"""input stream
     input byteoffsets
     input bytestops
     {"".join(context["forth"].gen.final_header)}
@@ -344,26 +409,12 @@ class AsObjects(uproot.interpretation.Interpretation):
     {"".join(context["forth"].gen.final_code)}
     loop
     """
-                    self._forth_form_keys = tuple(context["forth"].gen.form_keys)
-                    self._form = discovered_form
-                    return None  # we should re-read all the data with Forth
+                self._form = derived_form
 
-        return output  # Forth-generation was unsuccessful: this is Python output
+                return None  # we should re-read all the data with Forth
 
-    def _assemble_forth(self, forth_obj, awkward_model):
-        forth_obj.add_to_header(awkward_model["header_code"])
-        forth_obj.add_to_init(awkward_model["init_code"])
-        forth_obj.add_to_final(awkward_model["pre_code"])
-        if "content" in awkward_model.keys():
-            temp_content = awkward_model["content"]
-            if isinstance(temp_content, list):
-                for elem in temp_content:
-                    self._assemble_forth(forth_obj, elem)
-            elif isinstance(temp_content, dict):
-                self._assemble_forth(forth_obj, awkward_model["content"])
-            else:
-                pass
-        forth_obj.add_to_final(awkward_model["post_code"])
+        # Python output when Forth-Generation not successful
+        return output
 
     def final_array(
         self,
@@ -772,6 +823,14 @@ class CannotBeStrided(Exception):
     Exception used to stop recursion over
     :ref:`uproot.model.Model.strided_interpretation` and
     :ref:`uproot.containers.AsContainer.strided_interpretation` as soon as a
+    non-conforming type is found.
+    """
+
+
+class CannotBeForth(Exception):
+    """
+    Exception used to stop recursion over
+    :ref:`uproot.model.Model.read` as soon as a
     non-conforming type is found.
     """
 

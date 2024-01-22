@@ -10,7 +10,7 @@ Most of the functionality of TTree-reading is implemented here.
 See :doc:`uproot.models.TBranch` for deserialization of the ``TBranch``
 objects themselves.
 """
-
+from __future__ import annotations
 
 import queue
 import re
@@ -21,6 +21,7 @@ from collections.abc import Iterable, Mapping, MutableMapping
 import numpy
 
 import uproot
+import uproot.interpretation.grouped
 import uproot.language.python
 from uproot._util import no_filter
 
@@ -153,11 +154,6 @@ def iterate(
     Options (type; default):
 
     * handler (:doc:`uproot.source.chunk.Source` class; None)
-    * file_handler (:doc:`uproot.source.chunk.Source` class; None) (Deprecated: Use `handler` instead. If set, this will take precedence over `handler`)
-    * xrootd_handler (:doc:`uproot.source.chunk.Source` class; None) (Deprecated: Use `handler` instead. If set, this will take precedence over `handler`)
-    * s3_handler (:doc:`uproot.source.chunk.Source` class; None) (Deprecated: Use `handler` instead. If set, this will take precedence over `handler`)
-    * http_handler (:doc:`uproot.source.chunk.Source` class; None) (Deprecated: Use `handler` instead. If set, this will take precedence over `handler`)
-    * object_handler (:doc:`uproot.source.chunk.Source` class; None) (Deprecated: Use `handler` instead. If set, this will take precedence over `handler`)
     * timeout (float for HTTP, int for XRootD; 30)
     * max_num_elements (None or int; None)
     * num_workers (int; 1)
@@ -178,7 +174,7 @@ def iterate(
       array from ``TTrees``.
     * :doc:`uproot._dask.dask`: returns an unevaluated Dask array from ``TTrees``.
     """
-    files = uproot._util.regularize_files(files, steps_allowed=False)
+    files = uproot._util.regularize_files(files, steps_allowed=False, **options)
     decompression_executor, interpretation_executor = _regularize_executors(
         decompression_executor, interpretation_executor, None
     )
@@ -327,11 +323,6 @@ def concatenate(
     Options (type; default):
 
     * handler (:doc:`uproot.source.chunk.Source` class; None)
-    * file_handler (:doc:`uproot.source.chunk.Source` class; None) (Deprecated: Use `handler` instead. If set, this will take precedence over `handler`)
-    * xrootd_handler (:doc:`uproot.source.chunk.Source` class; None) (Deprecated: Use `handler` instead. If set, this will take precedence over `handler`)
-    * s3_handler (:doc:`uproot.source.chunk.Source` class; None) (Deprecated: Use `handler` instead. If set, this will take precedence over `handler`)
-    * http_handler (:doc:`uproot.source.chunk.Source` class; None) (Deprecated: Use `handler` instead. If set, this will take precedence over `handler`)
-    * object_handler (:doc:`uproot.source.chunk.Source` class; None) (Deprecated: Use `handler` instead. If set, this will take precedence over `handler`)
     * timeout (float for HTTP, int for XRootD; 30)
     * max_num_elements (None or int; None)
     * num_workers (int; 1)
@@ -349,7 +340,7 @@ def concatenate(
       single concatenated array from ``TTrees``.
     * :doc:`uproot._dask.dask`: returns an unevaluated Dask array from ``TTrees``.
     """
-    files = uproot._util.regularize_files(files, steps_allowed=False)
+    files = uproot._util.regularize_files(files, steps_allowed=False, **options)
     decompression_executor, interpretation_executor = _regularize_executors(
         decompression_executor, interpretation_executor, None
     )
@@ -1809,7 +1800,10 @@ class TBranch(HasBranches):
         checked = set()
         for _, context in expression_context:
             for branch in context["branches"]:
-                if branch.cache_key not in checked:
+                if branch.cache_key not in checked and not isinstance(
+                    branchid_interpretation[branch.cache_key],
+                    uproot.interpretation.grouped.AsGrouped,
+                ):
                     checked.add(branch.cache_key)
                     for (
                         basket_num,
@@ -3075,7 +3069,6 @@ def _ranges_or_baskets_to_arrays(
         else:
             notifications.put(basket)
 
-    # all threads (if multithreaded), per branch, share a thread-local context for Forth
     forth_context = {x: threading.local() for x in branchid_interpretation}
 
     def basket_to_array(basket):

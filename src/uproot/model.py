@@ -16,7 +16,7 @@ The :doc:`uproot.model.UnknownClass` and
 not be modeled, either because the class has no streamer or no streamer for its
 version.
 """
-
+from __future__ import annotations
 
 import re
 import sys
@@ -787,16 +787,18 @@ class Model:
         context["breadcrumbs"] = (*old_breadcrumbs, self)
 
         self.hook_before_read(chunk=chunk, cursor=cursor, context=context, file=file)
-        forth_stash = uproot._awkward_forth.forth_stash(context)
-        if forth_stash is not None:
-            forth_obj = context["forth"].gen
-
+        forth_obj = uproot._awkwardforth.get_forth_obj(context)
+        if forth_obj is not None:
+            forth_stash = uproot._awkwardforth.Node(
+                name=f"wrong-instance-version {uproot._awkwardforth.get_first_key_number(context)}",
+                form_details={"offsets": "i64"},
+            )
         if context.get("reading", True):
             temp_index = cursor._index
             self.read_numbytes_version(chunk, cursor, context)
             length = cursor._index - temp_index
-            if length != 0 and forth_stash is not None:
-                forth_stash.add_to_pre(f"{length} stream skip\n")
+            if length != 0 and forth_obj is not None:
+                forth_stash.pre_code.append(f"{length} stream skip\n")
             if (
                 issubclass(cls, VersionedModel)
                 and self._instance_version != classname_version(cls.__name__)
@@ -806,16 +808,11 @@ class Model:
                 if classname_version(correct_cls.__name__) != classname_version(
                     cls.__name__
                 ):
-                    if forth_stash is not None:
-                        forth_obj.add_node(
-                            "pass",
-                            forth_stash.get_attrs(),
-                            "i64",
-                            1,
-                            {},
-                        )
                     cursor.move_to(self._cursor.index)
                     context["breadcrumbs"] = old_breadcrumbs
+                    if forth_obj is not None:
+                        forth_obj.add_node(forth_stash)
+                        forth_obj.push_active_node(forth_stash)
                     temp_var = correct_cls.read(
                         chunk,
                         cursor,
@@ -825,37 +822,37 @@ class Model:
                         parent,
                         concrete=concrete,
                     )
-                    # if forth_stash is not None:
-                    #    forth_obj.go_to(temp)
+                    if forth_obj is not None:
+                        forth_obj.pop_active_node()
+
                     return temp_var
 
         if context.get("in_TBranch", False):
-            # AwkwardForth testing: test_0637's 01,02,05,08,09,11,12,13,15,16,29,35,38,39,44,45,46,47,49,50,52,56
+            # AwkwardForth testing A: test_0637's 01,02,05,08,09,11,12,13,15,16,29,35,38,39,44,45,46,47,49,50,52,56
             if self._num_bytes is None and self._instance_version != self.class_version:
                 self._instance_version = None
                 cursor = self._cursor
-                if forth_stash is not None and not context["cancel_forth"]:
+                if forth_obj is not None:
                     forth_stash._pre_code.pop(-1)
 
             elif self._instance_version == 0:
-                if forth_stash is not None:
-                    forth_stash.add_to_pre("4 stream skip\n")
+                if forth_obj is not None:
+                    forth_stash.pre_code.append("4 stream skip\n")
                 cursor.skip(4)
 
         if context.get("reading", True):
             self.hook_before_read_members(
                 chunk=chunk, cursor=cursor, context=context, file=file
             )
-            if forth_stash is not None:
-                forth_obj.add_node(
-                    "model828",
-                    forth_stash.get_attrs(),
-                    "i64",
-                    1,
-                    {},
-                )
-
+            if forth_obj is not None:
+                key = uproot._awkwardforth.get_first_key_number(context)
+                forth_stash.name = f"start-of-model {key}"
+                forth_obj.add_node(forth_stash)
+                forth_obj.push_active_node(forth_stash)
             self.read_members(chunk, cursor, context, file)
+            if forth_obj is not None:
+                forth_obj.pop_active_node()
+
             self.hook_after_read_members(
                 chunk=chunk, cursor=cursor, context=context, file=file
             )
@@ -1307,10 +1304,6 @@ class DispatchByVersion:
         """
         import uproot.deserialization
 
-        forth_stash = uproot._awkward_forth.forth_stash(context)
-
-        if forth_stash is not None:
-            forth_obj = forth_stash.get_gen_obj()
         # Ignores context["reading"], because otherwise, there would be nothing to do.
         start_index = cursor._index
         (
@@ -1320,17 +1313,18 @@ class DispatchByVersion:
         ) = uproot.deserialization.numbytes_version(chunk, cursor, context, move=False)
 
         versioned_cls = cls.class_of_version(version)
-        bytes_skipped = cursor._index - start_index
-        if forth_stash is not None:
-            # raise NotImplementedError
-            forth_stash.add_to_pre(f"{bytes_skipped} stream skip \n")
-            forth_obj.add_node(
-                "Model1319",
-                forth_stash.get_attrs(),
-                "i64",
-                1,
-                {},
+
+        forth_obj = uproot._awkwardforth.get_forth_obj(context)
+        if forth_obj is not None:
+            forth_stash = uproot._awkwardforth.Node(
+                f"dispatch-by-version {uproot._awkwardforth.get_first_key_number(context)}",
+                form_details={"offsets": "i64"},
             )
+            bytes_skipped = cursor._index - start_index
+            forth_stash.pre_code.append(f"{bytes_skipped} stream skip \n")
+
+            forth_obj.add_node(forth_stash)
+            forth_obj.push_active_node(forth_stash)
 
         if versioned_cls is not None:
             pass
@@ -1352,7 +1346,6 @@ class DispatchByVersion:
             )
 
         # versioned_cls.read starts with numbytes_version again because move=False (above)
-        # if forth_stash is not None:
         temp_var = cls.postprocess(
             versioned_cls.read(
                 chunk, cursor, context, file, selffile, parent, concrete=concrete
@@ -1362,10 +1355,10 @@ class DispatchByVersion:
             context,
             file,
         )
-        # if forth_stash is not None:
-        #    if "no_go_to" not in context.keys():
-        # raise NotImplementedError
-        # forth_obj.go_to(temp_node)
+
+        if forth_obj is not None:
+            forth_obj.pop_active_node()
+
         return temp_var
 
     @classmethod

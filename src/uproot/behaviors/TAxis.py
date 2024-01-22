@@ -3,7 +3,7 @@
 """
 This module defines the behaviors of ``TAxis``, an axis of a histogram or profile plot.
 """
-
+from __future__ import annotations
 
 import numpy
 

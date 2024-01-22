@@ -7,6 +7,7 @@ required by an Uproot installation. (Uproot only requires NumPy).
 If a library cannot be imported, these functions raise ``ModuleNotFoundError`` with
 error messages containing instructions on how to install the library.
 """
+from __future__ import annotations
 
 import atexit
 import importlib.metadata as importlib_metadata

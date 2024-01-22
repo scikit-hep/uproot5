@@ -21,7 +21,7 @@ are not efficiently represented, but some jagged arrays are encoded as
 Lazy arrays (:doc:`uproot.behaviors.TBranch.lazy`) can only use the
 :doc:`uproot.interpretation.library.Awkward` library.
 """
-
+from __future__ import annotations
 
 import gc
 import json
@@ -841,8 +841,14 @@ class Pandas(Library):
             isinstance(array, numpy.ndarray)
             and array.dtype.names is None
             and len(array.shape) == 1
+            and array.dtype != numpy.dtype(object)
         ):
             return pandas.Series(array, index=index)
+
+        try:
+            interpretation.awkward_form(None)
+        except uproot.interpretation.objects.CannotBeAwkward:
+            pass
         else:
             array = _libraries[Awkward.name].finalize(
                 array, branch, interpretation, entry_start, entry_stop, options
@@ -853,6 +859,7 @@ class Pandas(Library):
                 array = array.to_numpy()
             else:
                 array = uproot.extras.awkward_pandas().AwkwardExtensionArray(array)
+
         return pandas.Series(array, index=index)
 
     def group(self, arrays, expression_context, how):

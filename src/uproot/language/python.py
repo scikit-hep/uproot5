@@ -7,7 +7,7 @@ This module defines a :doc:`uproot.language.Language` for expressions passed to
 The :doc:`uproot.language.python.PythonLanguage` evaluates Python code. It is
 the default language.
 """
-
+from __future__ import annotations
 
 import ast
 import warnings

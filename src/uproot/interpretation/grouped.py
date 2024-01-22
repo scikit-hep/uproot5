@@ -5,7 +5,7 @@ This module defines an :doc:`uproot.interpretation.Interpretation` and
 temporary array for grouped data; usually applied to a ``TBranch`` that does
 not contain data but has subbranches that do.
 """
-
+from __future__ import annotations
 
 import uproot
 

@@ -3,7 +3,7 @@
 """
 This module defines the behavior of ``TH2Poly``.
 """
-
+from __future__ import annotations
 
 import uproot
 

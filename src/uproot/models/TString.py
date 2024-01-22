@@ -3,10 +3,10 @@
 """
 This module defines a versionless model of ``TString``.
 """
-
+from __future__ import annotations
 
 import uproot
-import uproot._awkward_forth
+import uproot._awkwardforth
 
 
 class Model_TString(uproot.model.Model, str):
@@ -20,23 +20,18 @@ class Model_TString(uproot.model.Model, str):
         pass
 
     def read_members(self, chunk, cursor, context, file):
-        forth_stash = uproot._awkward_forth.forth_stash(context)
-        if forth_stash is not None:
-            forth_obj = forth_stash.get_gen_obj()
-            keys = forth_obj.get_keys(2)
-            offsets_num = keys[0]
-            data_num = keys[1]
         if self.is_memberwise:
             raise NotImplementedError(
                 f"""memberwise serialization of {type(self).__name__}
 in file {self.file.file_path}"""
             )
-        if forth_stash is not None:
-            forth_stash.add_to_pre(
-                f" stream !B-> stack dup 255 = if drop stream !I-> stack then dup node{offsets_num}-offsets +<- stack stream #!B-> node{data_num}-data\n"
-            )
-            if forth_obj.should_add_form():
-                temp_aform = {
+        forth_obj = uproot._awkwardforth.get_forth_obj(context)
+        if forth_obj is not None:
+            offsets_num = uproot._awkwardforth.get_first_key_number(context)
+            data_num = offsets_num + 1
+            nested_forth_stash = uproot._awkwardforth.Node(
+                f"node{offsets_num} TString",
+                form_details={
                     "class": "ListOffsetArray",
                     "offsets": "i64",
                     "content": {
@@ -48,27 +43,19 @@ in file {self.file.file_path}"""
                     },
                     "parameters": {"__array__": "string"},
                     "form_key": f"node{offsets_num}",
-                }
-                forth_obj.add_form(temp_aform)
-
-                form_keys = [
-                    f"node{data_num}-data",
-                    f"node{offsets_num}-offsets",
-                ]
-                for elem in form_keys:
-                    forth_obj.add_form_key(elem)
-            forth_stash.add_to_header(
+                },
+            )
+            nested_forth_stash.pre_code.append(
+                f" stream !B-> stack dup 255 = if drop stream !I-> stack then dup node{offsets_num}-offsets +<- stack stream #!B-> node{data_num}-data\n"
+            )
+            nested_forth_stash.header_code.append(
                 f"output node{offsets_num}-offsets int64\noutput node{data_num}-data uint8\n"
             )
-            forth_stash.add_to_init(f"0 node{offsets_num}-offsets <- stack\n")
-            temp_form = forth_obj.add_node(
-                f"node{offsets_num}",
-                forth_stash.get_attrs(),
-                "i64",
-                0,
-                None,
+            nested_forth_stash.init_code.append(
+                f"0 node{offsets_num}-offsets <- stack\n"
             )
-            forth_obj.go_to(temp_form)
+            forth_obj.add_node(nested_forth_stash)
+
         self._data = cursor.string(chunk, context)
 
     def postprocess(self, chunk, cursor, context, file):

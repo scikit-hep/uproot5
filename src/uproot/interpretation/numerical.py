@@ -15,7 +15,7 @@ several numerical types:
 * :doc:`uproot.interpretation.numerical.AsSTLBits`: an ``std::bitset<N>``
   for some ``N``.
 """
-
+from __future__ import annotations
 
 import numpy
 

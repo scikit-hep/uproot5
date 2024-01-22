@@ -3,7 +3,7 @@
 """
 This module defines a versionless model for ``TList``.
 """
-
+from __future__ import annotations
 
 import struct
 from collections.abc import Sequence
@@ -19,7 +19,8 @@ class Model_TList(uproot.model.Model, Sequence):
     """
 
     def read_members(self, chunk, cursor, context, file):
-        context["cancel_forth"] = True
+        if uproot._awkwardforth.get_forth_obj(context) is not None:
+            raise uproot.interpretation.objects.CannotBeForth()
         if self.is_memberwise:
             raise NotImplementedError(
                 f"""memberwise serialization of {type(self).__name__}

@@ -36,6 +36,8 @@ def test_AnalysisJetsAuxDyn_GhostTrack(is_forth):
         assert str(array.type) == expected_type
         assert array[0, 0].tolist() == expected_data
         assert array.layout.form == interp.awkward_form(branch.file)
+        if is_forth:
+            assert interp._complete_forth_code is not None
 
 
 @pytest.mark.parametrize("is_forth", [False, True])
@@ -58,6 +60,8 @@ def test_TruthBosonAuxDyn_childLinks(is_forth):
         assert str(array.type) == expected_type
         assert array[0].tolist() == expected_data
         assert array.layout.form == interp.awkward_form(branch.file)
+        if is_forth:
+            assert interp._complete_forth_code is not None
 
 
 @pytest.mark.parametrize("is_forth", [False, True])
@@ -81,6 +85,8 @@ def test_TruthPhotonsAuxDyn_parentLinks(is_forth):
         assert str(array.type) == expected_type
         assert array[0].tolist() == expected_data
         assert array.layout.form == interp.awkward_form(branch.file)
+        if is_forth:
+            assert interp._complete_forth_code is not None
 
 
 @pytest.mark.parametrize("is_forth", [False, True])
@@ -101,3 +107,5 @@ def test_TruthTopAuxDyn_parentLinks(is_forth):
         assert str(array.type) == expected_type
         assert array[0].tolist() == expected_data
         assert array.layout.form == interp.awkward_form(branch.file)
+        if is_forth:
+            assert interp._complete_forth_code is not None

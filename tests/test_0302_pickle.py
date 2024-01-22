@@ -1,19 +1,24 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot5/blob/main/LICENSE
 
-import os
 import pickle
-import sys
 
 import pytest
 import skhep_testdata
 
 import uproot
 
-pytest.importorskip("awkward")
 
-
-def test_pickle_roundtrip_mmap():
-    with uproot.open(skhep_testdata.data_path("uproot-small-dy-withoffsets.root")) as f:
+@pytest.mark.parametrize(
+    "handler",
+    [
+        uproot.source.file.MemmapSource,
+        uproot.source.fsspec.FSSpecSource,
+    ],
+)
+def test_pickle_roundtrip_local(handler):
+    with uproot.open(
+        skhep_testdata.data_path("uproot-small-dy-withoffsets.root"), handler=handler
+    ) as f:
         pkl = pickle.dumps(f["tree"])
 
     branch = pickle.loads(pkl)["Muon_pt"]
@@ -32,9 +37,20 @@ def test_pickle_roundtrip_mmap():
     ]
 
 
+@pytest.mark.parametrize(
+    "handler",
+    [
+        uproot.source.http.HTTPSource,
+        uproot.source.fsspec.FSSpecSource,
+    ],
+)
 @pytest.mark.network
-def test_pickle_roundtrip_http():
-    with uproot.open("https://scikit-hep.org/uproot3/examples/Zmumu.root") as f:
+def test_pickle_roundtrip_http(handler):
+    pytest.importorskip("aiohttp")
+
+    with uproot.open(
+        "https://scikit-hep.org/uproot3/examples/Zmumu.root", handler=handler
+    ) as f:
         pkl = pickle.dumps(f["events"])
 
     tree = pickle.loads(pkl)
@@ -53,12 +69,20 @@ def test_pickle_roundtrip_http():
     ]
 
 
+@pytest.mark.parametrize(
+    "handler",
+    [
+        uproot.source.xrootd.XRootDSource,
+        uproot.source.fsspec.FSSpecSource,
+    ],
+)
 @pytest.mark.network
 @pytest.mark.xrootd
-def test_pickle_roundtrip_xrootd():
+def test_pickle_roundtrip_xrootd(handler):
     pytest.importorskip("XRootD")
     with uproot.open(
-        "root://eospublic.cern.ch//eos/root-eos/cms_opendata_2012_nanoaod/Run2012B_DoubleMuParked.root"
+        "root://eospublic.cern.ch//eos/root-eos/cms_opendata_2012_nanoaod/Run2012B_DoubleMuParked.root",
+        handler=handler,
     ) as f:
         pkl = pickle.dumps(f["Events"])
 
