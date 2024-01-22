@@ -1274,7 +1274,7 @@ For some protocols, such as `s3` or `ssh`, fsspec may need additional options, s
 
 Keep in mind that there might be different libraries that implement a given fsspec backend. This might lead to errors when using uproot. For example, the fsspec ssh tests assume `paramiko <https://github.com/paramiko/paramiko>`_ is installed, but another library such as `sshfs <https://github.com/fsspec/sshfs>`_ might be present instead which also adds ssh support but might behave differently.
 
-reading
+Reading
 ~~~~~~~
 
 Opening a file via S3:
@@ -1298,7 +1298,7 @@ Some parameters can be directly passed in the url scheme, such as ssh user and h
     >>> with uproot.open("ssh://user@host:port/file.root") as f:
     >>>    ...
 
-globbing
+File globbing
 ~~~~~~~~
 
 Some protocols support glob expressions, which can be used in the same way they are used in the local filesystem.
@@ -1313,14 +1313,14 @@ Not all protocols that support reading support globbing, for example, http does 
 
 This feature comes directly as a consequence of the fsspec integration, so requests for globbing support should be directed to fsspec or the specific protocol implementation (it may not be technically possible for some protocols).
 
-writing
+Writing
 ~~~~~~~
 
 The same syntax used for writing uproot files can be used for writing files over different protocols via fsspec.
 Just specify the protocol in the path (`ssh://...`) and any necessary options as keyword arguments.
 If the protocol does not support writing, a `NotImplementedError` will be raised.
 
-local cache
+Local cache
 ~~~~~~~~~~~
 
 fsspec supports caching files locally, which can be useful for repeated access to the same file. It can also be used for remote writing files, to avoid writing to the remote file until the file is closed. Additional information is available `in the fsspec docs <https://filesystem-spec.readthedocs.io/en/latest/features.html?highlight=simplecache#caching-files-locally>`_.
