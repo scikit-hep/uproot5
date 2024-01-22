@@ -69,7 +69,7 @@ def test_compute(tmp_path):
     arr = uproot.open(skhep_testdata.data_path("uproot-HZZ.root"))["events"].arrays()
     dask_arr = dask_awkward.from_awkward(ak.from_iter(arr), partitions)
     with Client() as _:
-        graph = uproot.dask_write(dask_arr, str(tmp_path), compute=False)
+        graph = uproot.dask_write(dask_arr, str(tmp_path), prefix="data", compute=False)
         dask.compute(graph)
     dask_arr = dask_awkward.from_awkward(ak.from_iter(arr), partitions)
     file_1 = uproot.open(os.path.join(tmp_path, "data-part0.root"))
@@ -80,5 +80,5 @@ def test_compute(tmp_path):
     assert ak.all(file_2["tree"]["Jet_Px"].arrays()["Jet_Px"][0] == arr["Jet_Px"])
 
 
-# if __name__ == "__main__":
-#     test_compute("/Users/zobil/Documents/my-output")
+if __name__ == "__main__":
+    test_compute("/Users/zobil/Documents/my-output")
