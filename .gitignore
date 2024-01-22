@@ -1,3 +1,6 @@
+# hatch-vcs
+src/uproot/version.py
+
 # Sphinx documentation
 docs-sphinx/_build
 docs-sphinx/changelog.rst
