@@ -81,7 +81,3 @@ def test_compute(tmp_path):
     file_2 = uproot.open(os.path.join(tmp_path, "distribute-part1.root"))
     assert len(file_2["tree"]["Jet_Px"].arrays()) == int(len(arr) / partitions)
     assert ak.all(file_2["tree"]["Jet_Px"].arrays()["Jet_Px"][0] == arr["Jet_Px"])
-
-
-# if __name__ == "__main__":
-#     test_compute("\my-output")
