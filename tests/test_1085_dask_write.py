@@ -65,20 +65,21 @@ def test_graph(tmp_path):
 
 
 def test_compute(tmp_path):
+    print("here")
     partitions = 2
     arr = uproot.open(skhep_testdata.data_path("uproot-HZZ.root"))["events"].arrays()
     dask_arr = dask_awkward.from_awkward(ak.from_iter(arr), partitions)
     with Client() as _:
-        graph = uproot.dask_write(dask_arr, str(tmp_path), prefix="data", compute=False)
+        graph = uproot.dask_write(dask_arr, str(tmp_path), prefix="distribute", compute=False)
         dask.compute(graph)
     dask_arr = dask_awkward.from_awkward(ak.from_iter(arr), partitions)
-    file_1 = uproot.open(os.path.join(tmp_path, "data-part0.root"))
+    file_1 = uproot.open(os.path.join(tmp_path, "distribute-part0.root"))
     assert len(file_1["tree"]["Jet_Px"].arrays()) == math.ceil(len(arr) / partitions)
     assert ak.all(file_1["tree"]["Jet_Px"].arrays()["Jet_Px"][0] == arr["Jet_Px"])
-    file_2 = uproot.open(os.path.join(tmp_path, "data-part1.root"))
+    file_2 = uproot.open(os.path.join(tmp_path, "distribute-part1.root"))
     assert len(file_2["tree"]["Jet_Px"].arrays()) == int(len(arr) / partitions)
     assert ak.all(file_2["tree"]["Jet_Px"].arrays()["Jet_Px"][0] == arr["Jet_Px"])
 
 
-if __name__ == "__main__":
-    test_compute("/Users/zobil/Documents/my-output")
+# if __name__ == "__main__":
+#     test_compute("\my-output")
