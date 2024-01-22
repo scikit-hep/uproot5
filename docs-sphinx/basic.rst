@@ -1272,6 +1272,8 @@ When attempting to open a file with a protocol that is not supported, uproot wil
 
 For some protocols, such as `s3` or `ssh`, fsspec may need additional options, such as credentials. These can be directly passed as keyword arguments to the uproot function, and will be passed to fsspec.
 
+Keep in mind that there might be different libraries that implement a given fsspec backend. This might lead to errors when using uproot. For example, the fsspec ssh tests assume `paramiko <https://github.com/paramiko/paramiko>`_ is installed, but another library such as `sshfs <https://github.com/fsspec/sshfs>`_ might be present instead which also adds ssh support but might behave differently.
+
 reading
 ~~~~~~~
 
@@ -1322,3 +1324,19 @@ local cache
 ~~~~~~~~~~~
 
 fsspec supports caching files locally, which can be useful for repeated access to the same file. It can also be used for remote writing files, to avoid writing to the remote file until the file is closed. Additional information is available `in the fsspec docs <https://filesystem-spec.readthedocs.io/en/latest/features.html?highlight=simplecache#caching-files-locally>`_.
+
+For example, the following code will download the whole file to a local cache directory:
+
+.. code-block:: python
+
+    >>> with uproot.open("simplecache::http://host:port/file.root") as f:
+    >>>    ...
+
+This improves read speed at the cost of waiting for the whole file to download and the increase in disk usage.
+
+The following fsspec option can be used to specify the cache directory:
+
+.. code-block:: python
+
+    >>> with uproot.open("simplecache::http://host:port/file.root", simplecache={"cache_storage": cache_path}) as f:
+    >>>    ...
