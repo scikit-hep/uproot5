@@ -23,7 +23,6 @@ Lazy arrays (:doc:`uproot.behaviors.TBranch.lazy`) can only use the
 """
 from __future__ import annotations
 
-import gc
 import json
 
 import numpy
@@ -784,25 +783,6 @@ def _pandas_only_series(pandas, original_arrays, expression_context):
     return arrays, names
 
 
-def _pandas_memory_efficient(pandas, series, names):
-    # Pandas copies the data, so at least feed columns one by one
-    gc.collect()
-    out = None
-    for name in names:
-        if out is None:
-            if not isinstance(series[name], pandas.core.series.Series):
-                out = pandas.Series(data=series[name]).to_frame(name=name)
-            else:
-                out = series[name].to_frame(name=name)
-        else:
-            out[name] = series[name]
-        del series[name]
-    if out is None:
-        return pandas.DataFrame(data=series, columns=names)
-    else:
-        return out
-
-
 class Pandas(Library):
     """
     A :doc:`uproot.interpretation.library.Library` that presents ``TBranch``
@@ -876,7 +856,18 @@ class Pandas(Library):
 
         elif isinstance(how, str) or how is None:
             arrays, names = _pandas_only_series(pandas, arrays, expression_context)
-            return _pandas_memory_efficient(pandas, arrays, names)
+            if len(arrays) == 0:
+                return pandas.DataFrame()
+            else:
+                arrays = {
+                    k: v
+                    if isinstance(v, (pandas.Series, pandas.DataFrame))
+                    else pandas.Series(v, name=k)
+                    for k, v in arrays.items()
+                }
+                out = pandas.concat(arrays, axis=1, ignore_index=True)
+                out.columns = names
+                return out
 
         else:
             raise TypeError(
