@@ -3,11 +3,6 @@ from __future__ import annotations
 import math
 from typing import Any
 
-from dask.base import tokenize
-from dask.blockwise import BlockIndex
-from dask.highlevelgraph import HighLevelGraph
-from dask_awkward.layers.layers import AwkwardMaterializedLayer
-from dask_awkward.lib.core import map_partitions, new_scalar_object
 from fsspec import AbstractFileSystem
 from fsspec.core import url_to_fs
 
@@ -42,7 +37,7 @@ class _ToROOTFn:
         if self.prefix is not None:
             filename = f"{self.prefix}-{filename}"
         filename = f"{self.protocol}://{self.path}/{filename}"
-        return to_root(
+        return ak_to_root(
             filename, data, **self.kwargs, storage_options=self.storage_options
         )
 
@@ -95,6 +90,12 @@ def dask_write(
         uproot.dask_write(d)
 
     """
+    from dask.base import tokenize
+    from dask.blockwise import BlockIndex
+    from dask.highlevelgraph import HighLevelGraph
+    from dask_awkward.layers.layers import AwkwardMaterializedLayer
+    from dask_awkward.lib.core import map_partitions, new_scalar_object
+
     fs, path = url_to_fs(destination, **(storage_options or {}))
     name = f"write-root-{tokenize(fs, array, destination)}"
 
@@ -114,9 +115,7 @@ def dask_write(
             initial_basket_capacity=initial_basket_capacity,
         ),
         array,
-        BlockIndex(
-            (array.npartitions,)
-        ),  # class to provide current block index at each block of the operation...
+        BlockIndex((array.npartitions,)),
         label="to-root",
         meta=array._meta,
     )
@@ -138,7 +137,7 @@ def dask_write(
         return out
 
 
-def to_root(  # user-defined groups for ak.zip?
+def ak_to_root(
     destination,
     array,
     tree_name,

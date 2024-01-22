@@ -39,9 +39,7 @@ dependencies = [
   "numpy",
   "fsspec",
   "packaging",
-  "typing_extensions>=4.1.0; python_version < \"3.11\"",
-  "dask >=2023.04.0",
-  "dask-awkward>=2023.12.1"
+  "typing_extensions>=4.1.0; python_version < \"3.11\""
 ]
 description = "ROOT I/O in pure Python and NumPy."
 dynamic = [
