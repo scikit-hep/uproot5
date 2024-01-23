@@ -908,8 +908,8 @@ class UprootReadMixin:
 
     @property
     def allowed_exceptions(self):
-        if isinstance(allow_read_errors_with_report, tuple):
-            return allow_read_errors_with_report
+        if isinstance(self.allow_read_errors_with_report, tuple):
+            return self.allow_read_errors_with_report
         return (OSError,)
 
     @property
