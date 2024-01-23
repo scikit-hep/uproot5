@@ -1166,7 +1166,7 @@ class _UprootOpenAndRead(UprootReadMixin):
         base_form: Form,
         expected_form: Form,
         form_mapping_info: ImplementsFormMappingInfo,
-        allow_read_errors_with_report: bool | tuple[type[BaseException], ...],,
+        allow_read_errors_with_report: bool | tuple[type[BaseException], ...],
     ) -> None:
         self.custom_classes = custom_classes
         self.allow_missing = allow_missing
