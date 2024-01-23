@@ -96,7 +96,7 @@ def dask(
         form_mapping (Callable[awkward.forms.Form] -> awkward.forms.Form | None): If not none
             and library="ak" then apply this remapping function to the awkward form of the input
             data. The form keys of the desired form should be available data in the input form.
-        allow_read_errors_with_report (bool or tuple or exceptions): If True, catch OSError
+        allow_read_errors_with_report (bool or tuple of exceptions): If True, catch OSError
             exceptions and return an empty array for these nodes in the task graph. If a tuple,
             catch any of those exceptions and return empty arrays for those nodes. In either of
             those cases, The return of this function becomes a two element tuple, where the
