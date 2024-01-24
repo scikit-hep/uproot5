@@ -198,7 +198,7 @@ class AsObjects(uproot.interpretation.Interpretation):
         )
         assert basket.byte_offsets is not None
 
-        if not hasattr(context["forth"], "vm"):
+        if getattr(context["forth"], "vm", None) is None:
             # context["forth"] is a threading.local()
             context["forth"].vm = None
             context["forth"].gen = uproot._awkwardforth.ForthGenerator(self)
