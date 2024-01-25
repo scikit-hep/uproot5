@@ -36,7 +36,7 @@ class _ToROOTFn:
         filename = f"part{str(block_index[0]).zfill(self.zfill)}.root"
         if self.prefix is not None:
             filename = f"{self.prefix}-{filename}"
-        filename = f"{self.protocol}://{self.path}/{filename}"
+        filename = self.fs.unstrip_protocol(f"{self.path}{self.fs.sep}{filename}")
         return ak_to_root(
             filename, data, **self.kwargs, storage_options=self.storage_options
         )
