@@ -11,6 +11,7 @@ and :doc:`uproot.writing.writable.update`.
 """
 from __future__ import annotations
 
+from uproot.writing._dask_write import dask_write
 from uproot.writing.identify import (
     to_TArray,
     to_TH1x,
@@ -51,4 +52,5 @@ __all__ = [
     "create",
     "recreate",
     "update",
+    "dask_write",
 ]
