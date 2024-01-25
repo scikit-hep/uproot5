@@ -100,6 +100,7 @@ log_cli_level = "info"
 markers = [
   "slow",
   "network",
+  "distributed",
   "xrootd"
 ]
 minversion = "6.0"

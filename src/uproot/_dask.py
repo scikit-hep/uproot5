@@ -96,10 +96,12 @@ def dask(
         form_mapping (Callable[awkward.forms.Form] -> awkward.forms.Form | None): If not none
             and library="ak" then apply this remapping function to the awkward form of the input
             data. The form keys of the desired form should be available data in the input form.
-        allow_read_errors_with_report (bool): If True, catch OSError exceptions and return an
-            empty array for these nodes in the task graph. The return of this function then
-            becomes a two element tuple, where the first return is the dask-awkward collection
-            of interest and the second return is a report dask-awkward collection.
+        allow_read_errors_with_report (bool or tuple of exceptions): If True, catch OSError
+            exceptions and return an empty array for these nodes in the task graph. If a tuple,
+            catch any of those exceptions and return empty arrays for those nodes. In either of
+            those cases, The return of this function becomes a two element tuple, where the
+            first return is the dask-awkward collection of interest and the second return is a
+            report dask-awkward collection.
         known_base_form (awkward.forms.Form | None): If not none use this form instead of opening
             one file to determine the dataset's form. Only available with open_files=False.
         options: See below.
@@ -902,15 +904,17 @@ class UprootReadMixin:
     form_mapping_info: ImplementsFormMappingInfo
     common_keys: frozenset[str]
     interp_options: dict[str, Any]
-    allow_read_errors_with_report: bool
+    allow_read_errors_with_report: bool | tuple[type[BaseException], ...]
 
     @property
     def allowed_exceptions(self):
+        if isinstance(self.allow_read_errors_with_report, tuple):
+            return self.allow_read_errors_with_report
         return (OSError,)
 
     @property
     def return_report(self) -> bool:
-        return self.allow_read_errors_with_report
+        return bool(self.allow_read_errors_with_report)
 
     def read_tree(self, tree: HasBranches, start: int, stop: int) -> AwkArray:
         assert start <= stop
@@ -1097,7 +1101,7 @@ class _UprootRead(UprootReadMixin):
         base_form: Form,
         expected_form: Form,
         form_mapping_info: ImplementsFormMappingInfo,
-        allow_read_errors_with_report: bool,
+        allow_read_errors_with_report: bool | tuple[type[BaseException], ...],
     ) -> None:
         self.ttrees = ttrees
         self.common_keys = frozenset(common_keys)
@@ -1162,7 +1166,7 @@ class _UprootOpenAndRead(UprootReadMixin):
         base_form: Form,
         expected_form: Form,
         form_mapping_info: ImplementsFormMappingInfo,
-        allow_read_errors_with_report: bool,
+        allow_read_errors_with_report: bool | tuple[type[BaseException], ...],
     ) -> None:
         self.custom_classes = custom_classes
         self.allow_missing = allow_missing
