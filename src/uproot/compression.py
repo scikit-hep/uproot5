@@ -158,9 +158,19 @@ class _DecompressLZMA:
     _method = b"\x00"
 
     def decompress(self, data: bytes, uncompressed_bytes=None) -> bytes:
-        import lzma
-
-        return lzma.decompress(data)
+        cramjam = uproot.extras.cramjam()
+        lzma = getattr(cramjam, "lzma", None) or getattr(
+            getattr(cramjam, "experimental", None), "lzma", None
+        )
+        if lzma is None:
+            raise RuntimeError(
+                "lzma not found in the cramjam package! (requires cramjam >= 2.8.1)"
+            )
+        if uncompressed_bytes is None:
+            raise ValueError(
+                "lzma decompression requires the number of uncompressed bytes"
+            )
+        return lzma.decompress(data, output_len=uncompressed_bytes)
 
 
 class LZMA(Compression, _DecompressLZMA):
@@ -171,7 +181,7 @@ class LZMA(Compression, _DecompressLZMA):
 
     Represents the LZMA compression algorithm.
 
-    Uproot uses ``lzma`` from the Python 3 standard library.
+    Uproot uses ``lzma`` from the ``cramjam`` package.
     """
 
     def __init__(self, level):
@@ -195,8 +205,14 @@ class LZMA(Compression, _DecompressLZMA):
         self._level = int(value)
 
     def compress(self, data: bytes) -> bytes:
-        import lzma
-
+        cramjam = uproot.extras.cramjam()
+        lzma = getattr(cramjam, "lzma", None) or getattr(
+            getattr(cramjam, "experimental", None), "lzma", None
+        )
+        if lzma is None:
+            raise RuntimeError(
+                "lzma not found in the cramjam package! (requires cramjam >= 2.8.1)"
+            )
         return lzma.compress(data, preset=self._level)
 
 
