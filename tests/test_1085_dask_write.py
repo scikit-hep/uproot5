@@ -66,7 +66,6 @@ def test_graph(tmp_path):
 
 @pytest.mark.distributed
 def test_compute(tmp_path):
-    print("here")
     partitions = 2
     arr = uproot.open(skhep_testdata.data_path("uproot-HZZ.root"))["events"].arrays()
     dask_arr = dask_awkward.from_awkward(ak.from_iter(arr), partitions)
