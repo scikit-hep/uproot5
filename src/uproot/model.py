@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import re
 import sys
+import threading
 import weakref
 
 import numpy
@@ -1122,12 +1123,25 @@ class VersionedModel(Model):
                 "writable": self.writable,
                 "behaviors": self.behaviors,
             },
-            dict(self.__dict__),
+            {
+                k: _LockPlaceholder()
+                if isinstance(v, _LockPlaceholder.lock_type)
+                else v
+                for k, v in self.__dict__.items()
+            },
         )
 
     def __setstate__(self, state):
         class_data, instance_data = state
+        instance_data = {
+            k: threading.Lock() if isinstance(v, _LockPlaceholder) else v
+            for k, v in instance_data.items()
+        }
         self.__dict__.update(instance_data)
+
+
+class _LockPlaceholder:
+    lock_type = type(threading.Lock())
 
 
 class DispatchByVersion:
