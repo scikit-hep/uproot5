@@ -1124,9 +1124,11 @@ class VersionedModel(Model):
                 "behaviors": self.behaviors,
             },
             {
-                k: _LockPlaceholder()
-                if isinstance(v, _LockPlaceholder.lock_type)
-                else v
+                k: (
+                    _LockPlaceholder()
+                    if isinstance(v, _LockPlaceholder.lock_type)
+                    else v
+                )
                 for k, v in self.__dict__.items()
             },
         )

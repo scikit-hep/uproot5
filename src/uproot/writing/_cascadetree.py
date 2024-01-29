@@ -1140,12 +1140,12 @@ class Tree:
             out.append(special_struct.pack(0, 0))
             datum["tleaf_special_struct"] = special_struct
 
-            out[
-                subany_tleaf_index
-            ] = uproot.serialization._serialize_object_any_format1.pack(
-                numpy.uint32(sum(len(x) for x in out[subany_tleaf_index + 1 :]) + 4)
-                | uproot.const.kByteCountMask,
-                uproot.const.kNewClassTag,
+            out[subany_tleaf_index] = (
+                uproot.serialization._serialize_object_any_format1.pack(
+                    numpy.uint32(sum(len(x) for x in out[subany_tleaf_index + 1 :]) + 4)
+                    | uproot.const.kByteCountMask,
+                    uproot.const.kNewClassTag,
+                )
             )
 
             out[subtobjarray_of_leaves_index] = uproot.serialization.numbytes_version(
@@ -1182,12 +1182,12 @@ class Tree:
                 sum(len(x) for x in out[tbranch_index + 1 :]), 13  # TBranch
             )
 
-            out[
-                any_tbranch_index
-            ] = uproot.serialization._serialize_object_any_format1.pack(
-                numpy.uint32(sum(len(x) for x in out[any_tbranch_index + 1 :]) + 4)
-                | uproot.const.kByteCountMask,
-                uproot.const.kNewClassTag,
+            out[any_tbranch_index] = (
+                uproot.serialization._serialize_object_any_format1.pack(
+                    numpy.uint32(sum(len(x) for x in out[any_tbranch_index + 1 :]) + 4)
+                    | uproot.const.kByteCountMask,
+                    uproot.const.kNewClassTag,
+                )
             )
 
         out[tobjarray_of_branches_index] = uproot.serialization.numbytes_version(
