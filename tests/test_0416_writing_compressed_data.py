@@ -15,7 +15,10 @@ ROOT = pytest.importorskip("ROOT")
 def test_ZLIB(use_isal):
     if use_isal:
         pytest.importorskip("isal")
-    uproot.ZLIB.use_isal = use_isal
+        uproot.ZLIB.library = "isal"
+    else:
+        uproot.ZLIB.library = "zlib"
+
     for _ in range(2):
         with uproot.open(skhep_testdata.data_path("uproot-Zmumu-zlib.root"))[
             "events"
@@ -81,7 +84,9 @@ def test_ZSTD():
 def test_histogram_ZLIB(tmp_path, use_isal):
     if use_isal:
         pytest.importorskip("isal")
-    uproot.ZLIB.use_isal = use_isal
+        uproot.ZLIB.library = "isal"
+    else:
+        uproot.ZLIB.library = "zlib"
 
     newfile = os.path.join(tmp_path, "newfile.root")
 
@@ -369,7 +374,9 @@ def test_jaggedtree_ZSTD(tmp_path):
 def test_multicompression_1(tmp_path, use_isal):
     if use_isal:
         pytest.importorskip("isal")
-    uproot.ZLIB.use_isal = use_isal
+        uproot.ZLIB.library = "isal"
+    else:
+        uproot.ZLIB.library = "zlib"
 
     newfile = os.path.join(tmp_path, "newfile.root")
 
@@ -401,7 +408,9 @@ def test_multicompression_1(tmp_path, use_isal):
 def test_multicompression_2(tmp_path, use_isal):
     if use_isal:
         pytest.importorskip("isal")
-    uproot.ZLIB.use_isal = use_isal
+        uproot.ZLIB.library = "isal"
+    else:
+        uproot.ZLIB.library = "zlib"
 
     newfile = os.path.join(tmp_path, "newfile.root")
 
@@ -432,7 +441,9 @@ def test_multicompression_2(tmp_path, use_isal):
 def test_multicompression_3(tmp_path, use_isal):
     if use_isal:
         pytest.importorskip("isal")
-    uproot.ZLIB.use_isal = use_isal
+        uproot.ZLIB.library = "isal"
+    else:
+        uproot.ZLIB.library = "zlib"
 
     newfile = os.path.join(tmp_path, "newfile.root")
 
@@ -464,7 +475,9 @@ def test_multicompression_3(tmp_path, use_isal):
 def test_multicompression_4(tmp_path, use_isal):
     if use_isal:
         pytest.importorskip("isal")
-    uproot.ZLIB.use_isal = use_isal
+        uproot.ZLIB.library = "isal"
+    else:
+        uproot.ZLIB.library = "zlib"
 
     newfile = os.path.join(tmp_path, "newfile.root")
 
@@ -494,7 +507,9 @@ def test_multicompression_4(tmp_path, use_isal):
 def test_multicompression_5(tmp_path, use_isal):
     if use_isal:
         pytest.importorskip("isal")
-    uproot.ZLIB.use_isal = use_isal
+        uproot.ZLIB.library = "isal"
+    else:
+        uproot.ZLIB.library = "zlib"
 
     newfile = os.path.join(tmp_path, "newfile.root")
 

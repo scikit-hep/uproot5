@@ -87,19 +87,26 @@ class _DecompressZLIB:
     name = "ZLIB"
     _2byte = b"ZL"
     _method = b"\x08"
-    use_isal = False
+    library = "zlib"  # options: "zlib", "isal"
 
     def decompress(self, data: bytes, uncompressed_bytes=None) -> bytes:
         if uncompressed_bytes is None:
             raise ValueError(
                 "zlib decompression requires the number of uncompressed bytes"
             )
-        if self.use_isal:
+        if self.library == "zlib":
+            import zlib
+
+            return zlib.decompress(data, bufsize=uncompressed_bytes)
+
+        elif self.library == "isal":
             isal_zlib = uproot.extras.isal().isal_zlib
             return isal_zlib.decompress(data, bufsize=uncompressed_bytes)
-        import zlib
 
-        return zlib.decompress(data, bufsize=uncompressed_bytes)
+        else:
+            raise ValueError(
+                f"unrecognized ZLIB.library: {self.library!r}; must be one of ['zlib', 'isal']"
+            )
 
 
 class ZLIB(Compression, _DecompressZLIB):
@@ -110,8 +117,10 @@ class ZLIB(Compression, _DecompressZLIB):
 
     Represents the ZLIB compression algorithm.
 
-    Uproot uses ``zlib`` from the Python standard library or
-    ``isal.isal_zlib`` if the ``use_isal`` flag is set.
+    If ``ZLIB.library`` is ``"zlib"`` (default), Uproot uses ``zlib`` from the
+    Python standard library.
+
+    If ``ZLIB.library`` is ``"isal"`` (default), Uproot uses ``isal.isal_zlib``.
     """
 
     def __init__(self, level):
@@ -139,17 +148,24 @@ class ZLIB(Compression, _DecompressZLIB):
         self._level = int(value)
 
     def compress(self, data: bytes) -> bytes:
-        if self.use_isal:
+        if self.library == "zlib":
+            import zlib
+
+            return zlib.compress(data, level=self._level)
+
+        elif self.library == "isal":
             isal_zlib = uproot.extras.isal().isal_zlib
             if self._level == 0:
                 raise ValueError(
-                    "ZLIB.use_isal is True, and therefore requesting no compression "
+                    'ZLIB.library="isal", and therefore requesting no compression '
                     "implicitly with level 0 is not allowed."
                 )
             return isal_zlib.compress(data, level=round(self._level / 3))
-        import zlib
 
-        return zlib.compress(data, level=self._level)
+        else:
+            raise ValueError(
+                f"unrecognized ZLIB.library: {self.library!r}; must be one of ['zlib', 'isal']"
+            )
 
 
 class _DecompressLZMA:
