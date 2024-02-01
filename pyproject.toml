@@ -38,6 +38,7 @@ dependencies = [
   "importlib-metadata;python_version<\"3.8\"",
   "numpy",
   "fsspec",
+  "xxhash",
   "packaging",
   "typing_extensions>=4.1.0; python_version < \"3.11\""
 ]
@@ -61,7 +62,6 @@ dev = [
 ]
 test = [
   "lz4",
-  "xxhash",
   "zstandard",
   "minio",
   "aiohttp",
