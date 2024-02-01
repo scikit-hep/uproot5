@@ -860,9 +860,11 @@ class Pandas(Library):
                 return pandas.DataFrame()
             else:
                 arrays = {
-                    k: v
-                    if isinstance(v, (pandas.Series, pandas.DataFrame))
-                    else pandas.Series(v, name=k)
+                    k: (
+                        v
+                        if isinstance(v, (pandas.Series, pandas.DataFrame))
+                        else pandas.Series(v, name=k)
+                    )
                     for k, v in arrays.items()
                 }
                 out = pandas.concat(arrays, axis=1, ignore_index=True)

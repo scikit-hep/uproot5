@@ -827,6 +827,6 @@ class FooterReader:
         return out
 
 
-uproot.classes[
-    "ROOT::Experimental::RNTuple"
-] = Model_ROOT_3a3a_Experimental_3a3a_RNTuple
+uproot.classes["ROOT::Experimental::RNTuple"] = (
+    Model_ROOT_3a3a_Experimental_3a3a_RNTuple
+)
