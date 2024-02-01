@@ -434,32 +434,51 @@ input stream
             library=library,
             branch=branch,
             options=options,
-        )
+        )  
         trimmed = []
+        awkward_items= []
+        numpy_items = []
         start = entry_offsets[0]
         for basket_num, stop in enumerate(entry_offsets[1:]):
             if start <= entry_start and entry_stop <= stop:
                 local_start = entry_start - start
                 local_stop = entry_stop - start
-                trimmed.append(basket_arrays[basket_num][local_start:local_stop])
+                array = basket_arrays[basket_num][local_start:local_stop]
 
             elif start <= entry_start < stop:
                 local_start = entry_start - start
                 local_stop = stop - start
-                trimmed.append(basket_arrays[basket_num][local_start:local_stop])
+                array = basket_arrays[basket_num][local_start:local_stop]
 
             elif start <= entry_stop <= stop:
                 local_start = 0
                 local_stop = entry_stop - start
-                trimmed.append(basket_arrays[basket_num][local_start:local_stop])
+                array = basket_arrays[basket_num][local_start:local_stop]
 
             elif entry_start < stop and start <= entry_stop:
-                trimmed.append(basket_arrays[basket_num])
+                array = basket_arrays[basket_num]
+            
+            trimmed.append(array)
+
+            if isinstance(array, numpy.ndarray):
+                numpy_items.append(array)
+            elif isinstance(array, uproot.extras.awkward().Array):
+                awkward_items.append(array)
 
             start = stop
 
         if len(basket_arrays) == 0:
             output = numpy.array([], dtype=self.numpy_dtype)
+
+        elif len(awkward_items) > 0 and len(numpy_items) > 0:
+            awkward = uproot.extras.awkward()
+
+            numpy_to_awkward = awkward.from_iter(
+                (uproot.interpretation.library._object_to_awkward_json(self._form, x) for x in numpy_items), highlevel=False
+            )
+            
+            output = awkward.concatenate([awkward_items, numpy_to_awkward], mergebool=False, highlevel=False)
+
         elif all(
             uproot._util.from_module(x, "awkward") for x in basket_arrays.values()
         ) and isinstance(
