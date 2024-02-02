@@ -476,13 +476,11 @@ input stream
                     ),
                     highlevel=False,
                 )
-                array = awkward.Array(
+                trimmed[-1] = awkward.Array(
                     uproot.interpretation.library._awkward_json_to_array(
                         awkward, self._form, unlabled
                     )
                 )
-
-            trimmed.append(array)
 
             start = stop
 
