@@ -441,26 +441,27 @@ input stream
             uproot._util.from_module(x, "awkward") for x in basket_arrays.values()
         )
         for basket_num, stop in enumerate(entry_offsets[1:]):
+            to_append = None
             if start <= entry_start and entry_stop <= stop:
                 local_start = entry_start - start
                 local_stop = entry_stop - start
-                trimmed.append(basket_arrays[basket_num][local_start:local_stop])
+                to_append = basket_arrays[basket_num][local_start:local_stop]
 
             elif start <= entry_start < stop:
                 local_start = entry_start - start
                 local_stop = stop - start
-                trimmed.append(basket_arrays[basket_num][local_start:local_stop])
+                to_append = basket_arrays[basket_num][local_start:local_stop]
 
             elif start <= entry_stop <= stop:
                 local_start = 0
                 local_stop = entry_stop - start
-                trimmed.append(basket_arrays[basket_num][local_start:local_stop])
+                to_append = basket_arrays[basket_num][local_start:local_stop]
 
             elif entry_start < stop and start <= entry_stop:
-                trimmed.append(basket_arrays[basket_num])
+                to_append = basket_arrays[basket_num]
 
             if (
-                len(trimmed) > 0
+                to_append is not None
                 and isinstance(
                     library,
                     (
@@ -468,12 +469,14 @@ input stream
                         uproot.interpretation.library.Pandas,
                     ),
                 )
-                and isinstance(trimmed[-1], numpy.ndarray)
+                and isinstance(to_append, numpy.ndarray)
                 and has_any_awkward_types
             ):
-                trimmed[-1] = uproot.interpretation.library._object_to_awkward_array(
-                    uproot.extras.awkward(), self._form, trimmed[-1]
-                )
+                trimmed.append(uproot.interpretation.library._object_to_awkward_array(
+                    uproot.extras.awkward(), self._form, to_append
+                ))
+            elif to_append is not None:
+                trimmed.append(to_append)
 
             start = stop
 
