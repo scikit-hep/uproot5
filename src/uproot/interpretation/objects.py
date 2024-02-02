@@ -455,18 +455,26 @@ input stream
 
             elif entry_start < stop and start <= entry_stop:
                 array = basket_arrays[basket_num]
-                
-            if isinstance(library, uproot.interpretation.library.Awkward) and isinstance(array, numpy.ndarray):
-                #FIXME make me a helper function :) 
+
+            if isinstance(
+                library, uproot.interpretation.library.Awkward
+            ) and isinstance(array, numpy.ndarray):
+                # FIXME make me a helper function :)
                 awkward = uproot.extras.awkward()
                 unlabled = awkward.from_iter(
                     (
-                        uproot.interpretation.library._object_to_awkward_json(self._form, x)
+                        uproot.interpretation.library._object_to_awkward_json(
+                            self._form, x
+                        )
                         for x in array
                     ),
                     highlevel=False,
                 )
-                array = awkward.Array(uproot.interpretation.library._awkward_json_to_array(awkward, self._form, unlabeled))
+                array = awkward.Array(
+                    uproot.interpretation.library._awkward_json_to_array(
+                        awkward, self._form, unlabeled
+                    )
+                )
 
             trimmed.append(array)
 
