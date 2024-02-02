@@ -460,26 +460,19 @@ input stream
                 trimmed.append(basket_arrays[basket_num])
 
             if (
-                has_any_awkward_types
-                and len(trimmed) > 0
-                and isinstance(library, uproot.interpretation.library.Awkward)
-                and isinstance(trimmed[-1], numpy.ndarray)
-            ):
-                # FIXME make me a helper function :)
-                awkward = uproot.extras.awkward()
-                unlabled = awkward.from_iter(
+                len(trimmed) > 0
+                and isinstance(
+                    library,
                     (
-                        uproot.interpretation.library._object_to_awkward_json(
-                            self._form, x
-                        )
-                        for x in trimmed[-1]
+                        uproot.interpretation.library.Awkward,
+                        uproot.interpretation.library.Pandas,
                     ),
-                    highlevel=False,
                 )
-                trimmed[-1] = awkward.Array(
-                    uproot.interpretation.library._awkward_json_to_array(
-                        awkward, self._form, unlabled
-                    )
+                and isinstance(trimmed[-1], numpy.ndarray)
+                and has_any_awkward_types
+            ):
+                trimmed[-1] = uproot.interpretation.library._object_to_awkward_array(
+                    uproot.extras.awkward(), self._form, trimmed[-1]
                 )
 
             start = stop
