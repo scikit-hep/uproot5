@@ -478,11 +478,6 @@ input stream
 
             trimmed.append(array)
 
-            if isinstance(array, numpy.ndarray):
-                numpy_items.append(array)
-            elif isinstance(array, uproot.extras.awkward().Array):
-                awkward_items.append(array)
-
             start = stop
 
         if len(basket_arrays) == 0:
