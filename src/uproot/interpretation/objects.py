@@ -472,7 +472,7 @@ input stream
                 )
                 array = awkward.Array(
                     uproot.interpretation.library._awkward_json_to_array(
-                        awkward, self._form, unlabeled
+                        awkward, self._form, unlabled
                     )
                 )
 
