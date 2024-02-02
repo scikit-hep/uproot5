@@ -472,9 +472,11 @@ input stream
                 and isinstance(to_append, numpy.ndarray)
                 and has_any_awkward_types
             ):
-                trimmed.append(uproot.interpretation.library._object_to_awkward_array(
-                    uproot.extras.awkward(), self._form, to_append
-                ))
+                trimmed.append(
+                    uproot.interpretation.library._object_to_awkward_array(
+                        uproot.extras.awkward(), self._form, to_append
+                    )
+                )
             elif to_append is not None:
                 trimmed.append(to_append)
 
