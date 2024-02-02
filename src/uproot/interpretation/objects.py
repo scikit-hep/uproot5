@@ -459,7 +459,12 @@ input stream
             elif entry_start < stop and start <= entry_stop:
                 trimmed.append(basket_arrays[basket_num])
 
-            if has_any_awkward_types and len(trimmed) > 0 and isinstance(library, uproot.interpretation.library.Awkward) and isinstance(trimmed[-1], numpy.ndarray):
+            if (
+                has_any_awkward_types
+                and len(trimmed) > 0
+                and isinstance(library, uproot.interpretation.library.Awkward)
+                and isinstance(trimmed[-1], numpy.ndarray)
+            ):
                 # FIXME make me a helper function :)
                 awkward = uproot.extras.awkward()
                 unlabled = awkward.from_iter(
