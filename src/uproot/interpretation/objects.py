@@ -472,7 +472,7 @@ input stream
                         uproot.interpretation.library._object_to_awkward_json(
                             self._form, x
                         )
-                        for x in array
+                        for x in trimmed[-1]
                     ),
                     highlevel=False,
                 )
