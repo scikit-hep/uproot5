@@ -436,8 +436,6 @@ input stream
             options=options,
         )
         trimmed = []
-        awkward_items = []
-        numpy_items = []
         start = entry_offsets[0]
         for basket_num, stop in enumerate(entry_offsets[1:]):
             if start <= entry_start and entry_stop <= stop:
@@ -457,6 +455,18 @@ input stream
 
             elif entry_start < stop and start <= entry_stop:
                 array = basket_arrays[basket_num]
+                
+            if isinstance(library, uproot.interpretation.library.Awkward) and isinstance(array, numpy.ndarray):
+                #FIXME make me a helper function :) 
+                awkward = uproot.extras.awkward()
+                unlabled = awkward.from_iter(
+                    (
+                        uproot.interpretation.library._object_to_awkward_json(self._form, x)
+                        for x in array
+                    ),
+                    highlevel=False,
+                )
+                array = awkward.Array(uproot.interpretation.library._awkward_json_to_array(awkward, self._form, unlabeled))
 
             trimmed.append(array)
 
@@ -469,21 +479,6 @@ input stream
 
         if len(basket_arrays) == 0:
             output = numpy.array([], dtype=self.numpy_dtype)
-
-        elif len(awkward_items) > 0 and len(numpy_items) > 0:
-            awkward = uproot.extras.awkward()
-
-            numpy_to_awkward = awkward.from_iter(
-                (
-                    uproot.interpretation.library._object_to_awkward_json(self._form, x)
-                    for x in numpy_items
-                ),
-                highlevel=False,
-            )
-
-            output = awkward.concatenate(
-                [awkward_items, numpy_to_awkward], mergebool=False, highlevel=False
-            )
 
         elif all(
             uproot._util.from_module(x, "awkward") for x in basket_arrays.values()
