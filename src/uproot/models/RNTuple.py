@@ -24,7 +24,7 @@ _rntuple_repetition_format = struct.Struct("<Q")
 _rntuple_column_record_format = struct.Struct("<HHII")
 _rntuple_alias_column_format = struct.Struct("<II")
 _rntuple_extra_type_info_format = struct.Struct("<III")
-_rntuple_record_size_format = struct.Struct("<I")
+_rntuple_record_size_format = struct.Struct("<q")
 _rntuple_frame_header_format = struct.Struct("<qi")
 _rntuple_cluster_group_format = struct.Struct("<QQI")
 _rntuple_locator_format = struct.Struct("<IQ")
@@ -635,6 +635,7 @@ class RecordFrameReader:
     def read(self, chunk, cursor, context):
         local_cursor = cursor.copy()
         num_bytes = local_cursor.field(chunk, _rntuple_record_size_format, context)
+        assert num_bytes >= 0, f"num_bytes={num_bytes}"
         cursor.skip(num_bytes)
         return self.payload.read(chunk, local_cursor, context)
 
@@ -648,7 +649,6 @@ class ListFrameReader:
         num_bytes, num_items = local_cursor.fields(
             chunk, _rntuple_frame_header_format, context
         )
-        local_cursor.skip(4) # TODO: need to check what these bytes are
         assert num_bytes < 0, f"num_bytes={num_bytes}"
         cursor.skip(-num_bytes)
         return [

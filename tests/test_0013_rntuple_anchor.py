@@ -33,7 +33,7 @@ def test():
 
         # print("HEADER")
         # cursor = uproot.Cursor(header_start)
-        # cursor.debug(header_chunk, {}, 80)
+        # cursor.debug(header_chunk, limit_bytes=80)
         # print("\n")
 
         notifications = queue.Queue()
@@ -46,7 +46,7 @@ def test():
 
         # print("FOOTER")
         # cursor = uproot.Cursor(footer_start)
-        # cursor.debug(footer_chunk, {}, 80)
+        # cursor.debug(footer_chunk, limit_bytes=80)
         # print("\n")
 
 
