@@ -464,6 +464,12 @@ def _awkward_add_doc(awkward, array, branch, ak_add_doc):
     else:
         return array
 
+def _object_to_awkward_array(awkward, form, array):
+    unlabeled = awkward.from_iter(
+        (_object_to_awkward_json(form, x) for x in array),
+        highlevel=False,
+    )
+    return awkward.Array(_awkward_json_to_array(awkward, form, unlabeled))
 
 class Awkward(Library):
     """
@@ -570,12 +576,9 @@ class Awkward(Library):
             form = json.loads(
                 interpretation.awkward_form(interpretation.branch.file).to_json()
             )
-            unlabeled = awkward.from_iter(
-                (_object_to_awkward_json(form, x) for x in array), highlevel=False
-            )
             return _awkward_add_doc(
                 awkward,
-                awkward.Array(_awkward_json_to_array(awkward, form, unlabeled)),
+                _object_to_awkward_array(awkward, form, array),
                 branch,
                 ak_add_doc,
             )
