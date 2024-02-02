@@ -437,28 +437,29 @@ input stream
         )
         trimmed = []
         start = entry_offsets[0]
+        has_any_awkward_types = any(
+            uproot._util.from_module(x, "awkward") for x in basket_arrays.values()
+        )
         for basket_num, stop in enumerate(entry_offsets[1:]):
             if start <= entry_start and entry_stop <= stop:
                 local_start = entry_start - start
                 local_stop = entry_stop - start
-                array = basket_arrays[basket_num][local_start:local_stop]
+                trimmed.append(basket_arrays[basket_num][local_start:local_stop])
 
             elif start <= entry_start < stop:
                 local_start = entry_start - start
                 local_stop = stop - start
-                array = basket_arrays[basket_num][local_start:local_stop]
+                trimmed.append(basket_arrays[basket_num][local_start:local_stop])
 
             elif start <= entry_stop <= stop:
                 local_start = 0
                 local_stop = entry_stop - start
-                array = basket_arrays[basket_num][local_start:local_stop]
+                trimmed.append(basket_arrays[basket_num][local_start:local_stop])
 
             elif entry_start < stop and start <= entry_stop:
-                array = basket_arrays[basket_num]
+                trimmed.append(basket_arrays[basket_num])
 
-            if isinstance(
-                library, uproot.interpretation.library.Awkward
-            ) and isinstance(array, numpy.ndarray):
+            if has_any_awkward_types and len(trimmed) > 0 and isinstance(library, uproot.interpretation.library.Awkward) and isinstance(trimmed[-1], numpy.ndarray):
                 # FIXME make me a helper function :)
                 awkward = uproot.extras.awkward()
                 unlabled = awkward.from_iter(
