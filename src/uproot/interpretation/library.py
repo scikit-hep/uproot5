@@ -296,7 +296,7 @@ def _object_to_awkward_json(form, obj):
         out = {}
         for name, subform in zip(form["fields"], form["contents"]):
             if not name.startswith("@"):
-                if hasattr(obj,"has_member") and obj.has_member(name):
+                if hasattr(obj, "has_member") and obj.has_member(name):
                     out[name] = _object_to_awkward_json(subform, obj.member(name))
                 else:
                     out[name] = _object_to_awkward_json(subform, getattr(obj, name))
