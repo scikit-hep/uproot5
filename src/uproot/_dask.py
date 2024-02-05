@@ -43,6 +43,8 @@ def dask(
     form_mapping=None,
     allow_read_errors_with_report=False,
     known_base_form=None,
+    decompression_executor=None,
+    interpretation_executor=None,
     **options,
 ):
     """
@@ -104,6 +106,15 @@ def dask(
             report dask-awkward collection.
         known_base_form (awkward.forms.Form | None): If not none use this form instead of opening
             one file to determine the dataset's form. Only available with open_files=False.
+        decompression_executor (None or Executor with a ``submit`` method): The
+            executor that is used to decompress ``TBaskets``; if None, a
+            :doc:`uproot.source.futures.TrivialExecutor` is created.
+            Executors attached to a file are ``shutdown`` when the file is closed.
+        interpretation_executor (None or Executor with a ``submit`` method): The
+            executor that is used to interpret uncompressed ``TBasket`` data as
+            arrays; if None, a :doc:`uproot.source.futures.TrivialExecutor`
+            is created.
+            Executors attached to a file are ``shutdown`` when the file is closed.
         options: See below.
 
     Returns dask equivalents of the backends supported by uproot. If ``library='np'``,
@@ -239,6 +250,8 @@ def dask(
                 real_options,
                 interp_options,
                 steps_per_file,
+                decompression_executor,
+                interpretation_executor,
             )
         else:
             return _get_dask_array_delay_open(
@@ -253,6 +266,8 @@ def dask(
                 real_options,
                 interp_options,
                 steps_per_file,
+                decompression_executor,
+                interpretation_executor,
             )
     elif library.name == "ak":
         if open_files:
@@ -438,10 +453,19 @@ def _dask_array_from_map(
 
 
 class _UprootReadNumpy:
-    def __init__(self, ttrees, key, interp_options) -> None:
+    def __init__(
+        self,
+        ttrees,
+        key,
+        interp_options,
+        decompression_executor=None,
+        interpretation_executor=None,
+    ) -> None:
         self.ttrees = ttrees
         self.key = key
         self.interp_options = interp_options
+        self.decompression_executor = decompression_executor
+        self.interpretation_executor = interpretation_executor
 
     def __call__(self, i_start_stop):
         i, start, stop = i_start_stop
@@ -450,18 +474,29 @@ class _UprootReadNumpy:
             entry_stop=stop,
             library="np",
             ak_add_doc=self.interp_options["ak_add_doc"],
+            decompression_executor=self.decompression_executor,
+            interpretation_executor=self.interpretation_executor,
         )
 
 
 class _UprootOpenAndReadNumpy:
     def __init__(
-        self, custom_classes, allow_missing, real_options, key, interp_options
+        self,
+        custom_classes,
+        allow_missing,
+        real_options,
+        key,
+        interp_options,
+        decompression_executor=None,
+        interpretation_executor=None,
     ):
         self.custom_classes = custom_classes
         self.allow_missing = allow_missing
         self.real_options = real_options
         self.key = key
         self.interp_options = interp_options
+        self.decompression_executor = decompression_executor
+        self.interpretation_executor = interpretation_executor
 
     def __call__(self, file_path_object_path_istep_nsteps_ischunk):
         (
@@ -503,6 +538,8 @@ which has {num_entries} entries"""
             entry_start=start,
             entry_stop=stop,
             ak_add_doc=self.interp_options["ak_add_doc"],
+            decompression_executor=self.decompression_executor,
+            interpretation_executor=self.interpretation_executor,
         )
 
 
@@ -519,6 +556,8 @@ def _get_dask_array(
     real_options,
     interp_options,
     steps_per_file,
+    decompression_executor,
+    interpretation_executor,
 ):
     ttrees = []
     explicit_chunks = []
@@ -670,7 +709,13 @@ which has {entry_stop} entries"""
             chunk_args.append((0, 0, 0))
 
         dask_dict[key] = _dask_array_from_map(
-            _UprootReadNumpy(ttrees, key, interp_options),
+            _UprootReadNumpy(
+                ttrees,
+                key,
+                interp_options,
+                decompression_executor,
+                interpretation_executor,
+            ),
             chunk_args,
             chunks=(tuple(chunks),),
             dtype=dt,
@@ -692,6 +737,8 @@ def _get_dask_array_delay_open(
     real_options,
     interp_options,
     steps_per_file,
+    decompression_executor,
+    interpretation_executor,
 ):
     ffile_path, fobject_path = files[0][0:2]
     obj = uproot._util.regularize_object_path(
@@ -750,7 +797,13 @@ def _get_dask_array_delay_open(
 
         dask_dict[key] = _dask_array_from_map(
             _UprootOpenAndReadNumpy(
-                custom_classes, allow_missing, real_options, key, interp_options
+                custom_classes,
+                allow_missing,
+                real_options,
+                key,
+                interp_options,
+                decompression_executor,
+                interpretation_executor,
             ),
             partition_args,
             chunks=(tuple(partitions),),
