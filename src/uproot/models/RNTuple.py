@@ -39,9 +39,7 @@ def from_zigzag(n):
 
 
 def _envelop_header(chunk, cursor, context):
-    env_data = cursor.field(
-        chunk, _rntuple_env_header_format, context
-    )
+    env_data = cursor.field(chunk, _rntuple_env_header_format, context)
     env_type_id = env_data & 0xFFFF
     env_length = env_data >> 16
     return {"env_type_id": env_type_id, "env_length": env_length}
@@ -150,7 +148,9 @@ in file {self.file.file_path}"""
 
             h = HeaderReader().read(self._header_chunk, cursor, context)
             self._header = h
-            assert h.checksum == xxhash.xxh3_64_intdigest(self._header_chunk.raw_data[:-8])
+            assert h.checksum == xxhash.xxh3_64_intdigest(
+                self._header_chunk.raw_data[:-8]
+            )
 
         return self._header
 
@@ -176,7 +176,9 @@ in file {self.file.file_path}"""
             assert (
                 f.header_checksum == self.header.checksum
             ), f"checksum={self.header.checksum}, header_checksum={f.header_checksum}"
-            assert f.checksum == xxhash.xxh3_64_intdigest(self._footer_chunk.raw_data[:-8])
+            assert f.checksum == xxhash.xxh3_64_intdigest(
+                self._footer_chunk.raw_data[:-8]
+            )
             self._footer = f
 
         return self._footer
@@ -581,7 +583,9 @@ class PageLink:
         out = MetaData(type(self).__name__)
         out.env_header = _envelop_header(chunk, cursor, context)
         local_cursor = cursor.copy()
-        num_bytes, num_items = cursor.fields(chunk, _rntuple_frame_header_format, context)
+        num_bytes, num_items = cursor.fields(
+            chunk, _rntuple_frame_header_format, context
+        )
         if num_items == 0:
             return out
         out.pagelinklist = self.top_most_list.read(chunk, local_cursor, context)

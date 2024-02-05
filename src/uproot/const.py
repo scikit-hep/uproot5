@@ -119,13 +119,13 @@ kStreamedMemberWise = numpy.uint16(1 << 14)
 
 ############ RNTuple https://github.com/root-project/root/blob/master/tree/ntuple/v7/doc/specifications.md
 _rntuple_frame_format = struct.Struct("<Q")
-rntuple_env_header = _rntuple_frame_format.pack(0) # TODO: need to check this
+rntuple_env_header = _rntuple_frame_format.pack(0)  # TODO: need to check this
 rntuple_col_num_to_dtype_dict = {
     1: "uint64",
     2: "uint32",
     3: "switch",  # Switch
     4: "uint8",
-    5: "uint8",    # char
+    5: "uint8",  # char
     6: "bit",
     7: "float64",
     8: "float32",
@@ -136,9 +136,9 @@ rntuple_col_num_to_dtype_dict = {
     13: "uint8",
     14: "uint64",  # SplitIndex64 delta encoding
     15: "uint32",  # SplitIndex32 delta encoding
-    16: "float64", # split
-    17: "float32", # split
-    18: "float16", # split
+    16: "float64",  # split
+    17: "float32",  # split
+    18: "float16",  # split
     19: "uint64",  # split
     20: "uint32",  # split
     21: "uint16",  # split
@@ -146,9 +146,9 @@ rntuple_col_num_to_dtype_dict = {
     23: "int32",
     24: "int16",
     25: "int8",
-    26: "int64",   # split + zigzag encoding
-    27: "int32",   # split + zigzag encoding
-    28: "int16",   # split + zigzag encoding
+    26: "int64",  # split + zigzag encoding
+    27: "int32",  # split + zigzag encoding
+    28: "int16",  # split + zigzag encoding
 }
 rntuple_col_num_to_size_dict = {
     1: 64,
