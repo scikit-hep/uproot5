@@ -26,4 +26,3 @@ def test_partially_fix_issue_951():
 
                 branch.interpretation._forth = True
                 branch.array()
-
