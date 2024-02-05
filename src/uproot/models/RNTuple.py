@@ -14,7 +14,7 @@ import xxhash
 import uproot
 
 # https://github.com/root-project/root/blob/aa513463b0b512517370cb91cca025e53a8b13a2/tree/ntuple/v7/inc/ROOT/RNTupleAnchor.hxx#L69
-_rntuple_format1 = struct.Struct(">HHHHQQQQQQQ")
+_rntuple_anchor_format = struct.Struct(">HHHHQQQQQQQ")
 
 # https://github.com/root-project/root/blob/aa513463b0b512517370cb91cca025e53a8b13a2/tree/ntuple/v7/doc/specifications.md#envelopes
 _rntuple_feature_flag_format = struct.Struct("<Q")
@@ -29,6 +29,9 @@ _rntuple_frame_header_format = struct.Struct("<qi")
 _rntuple_cluster_group_format = struct.Struct("<QQI")
 _rntuple_locator_format = struct.Struct("<IQ")
 _rntuple_cluster_summary_format = struct.Struct("<QQ")
+_rntuple_checksum_format = struct.Struct("<Q")
+_rntuple_envlink_size_format = struct.Struct("<Q")
+_rntuple_page_num_elements_format = struct.Struct("<I")
 
 
 def from_zigzag(n):
@@ -82,7 +85,7 @@ in file {self.file.file_path}"""
             self._members["fNBytesFooter"],
             self._members["fLenFooter"],
             self._members["fChecksum"],
-        ) = cursor.fields(chunk, _rntuple_format1, context)
+        ) = cursor.fields(chunk, _rntuple_anchor_format, context)
 
         self._header_chunk_ready = False
         self._footer_chunk_ready = False
@@ -549,7 +552,7 @@ def _recursive_find(form, res):
 class PageDescription:
     def read(self, chunk, cursor, context):
         out = MetaData(type(self).__name__)
-        out.num_elements = cursor.field(chunk, struct.Struct("<I"), context)
+        out.num_elements = cursor.field(chunk, _rntuple_page_num_elements_format, context)
         out.locator = LocatorReader().read(chunk, cursor, context)
         return out
 
@@ -583,7 +586,7 @@ class PageLink:
             return out
         out.pagelinklist = self.top_most_list.read(chunk, local_cursor, context)
         cursor.skip(-num_bytes - 8)
-        out.checksum = cursor.field(chunk, struct.Struct("<Q"), context)
+        out.checksum = cursor.field(chunk, _rntuple_checksum_format, context)
         assert xxhash.xxh3_64_intdigest(chunk.raw_data[:-8]) == out.checksum
         return out
 
@@ -600,7 +603,7 @@ class LocatorReader:
 class EnvLinkReader:
     def read(self, chunk, cursor, context):
         out = MetaData("EnvLink")
-        out.env_uncomp_size = cursor.field(chunk, struct.Struct("<I"), context)
+        out.env_uncomp_size = cursor.field(chunk, _rntuple_envlink_size_format, context)
         out.locator = LocatorReader().read(chunk, cursor, context)
         return out
 
@@ -737,7 +740,7 @@ class HeaderReader:
         out.extra_type_infos = self.list_extra_type_info_reader.read(
             chunk, cursor, context
         )
-        out.checksum = cursor.field(chunk, struct.Struct("<Q"), context)
+        out.checksum = cursor.field(chunk, _rntuple_checksum_format, context)
 
         return out
 
@@ -782,7 +785,7 @@ class ClusterGroupRecordReader:
 class RNTupleSchemaExtension:
     def read(self, chunk, cursor, context):
         out = MetaData(type(self).__name__)
-        out.size = cursor.field(chunk, struct.Struct("<I"), context)
+        out.size = cursor.field(chunk, _rntuple_record_size_format, context)
         out.field_records = ListFrameReader(
             RecordFrameReader(FieldRecordReader())
         ).read(chunk, cursor, context)
@@ -817,18 +820,18 @@ class FooterReader:
         out = MetaData("Footer")
         out.env_header = _envelop_header(chunk, cursor, context)
         out.feature_flag = cursor.field(chunk, _rntuple_feature_flag_format, context)
-        out.header_checksum = cursor.field(chunk, struct.Struct("<Q"), context)
+        out.header_checksum = cursor.field(chunk, _rntuple_checksum_format, context)
         out.extension_links = self.extension_header_links.read(chunk, cursor, context)
 
         out.col_group_records = self.column_group_record_frames.read(
             chunk, cursor, context
         )
-        out.cluster_summaries = self.cluster_summary_frames.read(chunk, cursor, context)
+        #out.cluster_summaries = self.cluster_summary_frames.read(chunk, cursor, context)
         out.cluster_group_records = self.cluster_group_record_frames.read(
             chunk, cursor, context
         )
         out.meta_block_links = self.meta_data_links.read(chunk, cursor, context)
-        out.checksum = cursor.field(chunk, struct.Struct("<Q"), context)
+        out.checksum = cursor.field(chunk, _rntuple_checksum_format, context)
         return out
 
 
