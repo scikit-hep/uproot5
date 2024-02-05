@@ -23,12 +23,12 @@ import uproot.const
 import uproot.reading
 import uproot.serialization
 from uproot.models.RNTuple import (
+    _rntuple_anchor_format,
     _rntuple_cluster_group_format,
     _rntuple_cluster_summary_format,
     _rntuple_column_record_format,
     _rntuple_feature_flag_format,
     _rntuple_field_description_format,
-    _rntuple_anchor_format,
     _rntuple_locator_format,
     _rntuple_record_size_format,
 )

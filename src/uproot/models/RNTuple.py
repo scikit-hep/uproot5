@@ -554,7 +554,9 @@ def _recursive_find(form, res):
 class PageDescription:
     def read(self, chunk, cursor, context):
         out = MetaData(type(self).__name__)
-        out.num_elements = cursor.field(chunk, _rntuple_page_num_elements_format, context)
+        out.num_elements = cursor.field(
+            chunk, _rntuple_page_num_elements_format, context
+        )
         out.locator = LocatorReader().read(chunk, cursor, context)
         return out
 
@@ -830,7 +832,7 @@ class FooterReader:
         out.col_group_records = self.column_group_record_frames.read(
             chunk, cursor, context
         )
-        #out.cluster_summaries = self.cluster_summary_frames.read(chunk, cursor, context)
+        # out.cluster_summaries = self.cluster_summary_frames.read(chunk, cursor, context)
         out.cluster_group_records = self.cluster_group_record_frames.read(
             chunk, cursor, context
         )
