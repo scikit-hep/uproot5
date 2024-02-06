@@ -107,7 +107,7 @@ def ensure(filename, content):
 
 def handle_module(modulename, module):
     if any(x.startswith("_") for x in modulename.split(".")) and not any(
-        x == "_dask" for x in modulename.split(".")
+        x == "_dask" or x == "_dask_write" for x in modulename.split(".")
     ):
         return
 
@@ -125,7 +125,7 @@ def handle_module(modulename, module):
         toctree2.write("    " + modulename + " (module) <" + modulename + ">\n")
 
     if modulename != "uproot" and all(
-        not x.startswith("_") or x == "_dask" for x in modulename.split(".")
+        not x.startswith("_") or x == "_dask" or x == "_dask_write" for x in modulename.split(".")
     ):
 
         def good(obj):
