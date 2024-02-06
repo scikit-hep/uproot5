@@ -70,6 +70,8 @@ class FSSpecSource(uproot.source.chunk.Source):
 
     def __setstate__(self, state):
         self.__dict__ = state
+        self._file = None
+        self._fh = None
         self._open()
 
     def __enter__(self):
