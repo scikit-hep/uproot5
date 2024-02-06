@@ -125,7 +125,8 @@ def handle_module(modulename, module):
         toctree2.write("    " + modulename + " (module) <" + modulename + ">\n")
 
     if modulename != "uproot" and all(
-        not x.startswith("_") or x == "_dask" or x == "_dask_write" for x in modulename.split(".")
+        not x.startswith("_") or x == "_dask" or x == "_dask_write"
+        for x in modulename.split(".")
     ):
 
         def good(obj):
