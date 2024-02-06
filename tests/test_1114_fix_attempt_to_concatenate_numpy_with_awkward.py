@@ -7,7 +7,9 @@ import skhep_testdata
 
 def test_partially_fix_issue_951():
 
-    with uproot.open(skhep_testdata.data_path("uproot-issue-951.root") + ":CollectionTree") as tree:
+    with uproot.open(
+        skhep_testdata.data_path("uproot-issue-951.root") + ":CollectionTree"
+    ) as tree:
         for key, branch in tree.iteritems(filter_typename="*ElementLink*"):
             try:
                 branch.interpretation._forth = True
