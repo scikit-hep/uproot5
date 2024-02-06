@@ -460,23 +460,36 @@ input stream
             elif entry_start < stop and start <= entry_stop:
                 to_append = basket_arrays[basket_num]
 
-            if (
-                to_append is not None
-                and isinstance(
-                    library,
-                    (
-                        uproot.interpretation.library.Awkward,
-                        uproot.interpretation.library.Pandas,
-                    ),
-                )
-                and isinstance(to_append, numpy.ndarray)
-                and has_any_awkward_types
-            ):
-                trimmed.append(
-                    uproot.interpretation.library._object_to_awkward_array(
-                        uproot.extras.awkward(), self._form, to_append
-                    )
-                )
+            if to_append is not None and has_any_awkward_types:
+
+                if isinstance(library, uproot.interpretation.library.NumPy):
+                    trimmed.append(to_append)
+
+                elif isinstance(library, uproot.interpretation.library.Awkward):
+
+                    if isinstance(to_append, numpy.ndarray):
+                        trimmed.append(
+                            uproot.interpretation.library._object_to_awkward_array(
+                                uproot.extras.awkward(), self._form, to_append
+                            )
+                        )
+                    else:
+                        trimmed.append(to_append)
+
+                elif isinstance(library, uproot.interpretation.library.Pandas):
+
+                    if isinstance(to_append, numpy.ndarray):
+                        trimmed.append(
+                            uproot.interpretation.library._process_array_for_pandas(
+                                to_append,
+                                False,
+                                branch.file.interpretation,
+                                form=self._form,
+                            )
+                        )
+                    else:
+                        trimmed.append(to_append)
+
             elif to_append is not None:
                 trimmed.append(to_append)
 
