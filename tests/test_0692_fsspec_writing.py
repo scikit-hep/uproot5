@@ -74,8 +74,7 @@ def test_fsspec_writing_local_uri(tmp_path, scheme, slash_prefix, filename):
     ],
 )
 def test_fsspec_writing_create(tmp_path, scheme):
-    uri = scheme + os.path.join("some", "path", "file.root")
-    os.chdir(tmp_path)
+    uri = scheme + os.path.join(tmp_path, "some", "path", "file.root")
     with uproot.create(uri) as f:
         f["tree"] = {"x": np.array([1, 2, 3])}
 
@@ -123,8 +122,7 @@ def test_fsspec_writing_http(http_server):
     ],
 )
 def test_fsspec_writing_local_update(tmp_path, scheme):
-    uri = scheme + os.path.join("some", "path", "file.root")
-    os.chdir(tmp_path)
+    uri = scheme + os.path.join(tmp_path, "some", "path", "file.root")
     with uproot.recreate(uri) as f:
         f["tree1"] = {"x": np.array([1, 2, 3])}
 
