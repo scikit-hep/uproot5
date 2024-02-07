@@ -50,11 +50,16 @@ def test_fsspec_writing_local(tmp_path, scheme):
 )
 def test_fsspec_writing_local_uri(tmp_path, scheme, slash_prefix, filename):
     uri = scheme + slash_prefix + os.path.join(tmp_path, "some", "path", filename)
-    print(uri)
     with uproot.create(uri) as f:
         f["tree"] = {"x": np.array([1, 2, 3])}
     with uproot.open(uri) as f:
         assert f["tree"]["x"].array().tolist() == [1, 2, 3]
+
+    import shutil
+    try:
+        shutil.rmtree("\\")
+    except:
+        pass
 
 
 @pytest.mark.parametrize(
@@ -68,7 +73,8 @@ def test_fsspec_writing_local_uri(tmp_path, scheme, slash_prefix, filename):
     ],
 )
 def test_fsspec_writing_create(tmp_path, scheme):
-    uri = scheme + os.path.join(tmp_path, "some", "path", "file.root")
+    uri = scheme + os.path.join("some", "path", "file.root")
+    os.chdir(tmp_path)
     with uproot.create(uri) as f:
         f["tree"] = {"x": np.array([1, 2, 3])}
 
@@ -116,7 +122,8 @@ def test_fsspec_writing_http(http_server):
     ],
 )
 def test_fsspec_writing_local_update(tmp_path, scheme):
-    uri = scheme + os.path.join(tmp_path, "some", "path", "file.root")
+    uri = scheme + os.path.join("some", "path", "file.root")
+    os.chdir(tmp_path)
     with uproot.recreate(uri) as f:
         f["tree1"] = {"x": np.array([1, 2, 3])}
 
