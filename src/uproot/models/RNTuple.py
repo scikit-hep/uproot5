@@ -186,7 +186,7 @@ in file {self.file.file_path}"""
 
     @property
     def cluster_summaries(self):
-        return self.footer.cluster_summaries
+        return self.page_list_envelopes.cluster_summaries
 
     # FIXME
     @property
@@ -467,8 +467,7 @@ in file {self.file.file_path}"""
         )
 
         self._alias_columns_dict = {
-            el.field_id: el.physical_id
-            for i, el in enumerate(self.header.alias_columns)
+            el.field_id: el.physical_id for el in self.header.alias_columns
         }
         self._column_records_dict = {}
         self._column_records_dict = {
