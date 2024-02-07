@@ -56,6 +56,7 @@ def test_fsspec_writing_local_uri(tmp_path, scheme, slash_prefix, filename):
         assert f["tree"]["x"].array().tolist() == [1, 2, 3]
 
     import shutil
+
     try:
         shutil.rmtree("\\")
     except:
