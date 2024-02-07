@@ -26,12 +26,13 @@ _rntuple_alias_column_format = struct.Struct("<II")
 _rntuple_extra_type_info_format = struct.Struct("<III")
 _rntuple_record_size_format = struct.Struct("<q")
 _rntuple_frame_header_format = struct.Struct("<qi")
-_rntuple_cluster_group_format = struct.Struct("<QQI")
-_rntuple_locator_format = struct.Struct("<IQ")
+_rntuple_cluster_group_format = struct.Struct("<qqi")
+_rntuple_locator_format = struct.Struct("<iQ")
 _rntuple_cluster_summary_format = struct.Struct("<QQ")
 _rntuple_checksum_format = struct.Struct("<Q")
 _rntuple_envlink_size_format = struct.Struct("<Q")
 _rntuple_page_num_elements_format = struct.Struct("<I")
+_rntuple_column_group_id_format = struct.Struct("<I")
 
 
 def from_zigzag(n):
@@ -561,39 +562,22 @@ class PageDescription:
         return out
 
 
-class PageLinkInner:
-    def read(self, chunk, cursor, context):
-        local_cursor = cursor.copy()
-        num_bytes, num_pages = local_cursor.fields(
-            chunk, _rntuple_frame_header_format, context
-        )
-        assert num_bytes < 0, f"num_bytes={num_bytes}"
-        cursor.skip(-num_bytes)
-        return [
-            PageDescription().read(chunk, local_cursor, context)
-            for _ in range(num_pages)
-        ]
-
-
 class PageLink:
     def __init__(self):
-        self.top_most_list = ListFrameReader(  # top-most list
-            ListFrameReader(PageLinkInner())  # outer list (inner list)
+        self.list_cluster_summaries = ListFrameReader(
+            RecordFrameReader(ClusterSummaryReader())
+        )
+        self.nested_page_locations = ListFrameReader(
+            ListFrameReader(ListFrameReader(PageDescription()))
         )
 
     def read(self, chunk, cursor, context):
         out = MetaData(type(self).__name__)
         out.env_header = _envelop_header(chunk, cursor, context)
-        local_cursor = cursor.copy()
-        num_bytes, num_items = cursor.fields(
-            chunk, _rntuple_frame_header_format, context
-        )
-        if num_items == 0:
-            return out
-        out.pagelinklist = self.top_most_list.read(chunk, local_cursor, context)
-        cursor.skip(-num_bytes - 8)
+        out.header_checksum = cursor.field(chunk, _rntuple_checksum_format, context)
+        out.cluster_summaries = self.list_cluster_summaries.read(chunk, cursor, context)
+        out.pagelinklist = self.nested_page_locations.read(chunk, cursor, context)
         out.checksum = cursor.field(chunk, _rntuple_checksum_format, context)
-        assert xxhash.xxh3_64_intdigest(chunk.raw_data[:-8]) == out.checksum
         return out
 
 
@@ -681,7 +665,7 @@ class FieldRecordReader:
         else:
             out.repetition = 0
         out.field_name, out.type_name, out.type_alias, out.field_desc = (
-            cursor.rntuple_string(chunk, context) for i in range(4)
+            cursor.rntuple_string(chunk, context) for _ in range(4)
         )
         return out
 
@@ -760,11 +744,18 @@ class HeaderReader:
         return out
 
 
+class ColumnGroupIDReader:
+    def read(self, chunk, cursor, context):
+        out = MetaData("ColumnGroupID")
+        out.col_id = cursor.field(chunk, _rntuple_column_group_id_format, context)
+        return out
+
+
 class ColumnGroupRecordReader:
     def read(self, chunk, cursor, context):
-        out = MetaData("ClusterSummaryRecord")
-        out.num_first_entry, out.num_entries = cursor.fields(
-            chunk, self._cluster_summary_format, context
+        out = MetaData("ColumnGroupRecord")
+        out.column_ids = ListFrameReader(RecordFrameReader(ColumnGroupIDReader())).read(
+            chunk, cursor, context
         )
         return out
 
@@ -792,6 +783,7 @@ class RNTupleSchemaExtension:
     def read(self, chunk, cursor, context):
         out = MetaData(type(self).__name__)
         out.size = cursor.field(chunk, _rntuple_record_size_format, context)
+        assert out.size >= 0, f"size={out.size}"
         out.field_records = ListFrameReader(
             RecordFrameReader(FieldRecordReader())
         ).read(chunk, cursor, context)
@@ -810,7 +802,6 @@ class RNTupleSchemaExtension:
 class FooterReader:
     def __init__(self):
         self.extension_header_links = RNTupleSchemaExtension()
-        # self.extension_header_links = ListFrameReader(EnvLinkReader())
         self.column_group_record_frames = ListFrameReader(
             RecordFrameReader(ColumnGroupRecordReader())
         )
@@ -820,7 +811,7 @@ class FooterReader:
         self.cluster_group_record_frames = ListFrameReader(
             RecordFrameReader(ClusterGroupRecordReader())
         )
-        self.meta_data_links = ListFrameReader(EnvLinkReader())
+        self.meta_data_links = ListFrameReader(RecordFrameReader(EnvLinkReader()))
 
     def read(self, chunk, cursor, context):
         out = MetaData("Footer")
@@ -828,11 +819,9 @@ class FooterReader:
         out.feature_flag = cursor.field(chunk, _rntuple_feature_flag_format, context)
         out.header_checksum = cursor.field(chunk, _rntuple_checksum_format, context)
         out.extension_links = self.extension_header_links.read(chunk, cursor, context)
-
         out.col_group_records = self.column_group_record_frames.read(
             chunk, cursor, context
         )
-        # out.cluster_summaries = self.cluster_summary_frames.read(chunk, cursor, context)
         out.cluster_group_records = self.cluster_group_record_frames.read(
             chunk, cursor, context
         )
