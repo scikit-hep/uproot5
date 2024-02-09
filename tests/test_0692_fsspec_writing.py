@@ -58,23 +58,25 @@ def test_fsspec_writing_local_uri(tmp_path, scheme, slash_prefix, filename):
 
 @pytest.mark.parametrize(
     "input_value",
-    ['\\file.root'
-     ,'\\file%2Eroot'
-     ,'\\my%E2%80%92file.root'
-     ,'\\my%20file.root'
-     ,'file:\\file.root'
-     ,'file:\\file%2Eroot'
-     ,'file:\\my%E2%80%92file.root'
-     ,'file:\\my%20file.root'
-     ,'file://\\file.root'
-     ,'file://\\file%2Eroot'
-     ,'file://\\my%E2%80%92file.root'
-     ,'file://\\my%20file.root'
-     ,'simplecache::file://\\file.root'
-     ,'simplecache::file://\\file%2Eroot'
-     ,'simplecache::file://\\my%E2%80%92file.root'
-     ,'simplecache::file://\\my%20file.root'
-     ])
+    [
+        "\\file.root",
+        "\\file%2Eroot",
+        "\\my%E2%80%92file.root",
+        "\\my%20file.root",
+        "file:\\file.root",
+        "file:\\file%2Eroot",
+        "file:\\my%E2%80%92file.root",
+        "file:\\my%20file.root",
+        "file://\\file.root",
+        "file://\\file%2Eroot",
+        "file://\\my%E2%80%92file.root",
+        "file://\\my%20file.root",
+        "simplecache::file://\\file.root",
+        "simplecache::file://\\file%2Eroot",
+        "simplecache::file://\\my%E2%80%92file.root",
+        "simplecache::file://\\my%20file.root",
+    ],
+)
 def test_fsspec_backslash_prefix(input_value):
     # for slash_prefix `\` avoid testing the creation of files and only check if the uri is parsed correctly
     url, obj = uproot._util.file_object_path_split(input_value)
