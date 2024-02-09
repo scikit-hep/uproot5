@@ -46,7 +46,7 @@ def test_fsspec_writing_local(tmp_path, scheme):
 )
 @pytest.mark.parametrize(
     "slash_prefix",
-    ["", "/", "\\"],
+    ["", "/"],
 )
 def test_fsspec_writing_local_uri(tmp_path, scheme, slash_prefix, filename):
     uri = scheme + slash_prefix + os.path.join(tmp_path, "some", "path", filename)
@@ -55,12 +55,31 @@ def test_fsspec_writing_local_uri(tmp_path, scheme, slash_prefix, filename):
     with uproot.open(uri) as f:
         assert f["tree"]["x"].array().tolist() == [1, 2, 3]
 
-    import shutil
 
-    try:
-        shutil.rmtree("\\")
-    except:
-        pass
+@pytest.mark.parametrize(
+    "input_value",
+    ['\\file.root'
+     ,'\\file%2Eroot'
+     ,'\\my%E2%80%92file.root'
+     ,'\\my%20file.root'
+     ,'file:\\file.root'
+     ,'file:\\file%2Eroot'
+     ,'file:\\my%E2%80%92file.root'
+     ,'file:\\my%20file.root'
+     ,'file://\\file.root'
+     ,'file://\\file%2Eroot'
+     ,'file://\\my%E2%80%92file.root'
+     ,'file://\\my%20file.root'
+     ,'simplecache::file://\\file.root'
+     ,'simplecache::file://\\file%2Eroot'
+     ,'simplecache::file://\\my%E2%80%92file.root'
+     ,'simplecache::file://\\my%20file.root'
+     ])
+def test_fsspec_backslash_prefix(input_value):
+    # for slash_prefix `\` avoid testing the creation of files and only check if the uri is parsed correctly
+    url, obj = uproot._util.file_object_path_split(input_value)
+    assert obj is None
+    assert url == input_value
 
 
 @pytest.mark.parametrize(
