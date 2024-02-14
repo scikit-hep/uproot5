@@ -2788,7 +2788,8 @@ def _regularize_expression(
         )
 
     else:
-        to_compute = aliases[expression] if expression in aliases else expression
+        # the value of `expression` is either what we want to compute or a lookup value for it
+        to_compute = aliases.get(expression, expression)
 
         is_jagged = False
         expression_branches = []
@@ -3028,7 +3029,7 @@ def _ranges_or_baskets_to_arrays(
         else:
             notifications.put(range_or_basket)
 
-        original_index += 1
+        original_index += 1  # noqa: SIM113 (don't use `enumerate` for `original_index`)
 
         branchid_to_branch[branch.cache_key] = branch
 
