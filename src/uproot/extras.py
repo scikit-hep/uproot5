@@ -160,70 +160,64 @@ def xrootd_version():
             return None
 
 
-def lz4_block():
+def isal():
     """
-    Imports and returns ``lz4``.
-
-    Attempts to import ``xxhash`` as well.
+    Import and return ``isal``.
     """
     try:
-        import lz4.block
-        import xxhash  # noqa: F401
+        import isal
     except ModuleNotFoundError as err:
         raise ModuleNotFoundError(
-            """install the 'lz4' and `xxhash` packages with:
+            """install the 'cramjam' package with:
 
-    pip install lz4 xxhash
+    pip install isal
 
 or
 
-    conda install lz4 python-xxhash"""
+    conda install python-isal"""
         ) from err
     else:
-        return lz4.block
+        return isal
+
+
+def cramjam():
+    """
+    Import and returns ``cramjam``.
+    """
+    try:
+        import cramjam
+    except ModuleNotFoundError as err:
+        raise ModuleNotFoundError(
+            """install the 'cramjam' package with:
+
+    pip install cramjam
+
+or
+
+    conda install cramjam"""
+        ) from err
+    else:
+        return cramjam
 
 
 def xxhash():
     """
     Imports and returns ``xxhash``.
-
-    Attempts to import ``lz4`` as well.
     """
     try:
-        import lz4.block  # noqa: F401
         import xxhash
     except ModuleNotFoundError as err:
         raise ModuleNotFoundError(
-            """install the 'lz4' and `xxhash` packages with:
+            """install the `xxhash` packages with:
 
-    pip install lz4 xxhash
+    pip install xxhash
 
 or
 
-    conda install lz4 python-xxhash"""
+    conda install python-xxhash"""
         ) from err
     else:
         return xxhash
-
-
-def zstandard():
-    """
-    Imports and returns ``zstandard``.
-    """
-    try:
-        import zstandard
-    except ModuleNotFoundError as err:
-        raise ModuleNotFoundError(
-            """install the 'zstandard' package with:
-
-    pip install zstandard
-
-or
-
-    conda install zstandard"""
-        ) from err
-    else:
-        return zstandard
 
 
 def boost_histogram():

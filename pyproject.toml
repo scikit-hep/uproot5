@@ -35,6 +35,7 @@ classifiers = [
 ]
 dependencies = [
   "awkward>=2.4.6",
+  "cramjam>=2.8.1",
   "importlib-metadata;python_version<\"3.8\"",
   "numpy",
   "fsspec",
@@ -60,9 +61,8 @@ dev = [
   "awkward-pandas"
 ]
 test = [
-  "lz4",
+  "isal",
   "xxhash",
-  "zstandard",
   "minio",
   "aiohttp",
   "fsspec-xrootd",
