@@ -1825,10 +1825,8 @@ class Directory(CascadeNode):
             dtype=numpy.uint8,
         )
         offset = self._freesegments.allocate(16)
-        footer.cluster_group_record_frames[
-            0
-        ].page_list_envlink.locator = uproot.writing._cascadentuple.NTuple_Locator(
-            16, offset
+        footer.cluster_group_record_frames[0].page_list_envlink.locator = (
+            uproot.writing._cascadentuple.NTuple_Locator(16, offset)
         )
 
         ntuple = uproot.writing._cascadentuple.NTuple(
