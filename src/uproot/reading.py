@@ -2060,6 +2060,8 @@ class ReadOnlyDirectory(Mapping):
                                     keys=[key.fName for key in last._keys],
                                     file_path=self._file.file_path,
                                 )
+                        elif ":" in item and item in step:
+                            return self.key(where).get()
                         else:
                             last = step
                             step = step[item]
