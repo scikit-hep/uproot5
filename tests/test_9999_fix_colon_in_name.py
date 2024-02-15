@@ -6,6 +6,7 @@ import skhep_testdata
 import numpy
 import os
 
+
 def test_colon_in_path_and_name(tmp_path):
     newfile = os.path.join(tmp_path, "test_colon_in_name.root")
     with uproot.recreate(newfile) as f:
@@ -23,5 +24,3 @@ def test_colon_reading_in_path():
         skhep_testdata.data_path("uproot-small-evnt-tree-fullsplit.root")
     ) as f:
         f["tree:evt/P3/P3.Py"].array() == numpy.arange(100)
-
-    
