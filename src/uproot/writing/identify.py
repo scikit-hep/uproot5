@@ -265,7 +265,7 @@ def to_writable(obj):
             data = obj.values(flow=True)
             fSumw2 = (
                 obj.variances(flow=True)
-                if obj.storage_type == boost_histogram.storage.Weight
+                if boost_histogram is None or obj.storage_type == boost_histogram.storage.Weight
                 else None
             )
 
@@ -293,7 +293,7 @@ def to_writable(obj):
 
             tmp = (
                 obj.variances()
-                if obj.storage_type == boost_histogram.storage.Weight
+                if boost_histogram is None or obj.storage_type == boost_histogram.storage.Weight
                 else None
             )
             fSumw2 = None
