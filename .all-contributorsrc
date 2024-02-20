@@ -533,6 +533,15 @@
       "contributions": [
         "test"
       ]
+    },
+    {
+      "login": "YSelfTool",
+      "name": "Robin Sonnabend",
+      "avatar_url": "https://avatars.githubusercontent.com/u/1640386?v=4",
+      "profile": "http://tooldev.de",
+      "contributions": [
+        "code"
+      ]
     }
   ],
   "contributorsPerLine": 7,

@@ -183,6 +183,7 @@ Thanks especially to the gracious help of Uproot contributors (including the [or
     </tr>
     <tr>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/bnavigator"><img src="https://avatars.githubusercontent.com/u/4623504?v=4?s=100" width="100px;" alt="Ben Greiner"/><br /><sub><b>Ben Greiner</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot5/commits?author=bnavigator" title="Tests">⚠️</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="http://tooldev.de"><img src="https://avatars.githubusercontent.com/u/1640386?v=4?s=100" width="100px;" alt="Robin Sonnabend"/><br /><sub><b>Robin Sonnabend</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot5/commits?author=YSelfTool" title="Code">💻</a></td>
     </tr>
   </tbody>
 </table>

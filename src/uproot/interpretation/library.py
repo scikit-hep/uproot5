@@ -296,7 +296,7 @@ def _object_to_awkward_json(form, obj):
         out = {}
         for name, subform in zip(form["fields"], form["contents"]):
             if not name.startswith("@"):
-                if obj.has_member(name):
+                if hasattr(obj, "has_member") and obj.has_member(name):
                     out[name] = _object_to_awkward_json(subform, obj.member(name))
                 else:
                     out[name] = _object_to_awkward_json(subform, getattr(obj, name))
@@ -465,6 +465,14 @@ def _awkward_add_doc(awkward, array, branch, ak_add_doc):
         return array
 
 
+def _object_to_awkward_array(awkward, form, array):
+    unlabeled = awkward.from_iter(
+        (_object_to_awkward_json(form, x) for x in array),
+        highlevel=False,
+    )
+    return awkward.Array(_awkward_json_to_array(awkward, form, unlabeled))
+
+
 class Awkward(Library):
     """
     A :doc:`uproot.interpretation.library.Library` that presents ``TBranch``
@@ -570,12 +578,9 @@ class Awkward(Library):
             form = json.loads(
                 interpretation.awkward_form(interpretation.branch.file).to_json()
             )
-            unlabeled = awkward.from_iter(
-                (_object_to_awkward_json(form, x) for x in array), highlevel=False
-            )
             return _awkward_add_doc(
                 awkward,
-                awkward.Array(_awkward_json_to_array(awkward, form, unlabeled)),
+                _object_to_awkward_array(awkward, form, array),
                 branch,
                 ak_add_doc,
             )
@@ -783,6 +788,47 @@ def _pandas_only_series(pandas, original_arrays, expression_context):
     return arrays, names
 
 
+def _process_array_for_pandas(
+    array,
+    finalize,
+    interpretation,
+    branch=None,
+    entry_start=None,
+    entry_stop=None,
+    options=None,
+    form=None,
+):
+    if (
+        isinstance(array, numpy.ndarray)
+        and array.dtype.names is None
+        and len(array.shape) == 1
+        and array.dtype != numpy.dtype(object)
+    ):
+        if finalize:
+            return array
+        else:
+            return uproot.extras.awkward().Array(array)
+    else:
+        try:
+            interpretation.awkward_form(None)
+        except uproot.interpretation.objects.CannotBeAwkward:
+            pass
+        else:
+            if finalize:
+                array = _libraries[Awkward.name].finalize(
+                    array, branch, interpretation, entry_start, entry_stop, options
+                )
+                if isinstance(
+                    array.type.content, uproot.extras.awkward().types.NumpyType
+                ) and array.layout.minmax_depth == (1, 1):
+                    array = array.to_numpy()
+                else:
+                    array = uproot.extras.awkward_pandas().AwkwardExtensionArray(array)
+            else:
+                array = _object_to_awkward_array(uproot.extras.awkward(), form, array)
+            return array
+
+
 class Pandas(Library):
     """
     A :doc:`uproot.interpretation.library.Library` that presents ``TBranch``
@@ -817,28 +863,9 @@ class Pandas(Library):
         pandas = self.imported
         index = _pandas_basic_index(pandas, entry_start, entry_stop)
 
-        if (
-            isinstance(array, numpy.ndarray)
-            and array.dtype.names is None
-            and len(array.shape) == 1
-            and array.dtype != numpy.dtype(object)
-        ):
-            return pandas.Series(array, index=index)
-
-        try:
-            interpretation.awkward_form(None)
-        except uproot.interpretation.objects.CannotBeAwkward:
-            pass
-        else:
-            array = _libraries[Awkward.name].finalize(
-                array, branch, interpretation, entry_start, entry_stop, options
-            )
-            if isinstance(
-                array.type.content, uproot.extras.awkward().types.NumpyType
-            ) and array.layout.minmax_depth == (1, 1):
-                array = array.to_numpy()
-            else:
-                array = uproot.extras.awkward_pandas().AwkwardExtensionArray(array)
+        array = _process_array_for_pandas(
+            array, True, interpretation, branch, entry_start, entry_stop, options
+        )
 
         return pandas.Series(array, index=index)
 
@@ -860,9 +887,11 @@ class Pandas(Library):
                 return pandas.DataFrame()
             else:
                 arrays = {
-                    k: v
-                    if isinstance(v, (pandas.Series, pandas.DataFrame))
-                    else pandas.Series(v, name=k)
+                    k: (
+                        v
+                        if isinstance(v, (pandas.Series, pandas.DataFrame))
+                        else pandas.Series(v, name=k)
+                    )
                     for k, v in arrays.items()
                 }
                 out = pandas.concat(arrays, axis=1, ignore_index=True)

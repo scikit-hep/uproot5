@@ -819,16 +819,13 @@ def _get_dask_array_delay_open(
 
 class ImplementsFormMappingInfo(Protocol):
     @property
-    def behavior(self) -> dict | None:
-        ...
+    def behavior(self) -> dict | None: ...
 
     buffer_key: str | Callable
 
-    def parse_buffer_key(self, buffer_key: str) -> tuple[str, str]:
-        ...
+    def parse_buffer_key(self, buffer_key: str) -> tuple[str, str]: ...
 
-    def keys_for_buffer_keys(self, buffer_keys: frozenset[str]) -> frozenset[str]:
-        ...
+    def keys_for_buffer_keys(self, buffer_keys: frozenset[str]) -> frozenset[str]: ...
 
     def load_buffers(
         self,
@@ -837,13 +834,11 @@ class ImplementsFormMappingInfo(Protocol):
         start: int,
         stop: int,
         options: Any,
-    ) -> Mapping[str, AwkArray]:
-        ...
+    ) -> Mapping[str, AwkArray]: ...
 
 
 class ImplementsFormMapping(Protocol):
-    def __call__(self, form: Form) -> tuple[Form, ImplementsFormMappingInfo]:
-        ...
+    def __call__(self, form: Form) -> tuple[Form, ImplementsFormMappingInfo]: ...
 
 
 class TrivialFormMappingInfo(ImplementsFormMappingInfo):

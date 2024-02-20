@@ -437,29 +437,67 @@ input stream
         )
         trimmed = []
         start = entry_offsets[0]
+        has_any_awkward_types = any(
+            uproot._util.from_module(x, "awkward") for x in basket_arrays.values()
+        )
         for basket_num, stop in enumerate(entry_offsets[1:]):
+            to_append = None
             if start <= entry_start and entry_stop <= stop:
                 local_start = entry_start - start
                 local_stop = entry_stop - start
-                trimmed.append(basket_arrays[basket_num][local_start:local_stop])
+                to_append = basket_arrays[basket_num][local_start:local_stop]
 
             elif start <= entry_start < stop:
                 local_start = entry_start - start
                 local_stop = stop - start
-                trimmed.append(basket_arrays[basket_num][local_start:local_stop])
+                to_append = basket_arrays[basket_num][local_start:local_stop]
 
             elif start <= entry_stop <= stop:
                 local_start = 0
                 local_stop = entry_stop - start
-                trimmed.append(basket_arrays[basket_num][local_start:local_stop])
+                to_append = basket_arrays[basket_num][local_start:local_stop]
 
             elif entry_start < stop and start <= entry_stop:
-                trimmed.append(basket_arrays[basket_num])
+                to_append = basket_arrays[basket_num]
+
+            if to_append is not None and has_any_awkward_types:
+
+                if isinstance(library, uproot.interpretation.library.NumPy):
+                    trimmed.append(to_append)
+
+                elif isinstance(library, uproot.interpretation.library.Awkward):
+
+                    if isinstance(to_append, numpy.ndarray):
+                        trimmed.append(
+                            uproot.interpretation.library._object_to_awkward_array(
+                                uproot.extras.awkward(), self._form, to_append
+                            )
+                        )
+                    else:
+                        trimmed.append(to_append)
+
+                elif isinstance(library, uproot.interpretation.library.Pandas):
+
+                    if isinstance(to_append, numpy.ndarray):
+                        trimmed.append(
+                            uproot.interpretation.library._process_array_for_pandas(
+                                to_append,
+                                False,
+                                branch.file.interpretation,
+                                form=self._form,
+                            )
+                        )
+                    else:
+                        trimmed.append(to_append)
+
+            elif to_append is not None:
+                trimmed.append(to_append)
 
             start = stop
 
         if len(basket_arrays) == 0:
             output = numpy.array([], dtype=self.numpy_dtype)
+
         elif all(
             uproot._util.from_module(x, "awkward") for x in basket_arrays.values()
         ) and isinstance(
