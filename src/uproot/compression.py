@@ -179,9 +179,9 @@ class _DecompressLZMA:
             getattr(cramjam, "experimental", None), "lzma", None
         )
         if lzma is None:
-            raise RuntimeError(
-                "lzma not found in the cramjam package! (requires cramjam >= 2.8.1)"
-            )
+            import lzma
+
+            return lzma.decompress(data)
         if uncompressed_bytes is None:
             raise ValueError(
                 "lzma decompression requires the number of uncompressed bytes"
@@ -226,9 +226,7 @@ class LZMA(Compression, _DecompressLZMA):
             getattr(cramjam, "experimental", None), "lzma", None
         )
         if lzma is None:
-            raise RuntimeError(
-                "lzma not found in the cramjam package! (requires cramjam >= 2.8.1)"
-            )
+            import lzma
         return lzma.compress(data, preset=self._level)
 
 
