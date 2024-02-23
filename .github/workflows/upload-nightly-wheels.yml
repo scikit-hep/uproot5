@@ -8,9 +8,6 @@ on:
   # Run on demand with workflow dispatch
   workflow_dispatch:
 
-# permissions:
-#   actions: read
-
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -30,11 +27,11 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with:
-          name: artifact
+          name: distribution-artifact
           path: dist
 
-      - name: List distributions to be deployed
-        run: ls -lha dist/
+      - name: List wheel to be deployed
+        run: ls -lha dist/*.whl
 
       # - name: Upload wheel to Anaconda Cloud as nightly
       #   uses: scientific-python/upload-nightly-action@b67d7fcc0396e1128a474d1ab2b48aa94680f9fc # 0.5.0

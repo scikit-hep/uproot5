@@ -7,9 +7,6 @@ on:
     types:
       - published
 
-# permissions:
-#   actions: read
-
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -28,7 +25,7 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with:
-          name: artifact
+          name: distribution-artifact
           path: dist
 
       - name: List distributions to be deployed
