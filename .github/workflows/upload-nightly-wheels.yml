@@ -8,8 +8,8 @@ on:
   # Run on demand with workflow dispatch
   workflow_dispatch:
 
-permissions:
-  actions: read
+# permissions:
+#   actions: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
