@@ -120,7 +120,7 @@ class ZLIB(Compression, _DecompressZLIB):
     If ``ZLIB.library`` is ``"zlib"`` (default), Uproot uses ``zlib`` from the
     Python standard library.
 
-    If ``ZLIB.library`` is ``"isal"`` (default), Uproot uses ``isal.isal_zlib``.
+    If ``ZLIB.library`` is ``"isal"``, Uproot uses ``isal.isal_zlib``.
     """
 
     def __init__(self, level):
