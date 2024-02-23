@@ -6,21 +6,16 @@ on:
     types:
       - published
 
+permissions:
+  actions: read
+
 jobs:
   dist:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Build wheel and SDist
-        run: pipx run build
-
-      - name: Check metadata
-        run: pipx run twine check dist/*
-
-      - uses: actions/upload-artifact@v4
-        with:
-          path: dist/*
+      - name: Build and upload sdist and wheel
+        uses: ./.github/workflows/build-distributions.yml
 
 
   publish:
