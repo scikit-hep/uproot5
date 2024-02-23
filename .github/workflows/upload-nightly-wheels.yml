@@ -19,7 +19,7 @@ jobs:
 
   build_wheel:
     name: Build and upload wheel
-    uses: .github/workflows/build-distributions.yml
+    uses: ./.github/workflows/build-distributions.yml
 
   upload_nightly_wheels:
     name: Upload nightly wheels to Anaconda Cloud

@@ -18,7 +18,7 @@ jobs:
 
   dist:
     name: Build and upload sdist and wheel
-    uses: .github/workflows/build-distributions.yml
+    uses: ./.github/workflows/build-distributions.yml
 
   publish:
     needs: [dist]
