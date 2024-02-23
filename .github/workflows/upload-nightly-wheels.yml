@@ -10,6 +10,10 @@ on:
 permissions:
   actions: read
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
 
   upload_nightly_wheels:
