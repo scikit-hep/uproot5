@@ -13,12 +13,12 @@ concurrency:
 
 jobs:
 
-  dist:
+  build_dist:
     name: Build and upload sdist and wheel
     uses: ./.github/workflows/build-distributions.yml
 
   publish:
-    needs: [dist]
+    needs: [build_dist]
     runs-on: ubuntu-latest
     # if: github.event_name == 'release' && github.event.action == 'published'
 
