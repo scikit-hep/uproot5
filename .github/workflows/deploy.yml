@@ -31,7 +31,7 @@ jobs:
           name: artifact
           path: dist
 
-      - name: list dist
+      - name: List distributions to be deployed
         run: ls -lha dist/
 
       # - uses: pypa/gh-action-pypi-publish@release/v1
