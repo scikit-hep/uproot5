@@ -338,16 +338,18 @@ class Model_TGraph_v4(uproot.behaviors.TGraph.TGraph, uproot.model.VersionedMode
         where = len(out)
         for x in self._bases:
             x._serialize(out, True, name, tobject_flags)
-        out.extend([
-            struct.pack(">i", self._members["fNpoints"]),
-            b"\x01",
-            self._members["fX"].astype(">f8").tobytes(),
-            b"\x01",
-            self._members["fY"].astype(">f8").tobytes(),
-            b"@\x00\x00\x1f\xff\xff\xff\xffTList\x00@\x00\x00\x11\x00\x05\x00\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00",
-            struct.pack(">d", self._members["fMinimum"]),
-            struct.pack(">d", self._members["fMaximum"]),
-        ])
+        out.extend(
+            [
+                struct.pack(">i", self._members["fNpoints"]),
+                b"\x01",
+                self._members["fX"].astype(">f8").tobytes(),
+                b"\x01",
+                self._members["fY"].astype(">f8").tobytes(),
+                b"@\x00\x00\x1f\xff\xff\xff\xffTList\x00@\x00\x00\x11\x00\x05\x00\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00",
+                struct.pack(">d", self._members["fMinimum"]),
+                struct.pack(">d", self._members["fMaximum"]),
+            ]
+        )
         if header:
             num_bytes = sum(len(x) for x in out[where:])
             version = 4
