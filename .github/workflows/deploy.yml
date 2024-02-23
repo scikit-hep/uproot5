@@ -1,6 +1,7 @@
 name: Deploy to PyPI
 
 on:
+  push:
   workflow_dispatch:
   release:
     types:
@@ -25,7 +26,7 @@ jobs:
   publish:
     needs: [dist]
     runs-on: ubuntu-latest
-    if: github.event_name == 'release' && github.event.action == 'published'
+    # if: github.event_name == 'release' && github.event.action == 'published'
 
     steps:
       - uses: actions/download-artifact@v4
@@ -33,6 +34,9 @@ jobs:
           name: artifact
           path: dist
 
-      - uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          password: ${{ secrets.pypi_password }}
+      - name: list dist
+        run: ls -lha dist/
+
+      # - uses: pypa/gh-action-pypi-publish@release/v1
+      #   with:
+      #     password: ${{ secrets.pypi_password }}

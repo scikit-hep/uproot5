@@ -1,6 +1,7 @@
 name: Upload nightly wheels to Anaconda Cloud
 
 on:
+  push:
   # Run daily at 1:23 UTC
   schedule:
     - cron: '23 1 * * *'
@@ -25,8 +26,11 @@ jobs:
       - name: Build wheel
         uses: ./.github/workflows/build-distributions.yml
 
-      - name: Upload wheel to Anaconda Cloud as nightly
-        uses: scientific-python/upload-nightly-action@b67d7fcc0396e1128a474d1ab2b48aa94680f9fc # 0.5.0
-        with:
-          artifacts_path: dist
-          anaconda_nightly_upload_token: ${{ secrets.ANACONDA_ORG_UPLOAD_TOKEN }}
+      - name: list dist
+        run: ls -lha dist/
+
+      # - name: Upload wheel to Anaconda Cloud as nightly
+      #   uses: scientific-python/upload-nightly-action@b67d7fcc0396e1128a474d1ab2b48aa94680f9fc # 0.5.0
+      #   with:
+      #     artifacts_path: dist
+      #     anaconda_nightly_upload_token: ${{ secrets.ANACONDA_ORG_UPLOAD_TOKEN }}
