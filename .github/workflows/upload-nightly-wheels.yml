@@ -16,13 +16,13 @@ jobs:
 
   build_wheel:
     name: Build and upload wheel
+    if: github.repository_owner == 'scikit-hep'
     uses: ./.github/workflows/build-distributions.yml
 
   upload_nightly_wheels:
     name: Upload nightly wheels to Anaconda Cloud
     needs: [build_wheel]
     runs-on: ubuntu-latest
-    if: github.repository_owner == 'scikit-hep'
 
     steps:
       - uses: actions/download-artifact@v4

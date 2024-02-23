@@ -15,6 +15,7 @@ jobs:
 
   build_dist:
     name: Build and upload sdist and wheel
+    if: github.repository_owner == 'scikit-hep'
     uses: ./.github/workflows/build-distributions.yml
 
   publish:
