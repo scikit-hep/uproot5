@@ -39,7 +39,6 @@ classifiers = [
 dependencies = [
   "awkward>=2.4.6",
   "cramjam>=2.5.0",
-  "importlib-metadata;python_version<\"3.8\"",
   "numpy",
   "fsspec",
   "packaging",

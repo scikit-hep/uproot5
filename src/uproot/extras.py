@@ -10,7 +10,7 @@ error messages containing instructions on how to install the library.
 from __future__ import annotations
 
 import atexit
-import importlib.metadata as importlib_metadata
+import importlib.metadata
 import os
 
 from uproot._util import parse_version
@@ -151,11 +151,11 @@ def xrootd_version():
     Gets the XRootD version if installed, otherwise returns None.
     """
     try:
-        return importlib_metadata.version("xrootd")
+        return importlib.metadata.version("xrootd")
     except ModuleNotFoundError:
         try:
             # Versions before 4.11.1 used pyxrootd as the package name
-            return importlib_metadata.version("pyxrootd")
+            return importlib.metadata.version("pyxrootd")
         except ModuleNotFoundError:
             return None
 
