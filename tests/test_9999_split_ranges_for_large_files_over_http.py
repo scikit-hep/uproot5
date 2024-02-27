@@ -21,8 +21,8 @@ def test_split_ranges_if_large_file_in_http():
     ]
 
     f = uproot.open(
-        fname, handler=uproot.source.http.HTTPSource, range_header_len=21786
+        fname, handler=uproot.source.http.HTTPSource, http_max_header_bytes=21786
     )
-    assert f.file.options["range_header_len"] == 21786
+    assert f.file.options["http_max_header_bytes"] == 21786
 
     f["Events"].arrays(arrays_to_read)

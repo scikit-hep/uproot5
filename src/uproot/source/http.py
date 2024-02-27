@@ -579,7 +579,7 @@ class HTTPSource(uproot.source.chunk.Source):
         self._fallback_options = options.copy()
         self._fallback_options["num_workers"] = self._num_fallback_workers
 
-        self._range_header_len = options["range_header_len"]
+        self._http_max_header_bytes = options["http_max_header_bytes"]
 
         # Parse the URL here, so that we can expose these fields
         self._parsed_url = urlparse(file_path)
@@ -658,7 +658,7 @@ class HTTPSource(uproot.source.chunk.Source):
 
             while i < len(ranges):
                 new_range_to_append = ", " + f"{ranges[i][0]}-{ranges[i][1] - 1}"
-                if len(range_header["Range"]) < self._range_header_len - len(
+                if len(range_header["Range"]) < self._http_max_header_bytes - len(
                     new_range_to_append
                 ):
                     range_header["Range"] += new_range_to_append
