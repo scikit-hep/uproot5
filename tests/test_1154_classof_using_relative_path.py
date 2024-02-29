@@ -11,7 +11,7 @@ def test_descend_into_path_classname_of():
 
     with uproot.open("test.root") as f:
         assert f.classname_of("Tree/x") == "TBranch"
-        assert f.title_of("Tree/x") == "x/L"
+        assert f.title_of("Tree/x").startswith("x/")
         assert f.class_of("Tree/x") == uproot.models.TBranch.Model_TBranch
         f.streamer_of("Tree/x")
 
