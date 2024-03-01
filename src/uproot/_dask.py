@@ -6,6 +6,8 @@ import socket
 import time
 from collections.abc import Callable, Iterable, Mapping
 
+from uproot.source.chunk import SourcePerformanceCounters
+
 try:
     from typing import TYPE_CHECKING, Final
 
@@ -972,7 +974,7 @@ class UprootReadMixin:
     def return_report(self) -> bool:
         return bool(self.allow_read_errors_with_report)
 
-    def read_tree(self, tree: HasBranches, start: int, stop: int) -> AwkArray:
+    def read_tree(self, tree: HasBranches, start: int, stop: int) -> tuple[AwkArray, SourcePerformanceCounters]:
         assert start <= stop
 
         from awkward._nplikes.numpy import Numpy
@@ -1017,13 +1019,15 @@ class UprootReadMixin:
                     dtype=dtype,
                 )
 
-        return awkward.from_buffers(
+        out = awkward.from_buffers(
             self.expected_form,
             stop - start,
             container,
             behavior=self.form_mapping_info.behavior,
             buffer_key=self.form_mapping_info.buffer_key,
         )
+        assert tree.source  # we must be reading something here
+        return out, tree.source.performance_counters
 
     def mock(self) -> AwkArray:
         awkward = uproot.extras.awkward()
@@ -1114,6 +1118,7 @@ def _report_failure(exception, call_time, *args, **kwargs):
             {
                 "call_time": call_time,
                 "duration": None,
+                "performance_counters": None,
                 "args": [repr(a) for a in args],
                 "kwargs": [[k, repr(v)] for k, v in kwargs.items()],
                 "exception": type(exception).__name__,
@@ -1127,11 +1132,13 @@ def _report_failure(exception, call_time, *args, **kwargs):
 
 def _report_success(duration, *args, **kwargs):
     awkward = uproot.extras.awkward()
+    counters = kwargs.pop("counters")
     return awkward.Array(
         [
             {
                 "call_time": None,
                 "duration": duration,
+                "performance_counters": counters.asdict(),
                 "args": [repr(a) for a in args],
                 "kwargs": [[k, repr(v)] for k, v in kwargs.items()],
                 "exception": None,
@@ -1195,7 +1202,7 @@ class _UprootRead(UprootReadMixin):
         if self.return_report:
             call_time = time.time_ns()
             try:
-                result, duration = with_duration(self._call_impl)(i, start, stop)
+                (result, counters), duration = with_duration(self._call_impl)(i, start, stop)
                 return (
                     result,
                     _report_success(
@@ -1203,6 +1210,7 @@ class _UprootRead(UprootReadMixin):
                         self.ttrees[i],
                         start,
                         stop,
+                        counters=counters,
                     ),
                 )
             except self.allowed_exceptions as err:
@@ -1217,7 +1225,8 @@ class _UprootRead(UprootReadMixin):
                     ),
                 )
 
-        return self._call_impl(i, start, stop)
+        result, _ = self._call_impl(i, start, stop)
+        return result
 
     def _call_impl(self, i, start, stop):
         return self.read_tree(
@@ -1305,7 +1314,7 @@ which has {num_entries} entries"""
         if self.return_report:
             call_time = time.time_ns()
             try:
-                result, duration = with_duration(self._call_impl)(
+                (result, counters), duration = with_duration(self._call_impl)(
                     file_path, object_path, i_step_or_start, n_steps_or_stop, is_chunk
                 )
                 return (
@@ -1317,6 +1326,7 @@ which has {num_entries} entries"""
                         i_step_or_start,
                         n_steps_or_stop,
                         is_chunk,
+                        counters=counters,
                     ),
                 )
             except self.allowed_exceptions as err:
@@ -1333,9 +1343,10 @@ which has {num_entries} entries"""
                     ),
                 )
 
-        return self._call_impl(
+        result, _ = self._call_impl(
             file_path, object_path, i_step_or_start, n_steps_or_stop, is_chunk
         )
+        return result
 
     def project_keys(self: T, keys: frozenset[str]) -> T:
         return _UprootOpenAndRead(
