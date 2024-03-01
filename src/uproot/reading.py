@@ -1905,7 +1905,7 @@ class ReadOnlyDirectory(Mapping):
         return self.iterkeys()
 
     def descent_into_path(self, where):
-        items = where.split("/")
+        items = where.replace(":", " ").replace("/", " ").split()items = where.split("/")
         step = last = self
         for item in items[:-1]:
             if item != "":
@@ -1934,7 +1934,7 @@ class ReadOnlyDirectory(Mapping):
 
         Note that this does not read any data from the file.
         """
-        if "/" in where:
+        if "/" in where or ":" in where:
             step, last_item = self.descent_into_path(where)
             return step[last_item].title
         else:
@@ -1956,7 +1956,7 @@ class ReadOnlyDirectory(Mapping):
         Note that this does not read any data from the file.
         """
 
-        if "/" in where:
+        if "/" in where or ":" in where:
             step, last_item = self.descent_into_path(where)
             return step[last_item].classname
         else:
@@ -1978,7 +1978,7 @@ class ReadOnlyDirectory(Mapping):
 
         Note that this does not read any data from the file.
         """
-        if "/" in where:
+        if "/" in where or ":" in where:
             return self._file.class_named(
                 self.classname_of(where, version=version), version=version
             )
@@ -2000,7 +2000,7 @@ class ReadOnlyDirectory(Mapping):
 
         Note that this does not read any data from the file.
         """
-        if "/" in where:
+        if "/" in where or ":" in where:
             return self._file.streamer_named(
                 self.classname_of(where, version=version), version=version
             )
