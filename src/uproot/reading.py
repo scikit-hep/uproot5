@@ -9,9 +9,9 @@ and :doc:`uproot.reading.ReadOnlyKey` (``TKey``).
 """
 from __future__ import annotations
 
+import re
 import struct
 import sys
-import re
 import uuid
 from collections.abc import Mapping, MutableMapping
 from pathlib import Path
