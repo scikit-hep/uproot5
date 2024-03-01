@@ -45,6 +45,7 @@ class Resource:
 @dataclasses.dataclass
 class SourcePerformanceCounters:
     """Container for performance counters"""
+
     num_requested_bytes: int
     num_requests: int
     num_requested_chunks: int

@@ -974,7 +974,9 @@ class UprootReadMixin:
     def return_report(self) -> bool:
         return bool(self.allow_read_errors_with_report)
 
-    def read_tree(self, tree: HasBranches, start: int, stop: int) -> tuple[AwkArray, SourcePerformanceCounters]:
+    def read_tree(
+        self, tree: HasBranches, start: int, stop: int
+    ) -> tuple[AwkArray, SourcePerformanceCounters]:
         assert start <= stop
 
         from awkward._nplikes.numpy import Numpy
@@ -1202,7 +1204,9 @@ class _UprootRead(UprootReadMixin):
         if self.return_report:
             call_time = time.time_ns()
             try:
-                (result, counters), duration = with_duration(self._call_impl)(i, start, stop)
+                (result, counters), duration = with_duration(self._call_impl)(
+                    i, start, stop
+                )
                 return (
                     result,
                     _report_success(
