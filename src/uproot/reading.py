@@ -1905,7 +1905,7 @@ class ReadOnlyDirectory(Mapping):
         return self.iterkeys()
 
     def descent_into_path(self, where):
-        items = where.replace(":", " ").replace("/", " ").split()items = where.split("/")
+        items = where.replace(":", " ").replace("/", " ").split()
         step = last = self
         for item in items[:-1]:
             if item != "":
