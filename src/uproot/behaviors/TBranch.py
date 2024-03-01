@@ -1671,9 +1671,8 @@ class HasBranches(Mapping):
 
         Returns: uproot.source.chunk.Source or None
         """
-        if isinstance(self, uproot.model.Model):
-            if isinstance(self._file, uproot.reading.ReadOnlyFile):
-                return self._file.source
+        if isinstance(self, uproot.model.Model) and isinstance(self._file, uproot.reading.ReadOnlyFile):
+            return self._file.source
         return None
 
 
