@@ -63,7 +63,7 @@ dev = [
   "awkward-pandas"
 ]
 http = []
-s3 = ["minio"]
+s3 = ["aiobotocore"]
 test = [
   "isal",
   "xxhash",
