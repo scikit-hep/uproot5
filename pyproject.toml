@@ -62,8 +62,8 @@ dev = [
   "pandas",
   "awkward-pandas"
 ]
-http = []
-s3 = ["aiobotocore"]
+http = ["aiohttp"]
+s3 = ["s3fs"]
 test = [
   "isal",
   "xxhash",
