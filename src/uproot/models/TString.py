@@ -104,4 +104,3 @@ in file {self.file.file_path}"""
 
 
 uproot.classes["TString"] = Model_TString
-uproot.classes["string"] = Model_TString
