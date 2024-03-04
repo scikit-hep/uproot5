@@ -2473,12 +2473,8 @@ class ReadOnlyKey:
         else:
             chunk, cursor = self.get_uncompressed_chunk_cursor()
             start_cursor = cursor.copy()
-            context = {"breadcrumbs": (), "TKey": self}
-
-            if self._fClassName == "string":
-                return cursor.string(chunk, context)
-
             cls = self._file.class_named(self._fClassName)
+            context = {"breadcrumbs": (), "TKey": self}
 
             try:
                 out = cls.read(chunk, cursor, context, self._file, selffile, parent)
