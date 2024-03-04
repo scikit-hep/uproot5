@@ -23,6 +23,7 @@ import numpy
 import uproot
 import uproot.interpretation.grouped
 import uproot.language.python
+import uproot.source.chunk
 from uproot._util import no_filter
 
 np_uint8 = numpy.dtype("u1")
@@ -1663,6 +1664,18 @@ class HasBranches(Mapping):
 
     def __len__(self):
         return len(self.branches)
+
+    @property
+    def source(self) -> uproot.source.chunk.Source | None:
+        """Returns the associated source of data for this container, if it exists
+
+        Returns: uproot.source.chunk.Source or None
+        """
+        if isinstance(self, uproot.model.Model) and isinstance(
+            self._file, uproot.reading.ReadOnlyFile
+        ):
+            return self._file.source
+        return None
 
 
 _branch_clean_name = re.compile(r"(.*\.)*([^\.\[\]]*)(\[.*\])*")
