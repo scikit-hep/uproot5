@@ -263,7 +263,11 @@ for URL {}""".format(
 
     @staticmethod
     def multifuture(
-        source: uproot.source.chunk.Source, ranges: list[(int, int)], futures, results
+        source: uproot.source.chunk.Source,
+        range_header: dict,
+        ranges: list[(int, int)],
+        futures,
+        results,
     ):
         """
         Args:
@@ -289,10 +293,6 @@ for URL {}""".format(
         """
         connection = make_connection(source.parsed_url, source.timeout)
 
-        range_header = {
-            "Range": "bytes="
-            + ",".join([f"{start}-{stop - 1}" for start, stop in ranges])
-        }
         connection.request(
             "GET",
             full_path(source.parsed_url),
@@ -579,6 +579,8 @@ class HTTPSource(uproot.source.chunk.Source):
         self._fallback_options = options.copy()
         self._fallback_options["num_workers"] = self._num_fallback_workers
 
+        self._http_max_header_bytes = options["http_max_header_bytes"]
+
         # Parse the URL here, so that we can expose these fields
         self._parsed_url = urlparse(file_path)
         self._auth_headers = basic_auth_headers(self._parsed_url)
@@ -624,29 +626,63 @@ class HTTPSource(uproot.source.chunk.Source):
         return chunk
 
     def chunks(
-        self, ranges: list[(int, int)], notifications: queue.Queue
+        self,
+        ranges: list[(int, int)],
+        notifications: queue.Queue,
     ) -> list[uproot.source.chunk.Chunk]:
         if self._fallback is None:
             self._num_requests += 1
             self._num_requested_chunks += len(ranges)
             self._num_requested_bytes += sum(stop - start for start, stop in ranges)
-
-            futures = {}
-            results = {}
             chunks = []
-            for start, stop in ranges:
-                partfuture = self.ResourceClass.partfuture(results, start, stop)
-                futures[start, stop] = partfuture
-                results[start, stop] = None
-                chunk = uproot.source.chunk.Chunk(self, start, stop, partfuture)
-                partfuture._set_notify(
-                    uproot.source.chunk.notifier(chunk, notifications)
-                )
-                chunks.append(chunk)
 
-            self._executor.submit(
-                self.ResourceClass.multifuture(self, ranges, futures, results)
-            )
+            def set_futures_and_results(ranges):
+                futures = {}
+                results = {}
+
+                for start, stop in ranges:
+                    partfuture = self.ResourceClass.partfuture(results, start, stop)
+                    futures[start, stop] = partfuture
+                    results[start, stop] = None
+                    chunk = uproot.source.chunk.Chunk(self, start, stop, partfuture)
+                    partfuture._set_notify(
+                        uproot.source.chunk.notifier(chunk, notifications)
+                    )
+                    chunks.append(chunk)
+
+                return futures, results
+
+            i, j = 1, 0
+            range_header = {"Range": "bytes=" + f"{ranges[0][0]}-{ranges[0][1] - 1}"}
+            last_batch_appended = False
+
+            while i < len(ranges):
+                new_range_to_append = ", " + f"{ranges[i][0]}-{ranges[i][1] - 1}"
+                if len(range_header["Range"]) < self._http_max_header_bytes - len(
+                    new_range_to_append
+                ):
+                    range_header["Range"] += new_range_to_append
+                    last_batch_appended = False
+                else:
+                    futures, results = set_futures_and_results(ranges[j : j + i])
+                    self._executor.submit(
+                        self.ResourceClass.multifuture(
+                            self, range_header, ranges[j : j + i], futures, results
+                        )
+                    )
+                    j += i
+                    range_header = {"Range": "bytes=" + new_range_to_append[1:]}
+                    last_batch_appended = True
+                i += 1
+
+            if i == len(ranges) and not last_batch_appended:
+                futures, results = set_futures_and_results(ranges[j:])
+                self._executor.submit(
+                    self.ResourceClass.multifuture(
+                        self, range_header, ranges[j : j + i], futures, results
+                    )
+                )
+
             return chunks
 
         else:
