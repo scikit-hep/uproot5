@@ -168,7 +168,7 @@ def isal():
         import isal
     except ModuleNotFoundError as err:
         raise ModuleNotFoundError(
-            """install the 'cramjam' package with:
+            """install the 'isal' package with:
 
     pip install isal
 
@@ -178,6 +178,26 @@ or
         ) from err
     else:
         return isal
+
+
+def deflate():
+    """
+    Import and return ``deflate``.
+    """
+    try:
+        import deflate
+    except ModuleNotFoundError as err:
+        raise ModuleNotFoundError(
+            """install the 'deflate' package with:
+
+    pip install deflate
+
+or
+
+    conda install libdeflate"""
+        ) from err
+    else:
+        return deflate
 
 
 def cramjam():
