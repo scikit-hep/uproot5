@@ -87,7 +87,7 @@ class _DecompressZLIB:
     name = "ZLIB"
     _2byte = b"ZL"
     _method = b"\x08"
-    library = "zlib"  # options: "zlib", "isal"
+    library = "zlib"  # options: "zlib", "isal", "deflate"
 
     def decompress(self, data: bytes, uncompressed_bytes=None) -> bytes:
         if uncompressed_bytes is None:
@@ -103,9 +103,13 @@ class _DecompressZLIB:
             isal_zlib = uproot.extras.isal().isal_zlib
             return isal_zlib.decompress(data, bufsize=uncompressed_bytes)
 
+        elif self.library == "deflate":
+            deflate = uproot.extras.deflate()
+            return deflate.zlib_decompress(data, bufsize=uncompressed_bytes)
+
         else:
             raise ValueError(
-                f"unrecognized ZLIB.library: {self.library!r}; must be one of ['zlib', 'isal']"
+                f"unrecognized ZLIB.library: {self.library!r}; must be one of ['zlib', 'isal', 'deflate']"
             )
 
 
@@ -121,6 +125,8 @@ class ZLIB(Compression, _DecompressZLIB):
     Python standard library.
 
     If ``ZLIB.library`` is ``"isal"``, Uproot uses ``isal.isal_zlib``.
+
+    If ``ZLIB.library`` is ``"deflate"``, Uproot uses ``deflate.deflate_zlib``.
     """
 
     def __init__(self, level):
@@ -162,9 +168,18 @@ class ZLIB(Compression, _DecompressZLIB):
                 )
             return isal_zlib.compress(data, level=round(self._level / 3))
 
+        elif self.library == "deflate":
+            deflate = uproot.extras.deflate()
+            if self._level == 0:
+                raise ValueError(
+                    'ZLIB.library="deflate", and therefore requesting no compression '
+                    "implicitly with level 0 is not allowed."
+                )
+            return deflate.zlib_compress(data, round(self._level))
+
         else:
             raise ValueError(
-                f"unrecognized ZLIB.library: {self.library!r}; must be one of ['zlib', 'isal']"
+                f"unrecognized ZLIB.library: {self.library!r}; must be one of ['zlib', 'isal', 'deflate']"
             )
 
 
