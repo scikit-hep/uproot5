@@ -276,7 +276,7 @@ in file {self.file.file_path}"""
             )
             form_key = f"column-{rel_crs_idxs[0]}"
             return ak.forms.ListOffsetForm(
-                "u32", inner, form_key=form_key, parameters={"__array__": "string"}
+                "i64", inner, form_key=form_key, parameters={"__array__": "string"}
             )
         else:
             raise (RuntimeError(f"Missing special case: {field_id}"))
@@ -432,7 +432,10 @@ in file {self.file.file_path}"""
             )
             tracker = tracker_end
 
-        if dtype_byte <= uproot.const.rntuple_col_type_to_num_dict["index32"]:
+        if (
+            dtype_byte <= uproot.const.rntuple_col_type_to_num_dict["index32"]
+            or 14 <= dtype_byte <= 15
+        ):
             res = numpy.insert(res, 0, 0)  # for offsets
         zigzag = 26 <= dtype_byte <= 28
         delta = 14 <= dtype_byte <= 15
@@ -470,23 +473,17 @@ in file {self.file.file_path}"""
             el.field_id: el.physical_id for el in self.header.alias_columns
         }
         self._column_records_dict = {}
-        self._column_records_dict = {
-            el.field_id: {
-                "rel_crs": [
-                    *(self._column_records_dict.get(el.field_id) or {}).get(
-                        "rel_crs", []
-                    ),
-                    el,
-                ],
-                "rel_crs_idxs": [
-                    *(self._column_records_dict.get(el.field_id) or {}).get(
-                        "rel_crs_idxs", []
-                    ),
-                    i,
-                ],
-            }
-            for i, el in enumerate(self.header.column_records)
-        }
+        self._column_records_idx_to_id = {}
+        for i, cr in enumerate(self.header.column_records):
+            if cr.field_id not in self._column_records_dict:
+                self._column_records_dict[cr.field_id] = {
+                    "rel_crs": [cr],
+                    "rel_crs_idxs": [i],
+                }
+            else:
+                self._column_records_dict[cr.field_id]["rel_crs"].append(cr)
+                self._column_records_dict[cr.field_id]["rel_crs_idxs"].append(i)
+            self._column_records_idx_to_id[i] = cr.field_id
 
         self._related_ids = defaultdict(list)
         for i, el in enumerate(self.header.field_records):
@@ -501,10 +498,11 @@ in file {self.file.file_path}"""
         for key in target_cols:
             if "column" in key:
                 key_nr = int(key.split("-")[1])
-                if key_nr in self._column_records_dict:
-                    id = key_nr
+                key_fid = self._column_records_idx_to_id[key_nr]
+                if key_fid in self._column_records_dict:
+                    id = key_fid
                 elif key_nr in self._alias_columns_dict:
-                    id = self._alias_columns_dict[key_nr]
+                    id = self._alias_columns_dict[key_fid]
                 else:
                     raise (
                         RuntimeError(
@@ -514,7 +512,7 @@ in file {self.file.file_path}"""
 
                 dtype_byte = self._column_records_dict[id]["rel_crs"][0].type
                 content = self.read_col_pages(
-                    id, range(start_cluster_idx, stop_cluster_idx)
+                    key_nr, range(start_cluster_idx, stop_cluster_idx)
                 )
                 if dtype_byte == uproot.const.rntuple_col_type_to_num_dict["switch"]:
                     kindex, tags = _split_switch_bits(content)
