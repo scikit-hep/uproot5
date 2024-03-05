@@ -1922,7 +1922,7 @@ class ReadOnlyDirectory(Mapping):
                     )
         return step, items[-1]
 
-    def title_of(self, where, path_lookup=True):
+    def title_of(self, where, recursive=True):
         """
         Returns the title of the object selected by ``where``.
 
@@ -1935,13 +1935,13 @@ class ReadOnlyDirectory(Mapping):
 
         Note that this does not read any data from the file.
         """
-        if path_lookup and "/" in where or ":" in where:
+        if recursive and "/" in where or ":" in where:
             step, last_item = self.descent_into_path(where)
             return step[last_item].title
         else:
             return self.key(where).title()
 
-    def classname_of(self, where, encoded=False, version=None, path_lookup=True):
+    def classname_of(self, where, encoded=False, version=None, recursive=True):
         """
         Returns the classname of the object selected by ``where``. If
         ``encoded`` with a possible ``version``, return a Python classname;
@@ -1957,13 +1957,13 @@ class ReadOnlyDirectory(Mapping):
         Note that this does not read any data from the file.
         """
 
-        if path_lookup and "/" in where or ":" in where:
+        if recursive and "/" in where or ":" in where:
             step, last_item = self.descent_into_path(where)
             return step[last_item].classname
         else:
             return self.key(where).classname(encoded=encoded, version=version)
 
-    def class_of(self, where, version=None, path_lookup=True):
+    def class_of(self, where, version=None, recursive=True):
         """
         Returns a class object for the ROOT object selected by ``where``. If
         ``version`` is specified, get a :doc:`uproot.model.VersionedModel`;
@@ -1979,7 +1979,7 @@ class ReadOnlyDirectory(Mapping):
 
         Note that this does not read any data from the file.
         """
-        if path_lookup and "/" in where or ":" in where:
+        if recursive and "/" in where or ":" in where:
             return self._file.class_named(
                 self.classname_of(where, version=version), version=version
             )
@@ -1987,7 +1987,7 @@ class ReadOnlyDirectory(Mapping):
             key = self.key(where)
             return self._file.class_named(key.fClassName, version=version)
 
-    def streamer_of(self, where, version="max", path_lookup=True):
+    def streamer_of(self, where, version="max", recursive=True):
         """
         Returns a ``TStreamerInfo`` (:doc:`uproot.streamers.Model_TStreamerInfo`)
         for the object selected by ``where`` and ``version``.
@@ -2001,7 +2001,7 @@ class ReadOnlyDirectory(Mapping):
 
         Note that this does not read any data from the file.
         """
-        if path_lookup and "/" in where or ":" in where:
+        if recursive and "/" in where or ":" in where:
             return self._file.streamer_named(
                 self.classname_of(where, version=version), version=version
             )
