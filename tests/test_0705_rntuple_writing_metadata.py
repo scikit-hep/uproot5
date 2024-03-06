@@ -14,7 +14,9 @@ import uproot
 ak = pytest.importorskip("awkward")
 
 
-@pytest.mark.skip(reason="RNTUPLE UPDATE: ignore test with previous file for now.")
+@pytest.mark.skip(
+    reason="RNTuple writing is pending until specification 1.0.0 is released."
+)
 def test_header(tmp_path):
     filepath = os.path.join(tmp_path, "test.root")
 
@@ -57,6 +59,9 @@ def test_header(tmp_path):
     assert crs[2].nbits == 1
 
 
+@pytest.mark.skip(
+    reason="RNTuple writing is pending until specification 1.0.0 is released."
+)
 def test_writable(tmp_path):
     filepath = os.path.join(tmp_path, "test.root")
 
