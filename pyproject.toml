@@ -41,7 +41,6 @@ dependencies = [
   "cramjam>=2.5.0",
   "numpy",
   "fsspec",
-  "xxhash",
   "packaging",
   "typing_extensions>=4.1.0; python_version < \"3.11\""
 ]
@@ -66,6 +65,7 @@ dev = [
 test = [
   "isal",
   "deflate",
+  "xxhash",
   "minio",
   "aiohttp",
   "fsspec-xrootd",

@@ -9,7 +9,6 @@ import struct
 from collections import defaultdict
 
 import numpy
-import xxhash
 
 import uproot
 
@@ -149,9 +148,6 @@ in file {self.file.file_path}"""
 
             h = HeaderReader().read(self._header_chunk, cursor, context)
             self._header = h
-            assert h.checksum == xxhash.xxh3_64_intdigest(
-                self._header_chunk.raw_data[:-8]
-            )
 
         return self._header
 
@@ -177,9 +173,6 @@ in file {self.file.file_path}"""
             assert (
                 f.header_checksum == self.header.checksum
             ), f"checksum={self.header.checksum}, header_checksum={f.header_checksum}"
-            assert f.checksum == xxhash.xxh3_64_intdigest(
-                self._footer_chunk.raw_data[:-8]
-            )
             self._footer = f
 
         return self._footer
