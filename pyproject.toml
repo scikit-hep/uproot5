@@ -66,6 +66,7 @@ http = ["aiohttp"]
 s3 = ["s3fs"]
 test = [
   "isal",
+  "deflate",
   "xxhash",
   "minio",
   "aiohttp",

@@ -395,6 +395,7 @@ def test_issue_1035(handler):
             assert len(data) == 40
 
 
+@pytest.mark.skip(reason="This test occasionally takes too long: GitHub kills it.")
 @pytest.mark.network
 @pytest.mark.xrootd
 @pytest.mark.parametrize(
