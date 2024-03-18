@@ -1624,7 +1624,7 @@ class STLSet(Container, Set):
             return numpy.all(keys_same)
 
     def __array__(self, *args, **kwargs):
-        return numpy.asarray(self._vector, *args, **kwargs)
+        return numpy.asarray(self._keys, *args, **kwargs)
 
     def tolist(self):
         return {
