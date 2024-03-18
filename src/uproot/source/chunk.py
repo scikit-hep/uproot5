@@ -187,9 +187,7 @@ class MultithreadedSource(Source):
         path = repr(self._file_path)
         if len(self._file_path) > 10:
             path = repr("..." + self._file_path[-10:])
-        return "<{} {} ({} workers) at 0x{:012x}>".format(
-            type(self).__name__, path, self.num_workers, id(self)
-        )
+        return f"<{type(self).__name__} {path} ({self.num_workers} workers) at 0x{id(self):012x}>"
 
     def chunk(self, start: int, stop: int) -> Chunk:
         self._num_requests += 1

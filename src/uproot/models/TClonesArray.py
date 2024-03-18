@@ -22,9 +22,7 @@ class Model_TClonesArray(uproot.model.VersionedModel, Sequence):
             raise uproot.interpretation.objects.CannotBeForth()
         if self.is_memberwise:
             raise NotImplementedError(
-                "memberwise serialization of {}\nin file {}".format(
-                    type(self).__name__, self.file.file_path
-                )
+                f"memberwise serialization of {type(self).__name__}\nin file {self.file.file_path}"
             )
 
         self._bases.append(

@@ -628,10 +628,7 @@ def _get_dask_array(
             "allow_missing=True and no TTrees found in\n\n    {}".format(
                 "\n    ".join(
                     "{"
-                    + "{}: {}".format(
-                        repr(f.file_path if isinstance(f, HasBranches) else f),
-                        repr(f.object_path if isinstance(f, HasBranches) else o),
-                    )
+                    + f"{f.file_path if isinstance(f, HasBranches) else f!r}: {f.object_path if isinstance(f, HasBranches) else o!r}"
                     + "}"
                     for f, o in files
                 )
@@ -643,10 +640,7 @@ def _get_dask_array(
             "TTrees in\n\n    {}\n\nhave no TBranches in common".format(
                 "\n    ".join(
                     "{"
-                    + "{}: {}".format(
-                        repr(f.file_path if isinstance(f, HasBranches) else f),
-                        repr(f.object_path if isinstance(f, HasBranches) else o),
-                    )
+                    + f"{f.file_path if isinstance(f, HasBranches) else f!r}: {f.object_path if isinstance(f, HasBranches) else o!r}"
                     + "}"
                     for f, o in files
                 )
@@ -1473,10 +1467,7 @@ def _get_dak_array(
             "allow_missing=True and no TTrees found in\n\n    {}".format(
                 "\n    ".join(
                     "{"
-                    + "{}: {}".format(
-                        repr(f.file_path if isinstance(f, HasBranches) else f),
-                        repr(f.object_path if isinstance(f, HasBranches) else o),
-                    )
+                    + f"{f.file_path if isinstance(f, HasBranches) else f!r}: {f.object_path if isinstance(f, HasBranches) else o!r}"
                     + "}"
                     for f, o in files
                 )
@@ -1488,10 +1479,7 @@ def _get_dak_array(
             "TTrees in\n\n    {}\n\nhave no TBranches in common".format(
                 "\n    ".join(
                     "{"
-                    + "{}: {}".format(
-                        repr(f.file_path if isinstance(f, HasBranches) else f),
-                        repr(f.object_path if isinstance(f, HasBranches) else o),
-                    )
+                    + f"{f.file_path if isinstance(f, HasBranches) else f!r}: {f.object_path if isinstance(f, HasBranches) else o!r}"
                     + "}"
                     for f, o in files
                 )

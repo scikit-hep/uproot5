@@ -895,10 +895,8 @@ in file {file_path}"""
 
                     else:
                         raise ValueError(
-                            """unexpected type in TList of streamers and streamer rules: {}
-in file {}""".format(
-                                type(x), self._file_path
-                            )
+                            f"""unexpected type in TList of streamers and streamer rules: {type(x)}
+in file {self._file_path}"""
                         )
 
                 self.hook_after_interpret_streamers(
@@ -2313,9 +2311,7 @@ class ReadOnlyKey:
             nameclass = ""
         else:
             nameclass = f" {self.name(cycle=True)}: {self.classname()}"
-        return "<ReadOnlyKey{} (seek pos {}) at 0x{:012x}>".format(
-            nameclass, self.data_cursor.index, id(self)
-        )
+        return f"<ReadOnlyKey{nameclass} (seek pos {self.data_cursor.index}) at 0x{id(self):012x}>"
 
     @property
     def cursor(self):
