@@ -237,7 +237,7 @@ class LZMA(Compression, _DecompressLZMA):
 
     def compress(self, data: bytes) -> bytes:
         cramjam = uproot.extras.cramjam()
-        lzma = getattr(cramjam, "lzma", None) or getattr(
+        lzma = getattr(cramjam, "xz", None) or getattr(
             getattr(cramjam, "experimental", None), "lzma", None
         )
         if lzma is None:
