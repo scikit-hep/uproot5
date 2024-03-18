@@ -1496,6 +1496,9 @@ class ROOTRVec(Container, Sequence):
         else:
             return False
 
+    def __array__(self, *args, **kwargs):
+        return numpy.asarray(self._vector, *args, **kwargs)
+
     def tolist(self):
         return [
             x.tolist() if isinstance(x, (Container, numpy.ndarray)) else x for x in self
