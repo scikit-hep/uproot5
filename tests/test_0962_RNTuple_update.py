@@ -38,7 +38,7 @@ def test_new_support_RNTuple_split_int16_reading():
         assert np.all(np.unique(df.one_integers[len(df.one_integers) / 2 + 1 :]) == [1])
 
 
-pytest.importorskip("zstandard")
+pytest.importorskip("cramjam")
 
 
 @pytest.mark.xfail(

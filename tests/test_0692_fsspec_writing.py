@@ -4,10 +4,13 @@ import pytest
 import uproot
 import uproot.source.fsspec
 
+import sys
 import os
 import pathlib
 import fsspec
 import numpy as np
+
+is_windows = sys.platform.startswith("win")
 
 
 def test_fsspec_writing_no_integration(tmp_path):
@@ -46,15 +49,42 @@ def test_fsspec_writing_local(tmp_path, scheme):
 )
 @pytest.mark.parametrize(
     "slash_prefix",
-    ["", "/", "\\"],
+    [""] if is_windows else ["", "/"],
 )
 def test_fsspec_writing_local_uri(tmp_path, scheme, slash_prefix, filename):
     uri = scheme + slash_prefix + os.path.join(tmp_path, "some", "path", filename)
-    print(uri)
     with uproot.create(uri) as f:
         f["tree"] = {"x": np.array([1, 2, 3])}
     with uproot.open(uri) as f:
         assert f["tree"]["x"].array().tolist() == [1, 2, 3]
+
+
+@pytest.mark.parametrize(
+    "input_value",
+    [
+        "\\file.root",
+        "\\file%2Eroot",
+        "\\my%E2%80%92file.root",
+        "\\my%20file.root",
+        "file:\\file.root",
+        "file:\\file%2Eroot",
+        "file:\\my%E2%80%92file.root",
+        "file:\\my%20file.root",
+        "file://\\file.root",
+        "file://\\file%2Eroot",
+        "file://\\my%E2%80%92file.root",
+        "file://\\my%20file.root",
+        "simplecache::file://\\file.root",
+        "simplecache::file://\\file%2Eroot",
+        "simplecache::file://\\my%E2%80%92file.root",
+        "simplecache::file://\\my%20file.root",
+    ],
+)
+def test_fsspec_backslash_prefix(input_value):
+    # for slash_prefix `\` avoid testing the creation of files and only check if the uri is parsed correctly
+    url, obj = uproot._util.file_object_path_split(input_value)
+    assert obj is None
+    assert url == input_value
 
 
 @pytest.mark.parametrize(

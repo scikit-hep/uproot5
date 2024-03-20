@@ -23,6 +23,7 @@ import numpy
 import uproot
 import uproot.interpretation.grouped
 import uproot.language.python
+import uproot.source.chunk
 from uproot._util import no_filter
 
 np_uint8 = numpy.dtype("u1")
@@ -1664,6 +1665,18 @@ class HasBranches(Mapping):
     def __len__(self):
         return len(self.branches)
 
+    @property
+    def source(self) -> uproot.source.chunk.Source | None:
+        """Returns the associated source of data for this container, if it exists
+
+        Returns: uproot.source.chunk.Source or None
+        """
+        if isinstance(self, uproot.model.Model) and isinstance(
+            self._file, uproot.reading.ReadOnlyFile
+        ):
+            return self._file.source
+        return None
+
 
 _branch_clean_name = re.compile(r"(.*\.)*([^\.\[\]]*)(\[.*\])*")
 _branch_clean_parent_name = re.compile(r"(.*\.)*([^\.\[\]]*)\.([^\.\[\]]*)(\[.*\])*")
@@ -2788,7 +2801,8 @@ def _regularize_expression(
         )
 
     else:
-        to_compute = aliases[expression] if expression in aliases else expression
+        # the value of `expression` is either what we want to compute or a lookup value for it
+        to_compute = aliases.get(expression, expression)
 
         is_jagged = False
         expression_branches = []
@@ -3028,7 +3042,7 @@ def _ranges_or_baskets_to_arrays(
         else:
             notifications.put(range_or_basket)
 
-        original_index += 1
+        original_index += 1  # noqa: SIM113 (don't use `enumerate` for `original_index`)
 
         branchid_to_branch[branch.cache_key] = branch
 

@@ -5,6 +5,9 @@ import math
 import socket
 import time
 from collections.abc import Callable, Iterable, Mapping
+from concurrent.futures import Executor
+
+from uproot.source.chunk import SourcePerformanceCounters
 
 try:
     from typing import TYPE_CHECKING, Final
@@ -43,6 +46,8 @@ def dask(
     form_mapping=None,
     allow_read_errors_with_report=False,
     known_base_form=None,
+    decompression_executor=None,
+    interpretation_executor=None,
     **options,
 ):
     """
@@ -104,6 +109,15 @@ def dask(
             report dask-awkward collection.
         known_base_form (awkward.forms.Form | None): If not none use this form instead of opening
             one file to determine the dataset's form. Only available with open_files=False.
+        decompression_executor (None or Executor with a ``submit`` method): The
+            executor that is used to decompress ``TBaskets``; if None, a
+            :doc:`uproot.source.futures.TrivialExecutor` is created.
+            Executors attached to a file are ``shutdown`` when the file is closed.
+        interpretation_executor (None or Executor with a ``submit`` method): The
+            executor that is used to interpret uncompressed ``TBasket`` data as
+            arrays; if None, a :doc:`uproot.source.futures.TrivialExecutor`
+            is created.
+            Executors attached to a file are ``shutdown`` when the file is closed.
         options: See below.
 
     Returns dask equivalents of the backends supported by uproot. If ``library='np'``,
@@ -239,6 +253,8 @@ def dask(
                 real_options,
                 interp_options,
                 steps_per_file,
+                decompression_executor,
+                interpretation_executor,
             )
         else:
             return _get_dask_array_delay_open(
@@ -253,6 +269,8 @@ def dask(
                 real_options,
                 interp_options,
                 steps_per_file,
+                decompression_executor,
+                interpretation_executor,
             )
     elif library.name == "ak":
         if open_files:
@@ -271,6 +289,8 @@ def dask(
                 form_mapping,
                 steps_per_file,
                 allow_read_errors_with_report,
+                decompression_executor,
+                interpretation_executor,
             )
         else:
             return _get_dak_array_delay_open(
@@ -288,6 +308,8 @@ def dask(
                 steps_per_file,
                 allow_read_errors_with_report,
                 known_base_form,
+                decompression_executor,
+                interpretation_executor,
             )
     else:
         raise NotImplementedError()
@@ -438,10 +460,19 @@ def _dask_array_from_map(
 
 
 class _UprootReadNumpy:
-    def __init__(self, ttrees, key, interp_options) -> None:
+    def __init__(
+        self,
+        ttrees,
+        key,
+        interp_options,
+        decompression_executor=None,
+        interpretation_executor=None,
+    ) -> None:
         self.ttrees = ttrees
         self.key = key
         self.interp_options = interp_options
+        self.decompression_executor = decompression_executor
+        self.interpretation_executor = interpretation_executor
 
     def __call__(self, i_start_stop):
         i, start, stop = i_start_stop
@@ -450,18 +481,29 @@ class _UprootReadNumpy:
             entry_stop=stop,
             library="np",
             ak_add_doc=self.interp_options["ak_add_doc"],
+            decompression_executor=self.decompression_executor,
+            interpretation_executor=self.interpretation_executor,
         )
 
 
 class _UprootOpenAndReadNumpy:
     def __init__(
-        self, custom_classes, allow_missing, real_options, key, interp_options
+        self,
+        custom_classes,
+        allow_missing,
+        real_options,
+        key,
+        interp_options,
+        decompression_executor=None,
+        interpretation_executor=None,
     ):
         self.custom_classes = custom_classes
         self.allow_missing = allow_missing
         self.real_options = real_options
         self.key = key
         self.interp_options = interp_options
+        self.decompression_executor = decompression_executor
+        self.interpretation_executor = interpretation_executor
 
     def __call__(self, file_path_object_path_istep_nsteps_ischunk):
         (
@@ -503,6 +545,8 @@ which has {num_entries} entries"""
             entry_start=start,
             entry_stop=stop,
             ak_add_doc=self.interp_options["ak_add_doc"],
+            decompression_executor=self.decompression_executor,
+            interpretation_executor=self.interpretation_executor,
         )
 
 
@@ -519,6 +563,8 @@ def _get_dask_array(
     real_options,
     interp_options,
     steps_per_file,
+    decompression_executor,
+    interpretation_executor,
 ):
     ttrees = []
     explicit_chunks = []
@@ -670,7 +716,13 @@ which has {entry_stop} entries"""
             chunk_args.append((0, 0, 0))
 
         dask_dict[key] = _dask_array_from_map(
-            _UprootReadNumpy(ttrees, key, interp_options),
+            _UprootReadNumpy(
+                ttrees,
+                key,
+                interp_options,
+                decompression_executor,
+                interpretation_executor,
+            ),
             chunk_args,
             chunks=(tuple(chunks),),
             dtype=dt,
@@ -692,6 +744,8 @@ def _get_dask_array_delay_open(
     real_options,
     interp_options,
     steps_per_file,
+    decompression_executor,
+    interpretation_executor,
 ):
     ffile_path, fobject_path = files[0][0:2]
     obj = uproot._util.regularize_object_path(
@@ -750,7 +804,13 @@ def _get_dask_array_delay_open(
 
         dask_dict[key] = _dask_array_from_map(
             _UprootOpenAndReadNumpy(
-                custom_classes, allow_missing, real_options, key, interp_options
+                custom_classes,
+                allow_missing,
+                real_options,
+                key,
+                interp_options,
+                decompression_executor,
+                interpretation_executor,
             ),
             partition_args,
             chunks=(tuple(partitions),),
@@ -776,6 +836,8 @@ class ImplementsFormMappingInfo(Protocol):
         keys: frozenset[str],
         start: int,
         stop: int,
+        decompression_executor: Executor,
+        interpretation_executor: Executor,
         options: Any,
     ) -> Mapping[str, AwkArray]: ...
 
@@ -846,6 +908,8 @@ class TrivialFormMappingInfo(ImplementsFormMappingInfo):
         keys: frozenset[str],
         start: int,
         stop: int,
+        decompression_executor,
+        interpretation_executor,
         options: Any,
     ) -> Mapping[str, AwkArray]:
         # First, let's read the arrays as a tuple (to associate with each key)
@@ -854,6 +918,8 @@ class TrivialFormMappingInfo(ImplementsFormMappingInfo):
             entry_start=start,
             entry_stop=stop,
             ak_add_doc=options["ak_add_doc"],
+            decompression_executor=decompression_executor,
+            interpretation_executor=interpretation_executor,
             how=tuple,
         )
 
@@ -911,7 +977,9 @@ class UprootReadMixin:
     def return_report(self) -> bool:
         return bool(self.allow_read_errors_with_report)
 
-    def read_tree(self, tree: HasBranches, start: int, stop: int) -> AwkArray:
+    def read_tree(
+        self, tree: HasBranches, start: int, stop: int
+    ) -> tuple[AwkArray, SourcePerformanceCounters]:
         assert start <= stop
 
         from awkward._nplikes.numpy import Numpy
@@ -923,7 +991,13 @@ class UprootReadMixin:
         # buffer mapping in __call__, such that the high-level form can be
         # used in `from_buffers`
         mapping = self.form_mapping_info.load_buffers(
-            tree, self.common_keys, start, stop, self.interp_options
+            tree,
+            self.common_keys,
+            start,
+            stop,
+            self.decompression_executor,
+            self.interpretation_executor,
+            self.interp_options,
         )
 
         # Populate container with placeholders if keys aren't required
@@ -950,13 +1024,15 @@ class UprootReadMixin:
                     dtype=dtype,
                 )
 
-        return awkward.from_buffers(
+        out = awkward.from_buffers(
             self.expected_form,
             stop - start,
             container,
             behavior=self.form_mapping_info.behavior,
             buffer_key=self.form_mapping_info.buffer_key,
         )
+        assert tree.source  # we must be reading something here
+        return out, tree.source.performance_counters
 
     def mock(self) -> AwkArray:
         awkward = uproot.extras.awkward()
@@ -1047,6 +1123,7 @@ def _report_failure(exception, call_time, *args, **kwargs):
             {
                 "call_time": call_time,
                 "duration": None,
+                "performance_counters": None,
                 "args": [repr(a) for a in args],
                 "kwargs": [[k, repr(v)] for k, v in kwargs.items()],
                 "exception": type(exception).__name__,
@@ -1060,11 +1137,13 @@ def _report_failure(exception, call_time, *args, **kwargs):
 
 def _report_success(duration, *args, **kwargs):
     awkward = uproot.extras.awkward()
+    counters = kwargs.pop("counters")
     return awkward.Array(
         [
             {
                 "call_time": None,
                 "duration": duration,
+                "performance_counters": counters.asdict(),
                 "args": [repr(a) for a in args],
                 "kwargs": [[k, repr(v)] for k, v in kwargs.items()],
                 "exception": None,
@@ -1097,6 +1176,8 @@ class _UprootRead(UprootReadMixin):
         expected_form: Form,
         form_mapping_info: ImplementsFormMappingInfo,
         allow_read_errors_with_report: bool | tuple[type[BaseException], ...],
+        decompression_executor,
+        interpretation_executor,
     ) -> None:
         self.ttrees = ttrees
         self.common_keys = frozenset(common_keys)
@@ -1105,6 +1186,8 @@ class _UprootRead(UprootReadMixin):
         self.expected_form = expected_form
         self.form_mapping_info = form_mapping_info
         self.allow_read_errors_with_report = allow_read_errors_with_report
+        self.decompression_executor = decompression_executor
+        self.interpretation_executor = interpretation_executor
 
     def project_keys(self: T, keys: frozenset[str]) -> T:
         return _UprootRead(
@@ -1115,6 +1198,8 @@ class _UprootRead(UprootReadMixin):
             self.expected_form,
             self.form_mapping_info,
             self.allow_read_errors_with_report,
+            self.decompression_executor,
+            self.interpretation_executor,
         )
 
     def __call__(self, i_start_stop):
@@ -1122,7 +1207,9 @@ class _UprootRead(UprootReadMixin):
         if self.return_report:
             call_time = time.time_ns()
             try:
-                result, duration = with_duration(self._call_impl)(i, start, stop)
+                (result, counters), duration = with_duration(self._call_impl)(
+                    i, start, stop
+                )
                 return (
                     result,
                     _report_success(
@@ -1130,6 +1217,7 @@ class _UprootRead(UprootReadMixin):
                         self.ttrees[i],
                         start,
                         stop,
+                        counters=counters,
                     ),
                 )
             except self.allowed_exceptions as err:
@@ -1144,10 +1232,15 @@ class _UprootRead(UprootReadMixin):
                     ),
                 )
 
-        return self._call_impl(i, start, stop)
+        result, _ = self._call_impl(i, start, stop)
+        return result
 
     def _call_impl(self, i, start, stop):
-        return self.read_tree(self.ttrees[i], start, stop)
+        return self.read_tree(
+            self.ttrees[i],
+            start,
+            stop,
+        )
 
 
 class _UprootOpenAndRead(UprootReadMixin):
@@ -1162,6 +1255,8 @@ class _UprootOpenAndRead(UprootReadMixin):
         expected_form: Form,
         form_mapping_info: ImplementsFormMappingInfo,
         allow_read_errors_with_report: bool | tuple[type[BaseException], ...],
+        decompression_executor,
+        interpretation_executor,
     ) -> None:
         self.custom_classes = custom_classes
         self.allow_missing = allow_missing
@@ -1172,6 +1267,8 @@ class _UprootOpenAndRead(UprootReadMixin):
         self.expected_form = expected_form
         self.form_mapping_info = form_mapping_info
         self.allow_read_errors_with_report = allow_read_errors_with_report
+        self.decompression_executor = decompression_executor
+        self.interpretation_executor = interpretation_executor
 
     def _call_impl(
         self, file_path, object_path, i_step_or_start, n_steps_or_stop, is_chunk
@@ -1206,7 +1303,11 @@ which has {num_entries} entries"""
 
         assert start <= stop
 
-        return self.read_tree(ttree, start, stop)
+        return self.read_tree(
+            ttree,
+            start,
+            stop,
+        )
 
     def __call__(self, blockwise_args):
         (
@@ -1220,7 +1321,7 @@ which has {num_entries} entries"""
         if self.return_report:
             call_time = time.time_ns()
             try:
-                result, duration = with_duration(self._call_impl)(
+                (result, counters), duration = with_duration(self._call_impl)(
                     file_path, object_path, i_step_or_start, n_steps_or_stop, is_chunk
                 )
                 return (
@@ -1232,6 +1333,7 @@ which has {num_entries} entries"""
                         i_step_or_start,
                         n_steps_or_stop,
                         is_chunk,
+                        counters=counters,
                     ),
                 )
             except self.allowed_exceptions as err:
@@ -1248,9 +1350,10 @@ which has {num_entries} entries"""
                     ),
                 )
 
-        return self._call_impl(
+        result, _ = self._call_impl(
             file_path, object_path, i_step_or_start, n_steps_or_stop, is_chunk
         )
+        return result
 
     def project_keys(self: T, keys: frozenset[str]) -> T:
         return _UprootOpenAndRead(
@@ -1263,6 +1366,8 @@ which has {num_entries} entries"""
             self.expected_form,
             self.form_mapping_info,
             self.allow_read_errors_with_report,
+            self.decompression_executor,
+            self.interpretation_executor,
         )
 
 
@@ -1300,6 +1405,8 @@ def _get_dak_array(
     form_mapping,
     steps_per_file,
     allow_read_errors_with_report,
+    decompression_executor,
+    interpretation_executor,
 ):
     dask_awkward = uproot.extras.dask_awkward()
     awkward = uproot.extras.awkward()
@@ -1463,6 +1570,8 @@ which has {entry_stop} entries"""
         expected_form=expected_form,
         form_mapping_info=form_mapping_info,
         allow_read_errors_with_report=allow_read_errors_with_report,
+        decompression_executor=decompression_executor,
+        interpretation_executor=interpretation_executor,
     )
 
     return dask_awkward.from_map(
@@ -1488,6 +1597,8 @@ def _get_dak_array_delay_open(
     steps_per_file,
     allow_read_errors_with_report,
     known_base_form,
+    decompression_executor,
+    interpretation_executor,
 ):
     dask_awkward = uproot.extras.dask_awkward()
     awkward = uproot.extras.awkward()
@@ -1563,6 +1674,8 @@ def _get_dak_array_delay_open(
         expected_form=expected_form,
         form_mapping_info=form_mapping_info,
         allow_read_errors_with_report=allow_read_errors_with_report,
+        decompression_executor=decompression_executor,
+        interpretation_executor=interpretation_executor,
     )
 
     return dask_awkward.from_map(
