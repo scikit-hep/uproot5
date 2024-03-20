@@ -62,8 +62,11 @@ dev = [
   "pandas",
   "awkward-pandas"
 ]
+http = ["aiohttp"]
+s3 = ["s3fs"]
 test = [
   "isal",
+  "deflate",
   "xxhash",
   "minio",
   "aiohttp",
@@ -77,6 +80,7 @@ test = [
   "scikit-hep-testdata",
   "rangehttpserver"
 ]
+xrootd = ["fsspec-xrootd"]
 
 [project.urls]
 Download = "https://github.com/scikit-hep/uproot5/releases"
