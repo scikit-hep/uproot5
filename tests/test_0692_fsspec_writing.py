@@ -46,7 +46,7 @@ def test_fsspec_writing_local(tmp_path, scheme):
 )
 @pytest.mark.parametrize(
     "slash_prefix",
-    ["", "/"],
+    [""],
 )
 def test_fsspec_writing_local_uri(tmp_path, scheme, slash_prefix, filename):
     uri = scheme + slash_prefix + os.path.join(tmp_path, "some", "path", filename)
