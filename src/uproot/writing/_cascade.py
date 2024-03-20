@@ -1119,7 +1119,9 @@ class DirectoryData(CascadeLeaf):
         self._keys = keys
 
     def __repr__(self):
-        return f"{type(self).__name__}({self._location}, {self._allocation}, {self._keys})"
+        return (
+            f"{type(self).__name__}({self._location}, {self._allocation}, {self._keys})"
+        )
 
     @property
     def allocation(self):
