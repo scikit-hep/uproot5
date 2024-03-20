@@ -1,0 +1,32 @@
+name: Build sdist and wheel
+
+on:
+  # Run on demand with workflow dispatch
+  workflow_dispatch:
+  # Use from other workflows
+  workflow_call:
+
+jobs:
+  dist:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Build sdist and wheel
+        run: pipx run build
+
+      - name: Check metadata
+        run: pipx run twine check --strict dist/*
+
+      - name: List contents of sdist
+        run: python -m tarfile --list dist/uproot-*.tar.gz
+
+      - name: List contents of wheel
+        run: python -m zipfile --list dist/uproot-*.whl
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: distribution-artifact
+          path: dist/*
