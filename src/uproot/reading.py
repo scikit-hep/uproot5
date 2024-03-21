@@ -1100,18 +1100,10 @@ in file {}""".format(
         global ``uproot.classes``.
         """
         classname = uproot.model.classname_regularize(classname)
-        classes = uproot.model.maybe_custom_classes(classname, self._custom_classes)
-        cls = classes.get(classname)
-
-        if cls is None:
-            streamers = self.streamers_named(classname)
-            if len(streamers) == 0 and self._custom_classes is not None:
-                cls = uproot.classes.get(classname)
 
         if (
-            cls is None
-            and re.match(
-                r"(std\s*::\s*)?(vector)?(map)?(set)?(string)?(bitset)?\s*<", classname
+            re.match(
+                r"(std\s*::\s*)?(vector|map|set|string|bitset)\s*<", classname
             )
             is not None
         ):
@@ -1119,6 +1111,14 @@ in file {}""".format(
             cls._header = False
 
             return cls
+
+        classes = uproot.model.maybe_custom_classes(classname, self._custom_classes)
+        cls = classes.get(classname)
+
+        if cls is None:
+            streamers = self.streamers_named(classname)
+            if len(streamers) == 0 and self._custom_classes is not None:
+                cls = uproot.classes.get(classname)
 
         if cls is None:
             if len(streamers) == 0:
