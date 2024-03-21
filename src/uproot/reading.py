@@ -1109,7 +1109,7 @@ in file {}""".format(
                 cls = uproot.classes.get(classname)
 
         if (
-            re.match(r"(std\s*::\s*)?(vector|map|set|string|bitset)\s*<", classname)
+            re.match(r"(std\s*::\s*)?(vector|map|set|bitset)\s*<", classname)
             is not None
         ):
             cls = uproot.interpretation.identify.parse_typename(classname)
@@ -2507,7 +2507,7 @@ class ReadOnlyKey:
             start_cursor = cursor.copy()
             context = {"breadcrumbs": (), "TKey": self}
 
-            if self._fClassName == "string":
+            if re.match(r"(std\s*::\s*)?string", self._fClassName):
                 return cursor.string(chunk, context)
 
             cls = self._file.class_named(self._fClassName)
