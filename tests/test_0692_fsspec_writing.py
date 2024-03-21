@@ -4,10 +4,13 @@ import pytest
 import uproot
 import uproot.source.fsspec
 
+import sys
 import os
 import pathlib
 import fsspec
 import numpy as np
+
+is_windows = sys.platform.startswith("win")
 
 
 def test_fsspec_writing_no_integration(tmp_path):
@@ -46,7 +49,7 @@ def test_fsspec_writing_local(tmp_path, scheme):
 )
 @pytest.mark.parametrize(
     "slash_prefix",
-    ["", "/"],
+    [""] if is_windows else ["", "/"],
 )
 def test_fsspec_writing_local_uri(tmp_path, scheme, slash_prefix, filename):
     uri = scheme + slash_prefix + os.path.join(tmp_path, "some", "path", filename)

@@ -5,6 +5,7 @@ import math
 import socket
 import time
 from collections.abc import Callable, Iterable, Mapping
+from concurrent.futures import Executor
 
 from uproot.source.chunk import SourcePerformanceCounters
 
@@ -835,6 +836,8 @@ class ImplementsFormMappingInfo(Protocol):
         keys: frozenset[str],
         start: int,
         stop: int,
+        decompression_executor: Executor,
+        interpretation_executor: Executor,
         options: Any,
     ) -> Mapping[str, AwkArray]: ...
 
