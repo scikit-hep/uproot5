@@ -1109,7 +1109,8 @@ in file {}""".format(
                 cls = uproot.classes.get(classname)
 
         if (
-            re.match(r"(std\s*::\s*)?(vector|map|set|bitset)\s*<", classname)
+            cls is None
+            and re.match(r"(std\s*::\s*)?(vector|map|set|bitset)\s*<", classname)
             is not None
         ):
             cls = uproot.interpretation.identify.parse_typename(classname)
