@@ -9,6 +9,7 @@ and :doc:`uproot.reading.ReadOnlyKey` (``TKey``).
 """
 from __future__ import annotations
 
+import re
 import struct
 import sys
 import uuid
@@ -1106,6 +1107,18 @@ in file {}""".format(
             streamers = self.streamers_named(classname)
             if len(streamers) == 0 and self._custom_classes is not None:
                 cls = uproot.classes.get(classname)
+
+        if (
+            cls is None
+            and re.match(
+                r"(std\s*::\s*)?(vector)?(map)?(set)?(string)?(bitset)?\s*<", classname
+            )
+            is not None
+        ):
+            cls = uproot.interpretation.identify.parse_typename(classname)
+            cls._header = False
+
+            return cls
 
         if cls is None:
             if len(streamers) == 0:
