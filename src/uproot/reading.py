@@ -1102,9 +1102,7 @@ in file {}""".format(
         classname = uproot.model.classname_regularize(classname)
 
         if (
-            re.match(
-                r"(std\s*::\s*)?(vector|map|set|string|bitset)\s*<", classname
-            )
+            re.match(r"(std\s*::\s*)?(vector|map|set|string|bitset)\s*<", classname)
             is not None
         ):
             cls = uproot.interpretation.identify.parse_typename(classname)
