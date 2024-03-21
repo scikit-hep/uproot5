@@ -2,9 +2,9 @@
 
 import uproot
 import os
-import ROOT
 import numpy as np
 
+ROOT = pytest.importorskip("ROOT")
 
 def test_read_free_floating_vector(tmp_path):
     newfile = os.path.join(tmp_path, "test_freevec.root")
