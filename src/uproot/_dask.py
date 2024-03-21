@@ -627,9 +627,7 @@ def _get_dask_array(
         raise ValueError(
             "allow_missing=True and no TTrees found in\n\n    {}".format(
                 "\n    ".join(
-                    "{"
-                    + f"{f.file_path if isinstance(f, HasBranches) else f!r}: {f.object_path if isinstance(f, HasBranches) else o!r}"
-                    + "}"
+                    f"{{{f.file_path if isinstance(f, HasBranches) else f!r}: {f.object_path if isinstance(f, HasBranches) else o!r}}}"
                     for f, o in files
                 )
             )
@@ -639,9 +637,7 @@ def _get_dask_array(
         raise ValueError(
             "TTrees in\n\n    {}\n\nhave no TBranches in common".format(
                 "\n    ".join(
-                    "{"
-                    + f"{f.file_path if isinstance(f, HasBranches) else f!r}: {f.object_path if isinstance(f, HasBranches) else o!r}"
-                    + "}"
+                    f"{{{f.file_path if isinstance(f, HasBranches) else f!r}: {f.object_path if isinstance(f, HasBranches) else o!r}}}"
                     for f, o in files
                 )
             )
@@ -1466,9 +1462,7 @@ def _get_dak_array(
         raise ValueError(
             "allow_missing=True and no TTrees found in\n\n    {}".format(
                 "\n    ".join(
-                    "{"
-                    + f"{f.file_path if isinstance(f, HasBranches) else f!r}: {f.object_path if isinstance(f, HasBranches) else o!r}"
-                    + "}"
+                    f"{{{f.file_path if isinstance(f, HasBranches) else f!r}: {f.object_path if isinstance(f, HasBranches) else o!r}}}"
                     for f, o in files
                 )
             )
@@ -1478,9 +1472,7 @@ def _get_dak_array(
         raise ValueError(
             "TTrees in\n\n    {}\n\nhave no TBranches in common".format(
                 "\n    ".join(
-                    "{"
-                    + f"{f.file_path if isinstance(f, HasBranches) else f!r}: {f.object_path if isinstance(f, HasBranches) else o!r}"
-                    + "}"
+                    f"{{{f.file_path if isinstance(f, HasBranches) else f!r}: {f.object_path if isinstance(f, HasBranches) else o!r}}}"
                     for f, o in files
                 )
             )
