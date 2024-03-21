@@ -18,7 +18,6 @@ def test_read_free_floating_vector(tmp_path):
     f.Write()
     f.Close()
 
-
     with uproot.open(newfile) as f:
-        assert f['avec'].tolist() == [1.0, 2.0, 3.0, 4.0]
-        assert f['bvec'].tolist() == [0, 1, 4, 5, 6, 7, 8, 9]
+        assert f["avec"].tolist() == [1.0, 2.0, 3.0, 4.0]
+        assert f["bvec"].tolist() == [0, 1, 4, 5, 6, 7, 8, 9]
