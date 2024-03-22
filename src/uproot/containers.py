@@ -1120,6 +1120,34 @@ class AsVector(AsVectorLike):
         return STLVector
 
 
+class AsList(AsVectorLike):
+    """
+    Args:
+        header (bool): Sets the :ref:`uproot.containers.AsContainer.header`.
+        values (:doc:`uproot.model.Model` or :doc:`uproot.containers.Container`): Data
+            type for data nested in the container.
+
+    A :doc:`uproot.containers.AsContainer` for ``std::list``.
+    """
+
+    _specialpathitem_name = "list"
+
+    @property
+    def typename(self):
+        return f"std::list<{_content_typename(self.values)}>"
+
+    @property
+    def values(self):
+        """
+        Data type for data nested in the container.
+        """
+        return self._items
+
+    @property
+    def _container_type(self):
+        return STLList
+
+
 class AsSet(AsVectorLike):
     """
     Args:
@@ -1490,6 +1518,62 @@ class ROOTRVec(Container, Sequence):
 
     def __eq__(self, other):
         if isinstance(other, ROOTRVec):
+            return self._values == other._values
+        elif isinstance(other, Sequence):
+            return self._values == other
+        else:
+            return False
+
+    def tolist(self):
+        return [
+            x.tolist() if isinstance(x, (Container, numpy.ndarray)) else x for x in self
+        ]
+
+
+class STLList(Container, Sequence):
+    """
+    Args:
+        values (``numpy.ndarray`` or iterable): Contents of the ``std::list``.
+
+    Representation of a C++ ``std::list`` as a Python ``Sequence``.
+    """
+
+    def __init__(self, values):
+        if isinstance(values, types.GeneratorType):
+            values = numpy.asarray(list(values))
+        elif isinstance(values, Set):
+            values = numpy.asarray(list(values))
+        elif isinstance(values, (list, tuple)):
+            values = numpy.asarray(values)
+
+        self._values = values
+
+    def __str__(self, limit=85):
+        def tostring(i):
+            return _tostring(self._values[i])
+
+        return _str_with_ellipsis(tostring, len(self), "[", "]", limit)
+
+    def __repr__(self, limit=85):
+        return f"<STLList {self.__str__(limit=limit - 30)} at 0x{id(self):012x}>"
+
+    def __getitem__(self, where):
+        return self._values[where]
+
+    def __len__(self):
+        return len(self._values)
+
+    def __contains__(self, what):
+        return what in self._values
+
+    def __iter__(self):
+        return iter(self._values)
+
+    def __reversed__(self):
+        return STLList(self._values[::-1])
+
+    def __eq__(self, other):
+        if isinstance(other, STLList):
             return self._values == other._values
         elif isinstance(other, Sequence):
             return self._values == other
