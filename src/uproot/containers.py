@@ -667,12 +667,7 @@ class AsArray(AsContainer):
 
     @property
     def cache_key(self):
-        return "AsArray({},{},{},{})".format(
-            self.header,
-            self.speedbump,
-            _content_cache_key(self._values),
-            self.inner_shape,
-        )
+        return f"AsArray({self.header},{self.speedbump},{_content_cache_key(self._values)},{self.inner_shape})"
 
     @property
     def typename(self):
@@ -956,18 +951,14 @@ class AsVectorLike(AsContainer):
             # FIXME: let's hard-code in logic for std::pair<T1,T2> for now
             if not _value_typename.startswith("pair"):
                 raise NotImplementedError(
-                    """memberwise serialization of {}({})
-    in file {}""".format(
-                        type(self).__name__, _value_typename, selffile.file_path
-                    )
+                    f"""memberwise serialization of {type(self).__name__}({_value_typename})
+    in file {selffile.file_path}"""
                 )
 
             if not issubclass(self._items, uproot.model.DispatchByVersion):
                 raise NotImplementedError(
-                    """streamerless memberwise serialization of class {}({})
-    in file {}""".format(
-                        type(self).__name__, _value_typename, selffile.file_path
-                    )
+                    f"""streamerless memberwise serialization of class {type(self).__name__}({_value_typename})
+    in file {selffile.file_path}"""
                 )
 
             # uninterpreted header
@@ -1220,17 +1211,11 @@ class AsMap(AsContainer):
 
     @property
     def cache_key(self):
-        return "AsMap({},{},{})".format(
-            self._header,
-            _content_cache_key(self._keys),
-            _content_cache_key(self._values),
-        )
+        return f"AsMap({self._header},{_content_cache_key(self._keys)},{_content_cache_key(self._values)})"
 
     @property
     def typename(self):
-        return "std::map<{}, {}>".format(
-            _content_typename(self._keys), _content_typename(self._values)
-        )
+        return f"std::map<{_content_typename(self._keys)}, {_content_typename(self._values)}>"
 
     def awkward_form(self, file, context):
         awkward = uproot.extras.awkward()

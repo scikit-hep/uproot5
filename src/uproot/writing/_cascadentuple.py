@@ -23,12 +23,12 @@ import uproot.const
 import uproot.reading
 import uproot.serialization
 from uproot.models.RNTuple import (
+    _rntuple_anchor_format,
     _rntuple_cluster_group_format,
     _rntuple_cluster_summary_format,
     _rntuple_column_record_format,
     _rntuple_feature_flag_format,
-    _rntuple_field_description,
-    _rntuple_format1,
+    _rntuple_field_description_format,
     _rntuple_locator_format,
     _rntuple_record_size_format,
 )
@@ -170,21 +170,10 @@ class NTuple_Field_Description:
         self.field_description = field_description
 
     def __repr__(self):
-        return "{}({}, {}, {}, {}, {}, {}, {}, {}, {})".format(
-            type(self).__name__,
-            repr(self.field_version),
-            repr(self.type_version),
-            repr(self.parent_field_id),
-            repr(self.struct_role),
-            repr(self.flags),
-            repr(self.field_name),
-            repr(self.type_name),
-            repr(self.type_alias),
-            repr(self.field_description),
-        )
+        return f"{type(self).__name__}({self.field_version!r}, {self.type_version!r}, {self.parent_field_id!r}, {self.struct_role!r}, {self.flags!r}, {self.field_name!r}, {self.type_name!r}, {self.type_alias!r}, {self.field_description!r})"
 
     def serialize(self):
-        header_bytes = _rntuple_field_description.pack(
+        header_bytes = _rntuple_field_description_format.pack(
             self.field_version,
             self.type_version,
             self.parent_field_id,
@@ -356,14 +345,7 @@ class NTuple_Footer(CascadeLeaf):
         super().__init__(location, None)
 
     def __repr__(self):
-        return "{}(extension_header_env_links = {}, column_group_record_frames = {}, cluster_summary_record_frames={}, cluster_group_record_frames{}, metadata_block_envelope_link = {})".format(
-            type(self).__name__,
-            self.extension_header_envelope_links,
-            self.column_group_record_frames,
-            self.cluster_summary_record_frames,
-            self.cluster_group_record_frames,
-            self.metadata_block_envelope_links,
-        )
+        return f"{type(self).__name__}(extension_header_env_links = {self.extension_header_envelope_links}, column_group_record_frames = {self.column_group_record_frames}, cluster_summary_record_frames={self.cluster_summary_record_frames}, cluster_group_record_frames{self.cluster_group_record_frames}, metadata_block_envelope_link = {self.metadata_block_envelope_links})"
 
     def serialize(self):
         env_header = uproot.const.rntuple_env_header
@@ -497,7 +479,7 @@ class NTuple_Anchor(CascadeLeaf):
         fLenFooter,
         fReserved,
     ):
-        aloc = _rntuple_format1.size
+        aloc = _rntuple_anchor_format.size
         super().__init__(location, aloc)
         self.fCheckSum = fCheckSum
         self.fVersion = fVersion
@@ -535,12 +517,12 @@ class NTuple_Anchor(CascadeLeaf):
     def serialize(self):
         # hardcoded unless version changes
         # version = 0
-        # aloc = _rntuple_format1.size
+        # aloc = _rntuple_anchor_format.size
         # uproot.serialization.numbytes_version(aloc, version)
-        out = _rntuple_format1.pack(*self._fields)
+        out = _rntuple_anchor_format.pack(*self._fields)
         crc32 = zlib.crc32(out)
         self.fCheckSum = crc32
-        out = _rntuple_format1.pack(*self._fields)
+        out = _rntuple_anchor_format.pack(*self._fields)
         return b"@\x00\x006\x00\x03" + out
 
 
@@ -599,17 +581,7 @@ class NTuple(CascadeNode):
         self._num_entries = 0
 
     def __repr__(self):
-        return "{}({}, {}, {}, {}, {}, {}, {}, {})".format(
-            type(self).__name__,
-            self._directory,
-            self._name,
-            self._title,
-            self._header,
-            self._footer,
-            self._cluster_metadata,
-            self._anchor,
-            self._freesegments,
-        )
+        return f"{type(self).__name__}({self._directory}, {self._name}, {self._title}, {self._header}, {self._footer}, {self._cluster_metadata}, {self._anchor}, {self._freesegments})"
 
     @property
     def directory(self):

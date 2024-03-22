@@ -107,10 +107,8 @@ def get_num_bytes(file_path: str, parsed_url: urllib.parse.ParseResult, timeout)
                 break
         else:
             raise http.client.HTTPException(
-                """remote server responded with status {} (redirect) without a 'location'
-for URL {}""".format(
-                    response.status, file_path
-                )
+                f"""remote server responded with status {response.status} (redirect) without a 'location'
+for URL {file_path}"""
             )
 
     if response.status == 404:
@@ -120,10 +118,8 @@ for URL {}""".format(
     if response.status != 200:
         connection.close()
         raise http.client.HTTPException(
-            """HTTP response was {}, rather than 200, in attempt to get file size
-in file {}""".format(
-                response.status, file_path
-            )
+            f"""HTTP response was {response.status}, rather than 200, in attempt to get file size
+in file {file_path}"""
         )
 
     for k, x in response.getheaders():
@@ -133,10 +129,8 @@ in file {}""".format(
     else:
         connection.close()
         raise http.client.HTTPException(
-            """response headers did not include content-length: {}
-in file {}""".format(
-                dict(response.getheaders()), file_path
-            )
+            f"""response headers did not include content-length: {dict(response.getheaders())}
+in file {file_path}"""
         )
 
 
@@ -217,19 +211,15 @@ class HTTPResource(uproot.source.chunk.Resource):
                     return self.get(redirect, start, stop)
 
             raise http.client.HTTPException(
-                """remote server responded with status {} (redirect) without a 'location'
-for URL {}""".format(
-                    response.status, self._file_path
-                )
+                f"""remote server responded with status {response.status} (redirect) without a 'location'
+for URL {self._file_path}"""
             )
 
         if response.status != 206:
             connection.close()
             raise http.client.HTTPException(
-                """remote server responded with status {}, rather than 206 (range requests)
-for URL {}""".format(
-                    response.status, self._file_path
-                )
+                f"""remote server responded with status {response.status}, rather than 206 (range requests)
+for URL {self._file_path}"""
             )
         try:
             return response.read()
@@ -323,10 +313,8 @@ for URL {}""".format(
                             return
 
                     raise http.client.HTTPException(
-                        """remote server responded with status {} (redirect) without a 'location'
-for URL {}""".format(
-                            response.status, source.file_path
-                        )
+                        f"""remote server responded with status {response.status} (redirect) without a 'location'
+for URL {source.file_path}"""
                     )
 
                 multipart_supported = resource.is_multipart_supported(ranges, response)
@@ -429,11 +417,9 @@ for URL {}""".format(
 
             if len(data) != length:
                 raise http.client.HTTPException(
-                    """wrong chunk length {} (expected {}) for byte range {} "
+                    f"""wrong chunk length {len(data)} (expected {length}) for byte range {range_string.decode()!r} "
                     "in HTTP multipart
-for URL {}""".format(
-                        len(data), length, repr(range_string.decode()), self._file_path
-                    )
+for URL {self._file_path}"""
                 )
 
             found = futures.pop((start, stop), None)
@@ -455,13 +441,11 @@ for URL {}""".format(
                         range_string = range_string.decode("utf-8", "surrogateescape")
                         expecting = ", ".join(f"{a}-{b - 1}" for a, b in futures)
                         raise http.client.HTTPException(
-                            """unrecognized byte range in headers of HTTP multipart: {}
+                            f"""unrecognized byte range in headers of HTTP multipart: {range_string!r}
 
-    expecting: {}
+    expecting: {expecting}
 
-for URL {}""".format(
-                                repr(range_string), expecting, self._file_path
-                            )
+for URL {self._file_path}"""
                         )
                     subdata = data[
                         now - start : now + future_stop - future_start - start
