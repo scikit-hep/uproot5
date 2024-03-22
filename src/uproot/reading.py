@@ -1106,6 +1106,16 @@ in file {self._file_path}"""
             if len(streamers) == 0 and self._custom_classes is not None:
                 cls = uproot.classes.get(classname)
 
+        if (
+            cls is None
+            and re.match(r"(std\s*::\s*)?(vector|map|set|bitset)\s*<", classname)
+            is not None
+        ):
+            cls = uproot.interpretation.identify.parse_typename(classname)
+            cls._header = False
+
+            return cls
+
         if cls is None:
             if len(streamers) == 0:
                 unknown_cls = uproot.unknown_classes.get(classname)
@@ -2494,7 +2504,7 @@ class ReadOnlyKey:
             start_cursor = cursor.copy()
             context = {"breadcrumbs": (), "TKey": self}
 
-            if self._fClassName == "string":
+            if re.match(r"(std\s*::\s*)?string", self._fClassName):
                 return cursor.string(chunk, context)
 
             cls = self._file.class_named(self._fClassName)
