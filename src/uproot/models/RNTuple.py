@@ -6,28 +6,32 @@ This module defines a versionless model for ``ROOT::Experimental::RNTuple``.
 from __future__ import annotations
 
 import struct
-import zlib
 from collections import defaultdict
 
 import numpy
 
 import uproot
 
-# https://github.com/root-project/root/blob/e9fa243af91217e9b108d828009c81ccba7666b5/tree/ntuple/v7/inc/ROOT/RMiniFile.hxx#L65
-_rntuple_format1 = struct.Struct(">IIIQIIQIIQ")
+# https://github.com/root-project/root/blob/aa513463b0b512517370cb91cca025e53a8b13a2/tree/ntuple/v7/inc/ROOT/RNTupleAnchor.hxx#L69
+_rntuple_anchor_format = struct.Struct(">HHHHQQQQQQQ")
 
-# https://github.com/jblomer/root/blob/ntuple-binary-format-v1/tree/ntuple/v7/doc/specifications.md#envelopes
+# https://github.com/root-project/root/blob/aa513463b0b512517370cb91cca025e53a8b13a2/tree/ntuple/v7/doc/specifications.md#envelopes
 _rntuple_feature_flag_format = struct.Struct("<Q")
-_rntuple_num_bytes_fields = struct.Struct("<II")
-_rntuple_field_description = struct.Struct("<IIIHH")
+_rntuple_env_header_format = struct.Struct("<Q")
+_rntuple_field_description_format = struct.Struct("<IIIHH")
+_rntuple_repetition_format = struct.Struct("<Q")
 _rntuple_column_record_format = struct.Struct("<HHII")
-_rntuple_alias_column = struct.Struct("<II")
-_rntuple_extra_type_info = struct.Struct("<III")
-_rntuple_record_size_format = struct.Struct("<I")
-_rntuple_frame_header = struct.Struct("<ii")
-_rntuple_cluster_group_format = struct.Struct("<I")
+_rntuple_alias_column_format = struct.Struct("<II")
+_rntuple_extra_type_info_format = struct.Struct("<III")
+_rntuple_record_size_format = struct.Struct("<q")
+_rntuple_frame_header_format = struct.Struct("<qi")
+_rntuple_cluster_group_format = struct.Struct("<qqi")
 _rntuple_locator_format = struct.Struct("<iQ")
 _rntuple_cluster_summary_format = struct.Struct("<QQ")
+_rntuple_checksum_format = struct.Struct("<Q")
+_rntuple_envlink_size_format = struct.Struct("<Q")
+_rntuple_page_num_elements_format = struct.Struct("<I")
+_rntuple_column_group_id_format = struct.Struct("<I")
 
 
 def from_zigzag(n):
@@ -35,10 +39,10 @@ def from_zigzag(n):
 
 
 def _envelop_header(chunk, cursor, context):
-    env_version, min_version = cursor.fields(
-        chunk, uproot.const._rntuple_frame_format, context
-    )
-    return {"env_version": env_version, "min_version": min_version}
+    env_data = cursor.field(chunk, _rntuple_env_header_format, context)
+    env_type_id = env_data & 0xFFFF
+    env_length = env_data >> 16
+    return {"env_type_id": env_type_id, "env_length": env_length}
 
 
 class Model_ROOT_3a3a_Experimental_3a3a_RNTuple(uproot.model.Model):
@@ -68,17 +72,18 @@ in file {self.file.file_path}"""
             )
 
         (
-            self._members["fCheckSum"],
-            self._members["fVersion"],
-            self._members["fSize"],
+            self.members["fVersionEpoch"],
+            self.members["fVersionMajor"],
+            self.members["fVersionMinor"],
+            self.members["fVersionPatch"],
             self._members["fSeekHeader"],
             self._members["fNBytesHeader"],
             self._members["fLenHeader"],
             self._members["fSeekFooter"],
             self._members["fNBytesFooter"],
             self._members["fLenFooter"],
-            self._members["fReserved"],
-        ) = cursor.fields(chunk, _rntuple_format1, context)
+            self._members["fChecksum"],
+        ) = cursor.fields(chunk, _rntuple_anchor_format, context)
 
         self._header_chunk_ready = False
         self._footer_chunk_ready = False
@@ -143,7 +148,6 @@ in file {self.file.file_path}"""
 
             h = HeaderReader().read(self._header_chunk, cursor, context)
             self._header = h
-            assert h.crc32 == zlib.crc32(self._header_chunk.raw_data[:-4])
 
         return self._header
 
@@ -167,16 +171,15 @@ in file {self.file.file_path}"""
 
             f = FooterReader().read(self._footer_chunk, cursor, context)
             assert (
-                f.header_crc32 == self.header.crc32
-            ), f"crc32={self.header.crc32}, header_crc32={f.header_crc32}"
-            assert f.crc32 == zlib.crc32(self._footer_chunk.raw_data[:-4])
+                f.header_checksum == self.header.checksum
+            ), f"checksum={self.header.checksum}, header_checksum={f.header_checksum}"
             self._footer = f
 
         return self._footer
 
     @property
     def cluster_summaries(self):
-        return self.footer.cluster_summaries
+        return self.page_list_envelopes.cluster_summaries
 
     # FIXME
     @property
@@ -266,7 +269,7 @@ in file {self.file.file_path}"""
             )
             form_key = f"column-{rel_crs_idxs[0]}"
             return ak.forms.ListOffsetForm(
-                "u32", inner, form_key=form_key, parameters={"__array__": "string"}
+                "i64", inner, form_key=form_key, parameters={"__array__": "string"}
             )
         else:
             raise (RuntimeError(f"Missing special case: {field_id}"))
@@ -422,7 +425,10 @@ in file {self.file.file_path}"""
             )
             tracker = tracker_end
 
-        if dtype_byte <= uproot.const.rntuple_col_type_to_num_dict["index32"]:
+        if (
+            dtype_byte <= uproot.const.rntuple_col_type_to_num_dict["index32"]
+            or 14 <= dtype_byte <= 15
+        ):
             res = numpy.insert(res, 0, 0)  # for offsets
         zigzag = 26 <= dtype_byte <= 28
         delta = 14 <= dtype_byte <= 15
@@ -457,27 +463,20 @@ in file {self.file.file_path}"""
         )
 
         self._alias_columns_dict = {
-            el.field_id: el.physical_id
-            for i, el in enumerate(self.header.alias_columns)
+            el.field_id: el.physical_id for el in self.header.alias_columns
         }
         self._column_records_dict = {}
-        self._column_records_dict = {
-            el.field_id: {
-                "rel_crs": [
-                    *(self._column_records_dict.get(el.field_id) or {}).get(
-                        "rel_crs", []
-                    ),
-                    el,
-                ],
-                "rel_crs_idxs": [
-                    *(self._column_records_dict.get(el.field_id) or {}).get(
-                        "rel_crs_idxs", []
-                    ),
-                    i,
-                ],
-            }
-            for i, el in enumerate(self.header.column_records)
-        }
+        self._column_records_idx_to_id = {}
+        for i, cr in enumerate(self.header.column_records):
+            if cr.field_id not in self._column_records_dict:
+                self._column_records_dict[cr.field_id] = {
+                    "rel_crs": [cr],
+                    "rel_crs_idxs": [i],
+                }
+            else:
+                self._column_records_dict[cr.field_id]["rel_crs"].append(cr)
+                self._column_records_dict[cr.field_id]["rel_crs_idxs"].append(i)
+            self._column_records_idx_to_id[i] = cr.field_id
 
         self._related_ids = defaultdict(list)
         for i, el in enumerate(self.header.field_records):
@@ -492,10 +491,11 @@ in file {self.file.file_path}"""
         for key in target_cols:
             if "column" in key:
                 key_nr = int(key.split("-")[1])
-                if key_nr in self._column_records_dict:
-                    id = key_nr
+                key_fid = self._column_records_idx_to_id[key_nr]
+                if key_fid in self._column_records_dict:
+                    id = key_fid
                 elif key_nr in self._alias_columns_dict:
-                    id = self._alias_columns_dict[key_nr]
+                    id = self._alias_columns_dict[key_fid]
                 else:
                     raise (
                         RuntimeError(
@@ -505,7 +505,7 @@ in file {self.file.file_path}"""
 
                 dtype_byte = self._column_records_dict[id]["rel_crs"][0].type
                 content = self.read_col_pages(
-                    id, range(start_cluster_idx, stop_cluster_idx)
+                    key_nr, range(start_cluster_idx, stop_cluster_idx)
                 )
                 if dtype_byte == uproot.const.rntuple_col_type_to_num_dict["switch"]:
                     kindex, tags = _split_switch_bits(content)
@@ -545,42 +545,29 @@ def _recursive_find(form, res):
 class PageDescription:
     def read(self, chunk, cursor, context):
         out = MetaData(type(self).__name__)
-        out.num_elements = cursor.field(chunk, struct.Struct("<I"), context)
+        out.num_elements = cursor.field(
+            chunk, _rntuple_page_num_elements_format, context
+        )
         out.locator = LocatorReader().read(chunk, cursor, context)
         return out
 
 
-class PageLinkInner:
-    def read(self, chunk, cursor, context):
-        local_cursor = cursor.copy()
-        num_bytes, num_pages = local_cursor.fields(
-            chunk, _rntuple_frame_header, context
-        )
-        assert num_bytes < 0, f"num_bytes={num_bytes}"
-        cursor.skip(-num_bytes)
-        return [
-            PageDescription().read(chunk, local_cursor, context)
-            for _ in range(num_pages)
-        ]
-
-
 class PageLink:
     def __init__(self):
-        self.top_most_list = ListFrameReader(  # top-most list
-            ListFrameReader(PageLinkInner())  # outer list (inner list)
+        self.list_cluster_summaries = ListFrameReader(
+            RecordFrameReader(ClusterSummaryReader())
+        )
+        self.nested_page_locations = ListFrameReader(
+            ListFrameReader(ListFrameReader(PageDescription()))
         )
 
     def read(self, chunk, cursor, context):
         out = MetaData(type(self).__name__)
         out.env_header = _envelop_header(chunk, cursor, context)
-        local_cursor = cursor.copy()
-        num_bytes, num_items = cursor.fields(chunk, _rntuple_frame_header, context)
-        if num_items == 0:
-            return out
-        out.pagelinklist = self.top_most_list.read(chunk, local_cursor, context)
-        cursor.skip(-num_bytes - 8)
-        out.crc32 = cursor.field(chunk, struct.Struct("<I"), context)
-        assert zlib.crc32(chunk.raw_data[:-4]) == out.crc32
+        out.header_checksum = cursor.field(chunk, _rntuple_checksum_format, context)
+        out.cluster_summaries = self.list_cluster_summaries.read(chunk, cursor, context)
+        out.pagelinklist = self.nested_page_locations.read(chunk, cursor, context)
+        out.checksum = cursor.field(chunk, _rntuple_checksum_format, context)
         return out
 
 
@@ -596,7 +583,7 @@ class LocatorReader:
 class EnvLinkReader:
     def read(self, chunk, cursor, context):
         out = MetaData("EnvLink")
-        out.env_uncomp_size = cursor.field(chunk, struct.Struct("<I"), context)
+        out.env_uncomp_size = cursor.field(chunk, _rntuple_envlink_size_format, context)
         out.locator = LocatorReader().read(chunk, cursor, context)
         return out
 
@@ -631,6 +618,7 @@ class RecordFrameReader:
     def read(self, chunk, cursor, context):
         local_cursor = cursor.copy()
         num_bytes = local_cursor.field(chunk, _rntuple_record_size_format, context)
+        assert num_bytes >= 0, f"num_bytes={num_bytes}"
         cursor.skip(num_bytes)
         return self.payload.read(chunk, local_cursor, context)
 
@@ -642,7 +630,7 @@ class ListFrameReader:
     def read(self, chunk, cursor, context):
         local_cursor = cursor.copy()
         num_bytes, num_items = local_cursor.fields(
-            chunk, _rntuple_frame_header, context
+            chunk, _rntuple_frame_header_format, context
         )
         assert num_bytes < 0, f"num_bytes={num_bytes}"
         cursor.skip(-num_bytes)
@@ -651,7 +639,7 @@ class ListFrameReader:
         ]
 
 
-# https://github.com/jblomer/root/blob/ntuple-binary-format-v1/tree/ntuple/v7/doc/specifications.md#field-description
+# https://github.com/root-project/root/blob/aa513463b0b512517370cb91cca025e53a8b13a2/tree/ntuple/v7/doc/specifications.md#field-description
 class FieldRecordReader:
     def read(self, chunk, cursor, context):
         out = MetaData("FieldRecordFrame")
@@ -661,19 +649,18 @@ class FieldRecordReader:
             out.parent_field_id,
             out.struct_role,
             out.flags,
-        ) = cursor.fields(chunk, _rntuple_field_description, context)
+        ) = cursor.fields(chunk, _rntuple_field_description_format, context)
         if out.flags == 0x0001:
-            out.repetition = cursor.field(chunk, struct.Struct("Q"), context)
+            out.repetition = cursor.field(chunk, _rntuple_repetition_format, context)
         else:
             out.repetition = 0
-
         out.field_name, out.type_name, out.type_alias, out.field_desc = (
-            cursor.rntuple_string(chunk, context) for i in range(4)
+            cursor.rntuple_string(chunk, context) for _ in range(4)
         )
         return out
 
 
-# https://github.com/jblomer/root/blob/ntuple-binary-format-v1/tree/ntuple/v7/doc/specifications.md#column-description
+# https://github.com/root-project/root/blob/aa513463b0b512517370cb91cca025e53a8b13a2/tree/ntuple/v7/doc/specifications.md#column-description
 class ColumnRecordReader:
     def read(self, chunk, cursor, context):
         out = MetaData("ColumnRecordFrame")
@@ -688,7 +675,7 @@ class AliasColumnReader:
         out = MetaData("AliasColumn")
 
         out.physical_id, out.field_id = cursor.fields(
-            chunk, _rntuple_alias_column, context
+            chunk, _rntuple_alias_column_format, context
         )
         return out
 
@@ -698,7 +685,7 @@ class ExtraTypeInfoReader:
         out = MetaData("ExtraTypeInfoReader")
 
         out.type_ver_from, out.type_ver_to, out.content_id = cursor.fields(
-            chunk, _rntuple_extra_type_info, context
+            chunk, _rntuple_extra_type_info_format, context
         )
         out.type_name = cursor.rntuple_string(chunk, context)
         return out
@@ -723,7 +710,6 @@ class HeaderReader:
         out = MetaData(type(self).__name__)
         out.env_header = _envelop_header(chunk, cursor, context)
         out.feature_flag = cursor.field(chunk, _rntuple_feature_flag_format, context)
-        out.rc_tag = cursor.field(chunk, struct.Struct("I"), context)
         out.name, out.ntuple_description, out.writer_identifier = (
             cursor.rntuple_string(chunk, context) for _ in range(3)
         )
@@ -734,7 +720,7 @@ class HeaderReader:
         out.extra_type_infos = self.list_extra_type_info_reader.read(
             chunk, cursor, context
         )
-        out.crc32 = cursor.field(chunk, struct.Struct("<I"), context)
+        out.checksum = cursor.field(chunk, _rntuple_checksum_format, context)
 
         return out
 
@@ -748,11 +734,18 @@ class HeaderReader:
         return out
 
 
+class ColumnGroupIDReader:
+    def read(self, chunk, cursor, context):
+        out = MetaData("ColumnGroupID")
+        out.col_id = cursor.field(chunk, _rntuple_column_group_id_format, context)
+        return out
+
+
 class ColumnGroupRecordReader:
     def read(self, chunk, cursor, context):
-        out = MetaData("ClusterSummaryRecord")
-        out.num_first_entry, out.num_entries = cursor.fields(
-            chunk, self._cluster_summary_format, context
+        out = MetaData("ColumnGroupRecord")
+        out.column_ids = ListFrameReader(RecordFrameReader(ColumnGroupIDReader())).read(
+            chunk, cursor, context
         )
         return out
 
@@ -769,7 +762,9 @@ class ClusterSummaryReader:
 class ClusterGroupRecordReader:
     def read(self, chunk, cursor, context):
         out = MetaData("ClusterGroupRecord")
-        out.num_clusters = cursor.field(chunk, _rntuple_cluster_group_format, context)
+        out.min_entry_num, out.entry_span, out.num_clusters = cursor.fields(
+            chunk, _rntuple_cluster_group_format, context
+        )
         out.page_list_link = EnvLinkReader().read(chunk, cursor, context)
         return out
 
@@ -777,7 +772,8 @@ class ClusterGroupRecordReader:
 class RNTupleSchemaExtension:
     def read(self, chunk, cursor, context):
         out = MetaData(type(self).__name__)
-        out.size = cursor.field(chunk, struct.Struct("<I"), context)
+        out.size = cursor.field(chunk, _rntuple_record_size_format, context)
+        assert out.size >= 0, f"size={out.size}"
         out.field_records = ListFrameReader(
             RecordFrameReader(FieldRecordReader())
         ).read(chunk, cursor, context)
@@ -796,7 +792,6 @@ class RNTupleSchemaExtension:
 class FooterReader:
     def __init__(self):
         self.extension_header_links = RNTupleSchemaExtension()
-        # self.extension_header_links = ListFrameReader(EnvLinkReader())
         self.column_group_record_frames = ListFrameReader(
             RecordFrameReader(ColumnGroupRecordReader())
         )
@@ -806,24 +801,22 @@ class FooterReader:
         self.cluster_group_record_frames = ListFrameReader(
             RecordFrameReader(ClusterGroupRecordReader())
         )
-        self.meta_data_links = ListFrameReader(EnvLinkReader())
+        self.meta_data_links = ListFrameReader(RecordFrameReader(EnvLinkReader()))
 
     def read(self, chunk, cursor, context):
         out = MetaData("Footer")
         out.env_header = _envelop_header(chunk, cursor, context)
         out.feature_flag = cursor.field(chunk, _rntuple_feature_flag_format, context)
-        out.header_crc32 = cursor.field(chunk, struct.Struct("<I"), context)
+        out.header_checksum = cursor.field(chunk, _rntuple_checksum_format, context)
         out.extension_links = self.extension_header_links.read(chunk, cursor, context)
-
         out.col_group_records = self.column_group_record_frames.read(
             chunk, cursor, context
         )
-        out.cluster_summaries = self.cluster_summary_frames.read(chunk, cursor, context)
         out.cluster_group_records = self.cluster_group_record_frames.read(
             chunk, cursor, context
         )
         out.meta_block_links = self.meta_data_links.read(chunk, cursor, context)
-        out.crc32 = cursor.field(chunk, struct.Struct("<I"), context)
+        out.checksum = cursor.field(chunk, _rntuple_checksum_format, context)
         return out
 
 
