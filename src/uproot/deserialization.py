@@ -173,9 +173,7 @@ def numbytes_check(
         observed = stop_cursor.displacement(start_cursor)
         if observed != num_bytes:
             raise DeserializationError(
-                """expected {} bytes but cursor moved by {} bytes (through {})""".format(
-                    num_bytes, observed, classname
-                ),
+                f"""expected {num_bytes} bytes but cursor moved by {observed} bytes (through {classname})""",
                 chunk,
                 stop_cursor,
                 context,

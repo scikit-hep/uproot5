@@ -107,10 +107,8 @@ def get_num_bytes(file_path: str, parsed_url: urllib.parse.ParseResult, timeout)
                 break
         else:
             raise http.client.HTTPException(
-                """remote server responded with status {} (redirect) without a 'location'
-for URL {}""".format(
-                    response.status, file_path
-                )
+                f"""remote server responded with status {response.status} (redirect) without a 'location'
+for URL {file_path}"""
             )
 
     if response.status == 404:
@@ -120,10 +118,8 @@ for URL {}""".format(
     if response.status != 200:
         connection.close()
         raise http.client.HTTPException(
-            """HTTP response was {}, rather than 200, in attempt to get file size
-in file {}""".format(
-                response.status, file_path
-            )
+            f"""HTTP response was {response.status}, rather than 200, in attempt to get file size
+in file {file_path}"""
         )
 
     for k, x in response.getheaders():
@@ -133,10 +129,8 @@ in file {}""".format(
     else:
         connection.close()
         raise http.client.HTTPException(
-            """response headers did not include content-length: {}
-in file {}""".format(
-                dict(response.getheaders()), file_path
-            )
+            f"""response headers did not include content-length: {dict(response.getheaders())}
+in file {file_path}"""
         )
 
 
@@ -217,19 +211,15 @@ class HTTPResource(uproot.source.chunk.Resource):
                     return self.get(redirect, start, stop)
 
             raise http.client.HTTPException(
-                """remote server responded with status {} (redirect) without a 'location'
-for URL {}""".format(
-                    response.status, self._file_path
-                )
+                f"""remote server responded with status {response.status} (redirect) without a 'location'
+for URL {self._file_path}"""
             )
 
         if response.status != 206:
             connection.close()
             raise http.client.HTTPException(
-                """remote server responded with status {}, rather than 206 (range requests)
-for URL {}""".format(
-                    response.status, self._file_path
-                )
+                f"""remote server responded with status {response.status}, rather than 206 (range requests)
+for URL {self._file_path}"""
             )
         try:
             return response.read()
@@ -263,7 +253,11 @@ for URL {}""".format(
 
     @staticmethod
     def multifuture(
-        source: uproot.source.chunk.Source, ranges: list[(int, int)], futures, results
+        source: uproot.source.chunk.Source,
+        range_header: dict,
+        ranges: list[(int, int)],
+        futures,
+        results,
     ):
         """
         Args:
@@ -289,10 +283,6 @@ for URL {}""".format(
         """
         connection = make_connection(source.parsed_url, source.timeout)
 
-        range_header = {
-            "Range": "bytes="
-            + ",".join([f"{start}-{stop - 1}" for start, stop in ranges])
-        }
         connection.request(
             "GET",
             full_path(source.parsed_url),
@@ -323,10 +313,8 @@ for URL {}""".format(
                             return
 
                     raise http.client.HTTPException(
-                        """remote server responded with status {} (redirect) without a 'location'
-for URL {}""".format(
-                            response.status, source.file_path
-                        )
+                        f"""remote server responded with status {response.status} (redirect) without a 'location'
+for URL {source.file_path}"""
                     )
 
                 multipart_supported = resource.is_multipart_supported(ranges, response)
@@ -429,11 +417,9 @@ for URL {}""".format(
 
             if len(data) != length:
                 raise http.client.HTTPException(
-                    """wrong chunk length {} (expected {}) for byte range {} "
+                    f"""wrong chunk length {len(data)} (expected {length}) for byte range {range_string.decode()!r} "
                     "in HTTP multipart
-for URL {}""".format(
-                        len(data), length, repr(range_string.decode()), self._file_path
-                    )
+for URL {self._file_path}"""
                 )
 
             found = futures.pop((start, stop), None)
@@ -455,13 +441,11 @@ for URL {}""".format(
                         range_string = range_string.decode("utf-8", "surrogateescape")
                         expecting = ", ".join(f"{a}-{b - 1}" for a, b in futures)
                         raise http.client.HTTPException(
-                            """unrecognized byte range in headers of HTTP multipart: {}
+                            f"""unrecognized byte range in headers of HTTP multipart: {range_string!r}
 
-    expecting: {}
+    expecting: {expecting}
 
-for URL {}""".format(
-                                repr(range_string), expecting, self._file_path
-                            )
+for URL {self._file_path}"""
                         )
                     subdata = data[
                         now - start : now + future_stop - future_start - start
@@ -579,6 +563,8 @@ class HTTPSource(uproot.source.chunk.Source):
         self._fallback_options = options.copy()
         self._fallback_options["num_workers"] = self._num_fallback_workers
 
+        self._http_max_header_bytes = options["http_max_header_bytes"]
+
         # Parse the URL here, so that we can expose these fields
         self._parsed_url = urlparse(file_path)
         self._auth_headers = basic_auth_headers(self._parsed_url)
@@ -624,29 +610,63 @@ class HTTPSource(uproot.source.chunk.Source):
         return chunk
 
     def chunks(
-        self, ranges: list[(int, int)], notifications: queue.Queue
+        self,
+        ranges: list[(int, int)],
+        notifications: queue.Queue,
     ) -> list[uproot.source.chunk.Chunk]:
         if self._fallback is None:
             self._num_requests += 1
             self._num_requested_chunks += len(ranges)
             self._num_requested_bytes += sum(stop - start for start, stop in ranges)
-
-            futures = {}
-            results = {}
             chunks = []
-            for start, stop in ranges:
-                partfuture = self.ResourceClass.partfuture(results, start, stop)
-                futures[start, stop] = partfuture
-                results[start, stop] = None
-                chunk = uproot.source.chunk.Chunk(self, start, stop, partfuture)
-                partfuture._set_notify(
-                    uproot.source.chunk.notifier(chunk, notifications)
-                )
-                chunks.append(chunk)
 
-            self._executor.submit(
-                self.ResourceClass.multifuture(self, ranges, futures, results)
-            )
+            def set_futures_and_results(ranges):
+                futures = {}
+                results = {}
+
+                for start, stop in ranges:
+                    partfuture = self.ResourceClass.partfuture(results, start, stop)
+                    futures[start, stop] = partfuture
+                    results[start, stop] = None
+                    chunk = uproot.source.chunk.Chunk(self, start, stop, partfuture)
+                    partfuture._set_notify(
+                        uproot.source.chunk.notifier(chunk, notifications)
+                    )
+                    chunks.append(chunk)
+
+                return futures, results
+
+            i, j = 1, 0
+            range_header = {"Range": "bytes=" + f"{ranges[0][0]}-{ranges[0][1] - 1}"}
+            last_batch_appended = False
+
+            while i < len(ranges):
+                new_range_to_append = ", " + f"{ranges[i][0]}-{ranges[i][1] - 1}"
+                if len(range_header["Range"]) < self._http_max_header_bytes - len(
+                    new_range_to_append
+                ):
+                    range_header["Range"] += new_range_to_append
+                    last_batch_appended = False
+                else:
+                    futures, results = set_futures_and_results(ranges[j : j + i])
+                    self._executor.submit(
+                        self.ResourceClass.multifuture(
+                            self, range_header, ranges[j : j + i], futures, results
+                        )
+                    )
+                    j += i
+                    range_header = {"Range": "bytes=" + new_range_to_append[1:]}
+                    last_batch_appended = True
+                i += 1
+
+            if i == len(ranges) and not last_batch_appended:
+                futures, results = set_futures_and_results(ranges[j:])
+                self._executor.submit(
+                    self.ResourceClass.multifuture(
+                        self, range_header, ranges[j : j + i], futures, results
+                    )
+                )
+
             return chunks
 
         else:

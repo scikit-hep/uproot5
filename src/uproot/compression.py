@@ -8,7 +8,6 @@ as functions for compressing and decompressing a :doc:`uproot.source.chunk.Chunk
 from __future__ import annotations
 
 import struct
-import threading
 
 import numpy
 
@@ -88,11 +87,30 @@ class _DecompressZLIB:
     name = "ZLIB"
     _2byte = b"ZL"
     _method = b"\x08"
+    library = "zlib"  # options: "zlib", "isal", "deflate"
 
     def decompress(self, data: bytes, uncompressed_bytes=None) -> bytes:
-        import zlib
+        if uncompressed_bytes is None:
+            raise ValueError(
+                "zlib decompression requires the number of uncompressed bytes"
+            )
+        if self.library == "zlib":
+            import zlib
 
-        return zlib.decompress(data)
+            return zlib.decompress(data, bufsize=uncompressed_bytes)
+
+        elif self.library == "isal":
+            isal_zlib = uproot.extras.isal().isal_zlib
+            return isal_zlib.decompress(data, bufsize=uncompressed_bytes)
+
+        elif self.library == "deflate":
+            deflate = uproot.extras.deflate()
+            return deflate.zlib_decompress(data, bufsize=uncompressed_bytes)
+
+        else:
+            raise ValueError(
+                f"unrecognized ZLIB.library: {self.library!r}; must be one of ['zlib', 'isal', 'deflate']"
+            )
 
 
 class ZLIB(Compression, _DecompressZLIB):
@@ -103,7 +121,12 @@ class ZLIB(Compression, _DecompressZLIB):
 
     Represents the ZLIB compression algorithm.
 
-    Uproot uses ``zlib`` from the Python standard library.
+    If ``ZLIB.library`` is ``"zlib"`` (default), Uproot uses ``zlib`` from the
+    Python standard library.
+
+    If ``ZLIB.library`` is ``"isal"``, Uproot uses ``isal.isal_zlib``.
+
+    If ``ZLIB.library`` is ``"deflate"``, Uproot uses ``deflate.deflate_zlib``.
     """
 
     def __init__(self, level):
@@ -115,6 +138,10 @@ class ZLIB(Compression, _DecompressZLIB):
         """
         The compression level: 0 is uncompressed, 1 is minimally compressed, and
         9 is maximally compressed.
+
+        This value to adapted to the ISAL compression levels if that library is used.
+        Note: with ISAL 0 is lowest compression, not uncompressed!
+              as such, we don't allow 0 in isal mode for compatibility reasons.
         """
         return self._level
 
@@ -127,9 +154,33 @@ class ZLIB(Compression, _DecompressZLIB):
         self._level = int(value)
 
     def compress(self, data: bytes) -> bytes:
-        import zlib
+        if self.library == "zlib":
+            import zlib
 
-        return zlib.compress(data, self._level)
+            return zlib.compress(data, level=self._level)
+
+        elif self.library == "isal":
+            isal_zlib = uproot.extras.isal().isal_zlib
+            if self._level == 0:
+                raise ValueError(
+                    'ZLIB.library="isal", and therefore requesting no compression '
+                    "implicitly with level 0 is not allowed."
+                )
+            return isal_zlib.compress(data, level=round(self._level / 3))
+
+        elif self.library == "deflate":
+            deflate = uproot.extras.deflate()
+            if self._level == 0:
+                raise ValueError(
+                    'ZLIB.library="deflate", and therefore requesting no compression '
+                    "implicitly with level 0 is not allowed."
+                )
+            return deflate.zlib_compress(data, round(self._level))
+
+        else:
+            raise ValueError(
+                f"unrecognized ZLIB.library: {self.library!r}; must be one of ['zlib', 'isal', 'deflate']"
+            )
 
 
 class _DecompressLZMA:
@@ -138,9 +189,19 @@ class _DecompressLZMA:
     _method = b"\x00"
 
     def decompress(self, data: bytes, uncompressed_bytes=None) -> bytes:
-        import lzma
+        cramjam = uproot.extras.cramjam()
+        lzma = getattr(cramjam, "xz", None) or getattr(
+            getattr(cramjam, "experimental", None), "lzma", None
+        )
+        if lzma is None:
+            import lzma
 
-        return lzma.decompress(data)
+            return lzma.decompress(data)
+        if uncompressed_bytes is None:
+            raise ValueError(
+                "lzma decompression requires the number of uncompressed bytes"
+            )
+        return lzma.decompress(data, output_len=uncompressed_bytes)
 
 
 class LZMA(Compression, _DecompressLZMA):
@@ -151,7 +212,7 @@ class LZMA(Compression, _DecompressLZMA):
 
     Represents the LZMA compression algorithm.
 
-    Uproot uses ``lzma`` from the Python 3 standard library.
+    Uproot uses ``lzma`` from the ``cramjam`` package.
     """
 
     def __init__(self, level):
@@ -175,8 +236,12 @@ class LZMA(Compression, _DecompressLZMA):
         self._level = int(value)
 
     def compress(self, data: bytes) -> bytes:
-        import lzma
-
+        cramjam = uproot.extras.cramjam()
+        lzma = getattr(cramjam, "xz", None) or getattr(
+            getattr(cramjam, "experimental", None), "lzma", None
+        )
+        if lzma is None:
+            import lzma
         return lzma.compress(data, preset=self._level)
 
 
@@ -186,12 +251,12 @@ class _DecompressLZ4:
     _method = b"\x01"
 
     def decompress(self, data: bytes, uncompressed_bytes=None) -> bytes:
-        lz4_block = uproot.extras.lz4_block()
+        lz4 = uproot.extras.cramjam().lz4
         if uncompressed_bytes is None:
             raise ValueError(
                 "lz4 block decompression requires the number of uncompressed bytes"
             )
-        return lz4_block.decompress(data, uncompressed_size=uncompressed_bytes)
+        return lz4.decompress_block(data, output_len=uncompressed_bytes)
 
 
 class LZ4(Compression, _DecompressLZ4):
@@ -202,7 +267,7 @@ class LZ4(Compression, _DecompressLZ4):
 
     Represents the LZ4 compression algorithm.
 
-    The ``zl4`` and ``xxhash`` libraries must be installed.
+    The ``cramjam`` and ``xxhash`` libraries must be installed.
     """
 
     def __init__(self, level):
@@ -226,8 +291,8 @@ class LZ4(Compression, _DecompressLZ4):
         self._level = int(value)
 
     def compress(self, data: bytes) -> bytes:
-        lz4_block = uproot.extras.lz4_block()
-        return lz4_block.compress(data, compression=self._level, store_size=False)
+        lz4 = uproot.extras.cramjam().lz4
+        return lz4.compress_block(data, compression=self._level, store_size=False)
 
 
 class _DecompressZSTD:
@@ -235,19 +300,13 @@ class _DecompressZSTD:
     _2byte = b"ZS"
     _method = b"\x01"
 
-    def __init__(self):
-        # ZstdDecompressor resource is not thread-safe
-        self._decompressor = threading.local()
-
-    @property
-    def decompressor(self):
-        if not hasattr(self._decompressor, "obj"):
-            zstandard = uproot.extras.zstandard()
-            self._decompressor.obj = zstandard.ZstdDecompressor()
-        return self._decompressor.obj
-
     def decompress(self, data: bytes, uncompressed_bytes=None) -> bytes:
-        return self.decompressor.decompress(data)
+        zstd = uproot.extras.cramjam().zstd
+        if uncompressed_bytes is None:
+            raise ValueError(
+                "zstd block decompression requires the number of uncompressed bytes"
+            )
+        return zstd.decompress(data, output_len=uncompressed_bytes)
 
 
 class ZSTD(Compression, _DecompressZSTD):
@@ -258,7 +317,7 @@ class ZSTD(Compression, _DecompressZSTD):
 
     Represents the ZSTD compression algorithm.
 
-    The ``zstandard`` library must be installed.
+    The ``cramjam`` library must be installed.
     """
 
     def __init__(self, level):
@@ -282,15 +341,9 @@ class ZSTD(Compression, _DecompressZSTD):
             raise ValueError("Compression level must be between 0 and 22 (inclusive)")
         self._level = int(value)
 
-    @property
-    def compressor(self):
-        if self._compressor is None:
-            zstandard = uproot.extras.zstandard()
-            self._compressor = zstandard.ZstdCompressor(level=self._level)
-        return self._compressor
-
     def compress(self, data: bytes) -> bytes:
-        return self.compressor.compress(data)
+        zstd = uproot.extras.cramjam().zstd
+        return zstd.compress(data, level=self._level)
 
 
 algorithm_codes = {
@@ -381,10 +434,8 @@ def decompress(
             computed_checksum = xxhash.xxh64(data).intdigest()
             if computed_checksum != expected_checksum:
                 raise ValueError(
-                    """computed checksum {} didn't match expected checksum {}
-in file {}""".format(
-                        computed_checksum, expected_checksum, chunk.source.file_path
-                    )
+                    f"""computed checksum {computed_checksum} didn't match expected checksum {expected_checksum}
+in file {chunk.source.file_path}"""
                 )
 
         elif algo == _decompress_ZSTD._2byte:
@@ -415,16 +466,10 @@ in file {chunk.source.file_path}"""
 
         if len(uncompressed_bytestring) != block_uncompressed_bytes:
             raise ValueError(
-                """after successfully decompressing {} blocks, a block of """
-                """compressed size {} decompressed to {} bytes, but the """
-                """block header expects {} bytes.
-in file {}""".format(
-                    num_blocks,
-                    block_compressed_bytes,
-                    len(uncompressed_bytestring),
-                    block_uncompressed_bytes,
-                    chunk.source.file_path,
-                )
+                f"""after successfully decompressing {num_blocks} blocks, a block of """
+                f"""compressed size {block_compressed_bytes} decompressed to {len(uncompressed_bytestring)} bytes, but the """
+                f"""block header expects {block_uncompressed_bytes} bytes.
+in file {chunk.source.file_path}"""
             )
 
         uncompressed_array = numpy.frombuffer(

@@ -118,12 +118,12 @@ kGenerateOffsetMap = numpy.uint8(1)
 kStreamedMemberWise = numpy.uint16(1 << 14)
 
 ############ RNTuple https://github.com/root-project/root/blob/master/tree/ntuple/v7/doc/specifications.md
-_rntuple_frame_format = struct.Struct("<HH")
-rntuple_env_header = _rntuple_frame_format.pack(1, 1)
+_rntuple_frame_format = struct.Struct("<Q")
+rntuple_env_header = _rntuple_frame_format.pack(0)  # TODO: need to check this
 rntuple_col_num_to_dtype_dict = {
     1: "uint64",
     2: "uint32",
-    3: "uint64",  # Switch
+    3: "switch",  # Switch
     4: "uint8",
     5: "uint8",  # char
     6: "bit",
@@ -153,7 +153,7 @@ rntuple_col_num_to_dtype_dict = {
 rntuple_col_num_to_size_dict = {
     1: 64,
     2: 32,
-    3: 64,  # Switch
+    3: 96,  # Switch
     4: 8,
     5: 8,  # char
     6: 1,

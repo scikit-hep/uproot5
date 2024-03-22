@@ -23,6 +23,7 @@ import numpy
 import uproot
 import uproot.interpretation.grouped
 import uproot.language.python
+import uproot.source.chunk
 from uproot._util import no_filter
 
 np_uint8 = numpy.dtype("u1")
@@ -626,11 +627,7 @@ class HasBranches(Mapping):
         if interpretation_width < 3:
             raise ValueError("'interpretation_width' must be at least 3")
 
-        formatter = "{{0:{0}.{0}}} | {{1:{1}.{1}}} | {{2:{2}.{2}}}".format(
-            name_width,
-            typename_width,
-            interpretation_width,
-        )
+        formatter = f"{{0:{name_width}.{name_width}}} | {{1:{typename_width}.{typename_width}}} | {{2:{interpretation_width}.{interpretation_width}}}"
 
         stream.write(formatter.format("name", "typename", "interpretation"))
         stream.write(
@@ -791,14 +788,7 @@ class HasBranches(Mapping):
 
         def get_from_cache(branchname, interpretation):
             if array_cache is not None:
-                cache_key = "{}:{}:{}:{}-{}:{}".format(
-                    self.cache_key,
-                    branchname,
-                    interpretation.cache_key,
-                    entry_start,
-                    entry_stop,
-                    library.name,
-                )
+                cache_key = f"{self.cache_key}:{branchname}:{interpretation.cache_key}:{entry_start}-{entry_stop}:{library.name}"
                 return array_cache.get(cache_key)
             else:
                 return None
@@ -864,14 +854,7 @@ class HasBranches(Mapping):
                         checked.add(branch.cache_key)
                         interpretation = branchid_interpretation[branch.cache_key]
                         if branch is not None:
-                            cache_key = "{}:{}:{}:{}-{}:{}".format(
-                                self.cache_key,
-                                expression,
-                                interpretation.cache_key,
-                                entry_start,
-                                entry_stop,
-                                library.name,
-                            )
+                            cache_key = f"{self.cache_key}:{expression}:{interpretation.cache_key}:{entry_start}-{entry_stop}:{library.name}"
                         array_cache[cache_key] = arrays[branch.cache_key]
 
         output = language.compute_expressions(
@@ -1399,9 +1382,7 @@ class HasBranches(Mapping):
             pass
         else:
             raise TypeError(
-                "filter_branch must be None or a function: TBranch -> bool, not {}".format(
-                    repr(filter_branch)
-                )
+                f"filter_branch must be None or a function: TBranch -> bool, not {filter_branch!r}"
             )
 
         for branch in self.branches:
@@ -1664,6 +1645,18 @@ class HasBranches(Mapping):
     def __len__(self):
         return len(self.branches)
 
+    @property
+    def source(self) -> uproot.source.chunk.Source | None:
+        """Returns the associated source of data for this container, if it exists
+
+        Returns: uproot.source.chunk.Source or None
+        """
+        if isinstance(self, uproot.model.Model) and isinstance(
+            self._file, uproot.reading.ReadOnlyFile
+        ):
+            return self._file.source
+        return None
+
 
 _branch_clean_name = re.compile(r"(.*\.)*([^\.\[\]]*)(\[.*\])*")
 _branch_clean_parent_name = re.compile(r"(.*\.)*([^\.\[\]]*)\.([^\.\[\]]*)(\[.*\])*")
@@ -1688,9 +1681,7 @@ class TBranch(HasBranches):
         if len(self) == 0:
             return f"<{self.classname} {self.name!r} at 0x{id(self):012x}>"
         else:
-            return "<{} {} ({} subbranches) at 0x{:012x}>".format(
-                self.classname, repr(self.name), len(self), id(self)
-            )
+            return f"<{self.classname} {self.name!r} ({len(self)} subbranches) at 0x{id(self):012x}>"
 
     def array(
         self,
@@ -1768,14 +1759,7 @@ class TBranch(HasBranches):
 
         def get_from_cache(branchname, interpretation):
             if array_cache is not None:
-                cache_key = "{}:{}:{}:{}-{}:{}".format(
-                    self.cache_key,
-                    branchname,
-                    interpretation.cache_key,
-                    entry_start,
-                    entry_stop,
-                    library.name,
-                )
+                cache_key = f"{self.cache_key}:{branchname}:{interpretation.cache_key}:{entry_start}-{entry_stop}:{library.name}"
                 return array_cache.get(cache_key)
             else:
                 return None
@@ -1836,14 +1820,7 @@ class TBranch(HasBranches):
         )
 
         if array_cache is not None:
-            cache_key = "{}:{}:{}:{}-{}:{}".format(
-                self.cache_key,
-                self.name,
-                interpretation.cache_key,
-                entry_start,
-                entry_stop,
-                library.name,
-            )
+            cache_key = f"{self.cache_key}:{self.name}:{interpretation.cache_key}:{entry_start}-{entry_stop}:{library.name}"
             array_cache[cache_key] = arrays[self.cache_key]
 
         return arrays[self.cache_key]
@@ -1991,14 +1968,9 @@ class TBranch(HasBranches):
             )
         ):
             raise ValueError(
-                """entries in normal baskets ({}) plus embedded baskets ({}) """
-                """don't add up to expected number of entries ({})
-in file {}""".format(
-                    num_entries_normal,
-                    sum(basket.num_entries for basket in self.embedded_baskets),
-                    self.num_entries,
-                    self._file.file_path,
-                )
+                f"""entries in normal baskets ({num_entries_normal}) plus embedded baskets ({sum(basket.num_entries for basket in self.embedded_baskets)}) """
+                f"""don't add up to expected number of entries ({self.num_entries})
+in file {self._file.file_path}"""
             )
         else:
             return out
@@ -2028,11 +2000,9 @@ in file {}""".format(
 
         else:
             raise IndexError(
-                """branch {} has {} baskets; cannot get starting entry """
-                """for basket {}
-in file {}""".format(
-                    repr(self.name), self.num_baskets, basket_num, self._file.file_path
-                )
+                f"""branch {self.name!r} has {self.num_baskets} baskets; cannot get starting entry """
+                f"""for basket {basket_num}
+in file {self._file.file_path}"""
             )
 
     @property
@@ -2247,10 +2217,8 @@ in file {}""".format(
             return self.embedded_baskets[basket_num - self._num_normal_baskets]
         else:
             raise IndexError(
-                """branch {} has {} baskets; cannot get basket {}
-in file {}""".format(
-                    repr(self.name), self.num_baskets, basket_num, self._file.file_path
-                )
+                f"""branch {self.name!r} has {self.num_baskets} baskets; cannot get basket {basket_num}
+in file {self._file.file_path}"""
             )
 
     def basket_chunk_cursor(self, basket_num):
@@ -2273,22 +2241,15 @@ in file {}""".format(
             return chunk, cursor
         elif 0 <= basket_num < self.num_baskets:
             raise IndexError(
-                """branch {} has {} normal baskets; cannot get chunk and """
-                """cursor for basket {} because only normal baskets have cursors
-in file {}""".format(
-                    repr(self.name),
-                    self._num_normal_baskets,
-                    basket_num,
-                    self._file.file_path,
-                )
+                f"""branch {self.name!r} has {self._num_normal_baskets} normal baskets; cannot get chunk and """
+                f"""cursor for basket {basket_num} because only normal baskets have cursors
+in file {self._file.file_path}"""
             )
         else:
             raise IndexError(
-                """branch {} has {} baskets; cannot get cursor and chunk """
-                """for basket {}
-in file {}""".format(
-                    repr(self.name), self.num_baskets, basket_num, self._file.file_path
-                )
+                f"""branch {self.name!r} has {self.num_baskets} baskets; cannot get cursor and chunk """
+                f"""for basket {basket_num}
+in file {self._file.file_path}"""
             )
 
     def basket_compressed_bytes(self, basket_num):
@@ -2308,10 +2269,8 @@ in file {}""".format(
             ].compressed_bytes
         else:
             raise IndexError(
-                """branch {} has {} baskets; cannot get basket chunk {}
-in file {}""".format(
-                    repr(self.name), self.num_baskets, basket_num, self._file.file_path
-                )
+                f"""branch {self.name!r} has {self.num_baskets} baskets; cannot get basket chunk {basket_num}
+in file {self._file.file_path}"""
             )
 
     def basket_uncompressed_bytes(self, basket_num):
@@ -2350,17 +2309,13 @@ in file {}""".format(
 
         elif 0 <= basket_num < self.num_baskets:
             raise ValueError(
-                "branch {} basket {} is an embedded basket, which has no TKey".format(
-                    repr(self.name), basket_num
-                )
+                f"branch {self.name!r} basket {basket_num} is an embedded basket, which has no TKey"
             )
 
         else:
             raise IndexError(
-                """branch {} has {} baskets; cannot get basket chunk {}
-in file {}""".format(
-                    repr(self.name), self.num_baskets, basket_num, self._file.file_path
-                )
+                f"""branch {self.name!r} has {self.num_baskets} baskets; cannot get basket chunk {basket_num}
+in file {self._file.file_path}"""
             )
 
     @property
@@ -2482,19 +2437,14 @@ in file {}""".format(
             interpretation.awkward_form(self.file)
         except uproot.interpretation.objects.CannotBeAwkward as err:
             raise ValueError(
-                """cannot produce Awkward Arrays for interpretation {} because
+                f"""cannot produce Awkward Arrays for interpretation {interpretation!r} because
 
-    {}
+    {err.because}
 
 instead, try library="np" rather than library="ak" or globally set uproot.default_library
 
-in file {}
-in object {}""".format(
-                    repr(interpretation),
-                    err.because,
-                    self.file.file_path,
-                    self.object_path,
-                )
+in file {self.file.file_path}
+in object {self.object_path}"""
             ) from err
 
     def debug(
@@ -2738,10 +2688,7 @@ def _regularize_branchname(
         ):
             raise ValueError(
                 "a branch cannot be loaded with multiple interpretations: "
-                "{} and {}".format(
-                    repr(branchid_interpretation[branch.cache_key]),
-                    repr(interpretation),
-                )
+                f"{branchid_interpretation[branch.cache_key]!r} and {interpretation!r}"
             )
     else:
         branchid_interpretation[branch.cache_key] = interpretation
@@ -2788,7 +2735,8 @@ def _regularize_expression(
         )
 
     else:
-        to_compute = aliases[expression] if expression in aliases else expression
+        # the value of `expression` is either what we want to compute or a lookup value for it
+        to_compute = aliases.get(expression, expression)
 
         is_jagged = False
         expression_branches = []
@@ -3028,7 +2976,7 @@ def _ranges_or_baskets_to_arrays(
         else:
             notifications.put(range_or_basket)
 
-        original_index += 1
+        original_index += 1  # noqa: SIM113 (don't use `enumerate` for `original_index`)
 
         branchid_to_branch[branch.cache_key] = branch
 
@@ -3093,16 +3041,9 @@ def _ranges_or_baskets_to_arrays(
             )
             if basket.num_entries != len(basket_arrays[basket.basket_num]):
                 raise ValueError(
-                    """basket {} in tree/branch {} has the wrong number of entries """
-                    """(expected {}, obtained {}) when interpreted as {}
-    in file {}""".format(
-                        basket.basket_num,
-                        branch.object_path,
-                        basket.num_entries,
-                        len(basket_arrays[basket.basket_num]),
-                        interpretation,
-                        branch.file.file_path,
-                    )
+                    f"""basket {basket.basket_num} in tree/branch {branch.object_path} has the wrong number of entries """
+                    f"""(expected {basket.num_entries}, obtained {len(basket_arrays[basket.basket_num])}) when interpreted as {interpretation}
+    in file {branch.file.file_path}"""
                 )
 
             basket = None

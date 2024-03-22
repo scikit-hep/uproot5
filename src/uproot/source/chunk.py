@@ -12,6 +12,7 @@ Also defines abstract classes for :doc:`uproot.source.chunk.Resource` and
 
 from __future__ import annotations
 
+import dataclasses
 import numbers
 import queue
 
@@ -39,6 +40,18 @@ class Resource:
         A path to the file (or URL).
         """
         return self._file_path
+
+
+@dataclasses.dataclass
+class SourcePerformanceCounters:
+    """Container for performance counters"""
+
+    num_requested_bytes: int
+    num_requests: int
+    num_requested_chunks: int
+
+    def asdict(self) -> dict[str, int]:
+        return dataclasses.asdict(self)
 
 
 class Source:
@@ -138,6 +151,14 @@ class Source:
         """
         return self._num_requested_bytes
 
+    @property
+    def performance_counters(self) -> SourcePerformanceCounters:
+        return SourcePerformanceCounters(
+            self._num_requested_bytes,
+            self._num_requests,
+            self._num_requested_chunks,
+        )
+
     def close(self):
         """
         Manually closes the file(s) and stops any running threads.
@@ -166,9 +187,7 @@ class MultithreadedSource(Source):
         path = repr(self._file_path)
         if len(self._file_path) > 10:
             path = repr("..." + self._file_path[-10:])
-        return "<{} {} ({} workers) at 0x{:012x}>".format(
-            type(self).__name__, path, self.num_workers, id(self)
-        )
+        return f"<{type(self).__name__} {path} ({self.num_workers} workers) at 0x{id(self):012x}>"
 
     def chunk(self, start: int, stop: int) -> Chunk:
         self._num_requests += 1

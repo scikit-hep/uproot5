@@ -64,8 +64,8 @@ def test_graph(tmp_path):
     assert ak.all(file_2["tree"]["a"].arrays()["a"][0] == arr[1]["a"])
 
 
+@pytest.mark.distributed
 def test_compute(tmp_path):
-    print("here")
     partitions = 2
     arr = uproot.open(skhep_testdata.data_path("uproot-HZZ.root"))["events"].arrays()
     dask_arr = dask_awkward.from_awkward(ak.from_iter(arr), partitions)

@@ -10,7 +10,7 @@ error messages containing instructions on how to install the library.
 from __future__ import annotations
 
 import atexit
-import importlib.metadata as importlib_metadata
+import importlib.metadata
 import os
 
 from uproot._util import parse_version
@@ -36,9 +36,7 @@ to output as NumPy arrays, rather than Awkward arrays.
         return awkward
     else:
         raise ModuleNotFoundError(
-            "Uproot 5.1+ can only be used with Awkward 2.4.6 or newer; you have Awkward {}".format(
-                awkward.__version__
-            )
+            f"Uproot 5.1+ can only be used with Awkward 2.4.6 or newer; you have Awkward {awkward.__version__}"
         )
 
 
@@ -151,79 +149,93 @@ def xrootd_version():
     Gets the XRootD version if installed, otherwise returns None.
     """
     try:
-        return importlib_metadata.version("xrootd")
+        return importlib.metadata.version("xrootd")
     except ModuleNotFoundError:
         try:
             # Versions before 4.11.1 used pyxrootd as the package name
-            return importlib_metadata.version("pyxrootd")
+            return importlib.metadata.version("pyxrootd")
         except ModuleNotFoundError:
             return None
 
 
-def lz4_block():
+def isal():
     """
-    Imports and returns ``lz4``.
-
-    Attempts to import ``xxhash`` as well.
+    Import and return ``isal``.
     """
     try:
-        import lz4.block
-        import xxhash  # noqa: F401
+        import isal
     except ModuleNotFoundError as err:
         raise ModuleNotFoundError(
-            """install the 'lz4' and `xxhash` packages with:
+            """install the 'isal' package with:
 
-    pip install lz4 xxhash
+    pip install isal
 
 or
 
-    conda install lz4 python-xxhash"""
+    conda install python-isal"""
         ) from err
     else:
-        return lz4.block
+        return isal
+
+
+def deflate():
+    """
+    Import and return ``deflate``.
+    """
+    try:
+        import deflate
+    except ModuleNotFoundError as err:
+        raise ModuleNotFoundError(
+            """install the 'deflate' package with:
+
+    pip install deflate
+
+or
+
+    conda install libdeflate"""
+        ) from err
+    else:
+        return deflate
+
+
+def cramjam():
+    """
+    Import and returns ``cramjam``.
+    """
+    try:
+        import cramjam
+    except ModuleNotFoundError as err:
+        raise ModuleNotFoundError(
+            """install the 'cramjam' package with:
+
+    pip install cramjam
+
+or
+
+    conda install cramjam"""
+        ) from err
+    else:
+        return cramjam
 
 
 def xxhash():
     """
     Imports and returns ``xxhash``.
-
-    Attempts to import ``lz4`` as well.
     """
     try:
-        import lz4.block  # noqa: F401
         import xxhash
     except ModuleNotFoundError as err:
         raise ModuleNotFoundError(
-            """install the 'lz4' and `xxhash` packages with:
+            """install the `xxhash` packages with:
 
-    pip install lz4 xxhash
+    pip install xxhash
 
 or
 
-    conda install lz4 python-xxhash"""
+    conda install python-xxhash"""
         ) from err
     else:
         return xxhash
-
-
-def zstandard():
-    """
-    Imports and returns ``zstandard``.
-    """
-    try:
-        import zstandard
-    except ModuleNotFoundError as err:
-        raise ModuleNotFoundError(
-            """install the 'zstandard' package with:
-
-    pip install zstandard
-
-or
-
-    conda install zstandard"""
-        ) from err
-    else:
-        return zstandard
 
 
 def boost_histogram():
@@ -314,9 +326,7 @@ or
         return dask_awkward
     else:
         raise ModuleNotFoundError(
-            "Uproot 5.1+ can only be used with dask-awkward 2023.10.0 or newer; you have dask-awkward {}".format(
-                dask_awkward.__version__
-            )
+            f"Uproot 5.1+ can only be used with dask-awkward 2023.10.0 or newer; you have dask-awkward {dask_awkward.__version__}"
         )
 
 

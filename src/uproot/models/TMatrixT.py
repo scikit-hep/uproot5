@@ -26,9 +26,7 @@ class Model_TMatrixTSym_3c_double_3e__v5(uproot.model.VersionedModel):
             raise uproot.interpretation.objects.CannotBeForth()
         if self.is_memberwise:
             raise NotImplementedError(
-                "memberwise serialization of {}\nin file {}".format(
-                    type(self).__name__, self.file.file_path
-                )
+                f"memberwise serialization of {type(self).__name__}\nin file {self.file.file_path}"
             )
         self._bases.append(
             file.class_named("TObject", 1).read(

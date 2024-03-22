@@ -198,7 +198,7 @@ class AsObjects(uproot.interpretation.Interpretation):
         )
         assert basket.byte_offsets is not None
 
-        if not hasattr(context["forth"], "vm"):
+        if getattr(context["forth"], "vm", None) is None:
             # context["forth"] is a threading.local()
             context["forth"].vm = None
             context["forth"].gen = uproot._awkwardforth.ForthGenerator(self)
@@ -437,29 +437,67 @@ input stream
         )
         trimmed = []
         start = entry_offsets[0]
+        has_any_awkward_types = any(
+            uproot._util.from_module(x, "awkward") for x in basket_arrays.values()
+        )
         for basket_num, stop in enumerate(entry_offsets[1:]):
+            to_append = None
             if start <= entry_start and entry_stop <= stop:
                 local_start = entry_start - start
                 local_stop = entry_stop - start
-                trimmed.append(basket_arrays[basket_num][local_start:local_stop])
+                to_append = basket_arrays[basket_num][local_start:local_stop]
 
             elif start <= entry_start < stop:
                 local_start = entry_start - start
                 local_stop = stop - start
-                trimmed.append(basket_arrays[basket_num][local_start:local_stop])
+                to_append = basket_arrays[basket_num][local_start:local_stop]
 
             elif start <= entry_stop <= stop:
                 local_start = 0
                 local_stop = entry_stop - start
-                trimmed.append(basket_arrays[basket_num][local_start:local_stop])
+                to_append = basket_arrays[basket_num][local_start:local_stop]
 
             elif entry_start < stop and start <= entry_stop:
-                trimmed.append(basket_arrays[basket_num])
+                to_append = basket_arrays[basket_num]
+
+            if to_append is not None and has_any_awkward_types:
+
+                if isinstance(library, uproot.interpretation.library.NumPy):
+                    trimmed.append(to_append)
+
+                elif isinstance(library, uproot.interpretation.library.Awkward):
+
+                    if isinstance(to_append, numpy.ndarray):
+                        trimmed.append(
+                            uproot.interpretation.library._object_to_awkward_array(
+                                uproot.extras.awkward(), self._form, to_append
+                            )
+                        )
+                    else:
+                        trimmed.append(to_append)
+
+                elif isinstance(library, uproot.interpretation.library.Pandas):
+
+                    if isinstance(to_append, numpy.ndarray):
+                        trimmed.append(
+                            uproot.interpretation.library._process_array_for_pandas(
+                                to_append,
+                                False,
+                                branch.file.interpretation,
+                                form=self._form,
+                            )
+                        )
+                    else:
+                        trimmed.append(to_append)
+
+            elif to_append is not None:
+                trimmed.append(to_append)
 
             start = stop
 
         if len(basket_arrays) == 0:
             output = numpy.array([], dtype=self.numpy_dtype)
+
         elif all(
             uproot._util.from_module(x, "awkward") for x in basket_arrays.values()
         ) and isinstance(
@@ -794,15 +832,9 @@ class AsStridedObjects(uproot.interpretation.numerical.AsDtype):
 
         except ValueError as err:
             raise ValueError(
-                """basket {} in tree/branch {} has the wrong number of bytes ({}) """
-                """for interpretation {}
-in file {}""".format(
-                    basket.basket_num,
-                    branch.object_path,
-                    len(data),
-                    self,
-                    branch.file.file_path,
-                )
+                f"""basket {basket.basket_num} in tree/branch {branch.object_path} has the wrong number of bytes ({len(data)}) """
+                f"""for interpretation {self}
+in file {branch.file.file_path}"""
             ) from err
         self.hook_after_basket_array(
             data=data,
@@ -887,14 +919,7 @@ class ObjectArray:
         self._detached_file = self._branch.file.detached
 
     def __repr__(self):
-        return "ObjectArray({}, {}, {}, {}, {}, {})".format(
-            self._model,
-            self._branch,
-            self._context,
-            self._byte_offsets,
-            self._byte_content,
-            self._cursor_offset,
-        )
+        return f"ObjectArray({self._model}, {self._branch}, {self._context}, {self._byte_offsets}, {self._byte_content}, {self._cursor_offset})"
 
     @property
     def model(self):

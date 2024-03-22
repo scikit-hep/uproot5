@@ -10,6 +10,7 @@ dask_awkward = pytest.importorskip("dask_awkward")
 dask_distributed = pytest.importorskip("dask.distributed")
 
 
+@pytest.mark.distributed
 @pytest.mark.parametrize(
     "handler",
     [None, uproot.source.file.MemmapSource, uproot.source.fsspec.FSSpecSource],

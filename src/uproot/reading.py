@@ -9,6 +9,7 @@ and :doc:`uproot.reading.ReadOnlyKey` (``TKey``).
 """
 from __future__ import annotations
 
+import re
 import struct
 import sys
 import uuid
@@ -163,6 +164,7 @@ open.defaults = {
     "num_fallback_workers": 10,
     "begin_chunk_size": 403,  # the smallest a ROOT file can be
     "minimal_ttree_metadata": True,
+    "http_max_header_bytes": 21784,
 }
 
 
@@ -893,10 +895,8 @@ in file {file_path}"""
 
                     else:
                         raise ValueError(
-                            """unexpected type in TList of streamers and streamer rules: {}
-in file {}""".format(
-                                type(x), self._file_path
-                            )
+                            f"""unexpected type in TList of streamers and streamer rules: {type(x)}
+in file {self._file_path}"""
                         )
 
                 self.hook_after_interpret_streamers(
@@ -1105,6 +1105,16 @@ in file {}""".format(
             streamers = self.streamers_named(classname)
             if len(streamers) == 0 and self._custom_classes is not None:
                 cls = uproot.classes.get(classname)
+
+        if (
+            cls is None
+            and re.match(r"(std\s*::\s*)?(vector|map|set|bitset)\s*<", classname)
+            is not None
+        ):
+            cls = uproot.interpretation.identify.parse_typename(classname)
+            cls._header = False
+
+            return cls
 
         if cls is None:
             if len(streamers) == 0:
@@ -1903,7 +1913,24 @@ class ReadOnlyDirectory(Mapping):
     def __iter__(self):
         return self.iterkeys()
 
-    def title_of(self, where):
+    def descent_into_path(self, where):
+        items = re.split("[:/]", where)
+        step = last = self
+        for item in items[:-1]:
+            if item != "":
+                if isinstance(step, ReadOnlyDirectory):
+                    last = step
+                    step = step[item]
+                else:
+                    raise uproot.KeyInFileError(
+                        where,
+                        because=repr(item) + " is not a TDirectory",
+                        keys=[key.fName for key in last._keys],
+                        file_path=self._file.file_path,
+                    )
+        return step, items[-1]
+
+    def title_of(self, where, recursive=True):
         """
         Returns the title of the object selected by ``where``.
 
@@ -1916,9 +1943,13 @@ class ReadOnlyDirectory(Mapping):
 
         Note that this does not read any data from the file.
         """
-        return self.key(where).title()
+        if recursive and "/" in where or ":" in where:
+            step, last_item = self.descent_into_path(where)
+            return step[last_item].title
+        else:
+            return self.key(where).title()
 
-    def classname_of(self, where, encoded=False, version=None):
+    def classname_of(self, where, encoded=False, version=None, recursive=True):
         """
         Returns the classname of the object selected by ``where``. If
         ``encoded`` with a possible ``version``, return a Python classname;
@@ -1933,10 +1964,14 @@ class ReadOnlyDirectory(Mapping):
 
         Note that this does not read any data from the file.
         """
-        key = self.key(where)
-        return key.classname(encoded=encoded, version=version)
 
-    def class_of(self, where, version=None):
+        if recursive and "/" in where or ":" in where:
+            step, last_item = self.descent_into_path(where)
+            return step[last_item].classname
+        else:
+            return self.key(where).classname(encoded=encoded, version=version)
+
+    def class_of(self, where, version=None, recursive=True):
         """
         Returns a class object for the ROOT object selected by ``where``. If
         ``version`` is specified, get a :doc:`uproot.model.VersionedModel`;
@@ -1952,10 +1987,15 @@ class ReadOnlyDirectory(Mapping):
 
         Note that this does not read any data from the file.
         """
-        key = self.key(where)
-        return self._file.class_named(key.fClassName, version=version)
+        if recursive and "/" in where or ":" in where:
+            return self._file.class_named(
+                self.classname_of(where, version=version), version=version
+            )
+        else:
+            key = self.key(where)
+            return self._file.class_named(key.fClassName, version=version)
 
-    def streamer_of(self, where, version="max"):
+    def streamer_of(self, where, version="max", recursive=True):
         """
         Returns a ``TStreamerInfo`` (:doc:`uproot.streamers.Model_TStreamerInfo`)
         for the object selected by ``where`` and ``version``.
@@ -1969,8 +2009,13 @@ class ReadOnlyDirectory(Mapping):
 
         Note that this does not read any data from the file.
         """
-        key = self.key(where)
-        return self._file.streamer_named(key.fClassName, version)
+        if recursive and "/" in where or ":" in where:
+            return self._file.streamer_named(
+                self.classname_of(where, version=version), version=version
+            )
+        else:
+            key = self.key(where)
+            return self._file.streamer_named(key.fClassName, version=version)
 
     def key(self, where):
         """
@@ -1989,21 +2034,8 @@ class ReadOnlyDirectory(Mapping):
         where = uproot._util.ensure_str(where)
 
         if "/" in where:
-            items = where.split("/")
-            step = last = self
-            for item in items[:-1]:
-                if item != "":
-                    if isinstance(step, ReadOnlyDirectory):
-                        last = step
-                        step = step[item]
-                    else:
-                        raise uproot.KeyInFileError(
-                            where,
-                            because=repr(item) + " is not a TDirectory",
-                            keys=[key.fName for key in last._keys],
-                            file_path=self._file.file_path,
-                        )
-            return step.key(items[-1])
+            step, last_item = self.descent_into_path(where)
+            return step.key(last_item)
 
         if ";" in where:
             at = where.rindex(";")
@@ -2060,6 +2092,8 @@ class ReadOnlyDirectory(Mapping):
                                     keys=[key.fName for key in last._keys],
                                     file_path=self._file.file_path,
                                 )
+                        elif ":" in item and item in step:
+                            return self.key(where).get()
                         else:
                             last = step
                             step = step[item]
@@ -2287,9 +2321,7 @@ class ReadOnlyKey:
             nameclass = ""
         else:
             nameclass = f" {self.name(cycle=True)}: {self.classname()}"
-        return "<ReadOnlyKey{} (seek pos {}) at 0x{:012x}>".format(
-            nameclass, self.data_cursor.index, id(self)
-        )
+        return f"<ReadOnlyKey{nameclass} (seek pos {self.data_cursor.index}) at 0x{id(self):012x}>"
 
     @property
     def cursor(self):
@@ -2470,8 +2502,12 @@ class ReadOnlyKey:
         else:
             chunk, cursor = self.get_uncompressed_chunk_cursor()
             start_cursor = cursor.copy()
-            cls = self._file.class_named(self._fClassName)
             context = {"breadcrumbs": (), "TKey": self}
+
+            if re.match(r"(std\s*::\s*)?string", self._fClassName):
+                return cursor.string(chunk, context)
+
+            cls = self._file.class_named(self._fClassName)
 
             try:
                 out = cls.read(chunk, cursor, context, self._file, selffile, parent)

@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import re
 import sys
+import threading
 import weakref
 
 import numpy
@@ -1061,9 +1062,7 @@ class Model:
 
     def _serialize(self, out, header, name, tobject_flags):
         raise NotImplementedError(
-            "can't write {} instances yet ('serialize' method not implemented)".format(
-                type(self).__name__
-            )
+            f"can't write {type(self).__name__} instances yet ('serialize' method not implemented)"
         )
 
     def serialize(self, name=None):
@@ -1122,12 +1121,27 @@ class VersionedModel(Model):
                 "writable": self.writable,
                 "behaviors": self.behaviors,
             },
-            dict(self.__dict__),
+            {
+                k: (
+                    _LockPlaceholder()
+                    if isinstance(v, _LockPlaceholder.lock_type)
+                    else v
+                )
+                for k, v in self.__dict__.items()
+            },
         )
 
     def __setstate__(self, state):
         class_data, instance_data = state
+        instance_data = {
+            k: threading.Lock() if isinstance(v, _LockPlaceholder) else v
+            for k, v in instance_data.items()
+        }
         self.__dict__.update(instance_data)
+
+
+class _LockPlaceholder:
+    lock_type = type(threading.Lock())
 
 
 class DispatchByVersion:
@@ -1337,12 +1351,9 @@ class DispatchByVersion:
 
         else:
             raise ValueError(
-                """Unknown version {} for class {} that cannot be skipped """
+                f"""Unknown version {version} for class {classname_decode(cls.__name__)[0]} that cannot be skipped """
                 """because its number of bytes is unknown.
-""".format(
-                    version,
-                    classname_decode(cls.__name__)[0],
-                )
+"""
             )
 
         # versioned_cls.read starts with numbytes_version again because move=False (above)
@@ -1519,11 +1530,9 @@ class UnknownClass(Model):
 
         else:
             raise ValueError(
-                """unknown class {} that cannot be skipped because its """
-                """number of bytes is unknown
-in file {}""".format(
-                    self.classname, file.file_path
-                )
+                f"""unknown class {self.classname} that cannot be skipped because its """
+                f"""number of bytes is unknown
+in file {file.file_path}"""
             )
 
 
@@ -1652,17 +1661,13 @@ class UnknownClassVersion(VersionedModel):
 
         else:
             raise ValueError(
-                """class {} with unknown version {} cannot be skipped """
-                """because its number of bytes is unknown
-in file {}""".format(
-                    self.classname, self._instance_version, file.file_path
-                )
+                f"""class {self.classname} with unknown version {self._instance_version} cannot be skipped """
+                f"""because its number of bytes is unknown
+in file {file.file_path}"""
             )
 
     def __repr__(self):
-        return "<{} with unknown version {} at 0x{:012x}>".format(
-            self.classname, self._instance_version, id(self)
-        )
+        return f"<{self.classname} with unknown version {self._instance_version} at 0x{id(self):012x}>"
 
 
 class DynamicModel(VersionedModel):
