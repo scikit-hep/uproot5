@@ -170,18 +170,7 @@ class NTuple_Field_Description:
         self.field_description = field_description
 
     def __repr__(self):
-        return "{}({}, {}, {}, {}, {}, {}, {}, {}, {})".format(
-            type(self).__name__,
-            repr(self.field_version),
-            repr(self.type_version),
-            repr(self.parent_field_id),
-            repr(self.struct_role),
-            repr(self.flags),
-            repr(self.field_name),
-            repr(self.type_name),
-            repr(self.type_alias),
-            repr(self.field_description),
-        )
+        return f"{type(self).__name__}({self.field_version!r}, {self.type_version!r}, {self.parent_field_id!r}, {self.struct_role!r}, {self.flags!r}, {self.field_name!r}, {self.type_name!r}, {self.type_alias!r}, {self.field_description!r})"
 
     def serialize(self):
         header_bytes = _rntuple_field_description_format.pack(
@@ -356,14 +345,7 @@ class NTuple_Footer(CascadeLeaf):
         super().__init__(location, None)
 
     def __repr__(self):
-        return "{}(extension_header_env_links = {}, column_group_record_frames = {}, cluster_summary_record_frames={}, cluster_group_record_frames{}, metadata_block_envelope_link = {})".format(
-            type(self).__name__,
-            self.extension_header_envelope_links,
-            self.column_group_record_frames,
-            self.cluster_summary_record_frames,
-            self.cluster_group_record_frames,
-            self.metadata_block_envelope_links,
-        )
+        return f"{type(self).__name__}(extension_header_env_links = {self.extension_header_envelope_links}, column_group_record_frames = {self.column_group_record_frames}, cluster_summary_record_frames={self.cluster_summary_record_frames}, cluster_group_record_frames{self.cluster_group_record_frames}, metadata_block_envelope_link = {self.metadata_block_envelope_links})"
 
     def serialize(self):
         env_header = uproot.const.rntuple_env_header
@@ -599,17 +581,7 @@ class NTuple(CascadeNode):
         self._num_entries = 0
 
     def __repr__(self):
-        return "{}({}, {}, {}, {}, {}, {}, {}, {})".format(
-            type(self).__name__,
-            self._directory,
-            self._name,
-            self._title,
-            self._header,
-            self._footer,
-            self._cluster_metadata,
-            self._anchor,
-            self._freesegments,
-        )
+        return f"{type(self).__name__}({self._directory}, {self._name}, {self._title}, {self._header}, {self._footer}, {self._cluster_metadata}, {self._anchor}, {self._freesegments})"
 
     @property
     def directory(self):

@@ -981,9 +981,7 @@ def _regularize_library(library):
             return _libraries[library.name]
         else:
             raise ValueError(
-                "library {} ({}) cannot be used in this function".format(
-                    type(library).__name__, repr(library.name)
-                )
+                f"library {type(library).__name__} ({library.name!r}) cannot be used in this function"
             )
 
     elif isinstance(library, type) and issubclass(library, Library):
@@ -991,9 +989,7 @@ def _regularize_library(library):
             return _libraries[library().name]
         else:
             raise ValueError(
-                "library {} ({}) cannot be used in this function".format(
-                    library.__name__, repr(library().name)
-                )
+                f"library {library.__name__} ({library().name!r}) cannot be used in this function"
             )
 
     else:

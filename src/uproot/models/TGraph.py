@@ -39,9 +39,7 @@ class Model_TGraph_v4(uproot.behaviors.TGraph.TGraph, uproot.model.VersionedMode
             raise uproot.interpretation.objects.CannotBeForth()
         if self.is_memberwise:
             raise NotImplementedError(
-                "memberwise serialization of {}\nin file {}".format(
-                    type(self).__name__, self.file.file_path
-                )
+                f"memberwise serialization of {type(self).__name__}\nin file {self.file.file_path}"
             )
         self._bases.append(
             file.class_named("TNamed", 1).read(
@@ -367,9 +365,7 @@ class Model_TGraphErrors_v3(
             raise uproot.interpretation.objects.CannotBeForth()
         if self.is_memberwise:
             raise NotImplementedError(
-                "memberwise serialization of {}\nin file {}".format(
-                    type(self).__name__, self.file.file_path
-                )
+                f"memberwise serialization of {type(self).__name__}\nin file {self.file.file_path}"
             )
         self._bases.append(
             file.class_named("TGraph", 4).read(
@@ -549,9 +545,7 @@ class Model_TGraphAsymmErrors_v3(
             raise uproot.interpretation.objects.CannotBeForth()
         if self.is_memberwise:
             raise NotImplementedError(
-                "memberwise serialization of {}\nin file {}".format(
-                    type(self).__name__, self.file.file_path
-                )
+                f"memberwise serialization of {type(self).__name__}\nin file {self.file.file_path}"
             )
         self._bases.append(
             file.class_named("TGraph", 4).read(

@@ -832,15 +832,9 @@ class AsStridedObjects(uproot.interpretation.numerical.AsDtype):
 
         except ValueError as err:
             raise ValueError(
-                """basket {} in tree/branch {} has the wrong number of bytes ({}) """
-                """for interpretation {}
-in file {}""".format(
-                    basket.basket_num,
-                    branch.object_path,
-                    len(data),
-                    self,
-                    branch.file.file_path,
-                )
+                f"""basket {basket.basket_num} in tree/branch {branch.object_path} has the wrong number of bytes ({len(data)}) """
+                f"""for interpretation {self}
+in file {branch.file.file_path}"""
             ) from err
         self.hook_after_basket_array(
             data=data,
@@ -925,14 +919,7 @@ class ObjectArray:
         self._detached_file = self._branch.file.detached
 
     def __repr__(self):
-        return "ObjectArray({}, {}, {}, {}, {}, {})".format(
-            self._model,
-            self._branch,
-            self._context,
-            self._byte_offsets,
-            self._byte_content,
-            self._cursor_offset,
-        )
+        return f"ObjectArray({self._model}, {self._branch}, {self._context}, {self._byte_offsets}, {self._byte_content}, {self._cursor_offset})"
 
     @property
     def model(self):
