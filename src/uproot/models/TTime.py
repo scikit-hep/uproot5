@@ -64,7 +64,7 @@ class Model_TTime_v2(uproot.model.VersionedModel):
             raise uproot.interpretation.objects.CannotBeStrided(
                 "classes that can contain members of the same type cannot be strided because the depth of instances is unbounded"
             )
-        breadcrumbs = breadcrumbs + (cls,)
+        breadcrumbs = (*breadcrumbs, cls)
         members = []
         members.append(("@num_bytes", numpy.dtype(">u4")))
         members.append(("@instance_version", numpy.dtype(">u2")))
