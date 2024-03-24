@@ -220,9 +220,7 @@ def to_writable(obj):
             return uproot.pyroot._PyROOTWritable(obj)
         else:
             raise TypeError(
-                "only instances of TObject can be written to files, not {}".format(
-                    type(obj).__name__
-                )
+                f"only instances of TObject can be written to files, not {type(obj).__name__}"
             )
 
     elif isinstance(obj, str):
@@ -919,9 +917,7 @@ def to_TArray(data):
         cls = uproot.models.TArray.Model_TArrayD
     else:
         raise ValueError(
-            "data to convert to TArray must have signed integer or floating-point type, not {}".format(
-                repr(data.dtype)
-            )
+            f"data to convert to TArray must have signed integer or floating-point type, not {data.dtype!r}"
         )
 
     tarray = cls.empty()

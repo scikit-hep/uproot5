@@ -36,9 +36,7 @@ to output as NumPy arrays, rather than Awkward arrays.
         return awkward
     else:
         raise ModuleNotFoundError(
-            "Uproot 5.1+ can only be used with Awkward 2.4.6 or newer; you have Awkward {}".format(
-                awkward.__version__
-            )
+            f"Uproot 5.1+ can only be used with Awkward 2.4.6 or newer; you have Awkward {awkward.__version__}"
         )
 
 
@@ -328,9 +326,7 @@ or
         return dask_awkward
     else:
         raise ModuleNotFoundError(
-            "Uproot 5.1+ can only be used with dask-awkward 2023.10.0 or newer; you have dask-awkward {}".format(
-                dask_awkward.__version__
-            )
+            f"Uproot 5.1+ can only be used with dask-awkward 2023.10.0 or newer; you have dask-awkward {dask_awkward.__version__}"
         )
 
 

@@ -190,7 +190,7 @@ class _DecompressLZMA:
 
     def decompress(self, data: bytes, uncompressed_bytes=None) -> bytes:
         cramjam = uproot.extras.cramjam()
-        lzma = getattr(cramjam, "lzma", None) or getattr(
+        lzma = getattr(cramjam, "xz", None) or getattr(
             getattr(cramjam, "experimental", None), "lzma", None
         )
         if lzma is None:
@@ -237,7 +237,7 @@ class LZMA(Compression, _DecompressLZMA):
 
     def compress(self, data: bytes) -> bytes:
         cramjam = uproot.extras.cramjam()
-        lzma = getattr(cramjam, "lzma", None) or getattr(
+        lzma = getattr(cramjam, "xz", None) or getattr(
             getattr(cramjam, "experimental", None), "lzma", None
         )
         if lzma is None:
@@ -434,10 +434,8 @@ def decompress(
             computed_checksum = xxhash.xxh64(data).intdigest()
             if computed_checksum != expected_checksum:
                 raise ValueError(
-                    """computed checksum {} didn't match expected checksum {}
-in file {}""".format(
-                        computed_checksum, expected_checksum, chunk.source.file_path
-                    )
+                    f"""computed checksum {computed_checksum} didn't match expected checksum {expected_checksum}
+in file {chunk.source.file_path}"""
                 )
 
         elif algo == _decompress_ZSTD._2byte:
@@ -468,16 +466,10 @@ in file {chunk.source.file_path}"""
 
         if len(uncompressed_bytestring) != block_uncompressed_bytes:
             raise ValueError(
-                """after successfully decompressing {} blocks, a block of """
-                """compressed size {} decompressed to {} bytes, but the """
-                """block header expects {} bytes.
-in file {}""".format(
-                    num_blocks,
-                    block_compressed_bytes,
-                    len(uncompressed_bytestring),
-                    block_uncompressed_bytes,
-                    chunk.source.file_path,
-                )
+                f"""after successfully decompressing {num_blocks} blocks, a block of """
+                f"""compressed size {block_compressed_bytes} decompressed to {len(uncompressed_bytestring)} bytes, but the """
+                f"""block header expects {block_uncompressed_bytes} bytes.
+in file {chunk.source.file_path}"""
             )
 
         uncompressed_array = numpy.frombuffer(

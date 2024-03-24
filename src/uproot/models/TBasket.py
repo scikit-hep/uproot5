@@ -31,9 +31,7 @@ class Model_TBasket(uproot.model.Model):
 
     def __repr__(self):
         basket_num = self._basket_num if self._basket_num is not None else "(unknown)"
-        return "<TBasket {} of {} at 0x{:012x}>".format(
-            basket_num, repr(self._parent.name), id(self)
-        )
+        return f"<TBasket {basket_num} of {self._parent.name!r} at 0x{id(self):012x}>"
 
     @property
     def raw_data(self):

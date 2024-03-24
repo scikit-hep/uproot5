@@ -359,15 +359,9 @@ class AsDtype(Numerical):
             output = data.view(dtype).reshape((-1, *shape))
         except ValueError as err:
             raise ValueError(
-                """basket {} in tree/branch {} has the wrong number of bytes ({}) """
-                """for interpretation {}
-in file {}""".format(
-                    basket.basket_num,
-                    branch.object_path,
-                    len(data),
-                    self,
-                    branch.file.file_path,
-                )
+                f"""basket {basket.basket_num} in tree/branch {branch.object_path} has the wrong number of bytes ({len(data)}) """
+                f"""for interpretation {self}
+in file {branch.file.file_path}"""
             ) from err
 
         self.hook_after_basket_array(
@@ -421,18 +415,14 @@ class AsDtypeInPlace(AsDtype):
         """
         if library.name != "np":
             raise TypeError(
-                "AsDtypeInPlace can only be used with library 'np', not '{}'".format(
-                    library.name
-                )
+                f"AsDtypeInPlace can only be used with library 'np', not '{library.name}'"
             )
 
         output = self._to_fill.view(self.to_dtype)
 
         if length > len(output):
             raise ValueError(
-                "Requesting to fill an array of size {} (type {}) with input of size {} (type {})".format(
-                    len(output), self._to_dtype, length, self._from_dtype
-                )
+                f"Requesting to fill an array of size {len(output)} (type {self._to_dtype}) with input of size {length} (type {self._from_dtype})"
             )
         return output[:length]
 
@@ -541,9 +531,7 @@ class TruncatedNumerical(Numerical):
 
     @property
     def cache_key(self):
-        return "{}({},{},{},{})".format(
-            type(self).__name__, self._low, self._high, self._num_bits, self._to_dims
-        )
+        return f"{type(self).__name__}({self._low},{self._high},{self._num_bits},{self._to_dims})"
 
     def basket_array(
         self,
@@ -571,16 +559,9 @@ class TruncatedNumerical(Numerical):
             raw = data.view(self.from_dtype)
         except ValueError as err:
             raise ValueError(
-                """basket {} in tree/branch {} has the wrong number of bytes ({}) """
-                """for interpretation {} (expecting raw array of {})
-in file {}""".format(
-                    basket.basket_num,
-                    branch.object_path,
-                    len(data),
-                    self,
-                    repr(self._from_dtype),
-                    branch.file.file_path,
-                )
+                f"""basket {basket.basket_num} in tree/branch {branch.object_path} has the wrong number of bytes ({len(data)}) """
+                f"""for interpretation {self} (expecting raw array of {self._from_dtype!r})
+in file {branch.file.file_path}"""
             ) from err
 
         if self.is_truncated:

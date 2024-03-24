@@ -100,7 +100,8 @@ profile = "black"
 addopts = ["-ra", "--showlocals", "--strict-markers", "--strict-config"]
 filterwarnings = [
   "error",
-  "default:module 'sre_.*' is deprecated:DeprecationWarning"
+  "default:module 'sre_.*' is deprecated:DeprecationWarning",
+  "ignore:unclosed transport <asyncio.sslproto._SSLProtocolTransport"  # https://github.com/aio-libs/aiohttp/issues/1115
 ]
 log_cli_level = "info"
 markers = [

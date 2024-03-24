@@ -28,9 +28,7 @@ def _expression_to_node(expression, file_path, object_path):
 
     if len(node.body) != 1 or not isinstance(node.body[0], ast.Expr):
         raise SyntaxError(
-            "expected a single expression\nin file {}\nin object {}".format(
-                file_path, object_path
-            )
+            f"expected a single expression\nin file {file_path}\nin object {object_path}"
         )
 
     return node
