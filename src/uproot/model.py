@@ -104,6 +104,7 @@ def reset_classes():
     reload(uproot.models.TH)
     reload(uproot.models.TGraph)
     reload(uproot.models.TMatrixT)
+    reload(uproot.models.TTime)
 
 
 _root_alias_to_c_primitive = {
