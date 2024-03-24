@@ -13,7 +13,6 @@ import uproot
 pytest.importorskip("awkward")
 
 
-@pytest.mark.skip(reason="RNTUPLE UPDATE: ignore test with previous file for now.")
 def test_flat():
     filename = skhep_testdata.data_path("test_ntuple_int_float.root")
     with uproot.open(filename) as f:
@@ -23,7 +22,7 @@ def test_flat():
             "std::int32_t",
             "float",
         ]
-        assert R.header.crc32 == R.footer.header_crc32
+        assert R.header.checksum == R.footer.header_checksum
         assert all(R.arrays(entry_stop=3)["one_integers"] == numpy.array([9, 8, 7]))
         assert all(
             R.arrays("one_integers", entry_stop=3)["one_integers"]

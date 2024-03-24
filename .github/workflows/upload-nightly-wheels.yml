@@ -1,0 +1,39 @@
+name: Upload nightly wheels to Anaconda Cloud
+
+on:
+  # Run daily at 1:23 UTC
+  schedule:
+    - cron: 23 1 * * *
+  # Run on demand with workflow dispatch
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+
+  build_wheel:
+    name: Build and upload wheel
+    if: github.repository_owner == 'scikit-hep'
+    uses: ./.github/workflows/build-distributions.yml
+
+  upload_nightly_wheels:
+    name: Upload nightly wheels to Anaconda Cloud
+    needs: [build_wheel]
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: distribution-artifact
+          path: dist
+
+      - name: List wheel to be deployed
+        run: ls -lha dist/*.whl
+
+      - name: Upload wheel to Anaconda Cloud as nightly
+        uses: scientific-python/upload-nightly-action@b67d7fcc0396e1128a474d1ab2b48aa94680f9fc # 0.5.0
+        with:
+          artifacts_path: dist
+          anaconda_nightly_upload_token: ${{ secrets.ANACONDA_ORG_UPLOAD_TOKEN }}

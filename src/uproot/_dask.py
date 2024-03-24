@@ -5,6 +5,7 @@ import math
 import socket
 import time
 from collections.abc import Callable, Iterable, Mapping
+from concurrent.futures import Executor
 
 from uproot.source.chunk import SourcePerformanceCounters
 
@@ -626,12 +627,7 @@ def _get_dask_array(
         raise ValueError(
             "allow_missing=True and no TTrees found in\n\n    {}".format(
                 "\n    ".join(
-                    "{"
-                    + "{}: {}".format(
-                        repr(f.file_path if isinstance(f, HasBranches) else f),
-                        repr(f.object_path if isinstance(f, HasBranches) else o),
-                    )
-                    + "}"
+                    f"{{{f.file_path if isinstance(f, HasBranches) else f!r}: {f.object_path if isinstance(f, HasBranches) else o!r}}}"
                     for f, o in files
                 )
             )
@@ -641,12 +637,7 @@ def _get_dask_array(
         raise ValueError(
             "TTrees in\n\n    {}\n\nhave no TBranches in common".format(
                 "\n    ".join(
-                    "{"
-                    + "{}: {}".format(
-                        repr(f.file_path if isinstance(f, HasBranches) else f),
-                        repr(f.object_path if isinstance(f, HasBranches) else o),
-                    )
-                    + "}"
+                    f"{{{f.file_path if isinstance(f, HasBranches) else f!r}: {f.object_path if isinstance(f, HasBranches) else o!r}}}"
                     for f, o in files
                 )
             )
@@ -835,6 +826,8 @@ class ImplementsFormMappingInfo(Protocol):
         keys: frozenset[str],
         start: int,
         stop: int,
+        decompression_executor: Executor,
+        interpretation_executor: Executor,
         options: Any,
     ) -> Mapping[str, AwkArray]: ...
 
@@ -1469,12 +1462,7 @@ def _get_dak_array(
         raise ValueError(
             "allow_missing=True and no TTrees found in\n\n    {}".format(
                 "\n    ".join(
-                    "{"
-                    + "{}: {}".format(
-                        repr(f.file_path if isinstance(f, HasBranches) else f),
-                        repr(f.object_path if isinstance(f, HasBranches) else o),
-                    )
-                    + "}"
+                    f"{{{f.file_path if isinstance(f, HasBranches) else f!r}: {f.object_path if isinstance(f, HasBranches) else o!r}}}"
                     for f, o in files
                 )
             )
@@ -1484,12 +1472,7 @@ def _get_dak_array(
         raise ValueError(
             "TTrees in\n\n    {}\n\nhave no TBranches in common".format(
                 "\n    ".join(
-                    "{"
-                    + "{}: {}".format(
-                        repr(f.file_path if isinstance(f, HasBranches) else f),
-                        repr(f.object_path if isinstance(f, HasBranches) else o),
-                    )
-                    + "}"
+                    f"{{{f.file_path if isinstance(f, HasBranches) else f!r}: {f.object_path if isinstance(f, HasBranches) else o!r}}}"
                     for f, o in files
                 )
             )

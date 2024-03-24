@@ -198,18 +198,10 @@ class FileSink:
         if insist is True:
             if len(out) != num_bytes:
                 raise OSError(
-                    "could not read {} bytes from the file at position {}{}".format(
-                        num_bytes,
-                        location,
-                        self.in_path,
-                    )
+                    f"could not read {num_bytes} bytes from the file at position {location}{self.in_path}"
                 )
         elif isinstance(insist, numbers.Integral) and len(out) < insist:
             raise OSError(
-                "could not read {} bytes from the file at position {}{}".format(
-                    insist,
-                    location,
-                    self.in_path,
-                )
+                f"could not read {insist} bytes from the file at position {location}{self.in_path}"
             )
         return out
