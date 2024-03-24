@@ -6,6 +6,7 @@ This module versioned model of ``TTime``.
 from __future__ import annotations
 
 import struct
+import numpy
 
 import uproot
 
@@ -46,7 +47,7 @@ class Model_TTime_v2(uproot.model.VersionedModel):
                     },
                     len(content),
                 )
-            temp = forth_obj.add_node("dynamic", forth_obj.get_attrs(), "i64", 0, None)
+            forth_obj.add_node("dynamic", forth_obj.get_attrs(), "i64", 0, None)
 
     def read_member_n(self, chunk, cursor, context, file, member_index):
         if member_index == 0:
