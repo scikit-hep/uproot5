@@ -147,6 +147,7 @@ import uproot.models.RNTuple
 import uproot.models.TH
 import uproot.models.TGraph
 import uproot.models.TMatrixT
+import uproot.models.TTime
 
 from uproot.models.TTree import num_entries
 
