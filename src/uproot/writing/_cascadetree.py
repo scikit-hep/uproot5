@@ -123,7 +123,7 @@ class Tree:
                         raise TypeError
                     branch_dtype = numpy.dtype(branch_type)
 
-                except TypeError as err:
+                except (TypeError, ValueError) as err:
                     try:
                         awkward = uproot.extras.awkward()
                     except ModuleNotFoundError as err:
