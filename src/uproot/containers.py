@@ -864,7 +864,9 @@ class AsVectorLike(AsContainer):
 
     def __init__(self, header, values):
         self.header = header
-        if isinstance(values, AsContainer):
+        if isinstance(self, uproot.containers.AsBitSet):
+            self._items = numpy.dtype(numpy.bool_)
+        elif isinstance(values, AsContainer):
             self._items = values
         elif isinstance(values, type) and issubclass(
             values, (uproot.model.Model, uproot.model.DispatchByVersion)
@@ -1117,7 +1119,6 @@ class AsList(AsVectorLike):
         header (bool): Sets the :ref:`uproot.containers.AsContainer.header`.
         values (:doc:`uproot.model.Model` or :doc:`uproot.containers.Container`): Data
             type for data nested in the container.
-
     A :doc:`uproot.containers.AsContainer` for ``std::list``.
     """
 
@@ -1137,6 +1138,36 @@ class AsList(AsVectorLike):
     @property
     def _container_type(self):
         return STLList
+
+
+class AsBitSet(AsVectorLike):
+    """
+    Args:
+        header (bool): Sets the :ref:`uproot.containers.AsContainer.header`.
+        keys (:doc:`uproot.model.Model` or :doc:`uproot.containers.Container`): Data
+            type for data nested in the container.
+
+    A :doc:`uproot.containers.AsContainer` for ``std::bitset``.
+    """
+
+    _specialpathitem_name = "bitset"
+
+    @property
+    def typename(self):
+        return f"std::bitset<{_content_typename(self.keys)}>"
+
+    @property
+    def keys(self):
+        """
+        Data type for data nested in the container.
+        """
+        return self._items
+
+    _form_parameters = {"__array__": "bitset"}
+
+    @property
+    def _container_type(self):
+        return STLBitSet
 
 
 class AsSet(AsVectorLike):
@@ -1626,6 +1657,49 @@ class STLVector(Container, Sequence):
 
     def __array__(self, *args, **kwargs):
         return numpy.asarray(self._vector, *args, **kwargs)
+
+    def tolist(self):
+        return [
+            x.tolist() if isinstance(x, (Container, numpy.ndarray)) else x for x in self
+        ]
+
+
+class STLBitSet(Container, Sequence):
+    """
+    Args:
+        values (``numpy.ndarray`` or iterable): Contents of the ``std::vector``.
+
+    Representation of a C++ ``std::bitset`` as a Python ``Sequence``.
+    """
+
+    def __init__(self, numbytes):
+        self._numbytes = numpy.asarray(numbytes)
+
+    def __str__(self, limit=85):
+        def tostring(i):
+            return _tostring(self._values[i])
+
+        return _str_with_ellipsis(tostring, len(self), "[", "]", limit)
+
+    def __repr__(self, limit=85):
+        return f"<STLBitSet {self.__str__(limit=limit - 30)} at 0x{id(self):012x}>"
+
+    def __getitem__(self, where):
+        return self._numbytes[where]
+
+    def __len__(self):
+        return self._numbytes
+
+    def __iter__(self):
+        return iter(self._numbytes)
+
+    def __eq__(self, other):
+        if isinstance(other, STLBitSet):
+            return self._numbytes == other._numbytes
+        elif isinstance(other, Sequence):
+            return self._numbytes == other
+        else:
+            return False
 
     def tolist(self):
         return [

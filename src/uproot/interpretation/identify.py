@@ -964,7 +964,7 @@ def _parse_node(tokens, i, typename, file, quote, header, inner_header):
         return (
             i + 4,
             _parse_maybe_quote(
-                f'uproot.containers.AsFIXME("std::bitset<{num_bits}>")',
+                f"uproot.containers.AsBitSet({header}, {num_bits})",
                 quote,
             ),
         )
