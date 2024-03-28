@@ -606,6 +606,7 @@ def _get_dask_array(
                 filter_typename=filter_typename,
                 filter_branch=real_filter_branch,
                 full_paths=full_paths,
+                ignore_duplicates=True,
             )
 
             if common_keys is None:
@@ -747,6 +748,7 @@ def _get_dask_array_delay_open(
         filter_typename=filter_typename,
         filter_branch=filter_branch,
         full_paths=full_paths,
+        ignore_duplicates=True,
     )
 
     dask_dict = {}
@@ -1441,6 +1443,7 @@ def _get_dak_array(
                 filter_typename=filter_typename,
                 filter_branch=real_filter_branch,
                 full_paths=full_paths,
+                ignore_duplicates=True,
             )
 
             if common_keys is None:
@@ -1586,7 +1589,7 @@ def _get_dak_array_delay_open(
     ffile_path, fobject_path = files[0][0:2]
 
     if known_base_form is not None:
-        common_keys = list(known_base_form.fields)
+        common_keys = set(list(known_base_form.fields))
         base_form = known_base_form
     else:
         obj = uproot._util.regularize_object_path(
@@ -1598,6 +1601,7 @@ def _get_dak_array_delay_open(
             filter_typename=filter_typename,
             filter_branch=filter_branch,
             full_paths=full_paths,
+            ignore_duplicates=True,
         )
         base_form = _get_ttree_form(
             awkward, obj, common_keys, interp_options.get("ak_add_doc")
