@@ -1394,8 +1394,8 @@ class HasBranches(Mapping):
             raise TypeError(
                 f"filter_branch must be None or a function: TBranch -> bool, not {filter_branch!r}"
             )
-        
-        keys_set=set()
+
+        keys_set = set()
 
         for branch in self.branches:
             if (
@@ -1411,7 +1411,6 @@ class HasBranches(Mapping):
                 else:
                     keys_set.add(branch.name)
                     yield branch.name, branch
-                
 
             if recursive:
                 for k1, v in branch.iteritems(
@@ -1430,7 +1429,6 @@ class HasBranches(Mapping):
                         else:
                             keys_set.add(k2)
                             yield k2, v
-                        
 
     def itertypenames(
         self,

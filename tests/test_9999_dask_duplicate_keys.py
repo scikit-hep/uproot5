@@ -7,16 +7,15 @@ import skhep_testdata
 
 def test_dask_duplicated_keys():
 
-    lazy = uproot.dask(skhep_testdata.data_path("uproot-metadata-performance.root")+":Events")
+    lazy = uproot.dask(
+        skhep_testdata.data_path("uproot-metadata-performance.root") + ":Events"
+    )
     materialized = lazy.FatJet_btagDDBvLV2.compute()
 
-    lazy = uproot.dask(skhep_testdata.data_path("uproot-issue513.root")+":Delphes")
+    lazy = uproot.dask(skhep_testdata.data_path("uproot-issue513.root") + ":Delphes")
     materialized = lazy.Particle.compute()
 
-    lazy = uproot.dask(skhep_testdata.data_path("uproot-issue443.root")+":muonDataTree")
+    lazy = uproot.dask(
+        skhep_testdata.data_path("uproot-issue443.root") + ":muonDataTree"
+    )
     materialized = lazy.hitEnd.compute()
-    
-
-
-
-
