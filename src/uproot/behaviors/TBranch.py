@@ -1126,6 +1126,7 @@ class HasBranches(Mapping):
         filter_branch=no_filter,
         recursive=True,
         full_paths=True,
+        ignore_duplicates=False,
     ):
         """
         Args:
@@ -1143,6 +1144,7 @@ class HasBranches(Mapping):
             full_paths (bool): If True, include the full path to each subbranch
                 with slashes (``/``); otherwise, use the descendant's name as
                 the output name.
+            ignore_duplicates (bool): If True, return a set of the keys; otherwise, return the full list of keys.
 
         Returns the names of the subbranches as a list of strings.
         """
@@ -1153,6 +1155,7 @@ class HasBranches(Mapping):
                 filter_branch=filter_branch,
                 recursive=recursive,
                 full_paths=full_paths,
+                ignore_duplicates=ignore_duplicates,
             )
         )
 
@@ -1279,6 +1282,7 @@ class HasBranches(Mapping):
         filter_branch=no_filter,
         recursive=True,
         full_paths=True,
+        ignore_duplicates=False,
     ):
         """
         Args:
@@ -1296,6 +1300,8 @@ class HasBranches(Mapping):
             full_paths (bool): If True, include the full path to each subbranch
                 with slashes (``/``); otherwise, use the descendant's name as
                 the output name.
+            ignore_duplicates (bool): If True, return a set of the keys; otherwise, return the full list of keys.
+
 
         Returns the names of the subbranches as an iterator over strings.
         """
@@ -1305,6 +1311,7 @@ class HasBranches(Mapping):
             filter_branch=filter_branch,
             recursive=recursive,
             full_paths=full_paths,
+            ignore_duplicates=ignore_duplicates,
         ):
             yield k
 
@@ -1353,6 +1360,7 @@ class HasBranches(Mapping):
         filter_branch=no_filter,
         recursive=True,
         full_paths=True,
+        ignore_duplicates=False,
     ):
         """
         Args:
@@ -1370,6 +1378,8 @@ class HasBranches(Mapping):
             full_paths (bool): If True, include the full path to each subbranch
                 with slashes (``/``) in the name; otherwise, use the descendant's
                 name as the name without modification.
+            ignore_duplicates (bool): If True, return a set of the keys; otherwise, return the full list of keys.
+
 
         Returns (name, branch) pairs of the subbranches as an iterator over
         2-tuples of (str, :doc:`uproot.behaviors.TBranch.TBranch`).
@@ -1385,6 +1395,8 @@ class HasBranches(Mapping):
                 f"filter_branch must be None or a function: TBranch -> bool, not {filter_branch!r}"
             )
 
+        keys_set = set()
+
         for branch in self.branches:
             if (
                 (
@@ -1394,7 +1406,11 @@ class HasBranches(Mapping):
                 and (filter_typename is no_filter or filter_typename(branch.typename))
                 and (filter_branch is no_filter or filter_branch(branch))
             ):
-                yield branch.name, branch
+                if ignore_duplicates and branch.name in keys_set:
+                    pass
+                else:
+                    keys_set.add(branch.name)
+                    yield branch.name, branch
 
             if recursive:
                 for k1, v in branch.iteritems(
@@ -1408,7 +1424,11 @@ class HasBranches(Mapping):
                     if filter_name is no_filter or _filter_name_deep(
                         filter_name, self, v
                     ):
-                        yield k2, v
+                        if ignore_duplicates and branch.name in keys_set:
+                            pass
+                        else:
+                            keys_set.add(k2)
+                            yield k2, v
 
     def itertypenames(
         self,
