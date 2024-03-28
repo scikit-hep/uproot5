@@ -1589,7 +1589,7 @@ def _get_dak_array_delay_open(
     ffile_path, fobject_path = files[0][0:2]
 
     if known_base_form is not None:
-        common_keys = set(known_base_form.fields)
+        common_keys = list(dict.fromkeys(known_base_form.fields))
         base_form = known_base_form
     else:
         obj = uproot._util.regularize_object_path(
