@@ -253,7 +253,7 @@ in file {self.file.file_path}"""
         else:
             raise (
                 RuntimeError(
-                    f"The filed_id: {field_id} is missing both from the columns records and the alias columns."
+                    f"The field_id: {field_id} is missing both from the columns records and the alias columns."
                 )
             )
 
@@ -302,7 +302,7 @@ in file {self.file.file_path}"""
             if this_id in self._related_ids:
                 child_id = self._related_ids[this_id][0]
             inner = self.field_form(child_id, seen)
-            return ak.forms.ListOffsetForm("u32", inner, form_key=keyname)
+            return ak.forms.ListOffsetForm("i64", inner, form_key=keyname)
         elif structural_role == uproot.const.rntuple_role_struct:
             newids = []
             if this_id in self._related_ids:
@@ -409,11 +409,7 @@ in file {self.file.file_path}"""
         dtype_str = uproot.const.rntuple_col_num_to_dtype_dict[dtype_byte]
         dtype = numpy.dtype("bool") if dtype_str == "bit" else numpy.dtype(dtype_str)
 
-        # FIXME vector read
-        # n.b. it's possible pagelist is empty
-        if not pagelist:
-            return numpy.empty(0, dtype)
-        total_len = numpy.sum([desc.num_elements for desc in pagelist])
+        total_len = numpy.sum([desc.num_elements for desc in pagelist], dtype=int)
         res = numpy.empty(total_len, dtype)
         tracker = 0
         split = 14 <= dtype_byte <= 21 or 26 <= dtype_byte <= 28
