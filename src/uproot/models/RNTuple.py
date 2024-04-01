@@ -294,7 +294,8 @@ in file {self.file.file_path}"""
                 child_id = self._related_ids[this_id][0]
 
             inner = self.field_form(child_id, seen)
-            return ak.forms.RegularForm(inner, this_record.repetition)
+            keyname = f"RegularForm-{this_id}"
+            return ak.forms.RegularForm(inner, this_record.repetition, form_key=keyname)
         elif structural_role == uproot.const.rntuple_role_vector:
             col_id = self._column_records_dict[this_id]["rel_crs_idxs"][0]
             keyname = f"column-{col_id}"
