@@ -296,7 +296,8 @@ in file {self.file.file_path}"""
             inner = self.field_form(child_id, seen)
             return ak.forms.RegularForm(inner, this_record.repetition)
         elif structural_role == uproot.const.rntuple_role_vector:
-            keyname = f"column-{this_id}"
+            col_id = self._column_records_dict[this_id]["rel_crs_idxs"][0]
+            keyname = f"column-{col_id}"
             #  this only has one child
             if this_id in self._related_ids:
                 child_id = self._related_ids[this_id][0]
@@ -466,7 +467,6 @@ in file {self.file.file_path}"""
             el.field_id: el.physical_id for el in self.header.alias_columns
         }
         self._column_records_dict = {}
-        self._column_records_idx_to_id = {}
         for i, cr in enumerate(self.header.column_records):
             if cr.field_id not in self._column_records_dict:
                 self._column_records_dict[cr.field_id] = {
@@ -476,7 +476,6 @@ in file {self.file.file_path}"""
             else:
                 self._column_records_dict[cr.field_id]["rel_crs"].append(cr)
                 self._column_records_dict[cr.field_id]["rel_crs_idxs"].append(i)
-            self._column_records_idx_to_id[i] = cr.field_id
 
         self._related_ids = defaultdict(list)
         for i, el in enumerate(self.header.field_records):
@@ -491,19 +490,7 @@ in file {self.file.file_path}"""
         for key in target_cols:
             if "column" in key:
                 key_nr = int(key.split("-")[1])
-                key_fid = self._column_records_idx_to_id[key_nr]
-                if key_fid in self._column_records_dict:
-                    id = key_fid
-                elif key_nr in self._alias_columns_dict:
-                    id = self._alias_columns_dict[key_fid]
-                else:
-                    raise (
-                        RuntimeError(
-                            f"The key: {key} is missing both from the columns records and the alias columns."
-                        )
-                    )
-
-                dtype_byte = self._column_records_dict[id]["rel_crs"][0].type
+                dtype_byte = self.column_records[key_nr].type
                 content = self.read_col_pages(
                     key_nr, range(start_cluster_idx, stop_cluster_idx)
                 )
