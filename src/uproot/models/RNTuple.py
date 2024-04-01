@@ -297,7 +297,25 @@ in file {self.file.file_path}"""
             keyname = f"RegularForm-{this_id}"
             return ak.forms.RegularForm(inner, this_record.repetition, form_key=keyname)
         elif structural_role == uproot.const.rntuple_role_vector:
-            col_id = self._column_records_dict[this_id]["rel_crs_idxs"][0]
+            if this_id not in self._related_ids or len(self._related_ids[this_id]) != 1:
+                keyname = f"vector-{this_id}"
+                newids = self._related_ids.get(this_id, [])
+                # go find N in the rest, N is the # of fields in vector
+                recordlist = [self.field_form(i, seen) for i in newids]
+                namelist = [field_records[i].field_name for i in newids]
+                return ak.forms.RecordForm(recordlist, namelist, form_key="whatever")
+            if this_id in self._column_records_dict:
+                col_id = self._column_records_dict[this_id]["rel_crs_idxs"][0]
+            elif this_id in self._alias_columns_dict:
+                col_id = self._column_records_dict[self._alias_columns_dict[this_id]][
+                    "rel_crs_idxs"
+                ][0]
+            else:
+                raise (
+                    RuntimeError(
+                        f"The field_id: {this_id} is missing both from the columns records and the alias columns."
+                    )
+                )
             keyname = f"column-{col_id}"
             #  this only has one child
             if this_id in self._related_ids:
@@ -332,7 +350,9 @@ in file {self.file.file_path}"""
         seen = set()
         for i in range(len(field_records)):
             if i not in seen:
-                recordlist.append(self.field_form(i, seen))
+                ff = self.field_form(i, seen)
+                if field_records[i].type_name != "":
+                    recordlist.append(ff)
 
         form = ak.forms.RecordForm(recordlist, topnames, form_key="toplevel")
         return form
