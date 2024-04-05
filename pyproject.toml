@@ -164,3 +164,61 @@ isort.required-imports = ["from __future__ import annotations"]
 
 [tool.setuptools_scm]
 write_to = "src/uproot/_version.py"
+
+
+[tool.pixi.project]
+name = "uproot"
+channels = ["conda-forge"]
+platforms = ["linux-64", "osx-64", "osx-arm64"]
+
+[tool.pixi.dependencies]
+aiohttp = "*"
+boost-histogram = ">=0.13"
+cramjam = ">=2.5.0"
+dask = "*"
+dask-awkward = "*"
+awkward-pandas = "*"
+fsspec = "*"
+fsspec-xrootd = "*"
+hist = ">=1.2"
+minio = "*"
+numpy = "*"
+packaging = "*"
+pandas = "*"
+paramiko = "*"
+pytest = "*"
+pytest-rerunfailures = "*"
+pytest-timeout = "*"
+rangehttpserver = "*"
+requests = "*"
+s3fs = "*"
+scikit-hep-testdata = "*"
+typing_extensions = ">=4.1.0"
+xxhash = "*"
+
+
+[tool.pixi.pypi-dependencies]
+uproot = {path = ".", editable = true, extras = ["test", "dev"]}
+
+[tool.pixi.tasks]
+test = "pytest -vv tests --reruns 10 --reruns-delay 30 --only-rerun '(?i)http|ssl|timeout|expired|connection|socket'"
+
+[tool.pixi.feature.root.dependencies]
+root = "*"
+xrootd = "*"
+
+[tool.pixi.feature.py38.dependencies]
+python = "3.8.*"
+
+[tool.pixi.feature.py310.dependencies]
+python = "3.10.*"
+
+[tool.pixi.feature.py312.dependencies]
+python = "3.12.*"
+
+[tool.pixi.environments]
+root310 = ["root", "py310"]
+py38 = ["py38"]
+py310 = ["py310"]
+py312 = ["py312"]
+
