@@ -1128,7 +1128,7 @@ class Model_TStreamerBasicType(Model_TStreamerElement):
             uproot.const.kULong,
             uproot.const.kLong,
         ):
-            self._bases[0]._members["fSize"] = numpy.dtype(numpy.compat.long).itemsize
+            self._bases[0]._members["fSize"] = numpy.dtype(numpy.int64).itemsize
 
         elif self._bases[0]._members["fType"] in (
             uproot.const.kULong64,
