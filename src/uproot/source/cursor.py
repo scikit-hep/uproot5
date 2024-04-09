@@ -386,7 +386,7 @@ class Cursor:
             length_data = chunk.get(start, stop, self, context)
             length = numpy.frombuffer(length_data, dtype=self._u1).view(self._i4)[0]
         start = stop
-        stop = start + length
+        stop = start + int(length)
         if move:
             self._index = stop
         return uproot._util.tobytes(chunk.get(start, stop, self, context))
