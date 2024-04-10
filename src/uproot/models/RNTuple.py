@@ -380,7 +380,6 @@ in file {self.file.file_path}"""
                 res = numpy.empty(len(content), numpy.uint8)
                 res[0::2] = content[len(res) * 0 // 2 : len(res) * 1 // 2]
                 res[1::2] = content[len(res) * 1 // 2 : len(res) * 2 // 2]
-                res = res.view(numpy.uint16)
 
             elif nbits == 32:
                 # AAAAABBBBBCCCCCDDDDD needs to become
@@ -390,7 +389,6 @@ in file {self.file.file_path}"""
                 res[1::4] = content[len(res) * 1 // 4 : len(res) * 2 // 4]
                 res[2::4] = content[len(res) * 2 // 4 : len(res) * 3 // 4]
                 res[3::4] = content[len(res) * 3 // 4 : len(res) * 4 // 4]
-                res = res.view(numpy.uint32)
 
             elif nbits == 64:
                 # AAAAABBBBBCCCCCDDDDDEEEEEFFFFFGGGGGHHHHH needs to become
@@ -404,9 +402,8 @@ in file {self.file.file_path}"""
                 res[5::8] = content[len(res) * 5 // 8 : len(res) * 6 // 8]
                 res[6::8] = content[len(res) * 6 // 8 : len(res) * 7 // 8]
                 res[7::8] = content[len(res) * 7 // 8 : len(res) * 8 // 8]
-                res = res.view(numpy.uint64)
 
-            content = res
+            content = res.view(dtype)
 
         if isbit:
             content = (
