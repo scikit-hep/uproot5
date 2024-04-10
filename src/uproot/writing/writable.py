@@ -1344,6 +1344,102 @@ in file {self.file_path} in directory {self.path}"""
 
         return tree
 
+    def add_branches(  # my own variation of mktree
+        self,
+        name,
+        branch_types,
+        source,
+        title="",
+        *,
+        counter_name=lambda counted: "n" + counted,
+        field_name=lambda outer, inner: inner if outer == "" else outer + "_" + inner,
+        initial_basket_capacity=10,
+        resize_factor=10.0,
+        # new_branch,
+    ):
+        """
+        Args:
+            source (TTree): existing TTree to copy/replace
+        Creates an empty TTree in this directory.
+
+        Note that TTrees can be created by assigning TTree-like data to a directory
+        (see :doc:`uproot.writing.writable.WritableTree` for recognized TTree-like types):
+
+        .. code-block:: python
+
+            my_directory["tree"] = {"branch1": np.array(...), "branch2": ak.Array(...)}
+
+        but TTrees created this way will never be empty. Use this method
+        to make an empty TTree or to control its parameters.
+        """
+        if self._file.sink.closed:
+            raise ValueError("cannot create a TTree in a closed file")
+        if not isinstance(source, uproot.TTree):
+            raise TypeError("'source' must be a TTree")  # ?
+        names = source.keys()
+        if len(names) == 0:
+            raise ValueError(
+                f"""TTree {source.name} in file {source.file_path} is empty."""
+            )
+
+        # names.append(new_branch.name)  # May need the TKey? (uproot.reading.ReadOnlyKey)
+
+        try:  # Will this throw an error? proabably?
+            at = source.name.rindex("/")
+        except ValueError:
+            treename = source.name
+            directory = self
+        else:
+            dirpath, treename = source.name[:at], source.name[at + 1 :]
+            directory = self.mkdir(dirpath)
+
+        path = (*directory._path, treename)
+
+        tree = WritableTree(
+            path,
+            directory._file,
+            directory._cascading.add_tree(
+                directory._file.sink,
+                name,
+                title,
+                branch_types,
+                counter_name,
+                field_name,
+                initial_basket_capacity,
+                resize_factor,
+                source.branches,
+            ),
+        )
+        directory._file._new_tree(tree)
+
+        seen = set()
+        streamers = []
+        for model in (
+            uproot.models.TLeaf.Model_TLeafB_v1,
+            uproot.models.TLeaf.Model_TLeafS_v1,
+            uproot.models.TLeaf.Model_TLeafI_v1,
+            uproot.models.TLeaf.Model_TLeafL_v1,
+            uproot.models.TLeaf.Model_TLeafF_v1,
+            uproot.models.TLeaf.Model_TLeafD_v1,
+            uproot.models.TLeaf.Model_TLeafC_v1,
+            uproot.models.TLeaf.Model_TLeafO_v1,
+            uproot.models.TBranch.Model_TBranch_v13,
+            uproot.models.TTree.Model_TTree_v20,
+        ):
+            for rawstreamer in model.class_rawstreamers:
+                classname_version = rawstreamer[-2], rawstreamer[-1]
+                if classname_version not in seen:
+                    seen.add(classname_version)
+                    streamers.append(
+                        uproot.writing._cascade.RawStreamerInfo(*rawstreamer)
+                    )
+
+        directory._file._cascading.streamers.update_streamers(
+            directory._file.sink, streamers
+        )
+
+        return tree
+
     def mkrntuple(
         self,
         name,

@@ -85,6 +85,7 @@ class Tree:
         field_name,
         initial_basket_capacity,
         resize_factor,
+        existing_branches=None,
     ):
         self._directory = directory
         self._name = name
@@ -94,7 +95,7 @@ class Tree:
         self._field_name = field_name
         self._basket_capacity = initial_basket_capacity
         self._resize_factor = resize_factor
-
+        self._existing_branches = existing_branches
         if isinstance(branch_types, dict):
             branch_types_items = branch_types.items()
         else:
@@ -123,7 +124,7 @@ class Tree:
                         raise TypeError
                     branch_dtype = numpy.dtype(branch_type)
 
-                except (TypeError, ValueError) as err:
+                except TypeError as err:
                     try:
                         awkward = uproot.extras.awkward()
                     except ModuleNotFoundError as err:
@@ -894,6 +895,8 @@ class Tree:
         num_branches = sum(
             0 if datum["kind"] == "record" else 1 for datum in self._branch_data
         )
+        if self._existing_branches:
+            num_branches += len(self._existing_branches)
 
         # TObjArray header with fName: ""
         out.append(b"\x00\x01\x00\x00\x00\x00\x03\x00@\x00\x00")
@@ -903,6 +906,17 @@ class Tree:
                 0,  # TObjArray fLowerBound
             )
         )
+
+        # Write old branches?
+        if self._existing_branches:
+            for branch in self._existing_branches:
+                # create OldTBranch object
+                # members = uproot.branch.read_members()
+                old_branch = uproot.writing._cascade.OldBranch(branch)
+                out, temp = old_branch.serialize(
+                    out
+                )  # should call uproot.models.TBranch._tbranch13_format...pack or something
+                tleaf_reference_numbers.append(temp)  # and don't forget the tleaves
 
         for datum in self._branch_data:
             if datum["kind"] == "record":
@@ -1213,6 +1227,7 @@ class Tree:
         self._metadata_start = sum(len(x) for x in out[:metadata_out_index])
 
         raw_data = b"".join(out)
+
         self._key = self._directory.add_object(
             sink,
             "TTree",
