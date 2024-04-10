@@ -1,12 +1,5 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/main/LICENSE
 
-import pytest
-import uproot
-import uproot.source.fsspec
-import uproot.source.file
-import uproot.source.xrootd
-import uproot.source.s3
-
 from typing import BinaryIO
 import skhep_testdata
 import queue
@@ -14,6 +7,14 @@ import fsspec
 import requests
 import os
 import sys
+
+import pytest
+
+import uproot
+import uproot.source.fsspec
+import uproot.source.file
+import uproot.source.xrootd
+import uproot.source.s3
 
 is_windows = sys.platform.startswith("win")
 
@@ -243,7 +244,7 @@ def test_fsspec_chunks(http_server):
             chunk = notifications.get()
             expected.pop((chunk.start, chunk.stop))
 
-        chunk_data_sum = {sum(chunk.raw_data) for chunk in chunks}
+        chunk_data_sum = {sum(map(int, chunk.raw_data)) for chunk in chunks}
         assert chunk_data_sum == {3967, 413, 10985}, "Chunk data does not match"
 
 
