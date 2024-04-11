@@ -218,10 +218,10 @@ in file {self.file.file_path}"""
 
         return self._page_list_envelopes
 
-    def base_col_form(self, cr, col_id, parameters=None):
+    def base_col_form(self, cr, col_id, parameters=None, cardinality=False):
         ak = uproot.extras.awkward()
 
-        form_key = f"column-{col_id}"
+        form_key = f"column-{col_id}" + ("-cardinality" if cardinality else "")
         dtype_byte = cr.type
         if dtype_byte == uproot.const.rntuple_role_union:
             return form_key
@@ -258,7 +258,12 @@ in file {self.file.file_path}"""
             )
 
         if len(rel_crs) == 1:  # base case
-            return self.base_col_form(rel_crs[0], rel_crs_idxs[0])
+            cardinality = (
+                "RNTupleCardinality" in self.header.field_records[field_id].type_name
+            )
+            return self.base_col_form(
+                rel_crs[0], rel_crs_idxs[0], cardinality=cardinality
+            )
         elif (
             len(rel_crs_idxs) == 2
             and rel_crs[1].type == uproot.const.rntuple_col_type_to_num_dict["char"]
@@ -508,6 +513,8 @@ in file {self.file.file_path}"""
                 content = self.read_col_pages(
                     key_nr, range(start_cluster_idx, stop_cluster_idx)
                 )
+                if "cardinality" in key:
+                    content = numpy.diff(content)
                 if dtype_byte == uproot.const.rntuple_col_type_to_num_dict["switch"]:
                     kindex, tags = _split_switch_bits(content)
                     container_dict[f"{key}-index"] = kindex
