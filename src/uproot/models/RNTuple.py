@@ -32,6 +32,7 @@ _rntuple_checksum_format = struct.Struct("<Q")
 _rntuple_envlink_size_format = struct.Struct("<Q")
 _rntuple_page_num_elements_format = struct.Struct("<I")
 _rntuple_column_group_id_format = struct.Struct("<I")
+_rntuple_first_ele_index_format = struct.Struct("<I")
 
 
 def from_zigzag(n):
@@ -53,7 +54,7 @@ class Model_ROOT_3a3a_Experimental_3a3a_RNTuple(uproot.model.Model):
     @property
     def _keys(self):
         keys = []
-        field_records = self.header.field_records
+        field_records = self.field_records
         for i, fr in enumerate(field_records):
             if fr.parent_field_id == i and fr.type_name != "":
                 keys.append(fr.field_name)
@@ -89,8 +90,10 @@ in file {self.file.file_path}"""
         self._footer_chunk_ready = False
         self._header, self._footer = None, None
 
+        self._field_records = None
         self._field_names = None
         self._column_records = None
+        self._alias_column_records = None
 
         self._page_list_envelopes = []
 
@@ -152,14 +155,33 @@ in file {self.file.file_path}"""
         return self._header
 
     @property
+    def field_records(self):
+        if self._field_records is None:
+            self._field_records = self.header.field_records
+            self._field_records.extend(self.footer.extension_links.field_records)
+        return self._field_records
+
+    @property
     def field_names(self):
         if self._field_names is None:
-            self._field_names = [r.field_name for r in self.header.field_records]
+            self._field_names = [r.field_name for r in self.field_records]
         return self._field_names
 
     @property
     def column_records(self):
-        return self.header.column_records
+        if self._column_records is None:
+            self._column_records = self.header.column_records
+            self._column_records.extend(self.footer.extension_links.column_records)
+        return self._column_records
+
+    @property
+    def alias_column_records(self):
+        if self._alias_column_records is None:
+            self._alias_column_records = self.header.alias_column_records
+            self._alias_column_records.extend(
+                self.footer.extension_links.alias_column_records
+            )
+        return self._alias_column_records
 
     @property
     def footer(self):
@@ -258,9 +280,7 @@ in file {self.file.file_path}"""
             )
 
         if len(rel_crs) == 1:  # base case
-            cardinality = (
-                "RNTupleCardinality" in self.header.field_records[field_id].type_name
-            )
+            cardinality = "RNTupleCardinality" in self.field_records[field_id].type_name
             return self.base_col_form(
                 rel_crs[0], rel_crs_idxs[0], cardinality=cardinality
             )
@@ -282,7 +302,7 @@ in file {self.file.file_path}"""
     def field_form(self, this_id, seen):
         ak = uproot.extras.awkward()
 
-        field_records = self.header.field_records
+        field_records = self.field_records
         this_record = field_records[this_id]
         seen.add(this_id)
         structural_role = this_record.struct_role
@@ -349,7 +369,7 @@ in file {self.file.file_path}"""
     def to_akform(self):
         ak = uproot.extras.awkward()
 
-        field_records = self.header.field_records
+        field_records = self.field_records
         recordlist = []
         topnames = self.keys()
         seen = set()
@@ -420,10 +440,14 @@ in file {self.file.file_path}"""
         # needed to chop off extra bits incase we used `unpackbits`
         destination[:] = content[:num_elements]
 
-    def read_col_pages(self, ncol, cluster_range):
-        return numpy.concatenate(
+    def read_col_pages(self, ncol, cluster_range, pad_first_ele=False):
+        res = numpy.concatenate(
             [self.read_col_page(ncol, i) for i in cluster_range], axis=0
         )
+        if pad_first_ele:
+            first_ele_index = self.column_records[ncol].first_ele_index
+            res = numpy.pad(res, (first_ele_index, 0))
+        return res
 
     def read_col_page(self, ncol, cluster_i):
         linklist = self.page_list_envelopes.pagelinklist[cluster_i]
@@ -483,10 +507,10 @@ in file {self.file.file_path}"""
         )
 
         self._alias_columns_dict = {
-            el.field_id: el.physical_id for el in self.header.alias_columns
+            el.field_id: el.physical_id for el in self.alias_column_records
         }
         self._column_records_dict = {}
-        for i, cr in enumerate(self.header.column_records):
+        for i, cr in enumerate(self.column_records):
             if cr.field_id not in self._column_records_dict:
                 self._column_records_dict[cr.field_id] = {
                     "rel_crs": [cr],
@@ -497,7 +521,7 @@ in file {self.file.file_path}"""
                 self._column_records_dict[cr.field_id]["rel_crs_idxs"].append(i)
 
         self._related_ids = defaultdict(list)
-        for i, el in enumerate(self.header.field_records):
+        for i, el in enumerate(self.field_records):
             if el.parent_field_id != i:
                 self._related_ids[el.parent_field_id].append(i)
 
@@ -511,7 +535,9 @@ in file {self.file.file_path}"""
                 key_nr = int(key.split("-")[1])
                 dtype_byte = self.column_records[key_nr].type
                 content = self.read_col_pages(
-                    key_nr, range(start_cluster_idx, stop_cluster_idx)
+                    key_nr,
+                    range(start_cluster_idx, stop_cluster_idx),
+                    pad_first_ele=True,
                 )
                 if "cardinality" in key:
                     content = numpy.diff(content)
@@ -675,6 +701,12 @@ class ColumnRecordReader:
         out.type, out.nbits, out.field_id, out.flags = cursor.fields(
             chunk, _rntuple_column_record_format, context
         )
+        if out.flags & 0x08:
+            out.first_ele_index = cursor.field(
+                chunk, _rntuple_first_ele_index_format, context
+            )
+        else:
+            out.first_ele_index = 0
         return out
 
 
@@ -724,7 +756,9 @@ class HeaderReader:
 
         out.field_records = self.list_field_record_frames.read(chunk, cursor, context)
         out.column_records = self.list_column_record_frames.read(chunk, cursor, context)
-        out.alias_columns = self.list_alias_column_frames.read(chunk, cursor, context)
+        out.alias_column_records = self.list_alias_column_frames.read(
+            chunk, cursor, context
+        )
         out.extra_type_infos = self.list_extra_type_info_reader.read(
             chunk, cursor, context
         )
@@ -735,7 +769,9 @@ class HeaderReader:
     def read_extension_header(self, out, chunk, cursor, context):
         out.field_records = self.list_field_record_frames.read(chunk, cursor, context)
         out.column_records = self.list_column_record_frames.read(chunk, cursor, context)
-        out.alias_columns = self.list_alias_column_frames.read(chunk, cursor, context)
+        out.alias_column_records = self.list_alias_column_frames.read(
+            chunk, cursor, context
+        )
         out.extra_type_infos = self.list_extra_type_info_reader.read(
             chunk, cursor, context
         )
@@ -788,7 +824,7 @@ class RNTupleSchemaExtension:
         out.column_records = ListFrameReader(
             RecordFrameReader(ColumnRecordReader())
         ).read(chunk, cursor, context)
-        out.alias_records = ListFrameReader(
+        out.alias_column_records = ListFrameReader(
             RecordFrameReader(AliasColumnReader())
         ).read(chunk, cursor, context)
         out.extra_type_info = ListFrameReader(
