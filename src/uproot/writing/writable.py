@@ -1344,10 +1344,10 @@ in file {self.file_path} in directory {self.path}"""
 
         return tree
 
-    def add_branches(  # my own variation of mktree
+    def add(  # my own variation of mktree
         self,
         name,
-        branch_types,
+        branches,
         source,
         title="",
         *,
@@ -1355,7 +1355,6 @@ in file {self.file_path} in directory {self.path}"""
         field_name=lambda outer, inner: inner if outer == "" else outer + "_" + inner,
         initial_basket_capacity=10,
         resize_factor=10.0,
-        # new_branch,
     ):
         """
         Args:
@@ -1374,26 +1373,34 @@ in file {self.file_path} in directory {self.path}"""
         """
         if self._file.sink.closed:
             raise ValueError("cannot create a TTree in a closed file")
-        if not isinstance(source, uproot.TTree):
+
+        try:
+            file = uproot.open(self.file_path, minimal_ttree_metadata=False)
+            old_ttree = file[source]
+        except ValueError:
+            msg = f"TTree {source} not found in file {self.file}"
+            raise ValueError(msg) from None
+        if not isinstance(old_ttree, uproot.TTree):
             raise TypeError("'source' must be a TTree")  # ?
-        names = source.keys()
+        names = old_ttree.keys()
         if len(names) == 0:
             raise ValueError(
-                f"""TTree {source.name} in file {source.file_path} is empty."""
+                f"""TTree {old_ttree.name} in file {old_ttree.file_path} is empty."""
             )
 
-        # names.append(new_branch.name)  # May need the TKey? (uproot.reading.ReadOnlyKey)
-
         try:  # Will this throw an error? proabably?
-            at = source.name.rindex("/")
+            at = old_ttree.name.rindex("/")
         except ValueError:
-            treename = source.name
+            treename = old_ttree.name
             directory = self
         else:
-            dirpath, treename = source.name[:at], source.name[at + 1 :]
+            dirpath, treename = old_ttree.name[:at], old_ttree.name[at + 1 :]
             directory = self.mkdir(dirpath)
 
         path = (*directory._path, treename)
+
+        # Make branch types?
+        branch_types = {key: type(data) for key, data in branches.items}
 
         tree = WritableTree(
             path,
@@ -1407,7 +1414,8 @@ in file {self.file_path} in directory {self.path}"""
                 field_name,
                 initial_basket_capacity,
                 resize_factor,
-                source.branches,
+                old_ttree.branches,
+                branches,
             ),
         )
         directory._file._new_tree(tree)
@@ -1649,6 +1657,9 @@ in file {source.file_path} in directory {source.path}"""
             uproot.writing.identify.add_to_directory(v, name, directory, streamers)
 
         self._file._cascading.streamers.update_streamers(self._file.sink, streamers)
+
+
+# class UpdatableTree:
 
 
 class WritableTree:
@@ -1955,6 +1966,12 @@ class WritableTree:
             interpretation_width=interpretation_width,
             stream=stream,
         )
+
+    def add_data(
+        self, data, **more_data
+    ):  # Eventually... def add(self, as_dict=None, **as_kwds):
+        # data must be a dict,
+        self._cascading.add_data(self._file, self._file.sink, data)
 
 
 class WritableBranch:

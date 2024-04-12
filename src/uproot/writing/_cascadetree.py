@@ -1597,6 +1597,287 @@ class Tree:
 
         return fKeylen + fObjlen, fNbytes, location
 
+    def add_data(self, file, sink, data):
+        # do checks before getting here...easier
+        # add to a single branch?
+        # remember not to alter data!
+        if self._num_baskets >= self._basket_capacity - 1:
+            self._basket_capacity = max(
+                self._basket_capacity + 1,
+                int(math.ceil(self._basket_capacity * self._resize_factor)),
+            )
+
+            for datum in self._branch_data:
+                if datum["kind"] == "record":
+                    continue
+
+                fBasketBytes = datum["fBasketBytes"]
+                fBasketEntry = datum["fBasketEntry"]
+                fBasketSeek = datum["fBasketSeek"]
+                datum["fBasketBytes"] = numpy.zeros(
+                    self._basket_capacity, uproot.models.TBranch._tbranch13_dtype1
+                )
+                datum["fBasketEntry"] = numpy.zeros(
+                    self._basket_capacity, uproot.models.TBranch._tbranch13_dtype2
+                )
+                datum["fBasketSeek"] = numpy.zeros(
+                    self._basket_capacity, uproot.models.TBranch._tbranch13_dtype3
+                )
+                datum["fBasketBytes"][: len(fBasketBytes)] = fBasketBytes
+                datum["fBasketEntry"][: len(fBasketEntry)] = fBasketEntry
+                datum["fBasketSeek"][: len(fBasketSeek)] = fBasketSeek
+                datum["fBasketEntry"][len(fBasketEntry)] = self._num_entries
+
+            oldloc = start = self._key.location
+            stop = start + self._key.num_bytes + self._key.compressed_bytes
+
+            self.write_anew(sink)
+
+            newloc = self._key.seek_location
+            file._move_tree(oldloc, newloc)
+
+            self._freesegments.release(start, stop)
+            sink.set_file_length(self._freesegments.fileheader.end)
+            sink.flush()
+
+        provided = None
+
+        if isinstance(data, numpy.ndarray) and data.dtype.fields is not None:
+            provided = recarray_to_dict(data)
+
+        if (
+            provided is None
+            and not isinstance(data, Mapping)
+            or not all(isinstance(x, str) for x in data)
+        ):
+            raise TypeError("'add' requires a mapping from branch name (str) to arrays")
+
+        # Awkward may be impossible
+        if uproot._util.from_module(data, "awkward"):
+            try:
+                awkward = uproot.extras.awkward()
+            except ModuleNotFoundError as err:
+                raise TypeError(
+                    f"an Awkward Array was provided, but 'awkward' cannot be imported: {data!r}"
+                ) from err
+
+            if isinstance(data, awkward.Array):
+                if data.ndim > 1 and not data.layout.purelist_isregular:
+                    provided = {
+                        self._counter_name(""): numpy.asarray(
+                            awkward.num(data, axis=1), dtype=">u4"
+                        )
+                    }
+                else:
+                    provided = {}
+                for k, v in zip(awkward.fields(data), awkward.unzip(data)):
+                    provided[k] = v
+        actual_branches = {}
+
+        for name in provided:
+            if datum["fName"] in provided:
+                actual_branches[datum["fName"]] = provided.pop(name)
+            else:
+                raise ValueError(
+                    "'extend' must be given an array for every branch; missing {}".format(
+                        repr(datum["fName"])
+                    )
+                )
+
+        if len(provided) != 0:
+            raise ValueError(
+                "'extend' was given data that do not correspond to any branch: {}".format(
+                    ", ".join(repr(x) for x in provided)
+                )
+            )
+
+        tofill = []
+        num_entries = None
+        for branch_name, branch_array in actual_branches.items():
+            # if num_entries is None:
+            #     num_entries = len(branch_array)
+            # elif num_entries != len(branch_array):
+            #     raise ValueError(
+            #         f"'extend' must fill every branch with the same number of entries; {branch_name!r} has {len(branch_array)} entries"
+            #     )
+
+            # datum = self._branch_data[self._branch_lookup[branch_name]]
+            # if datum["kind"] == "record":
+            #     continue
+
+            if datum["counter"] is None:
+                if datum["dtype"] == ">U0":
+                    lengths = numpy.asarray(awkward.num(branch_array.layout))
+                    which_big = lengths >= 255
+
+                    lengths_extension_offsets = numpy.empty(
+                        len(branch_array.layout) + 1, numpy.int64
+                    )
+                    lengths_extension_offsets[0] = 0
+                    numpy.cumsum(which_big * 4, out=lengths_extension_offsets[1:])
+
+                    lengths_extension = awkward.contents.ListOffsetArray(
+                        awkward.index.Index64(lengths_extension_offsets),
+                        awkward.contents.NumpyArray(
+                            lengths[which_big].astype(">u4").view("u1")
+                        ),
+                    )
+
+                    lengths[which_big] = 255
+
+                    leafc_data_awkward = awkward.concatenate(
+                        [
+                            lengths.reshape(-1, 1).astype("u1"),
+                            lengths_extension,
+                            awkward.without_parameters(branch_array.layout),
+                        ],
+                        axis=1,
+                    )
+
+                    big_endian = numpy.asarray(awkward.flatten(leafc_data_awkward))
+                    big_endian_offsets = (
+                        lengths_extension_offsets
+                        + numpy.asarray(branch_array.layout.offsets)
+                        + numpy.arange(len(branch_array.layout.offsets))
+                    ).astype(">i4", copy=True)
+                    tofill.append(
+                        (
+                            branch_name,
+                            datum["compression"],
+                            big_endian,
+                            big_endian_offsets,
+                        )
+                    )
+                else:
+                    big_endian = uproot._util.ensure_numpy(branch_array).astype(
+                        datum["dtype"]
+                    )
+                    if big_endian.shape != (len(branch_array),) + datum["shape"]:
+                        raise ValueError(
+                            "'extend' must fill branches with a consistent shape: has {}, trying to fill with {}".format(
+                                datum["shape"],
+                                big_endian.shape[1:],
+                            )
+                        )
+                    tofill.append((branch_name, datum["compression"], big_endian, None))
+                    if datum["kind"] == "counter":
+                        datum["tleaf_maximum_value"] = max(
+                            big_endian.max(), datum["tleaf_maximum_value"]
+                        )
+
+            else:
+                try:
+                    awkward = uproot.extras.awkward()
+                except ModuleNotFoundError as err:
+                    raise TypeError(
+                        f"a jagged array was provided (possibly as an iterable), but 'awkward' cannot be imported: {branch_name}: {branch_array!r}"
+                    ) from err
+                layout = branch_array.layout
+                while not isinstance(layout, awkward.contents.ListOffsetArray):
+                    if isinstance(layout, awkward.contents.IndexedArray):
+                        layout = layout.project()
+
+                    elif isinstance(layout, awkward.contents.ListArray):
+                        layout = layout.to_ListOffsetArray64(False)
+
+                    else:
+                        raise AssertionError(
+                            "how did this pass the type check?\n\n" + repr(layout)
+                        )
+
+                content = layout.content
+                offsets = numpy.asarray(layout.offsets)
+
+                if offsets[0] != 0:
+                    content = content[offsets[0] :]
+                    offsets = offsets - offsets[0]
+                if len(content) > offsets[-1]:
+                    content = content[: offsets[-1]]
+
+                shape = [len(content)]
+                while not isinstance(content, awkward.contents.NumpyArray):
+                    if isinstance(content, awkward.contents.IndexedArray):
+                        content = content.project()
+
+                    elif isinstance(content, awkward.contents.EmptyArray):
+                        content = content.to_NumpyArray(dtype=numpy.float64)
+
+                    elif isinstance(content, awkward.contents.RegularArray):
+                        shape.append(content.size)
+                        content = content.content
+
+                    else:
+                        raise AssertionError(
+                            "how did this pass the type check?\n\n" + repr(content)
+                        )
+
+                big_endian = numpy.asarray(content.data, dtype=datum["dtype"])
+                shape = tuple(shape) + big_endian.shape[1:]
+
+                if shape[1:] != datum["shape"]:
+                    raise ValueError(
+                        "'extend' must fill branches with a consistent shape: has {}, trying to fill with {}".format(
+                            datum["shape"],
+                            shape[1:],
+                        )
+                    )
+                big_endian_offsets = offsets.astype(">i4", copy=True)
+
+                tofill.append(
+                    (
+                        branch_name,
+                        datum["compression"],
+                        big_endian.reshape(-1),
+                        big_endian_offsets,
+                    )
+                )
+
+        # actually write baskets into the file
+        uncompressed_bytes = 0
+        compressed_bytes = 0
+        for branch_name, compression, big_endian, big_endian_offsets in tofill:
+            datum = self._branch_data[self._branch_lookup[branch_name]]
+
+            if datum["dtype"] == ">U0":
+                totbytes, zipbytes, location = self.write_string_basket(
+                    sink, branch_name, compression, big_endian, big_endian_offsets
+                )
+                datum["fEntryOffsetLen"] = 4 * (len(big_endian_offsets) - 1)
+
+            elif big_endian_offsets is None:
+                totbytes, zipbytes, location = self.write_np_basket(
+                    sink, branch_name, compression, big_endian
+                )
+            else:
+                totbytes, zipbytes, location = self.write_jagged_basket(
+                    sink, branch_name, compression, big_endian, big_endian_offsets
+                )
+                datum["fEntryOffsetLen"] = 4 * (len(big_endian_offsets) - 1)
+            uncompressed_bytes += totbytes
+            compressed_bytes += zipbytes
+
+            datum["fTotBytes"] += totbytes
+            datum["fZipBytes"] += zipbytes
+
+            datum["fBasketBytes"][self._num_baskets] = zipbytes
+
+            if self._num_baskets + 1 < self._basket_capacity:
+                fBasketEntry = datum["fBasketEntry"]
+                i = self._num_baskets
+                fBasketEntry[i + 1] = num_entries + fBasketEntry[i]
+
+            datum["fBasketSeek"][self._num_baskets] = location
+
+            datum["arrays_write_stop"] = self._num_baskets + 1
+
+        # update TTree metadata in file
+        self._num_entries += num_entries
+        self._num_baskets += 1
+        self._metadata["fTotBytes"] += uncompressed_bytes
+        self._metadata["fZipBytes"] += compressed_bytes
+
+        self.write_updates(sink)
+
 
 _tbasket_offsets_length = struct.Struct(">I")
 
