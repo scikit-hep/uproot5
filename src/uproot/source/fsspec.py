@@ -37,7 +37,6 @@ class FSSpecSource(uproot.source.chunk.Source):
         self._async_impl = self._fs.async_impl
 
         self._file = None
-        self._fh = None
 
         self._open()
 
@@ -62,25 +61,20 @@ class FSSpecSource(uproot.source.chunk.Source):
         return f"<{type(self).__name__} {path} at 0x{id(self):012x}>"
 
     def __getstate__(self):
-        self._fh = None
         state = dict(self.__dict__)
         state.pop("_executor")
         state.pop("_file")
-        state.pop("_fh")
         return state
 
     def __setstate__(self, state):
         self.__dict__ = state
         self._file = None
-        self._fh = None
         self._open()
 
     def __enter__(self):
-        self._fh = self._file.__enter__()
         return self
 
     def __exit__(self, exception_type, exception_value, traceback):
-        self._fh = None
         self._file.__exit__(exception_type, exception_value, traceback)
         self._executor.shutdown()
 
@@ -97,11 +91,7 @@ class FSSpecSource(uproot.source.chunk.Source):
         self._num_requests += 1
         self._num_requested_chunks += 1
         self._num_requested_bytes += stop - start
-        if self._fh:
-            self._fh.seek(start)
-            data = self._fh.read(stop - start)
-        else:
-            data = self._fs.cat_file(self._file_path, start, stop)
+        data = self._fs.cat_file(self._file_path, start, stop)
         future = uproot.source.futures.TrivialFuture(data)
         return uproot.source.chunk.Chunk(self, start, stop, future)
 
