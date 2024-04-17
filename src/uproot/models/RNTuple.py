@@ -766,17 +766,6 @@ class HeaderReader:
 
         return out
 
-    def read_extension_header(self, out, chunk, cursor, context):
-        out.field_records = self.list_field_record_frames.read(chunk, cursor, context)
-        out.column_records = self.list_column_record_frames.read(chunk, cursor, context)
-        out.alias_column_records = self.list_alias_column_frames.read(
-            chunk, cursor, context
-        )
-        out.extra_type_infos = self.list_extra_type_info_reader.read(
-            chunk, cursor, context
-        )
-        return out
-
 
 class ColumnGroupIDReader:
     def read(self, chunk, cursor, context):
