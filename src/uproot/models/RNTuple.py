@@ -157,7 +157,7 @@ in file {self.file.file_path}"""
     @property
     def field_records(self):
         if self._field_records is None:
-            self._field_records = self.header.field_records
+            self._field_records = list(self.header.field_records)
             self._field_records.extend(self.footer.extension_links.field_records)
         return self._field_records
 
@@ -170,14 +170,14 @@ in file {self.file.file_path}"""
     @property
     def column_records(self):
         if self._column_records is None:
-            self._column_records = self.header.column_records
+            self._column_records = list(self.header.column_records)
             self._column_records.extend(self.footer.extension_links.column_records)
         return self._column_records
 
     @property
     def alias_column_records(self):
         if self._alias_column_records is None:
-            self._alias_column_records = self.header.alias_column_records
+            self._alias_column_records = list(self.header.alias_column_records)
             self._alias_column_records.extend(
                 self.footer.extension_links.alias_column_records
             )
