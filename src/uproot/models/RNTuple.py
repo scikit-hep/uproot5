@@ -94,6 +94,9 @@ in file {self.file.file_path}"""
         self._field_names = None
         self._column_records = None
         self._alias_column_records = None
+        self._alias_columns_dict_ = None
+        self._related_ids_ = None
+        self._column_records_dict_ = None
 
         self._page_list_envelopes = []
 
@@ -172,6 +175,8 @@ in file {self.file.file_path}"""
         if self._column_records is None:
             self._column_records = list(self.header.column_records)
             self._column_records.extend(self.footer.extension_links.column_records)
+            for i, cr in enumerate(self._column_records):
+                cr.idx = i
         return self._column_records
 
     @property
@@ -182,6 +187,34 @@ in file {self.file.file_path}"""
                 self.footer.extension_links.alias_column_records
             )
         return self._alias_column_records
+
+    @property
+    def _alias_columns_dict(self):
+        if self._alias_columns_dict_ is None:
+            self._alias_columns_dict_ = {
+                el.field_id: el.physical_id for el in self.alias_column_records
+            }
+        return self._alias_columns_dict_
+
+    @property
+    def _column_records_dict(self):
+        if self._column_records_dict_ is None:
+            self._column_records_dict_ = {}
+            for cr in self.column_records:
+                if cr.field_id not in self._column_records_dict_:
+                    self._column_records_dict_[cr.field_id] = [cr]
+                else:
+                    self._column_records_dict_[cr.field_id].append(cr)
+        return self._column_records_dict_
+
+    @property
+    def _related_ids(self):
+        if self._related_ids_ is None:
+            self._related_ids_ = defaultdict(list)
+            for i, el in enumerate(self.field_records):
+                if el.parent_field_id != i:
+                    self._related_ids_[el.parent_field_id].append(i)
+        return self._related_ids_
 
     @property
     def footer(self):
@@ -262,37 +295,33 @@ in file {self.file.file_path}"""
     def col_form(self, field_id):
         ak = uproot.extras.awkward()
 
-        if field_id in self._column_records_dict:
-            rel_crs = self._column_records_dict[field_id]["rel_crs"]
-            rel_crs_idxs = self._column_records_dict[field_id]["rel_crs_idxs"]
-        elif field_id in self._alias_columns_dict:
-            rel_crs = self._column_records_dict[self._alias_columns_dict[field_id]][
-                "rel_crs"
-            ]
-            rel_crs_idxs = self._column_records_dict[
-                self._alias_columns_dict[field_id]
-            ]["rel_crs_idxs"]
-        else:
+        # TODO: can there be multiple levels of aliasing?
+        cfid = field_id
+        if cfid in self._alias_columns_dict:
+            cfid = self._alias_columns_dict[cfid]
+        if cfid not in self._column_records_dict:
             raise (
                 RuntimeError(
-                    f"The field_id: {field_id} is missing both from the columns records and the alias columns."
+                    f"The field_id: {cfid} is missing from the columns records."
                 )
             )
+
+        rel_crs = self._column_records_dict[cfid]
 
         if len(rel_crs) == 1:  # base case
             cardinality = "RNTupleCardinality" in self.field_records[field_id].type_name
             return self.base_col_form(
-                rel_crs[0], rel_crs_idxs[0], cardinality=cardinality
+                rel_crs[0], rel_crs[0].idx, cardinality=cardinality
             )
         elif (
-            len(rel_crs_idxs) == 2
+            len(rel_crs) == 2
             and rel_crs[1].type == uproot.const.rntuple_col_type_to_num_dict["char"]
         ):
             # string field splits->2 in col records
             inner = self.base_col_form(
-                rel_crs[1], rel_crs_idxs[-1], parameters={"__array__": "char"}
+                rel_crs[1], rel_crs[1].idx, parameters={"__array__": "char"}
             )
-            form_key = f"column-{rel_crs_idxs[0]}"
+            form_key = f"column-{rel_crs[0].idx}"
             return ak.forms.ListOffsetForm(
                 "i64", inner, form_key=form_key, parameters={"__array__": "string"}
             )
@@ -329,18 +358,16 @@ in file {self.file.file_path}"""
                 recordlist = [self.field_form(i, seen) for i in newids]
                 namelist = [field_records[i].field_name for i in newids]
                 return ak.forms.RecordForm(recordlist, namelist, form_key="whatever")
-            if this_id in self._column_records_dict:
-                col_id = self._column_records_dict[this_id]["rel_crs_idxs"][0]
-            elif this_id in self._alias_columns_dict:
-                col_id = self._column_records_dict[self._alias_columns_dict[this_id]][
-                    "rel_crs_idxs"
-                ][0]
-            else:
+            cfid = this_id
+            if cfid in self._alias_columns_dict:
+                cfid = self._alias_columns_dict[cfid]
+            if cfid not in self._column_records_dict:
                 raise (
                     RuntimeError(
-                        f"The field_id: {this_id} is missing both from the columns records and the alias columns."
+                        f"The field_id: {cfid} is missing from the columns records."
                     )
                 )
+            col_id = self._column_records_dict[cfid][0].idx
             keyname = f"column-{col_id}"
             #  this only has one child
             if this_id in self._related_ids:
@@ -505,25 +532,6 @@ in file {self.file.file_path}"""
         cluster_num_entries = numpy.sum(
             [c.num_entries for c in clusters[start_cluster_idx:stop_cluster_idx]]
         )
-
-        self._alias_columns_dict = {
-            el.field_id: el.physical_id for el in self.alias_column_records
-        }
-        self._column_records_dict = {}
-        for i, cr in enumerate(self.column_records):
-            if cr.field_id not in self._column_records_dict:
-                self._column_records_dict[cr.field_id] = {
-                    "rel_crs": [cr],
-                    "rel_crs_idxs": [i],
-                }
-            else:
-                self._column_records_dict[cr.field_id]["rel_crs"].append(cr)
-                self._column_records_dict[cr.field_id]["rel_crs_idxs"].append(i)
-
-        self._related_ids = defaultdict(list)
-        for i, el in enumerate(self.field_records):
-            if el.parent_field_id != i:
-                self._related_ids[el.parent_field_id].append(i)
 
         form = self.to_akform().select_columns(filter_names)
         # only read columns mentioned in the awkward form
