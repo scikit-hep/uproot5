@@ -1,6 +1,7 @@
 import pytest
 from uproot.source.coalesce import CoalesceConfig, RangeRequest, _coalesce, Future
 
+
 @pytest.mark.parametrize(
     "config",
     [

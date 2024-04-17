@@ -11,8 +11,8 @@ import fsspec.asyn
 
 import uproot
 import uproot.source.chunk
-from uproot.source.coalesce import coalesce_requests
 import uproot.source.futures
+from uproot.source.coalesce import coalesce_requests
 
 
 class FSSpecSource(uproot.source.chunk.Source):
