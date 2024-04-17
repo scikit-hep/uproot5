@@ -2,6 +2,7 @@
 
 Inspired in part by https://github.com/cms-sw/cmssw/blob/master/IOPool/TFileAdaptor/src/ReadRepacker.h
 """
+
 from __future__ import annotations
 
 import queue
