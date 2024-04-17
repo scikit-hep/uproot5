@@ -21,6 +21,9 @@ class CoalesceConfig:
     min_first_request_bytes: int = 32 * 1024
 
 
+DEFAULT_CONFIG = CoalesceConfig()
+
+
 class SliceFuture:
     def __init__(self, parent: Future, s: slice | int):
         self._parent = parent
@@ -112,7 +115,7 @@ def coalesce_requests(
     submit_fn: Callable[[list[tuple[int, int]]], Future],
     source: uproot.source.chunk.Source,
     notifications: queue.Queue,
-    config: CoalesceConfig = CoalesceConfig(),
+    config: CoalesceConfig = DEFAULT_CONFIG,
 ):
     all_requests = [RangeRequest(start, stop, None) for start, stop in ranges]
     for merged_request in _coalesce(all_requests, config):
