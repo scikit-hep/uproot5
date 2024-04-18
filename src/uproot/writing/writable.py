@@ -1344,7 +1344,7 @@ in file {self.file_path} in directory {self.path}"""
 
         return tree
 
-    def add(  # my own variation of mktree
+    def add(  # variation of mktree for copying ttree
         self,
         name,
         branches,
@@ -1399,17 +1399,100 @@ in file {self.file_path} in directory {self.path}"""
 
         path = (*directory._path, treename)
 
-        # Make branch types?
-        branch_types = {key: type(data) for key, data in branches.items}
+        # # if awkward:
+        # if uproot._util.from_module(branches, "awkward"):
+
+        #     # Go through all fields? Check lengths and get dtypes?
+        #     data[branch_name] = branch_array
+        #     metadata[branch_name] = branch_array.type
+
+        awkward = uproot.extras.awkward()
+        # branch_types = {name: array.type for name, array in zip(awkward.fields(branches), awkward.unzip(branches))}
+        import numpy
+
+        if uproot._util.from_module(branches, "awkward"):
+            import awkward
+
+            if isinstance(branches, awkward.Array):
+                branches = {"": branches}
+
+        if isinstance(branches, numpy.ndarray) and branches.dtype.fields is not None:
+            branches = uproot.writing._cascadetree.recarray_to_dict(branches)
+        data = {}
+        metadata = {}
+        for branch_name, branch_array in branches.items():
+            if (
+                isinstance(branch_array, numpy.ndarray)
+                and branch_array.dtype.fields is not None
+            ):
+                branch_array = uproot.writing._cascadetree.recarray_to_dict(  # noqa: PLW2901 (overwriting branch_array)
+                    branch_array
+                )
+
+            if isinstance(branch_array, Mapping) and all(
+                isinstance(x, str) for x in branch_array
+            ):
+                datum = {}
+                metadatum = {}
+                for kk, vv in branch_array.items():
+                    try:
+                        vv = (  # noqa: PLW2901 (overwriting vv)
+                            uproot._util.ensure_numpy(vv)
+                        )
+                    except TypeError:
+                        raise TypeError(
+                            f"unrecognizable array type {type(branch_array)} associated with {branch_name!r}"
+                        ) from None
+                    datum[kk] = vv
+                    branch_dtype = vv.dtype
+                    branch_shape = vv.shape[1:]
+                    if branch_shape != ():
+                        branch_dtype = numpy.dtype((branch_dtype, branch_shape))
+                    metadatum[kk] = branch_dtype
+
+                data[branch_name] = datum
+                metadata[branch_name] = metadatum
+
+            else:
+                if uproot._util.from_module(branch_array, "awkward"):
+                    data[branch_name] = branch_array
+                    metadata[branch_name] = branch_array.type
+
+                else:
+                    try:
+                        branch_array = uproot._util.ensure_numpy(  # noqa: PLW2901 (overwriting branch_array)
+                            branch_array
+                        )
+                    except TypeError:
+                        awkward = uproot.extras.awkward()
+                        try:
+                            branch_array = awkward.from_iter(  # noqa: PLW2901 (overwriting branch_array)
+                                branch_array
+                            )
+                        except Exception:
+                            raise TypeError(
+                                f"unrecognizable array type {type(branch_array)} associated with {branch_name!r}"
+                            ) from None
+                        else:
+                            data[branch_name] = branch_array
+                            metadata[branch_name] = awkward.type(branch_array)
+
+                    else:
+                        data[branch_name] = branch_array
+                        branch_dtype = branch_array.dtype
+                        branch_shape = branch_array.shape[1:]
+                        if branch_shape != ():
+                            branch_dtype = numpy.dtype((branch_dtype, branch_shape))
+                        metadata[branch_name] = branch_dtype
 
         tree = WritableTree(
             path,
             directory._file,
-            directory._cascading.add_tree(
+            directory._cascading.copy_tree(
                 directory._file.sink,
                 name,
                 title,
-                branch_types,
+                metadata,
                 counter_name,
                 field_name,
                 initial_basket_capacity,

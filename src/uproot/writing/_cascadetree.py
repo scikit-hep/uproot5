@@ -100,12 +100,12 @@ class Tree:
             branch_types_items = branch_types.items()
         else:
             branch_types_items = branch_types
-
         if len(branch_types) == 0:
             raise ValueError("TTree must have at least one branch")
 
         self._branch_data = []
         self._branch_lookup = {}
+
         for branch_name, branch_type in branch_types_items:
             branch_dict = None
             branch_dtype = None
@@ -123,7 +123,6 @@ class Tree:
                     if isinstance(branch_type, str) and branch_type.strip() == "bytes":
                         raise TypeError
                     branch_dtype = numpy.dtype(branch_type)
-
                 except TypeError as err:
                     try:
                         awkward = uproot.extras.awkward()
@@ -149,7 +148,6 @@ class Tree:
                         branch_datashape = branch_datashape.content
 
                     branch_dtype = self._branch_ak_to_np(branch_datashape)
-
             if branch_dict is not None:
                 if branch_name not in self._branch_lookup:
                     self._branch_lookup[branch_name] = len(self._branch_data)
@@ -173,7 +171,6 @@ class Tree:
                         self._branch_data.append(
                             self._branch_np(subname, content, dtype)
                         )
-
             elif branch_dtype is not None:
                 if branch_name not in self._branch_lookup:
                     self._branch_lookup[branch_name] = len(self._branch_data)
@@ -205,6 +202,7 @@ class Tree:
                     counter = self._branch_np(
                         counter_name, counter_dtype, counter_dtype, kind="counter"
                     )
+
                     if counter_name in self._branch_lookup:
                         # counters always replace non-counters
                         del self._branch_data[self._branch_lookup[counter_name]]
@@ -338,6 +336,7 @@ class Tree:
     def _branch_np(
         self, branch_name, branch_type, branch_dtype, counter=None, kind="normal"
     ):
+
         branch_dtype = branch_dtype.newbyteorder(">")
 
         if branch_dtype.subdtype is None:
@@ -346,6 +345,7 @@ class Tree:
             branch_dtype, branch_shape = branch_dtype.subdtype
 
         letter = _dtype_to_char.get(branch_dtype)
+
         if letter is None:
             raise TypeError(f"cannot write NumPy dtype {branch_dtype} in TTree")
 
@@ -468,7 +468,6 @@ class Tree:
             for datum in self._branch_data:
                 if datum["kind"] == "record":
                     continue
-
                 fBasketBytes = datum["fBasketBytes"]
                 fBasketEntry = datum["fBasketEntry"]
                 fBasketSeek = datum["fBasketSeek"]
@@ -596,7 +595,6 @@ class Tree:
                         f"branch {kk!r} provided both as an explicit array and generated as a counter, and they disagree"
                     )
                 provided[k] = v
-
         actual_branches = {}
         for datum in self._branch_data:
             if datum["kind"] == "record":
@@ -897,7 +895,6 @@ class Tree:
         )
         if self._existing_branches:
             num_branches += len(self._existing_branches)
-
         # TObjArray header with fName: ""
         out.append(b"\x00\x01\x00\x00\x00\x00\x03\x00@\x00\x00")
         out.append(
@@ -909,14 +906,14 @@ class Tree:
 
         # Write old branches?
         if self._existing_branches:
+            old_branches = uproot.writing._cascade.OldBranches(self._existing_branches)
             for branch in self._existing_branches:
                 # create OldTBranch object
                 # members = uproot.branch.read_members()
-                old_branch = uproot.writing._cascade.OldBranch(branch)
-                out, temp = old_branch.serialize(
-                    out
+                out = old_branches.serialize(
+                    out, branch
                 )  # should call uproot.models.TBranch._tbranch13_format...pack or something
-                tleaf_reference_numbers.append(temp)  # and don't forget the tleaves
+                # tleaf_reference_numbers.append(temp)  # and don't forget the tleaves
 
         for datum in self._branch_data:
             if datum["kind"] == "record":
@@ -995,7 +992,6 @@ class Tree:
             absolute_location += 8 + 6 * (sum(1 if x is None else 0 for x in out) - 1)
             datum["tleaf_reference_number"] = absolute_location + 2
             tleaf_reference_numbers.append(datum["tleaf_reference_number"])
-
             subany_tleaf_index = len(out)
             out.append(None)
 
@@ -1020,7 +1016,6 @@ class Tree:
                 special_struct = uproot.models.TLeaf._tleafd1_format1
             elif letter_upper == "C":
                 special_struct = uproot.models.TLeaf._tleafc1_format1
-
             fLenType = datum["dtype"].itemsize
             fIsUnsigned = letter != letter_upper
 
@@ -1031,7 +1026,6 @@ class Tree:
 
             if datum["counter"] is not None:
                 dims = "[" + datum["counter"]["fName"] + "]" + dims
-
             # single TLeaf
             leaf_name = datum["fName"].encode(errors="surrogateescape")
             leaf_title = (datum["fName"] + dims).encode(errors="surrogateescape")
@@ -1424,7 +1418,6 @@ class Tree:
         out.append(b"\x00")  # part of the Key (included in fKeylen, at least)
 
         out.append(compressed_data)
-
         sink.write(location, b"".join(out))
         self._freesegments.write(sink)
         sink.set_file_length(self._freesegments.fileheader.end)
@@ -1642,17 +1635,6 @@ class Tree:
 
         provided = None
 
-        if isinstance(data, numpy.ndarray) and data.dtype.fields is not None:
-            provided = recarray_to_dict(data)
-
-        if (
-            provided is None
-            and not isinstance(data, Mapping)
-            or not all(isinstance(x, str) for x in data)
-        ):
-            raise TypeError("'add' requires a mapping from branch name (str) to arrays")
-
-        # Awkward may be impossible
         if uproot._util.from_module(data, "awkward"):
             try:
                 awkward = uproot.extras.awkward()
@@ -1672,11 +1654,77 @@ class Tree:
                     provided = {}
                 for k, v in zip(awkward.fields(data), awkward.unzip(data)):
                     provided[k] = v
-        actual_branches = {}
 
-        for name in provided:
+        if isinstance(data, numpy.ndarray) and data.dtype.fields is not None:
+            provided = recarray_to_dict(data)
+
+        if provided is None:
+            if not isinstance(data, Mapping) or not all(
+                isinstance(x, str) for x in data
+            ):
+                raise TypeError(
+                    "'extend' requires a mapping from branch name (str) to arrays"
+                )
+
+            provided = {}
+            for k, v in data.items():
+                if not uproot._util.from_module(v, "awkward"):
+                    if not hasattr(v, "dtype") and not isinstance(v, Mapping):
+                        try:
+                            with warnings.catch_warnings():
+                                warnings.simplefilter(
+                                    "error", category=numpy.VisibleDeprecationWarning
+                                )
+                                v = numpy.array(v)  # noqa: PLW2901 (overwriting v)
+                            if v.dtype == numpy.dtype("O"):
+                                raise Exception
+                        except (numpy.VisibleDeprecationWarning, Exception):
+                            try:
+                                awkward = uproot.extras.awkward()
+                            except ModuleNotFoundError as err:
+                                raise TypeError(
+                                    f"NumPy dtype would be dtype('O'), so we won't use NumPy, but 'awkward' cannot be imported: {k}: {type(v)}"
+                                ) from err
+                            v = awkward.from_iter(v)  # noqa: PLW2901 (overwriting v)
+
+                    if getattr(v, "dtype", None) == numpy.dtype("O"):
+                        try:
+                            awkward = uproot.extras.awkward()
+                        except ModuleNotFoundError as err:
+                            raise TypeError(
+                                f"NumPy dtype is dtype('O'), so we won't use NumPy, but 'awkward' cannot be imported: {k}: {type(v)}"
+                            ) from err
+                        v = awkward.from_iter(v)  # noqa: PLW2901 (overwriting v)
+
+                if uproot._util.from_module(v, "awkward"):
+                    try:
+                        awkward = uproot.extras.awkward()
+                    except ModuleNotFoundError as err:
+                        raise TypeError(
+                            f"an Awkward Array was provided, but 'awkward' cannot be imported: {k}: {type(v)}"
+                        ) from err
+                    if (
+                        isinstance(v, awkward.Array)
+                        and v.ndim > 1
+                        and not v.layout.purelist_isregular
+                    ):
+                        kk = self._counter_name(k)
+                        vv = numpy.asarray(awkward.num(v, axis=1), dtype=">u4")
+                        if kk in provided and not numpy.array_equal(vv, provided[kk]):
+                            raise ValueError(
+                                f"branch {kk!r} provided both as an explicit array and generated as a counter, and they disagree"
+                            )
+                        provided[kk] = vv
+
+                if k in provided and not numpy.array_equal(v, provided[k]):
+                    raise ValueError(
+                        f"branch {kk!r} provided both as an explicit array and generated as a counter, and they disagree"
+                    )
+                provided[k] = v
+        actual_branches = {}
+        for datum in self._branch_data:
             if datum["fName"] in provided:
-                actual_branches[datum["fName"]] = provided.pop(name)
+                actual_branches[datum["fName"]] = provided.pop(datum["fName"])
             else:
                 raise ValueError(
                     "'extend' must be given an array for every branch; missing {}".format(
@@ -1694,14 +1742,14 @@ class Tree:
         tofill = []
         num_entries = None
         for branch_name, branch_array in actual_branches.items():
-            # if num_entries is None:
-            #     num_entries = len(branch_array)
-            # elif num_entries != len(branch_array):
-            #     raise ValueError(
-            #         f"'extend' must fill every branch with the same number of entries; {branch_name!r} has {len(branch_array)} entries"
-            #     )
+            if num_entries is None:
+                num_entries = len(branch_array)
+            elif num_entries != len(branch_array):
+                raise ValueError(
+                    f"'extend' must fill every branch with the same number of entries; {branch_name!r} has {len(branch_array)} entries"
+                )
 
-            # datum = self._branch_data[self._branch_lookup[branch_name]]
+            datum = self._branch_data[self._branch_lookup[branch_name]]
             # if datum["kind"] == "record":
             #     continue
 

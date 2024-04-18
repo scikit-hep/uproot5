@@ -30,6 +30,7 @@ import numpy
 
 import uproot.compression
 import uproot.const
+import uproot.deserialization
 import uproot.models.TBranch
 import uproot.models.TLeaf
 import uproot.models.TList
@@ -102,7 +103,6 @@ class CascadeLeaf:
                     + repr(self)
                 )
             tmp = self.serialize()
-            # print(f"writing {self._location}:{self._location + len(tmp)} ({len(tmp)}) {type(self).__name__} {self.name if hasattr(self, 'name') else ''} {self.title if hasattr(self, 'title') else ''}")
             sink.write(self._location, tmp)
             self._file_dirty = False
 
@@ -582,13 +582,14 @@ class FreeSegmentsData(CascadeLeaf):
         return out
 
 
-class OldBranch(CascadeLeaf):  # Branch or branches?
+class OldBranches(CascadeLeaf):
     """
     A :doc:`uproot.writing._cascade.CascadeLeaf` for copying an old TBranch to a new TTree. ?
     """
 
-    def __init__(self, branch):
-        self._branch = branch
+    def __init__(self, branches):
+        self._branches = branches
+        self._branch_data = {}
 
     @property
     def allocation(self):
@@ -622,13 +623,14 @@ class OldBranch(CascadeLeaf):  # Branch or branches?
 
         return total
 
-    def serialize(self, out):
+    def serialize(self, out, branch):
         # superclass TNamed (Model_TNamed(uproot.model.Model))
         # superclass TAttFill
-        self.read_members()
+        self.read_members(branch)
+        datum = self._branch_data[branch.member("fName")]
         key_num_bytes = uproot.reading._key_format_big.size + 6
-        name_asbytes = self._branch_data["fName"].encode(errors="surrogateescape")
-        title_asbytes = self._branch_data["fTitle"].encode(errors="surrogateescape")
+        name_asbytes = datum["fName"].encode(errors="surrogateescape")
+        title_asbytes = datum["fTitle"].encode(errors="surrogateescape")
         key_num_bytes += (1 if len(name_asbytes) < 255 else 5) + len(name_asbytes)
         key_num_bytes += (1 if len(title_asbytes) < 255 else 5) + len(title_asbytes)
 
@@ -642,25 +644,22 @@ class OldBranch(CascadeLeaf):  # Branch or branches?
         tbranch_index = len(out)
         out.append(None)
 
-        tbranch_tobject = uproot.models.TObject.Model_TObject.empty()  # ?
-        # tbranch_tnamed = self._branch_data['TNamed'].serialize() # ?
+        tbranch_tobject = uproot.models.TObject.Model_TObject.empty()
         tbranch_tnamed = uproot.models.TNamed.Model_TNamed.empty()
         tbranch_tnamed._bases.append(tbranch_tobject)
-        tbranch_tnamed._members["fTitle"] = self._branch_data["fTitle"]
-        tbranch_tnamed._serialize(
-            out, True, self._branch_data["fName"], numpy.uint32(0x00400000)
-        )
+        tbranch_tnamed._members["fTitle"] = datum["fTitle"]
+        tbranch_tnamed._serialize(out, True, datum["fName"], numpy.uint32(0x00400000))
 
         # TAttFill v2, fFillColor: 0, fFillStyle: 1001
         # make model TAttFill v2 with fFillColor and fFillStyle
         tattfill = uproot.models.TAtt.Model_TAttFill_v2.empty()
         # tattfill._deeply_writable = True # ?
-        tattfill._members["fFillColor"] = self._branch_data["fFillColor"]
-        tattfill._members["fFillStyle"] = self._branch_data["fFillStyle"]
+        tattfill._members["fFillColor"] = datum["fFillColor"]
+        tattfill._members["fFillStyle"] = datum["fFillStyle"]
 
         out.append(tattfill.serialize(out))
 
-        self._branch_data["metadata_start"] = (6 + 6 + 8 + 6) + sum(
+        datum["metadata_start"] = (6 + 6 + 8 + 6) + sum(
             len(x) for x in out if x is not None
         )
 
@@ -669,15 +668,13 @@ class OldBranch(CascadeLeaf):  # Branch or branches?
         # Without this, when small buffers are left uncompressed, ROOT complains about them not being compressed.
         # (I don't know where the "no, really, this is uncompressed" bit is.)
 
-        #  Have to actually make something for if there's a TBranchElement!!
-
         out.append(
             uproot.models.TBranch._tbranch13_format1.pack(
-                self._branch_data["fCompress"],
-                self._branch_data["fBasketSize"],
-                self._branch_data["fEntryOffsetLen"],
-                self._branch_data["fWriteBasket"],  # fWriteBasket
-                self._branch_data["fEntryNumber"],  # fEntryNumber
+                datum["fCompress"],
+                datum["fBasketSize"],
+                datum["fEntryOffsetLen"],
+                datum["fWriteBasket"],  # fWriteBasket
+                datum["fEntryNumber"],  # fEntryNumber
             )
         )
 
@@ -685,18 +682,19 @@ class OldBranch(CascadeLeaf):  # Branch or branches?
         out.append(b"@\x00\x00\x07\x00\x00\x1a\xa1/\x10\x00")
         # out.append(self._branch_data["fIOFeatures"].serialize())
         # 0 to bytestring??
+
         out.append(
             uproot.models.TBranch._tbranch13_format2.pack(
-                self._branch_data["fOffset"],
-                self._branch_data["fMaxBaskets"],  # fMaxBaskets
-                self._branch_data["fSplitLevel"],
-                self._branch_data["fEntries"],  # fEntries
-                self._branch_data["fFirstEntry"],
-                self._branch_data["fTotBytes"],
-                self._branch_data["fZipBytes"],
+                datum["fOffset"],
+                datum["fMaxBaskets"],  # fMaxBaskets
+                datum["fSplitLevel"],
+                datum["fEntries"],  # fEntries
+                datum["fFirstEntry"],
+                datum["fTotBytes"],
+                datum["fZipBytes"],
             )
         )
-        # if 'fClonesName' in self._branch.all_members.keys(): # TBranchElement?
+        # if 'fClonesName' in self._branch.all_members.keys(): # TBranchElement - find a more robust way to check....or make sure this can't be misleading
         #     out.append(self._branch.member("fClassName").serialize()) # These three are TStrings
         #     out.append(self._branch.member("fParentName").serialize())
         #     out.append(self._branch.member("fClonesName").serialize())
@@ -713,8 +711,9 @@ class OldBranch(CascadeLeaf):  # Branch or branches?
         #     out.append(uproot.serialization.serialize_object_any(self._branch.member("fBranchCount")))
         #     out.append(uproot.serialization.serialize_object_any(self._branch.member("fBranchCount2")))
         # empty TObjArray of TBranches
+
         out.append(  # TODO how to handle this? Make sure to be TBranchElements will be handled too
-            self._branch_data["fBranches"].serialize(
+            datum["fBranches"].serialize(
                 out,
             )
         )
@@ -729,11 +728,11 @@ class OldBranch(CascadeLeaf):  # Branch or branches?
 
         absolute_location = key_num_bytes + sum(len(x) for x in out if x is not None)
         absolute_location += 8 + 6 * (sum(1 if x is None else 0 for x in out) - 1)
-        tleaf_reference_number = absolute_location + 2
+        datum["tleaf_reference_number"] = absolute_location + 2
 
         subany_tleaf_index = len(out)
         out.append(None)
-        for leaf in self._branch_data["fLeaves"]:
+        for leaf in datum["fLeaves"]:
             # Make and serialize each leaf??
             # if isinstance(leaf, model....)
             if isinstance(leaf, uproot.models.TLeaf.Model_TLeafO_v1):
@@ -769,11 +768,9 @@ class OldBranch(CascadeLeaf):  # Branch or branches?
             else:
                 out.append(("TLeaf" + letter_upper).encode() + b"\x00")
                 # single TLeaf
-            leaf_name = self._branch_data["fName"].encode(errors="surrogateescape")
+            leaf_name = datum["fName"].encode(errors="surrogateescape")
             leaf_title = (
-                self._branch_data["fLeaves"][0]
-                .member("fTitle")
-                .encode(errors="surrogateescape")
+                datum["fLeaves"][0].member("fTitle").encode(errors="surrogateescape")
             )
             leaf_name_length = (1 if len(leaf_name) < 255 else 5) + len(leaf_name)
             leaf_title_length = (1 if len(leaf_title) < 255 else 5) + len(leaf_title)
@@ -851,6 +848,7 @@ class OldBranch(CascadeLeaf):  # Branch or branches?
                     )
                 )
 
+            # generic TLeaf members
             out.append(
                 uproot.models.TLeaf._tleaf2_format0.pack(
                     leaf.member("fLen"),
@@ -860,26 +858,34 @@ class OldBranch(CascadeLeaf):  # Branch or branches?
                     leaf.member("fIsUnsigned"),
                 )
             )
-            out.append(
-                uproot.serialization.serialize_object_any(
-                    leaf.member("fLeafCount")  # fLeafCount
-                )
-            )
-            if isinstance(leaf, uproot.models.TLeaf.Model_TLeafElement_v1):
+            if leaf.member("fLeafCount") is not None:
                 out.append(
-                    uproot.models.TLeaf._tleafelement1_format1.pack(
-                        leaf.member("fID"),  # fIsRange
-                        leaf.member("fType"),
+                    uproot.deserialization._read_object_any_format1.pack(
+                        self._branch_data[
+                            branch.member("fLeaves")[0]
+                            .member("fLeafCount")
+                            .member("fName")
+                        ]["tleaf_reference_number"]
                     )
                 )
             else:
-                # specialized TLeaf* members (fMinimum, fMaximum)
-                # datum["tleaf_special_struct"] = special_struct
-                out.append(
-                    special_struct.pack(
-                        int(leaf.member("fMinimum")), int(leaf.member("fMaximum"))
-                    )
+                out.append(b"\x00\x00\x00\x00")
+
+            # if isinstance(leaf, uproot.models.TLeaf.Model_TLeafElement_v1):
+            #     out.append(
+            #         uproot.models.TLeaf._tleafelement1_format1.pack(
+            #             leaf.member("fID"),  # fIsRange
+            #             leaf.member("fType"),
+            #         )
+            #     )
+            # else:
+            # specialized TLeaf* members (fMinimum, fMaximum)
+            # datum["tleaf_special_struct"] = special_struct
+            out.append(
+                special_struct.pack(
+                    int(leaf.member("fMinimum")), int(leaf.member("fMaximum"))
                 )
+            )
 
             out[subany_tleaf_index] = (
                 uproot.serialization._serialize_object_any_format1.pack(
@@ -897,9 +903,8 @@ class OldBranch(CascadeLeaf):  # Branch or branches?
         # empty TObjArray of fBaskets (embedded)
         # TODO "fBranches, which is a TObjArray of nested TBranch instances (possibly TBranchElement)"
 
-        if len(self._branch_data["fBaskets"]) != 1:
-            #     print(len(self._branch_data["fBaskets"]))
-            raise NotImplementedError
+        # if len(self._branch_data["fBaskets"]) != 1:
+        #     raise NotImplementedError
 
         # out.append(
         #     self._branch_data["fBaskets"].serialize(
@@ -912,23 +917,25 @@ class OldBranch(CascadeLeaf):  # Branch or branches?
         )
 
         assert sum(1 if x is None else 0 for x in out) == 4
-        self._branch_data["basket_metadata_start"] = (6 + 6 + 8 + 6) + sum(
+        datum["basket_metadata_start"] = (6 + 6 + 8 + 6) + sum(
             len(x) for x in out if x is not None
         )
 
         # speedbump and fBasketBytes
         out.append(b"\x01")
-        out.append(uproot._util.tobytes(self._branch_data["fBasketBytes"]))
+        out.append(uproot._util.tobytes(datum["fBasketBytes"]))
 
         # speedbump and fBasketEntry
         out.append(b"\x01")
-        out.append(uproot._util.tobytes(self._branch_data["fBasketEntry"]))
+        out.append(uproot._util.tobytes(datum["fBasketEntry"]))
 
         # speedbump and fBasketSeek
         out.append(b"\x01")
-        out.append(uproot._util.tobytes(self._branch_data["fBasketSeek"]))
+        out.append(uproot._util.tobytes(datum["fBasketSeek"]))
 
-        out.append(self._branch_data["fFileName"].serialize())  # name = None?
+        # out.append(datum["fFileName"].serialize())  # name = None?
+
+        out.append(b"\x00")
 
         out[tbranch_index] = uproot.serialization.numbytes_version(
             sum(len(x) for x in out[tbranch_index + 1 :]), 13  # TBranch
@@ -941,40 +948,41 @@ class OldBranch(CascadeLeaf):  # Branch or branches?
                 uproot.const.kNewClassTag,
             )
         )
-        return out, tleaf_reference_number
+        return out
 
-    def read_members(self):
-        self._branch_data = {}
-        self._branch_data["fTitle"] = self._branch.member("fTitle")
-        self._branch_data["fName"] = self._branch.member("fName")
-        self._branch_data["fFillColor"] = self._branch.member("fFillColor")
-        self._branch_data["fFillStyle"] = self._branch.member("fFillStyle")
+    def read_members(self, branch):
+        name = branch.member("fName")
+        self._branch_data[name] = {}
+        self._branch_data[name]["fTitle"] = branch.member("fTitle")
+        self._branch_data[name]["fName"] = branch.member("fName")
+        self._branch_data[name]["fFillColor"] = branch.member("fFillColor")
+        self._branch_data[name]["fFillStyle"] = branch.member("fFillStyle")
         try:
-            self._branch_data["fIOFeatures"] = self._branch.member("fIOFeatures")
+            self._branch_data[name]["fIOFeatures"] = branch.member("fIOFeatures")
         except KeyError:
-            self._branch_data["fIOFeatures"] = 0  # ? self._branch_member("fIOFeatures")
-        self._branch_data["fCompress"] = self._branch.member("fCompress")
-        self._branch_data["fBasketSize"] = self._branch.member("fBasketSize")
-        self._branch_data["fEntryOffsetLen"] = self._branch.member("fEntryOffsetLen")
-        self._branch_data["fWriteBasket"] = self._branch.member("fWriteBasket")
-        self._branch_data["fEntryNumber"] = self._branch.member("fEntryNumber")
-        self._branch_data["fOffset"] = self._branch.member("fOffset")
-        self._branch_data["fMaxBaskets"] = self._branch.member("fMaxBaskets")
-        self._branch_data["fSplitLevel"] = self._branch.member("fSplitLevel")
-        self._branch_data["fEntries"] = self._branch.member("fEntries")
+            self._branch_data[name]["fIOFeatures"] = 0  # ? branch_member("fIOFeatures")
+        self._branch_data[name]["fCompress"] = branch.member("fCompress")
+        self._branch_data[name]["fBasketSize"] = branch.member("fBasketSize")
+        self._branch_data[name]["fEntryOffsetLen"] = branch.member("fEntryOffsetLen")
+        self._branch_data[name]["fWriteBasket"] = branch.member("fWriteBasket")
+        self._branch_data[name]["fEntryNumber"] = branch.member("fEntryNumber")
+        self._branch_data[name]["fOffset"] = branch.member("fOffset")
+        self._branch_data[name]["fMaxBaskets"] = branch.member("fMaxBaskets")
+        self._branch_data[name]["fSplitLevel"] = branch.member("fSplitLevel")
+        self._branch_data[name]["fEntries"] = branch.member("fEntries")
         try:
-            self._branch_data["fFirstEntry"] = self._branch.member("fFirstEntry")
+            self._branch_data[name]["fFirstEntry"] = branch.member("fFirstEntry")
         except KeyError:
-            self._branch_data["fFirstEntry"] = 0
-        self._branch_data["fTotBytes"] = self._branch.member("fTotBytes")
-        self._branch_data["fZipBytes"] = self._branch.member("fZipBytes")
-        self._branch_data["fLeaves"] = self._branch.member("fLeaves")
-        self._branch_data["fBaskets"] = self._branch.member("fBaskets")
-        self._branch_data["fBranches"] = self._branch.member("fBranches")
-        self._branch_data["fBasketBytes"] = self._branch.member("fBasketBytes")
-        self._branch_data["fBasketEntry"] = self._branch.member("fBasketEntry")
-        self._branch_data["fBasketSeek"] = self._branch.member("fBasketSeek")
-        self._branch_data["fFileName"] = self._branch.member("fFileName")
+            self._branch_data[name]["fFirstEntry"] = 0
+        self._branch_data[name]["fTotBytes"] = branch.member("fTotBytes")
+        self._branch_data[name]["fZipBytes"] = branch.member("fZipBytes")
+        self._branch_data[name]["fLeaves"] = branch.member("fLeaves")
+        self._branch_data[name]["fBaskets"] = branch.member("fBaskets")
+        self._branch_data[name]["fBranches"] = branch.member("fBranches")
+        self._branch_data[name]["fBasketBytes"] = branch.member("fBasketBytes")
+        self._branch_data[name]["fBasketEntry"] = branch.member("fBasketEntry")
+        self._branch_data[name]["fBasketSeek"] = branch.member("fBasketSeek")
+        self._branch_data[name]["fFileName"] = branch.member("fFileName")
 
     def serialize_leaf_elements(self, out, special_struct):
         # specialized TLeaf* members (fMinimum, fMaximum)
@@ -2111,6 +2119,33 @@ class Directory(CascadeNode):
         field_name,
         initial_basket_capacity,
         resize_factor,
+    ):
+        import uproot.writing._cascadetree
+
+        tree = uproot.writing._cascadetree.Tree(
+            self,
+            name,
+            title,
+            branch_types,
+            self._freesegments,
+            counter_name,
+            field_name,
+            initial_basket_capacity,
+            resize_factor,
+        )
+        tree.write_anew(sink)
+        return tree
+
+    def copy_tree(
+        self,
+        sink,
+        name,
+        title,
+        branch_types,
+        counter_name,
+        field_name,
+        initial_basket_capacity,
+        resize_factor,
         existing_branches=None,
         new_branches=None,
     ):
@@ -2129,7 +2164,7 @@ class Directory(CascadeNode):
             existing_branches,
         )
         tree.write_anew(sink)
-        tree.add_data(sink, new_branches)
+        tree.add_data(sink._file, sink, new_branches)
         return tree
 
     def add_rntuple(self, sink, name, title, akform):
