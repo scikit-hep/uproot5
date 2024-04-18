@@ -1,6 +1,7 @@
 import uproot
 from skhep_testdata import data_path
 import uproot.writing.writable
+from pathlib import Path
 
 # import ROOT
 import numpy as np
@@ -47,62 +48,66 @@ def simple_test():
         assert ak.all(new["tree"].arrays()["b4"] == [7, 8, 9])
 
 
-def ak_test():
+def test_ak_arrays():
     with uproot.recreate("ak_arrays.root") as file:
         file["tree"] = {
             "b1": ak.Array([[1, 2, 3], [1, 2], [6, 7]]),
             "b2": ak.Array([[1, 2, 3], [1, 2], [6, 7, 8]]),
         }
-        # file.mktree("tree", )
+    with uproot.recreate("ak_test.root") as file:
+        file["tree"] = {
+            "b1": ak.Array([[1, 2, 3], [1, 2], [6, 7]]),
+            "b2": ak.Array([[1, 2, 3], [1, 2], [6, 7, 8]]),
+            "b3": ak.Array([[5, 4, 5], [6], [7]]),
+            "b4": ak.Array([[7], [8], [9]]),
+        }
+    with uproot.open("ak_test.root", minimal_ttree_metadata=False) as correct:
+        with uproot.update("ak_arrays.root") as write:
+            write.add(
+                "tree",
+                {
+                    "b3": ak.Array([[5, 4, 5], [6], [7]]),
+                    "b4": ak.Array([[7], [8], [9]]),
+                },
+                source="tree",
+            )
 
-    with uproot.open("ak_arrays.root") as check:
-        print(
-            "counter",
-            check["tree"]["b1"].member("fLeaves")[0].member("fLeafCount").all_members,
-        )
+        with uproot.open("ak_arrays.root", minimal_ttree_metadata=False) as new:
+            print(new["tree"].member("fLeaves")[1])
+            print(new["tree"]["b1"].member("fLeaves")[0])
+            print(correct["tree"].member("fLeaves")[1])
+            print(correct["tree"]["b1"].member("fLeaves")[0])
 
-    with uproot.update("ak_arrays.root") as write:
-        write.add(
-            "tree",
-            {"b3": ak.Array([[5, 4, 5], [6], [7]]), "b4": ak.Array([[7], [8], [9]])},
-            source="tree",
-        )
-
-    with uproot.open("ak_arrays.root", minimal_ttree_metadata=False) as new:
-        assert new["tree"].keys() == [
-            "nb1",
-            "b1",
-            "nb2",
-            "b2",
-            "nb3",
-            "b3",
-            "nb4",
-            "b4",
-        ]
-        assert ak.all(
-            new["tree"]["b1"].array() == ak.Array([[1, 2, 3], [1, 2], [6, 7]])
-        )
-        assert ak.all(
-            new["tree"]["b2"].array() == ak.Array([[1, 2, 3], [1, 2], [6, 7, 8]])
-        )
-        assert ak.all(new["tree"]["b3"].array() == ak.Array([[5, 4, 5], [6], [7]]))
-        assert ak.all(new["tree"]["b4"].array() == ak.Array([[7], [8], [9]]))
+            assert new["tree"].keys() == correct["tree"].keys()
+            assert ak.all(new["tree"]["b1"].array() == correct["tree"]["b1"].array())
+            assert ak.all(new["tree"]["b2"].array() == correct["tree"]["b2"].array())
+            assert ak.all(new["tree"]["b3"].array() == correct["tree"]["b3"].array())
+            assert ak.all(new["tree"]["b4"].array() == correct["tree"]["b4"].array())
 
 
-with uproot.open(
-    "/Users/zobil/Documents/samples/uproot-HZZ.root", minimal_ttree_metadata=False
-) as test:
-    # print(test['events']["Jet_Px"].all_members)
-    print(test["events"])
-    # print(test['events'].all_members)
+def HZZ_test():
+    with uproot.open(
+        "/Users/zobil/Documents/samples/uproot-HZZ.root", minimal_ttree_metadata=False
+    ) as test:
 
+        # print(test["events"]["NMuon"].typename)
+        # print(test["events"])
+        # print(test['events'].all_members)
 
-# with uproot.update("/Users/zobil/Documents/samples/uproot-HZZ2.root") as test:
-#     data = np.arange(0, 2421, 1)
-#     test.add("events", {"data": data}, source="events")
+        # with uproot.update("/Users/zobil/Documents/samples/uproot-HZZ.root copy") as new:
+        #     data = np.arange(0, 2421, 1)
+        #     new.add("events", {"data": data}, source="events")
 
-with uproot.open("/Users/zobil/Documents/samples/uproot-HZZ2.root") as check:
-    print(check["events"].arrays())
+        with uproot.open(
+            "/Users/zobil/Documents/samples/uproot-HZZ.root copy",
+            minimal_ttree_metadata=False,
+        ) as check:
+            print(check["events"].arrays())
+            print(test["events"].arrays())
+
+        # print(check["events"]["Photon_Px"].member("fLeaves")[0].member("fLeafCount"))
+
 
 # simple_test()
-ak_test()
+HZZ_test()
+test_ak_arrays()

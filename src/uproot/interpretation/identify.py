@@ -124,7 +124,6 @@ def _from_leaves_one(leaf, title):
             for x in re.findall(_item_any_pattern, title)
         ):
             is_jagged = True
-
     return dims, is_jagged
 
 

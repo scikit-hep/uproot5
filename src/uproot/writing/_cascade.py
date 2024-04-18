@@ -627,13 +627,6 @@ class OldBranches(CascadeLeaf):
         # superclass TNamed (Model_TNamed(uproot.model.Model))
         # superclass TAttFill
         self.read_members(branch)
-        datum = self._branch_data[branch.member("fName")]
-        key_num_bytes = uproot.reading._key_format_big.size + 6
-        name_asbytes = datum["fName"].encode(errors="surrogateescape")
-        title_asbytes = datum["fTitle"].encode(errors="surrogateescape")
-        key_num_bytes += (1 if len(name_asbytes) < 255 else 5) + len(name_asbytes)
-        key_num_bytes += (1 if len(title_asbytes) < 255 else 5) + len(title_asbytes)
-
         any_tbranch_index = len(out)
         out.append(None)
         # if 'fClonesName' in self._branch.all_members.keys():
@@ -643,6 +636,13 @@ class OldBranches(CascadeLeaf):
 
         tbranch_index = len(out)
         out.append(None)
+
+        datum = self._branch_data[branch.member("fName")]
+        key_num_bytes = uproot.reading._key_format_big.size + 6
+        name_asbytes = branch.tree.name.encode(errors="surrogateescape")
+        title_asbytes = branch.tree.title.encode(errors="surrogateescape")
+        key_num_bytes += (1 if len(name_asbytes) < 255 else 5) + len(name_asbytes)
+        key_num_bytes += (1 if len(title_asbytes) < 255 else 5) + len(title_asbytes)
 
         tbranch_tobject = uproot.models.TObject.Model_TObject.empty()
         tbranch_tnamed = uproot.models.TNamed.Model_TNamed.empty()
@@ -729,7 +729,6 @@ class OldBranches(CascadeLeaf):
         absolute_location = key_num_bytes + sum(len(x) for x in out if x is not None)
         absolute_location += 8 + 6 * (sum(1 if x is None else 0 for x in out) - 1)
         datum["tleaf_reference_number"] = absolute_location + 2
-
         subany_tleaf_index = len(out)
         out.append(None)
         for leaf in datum["fLeaves"]:
@@ -762,12 +761,12 @@ class OldBranches(CascadeLeaf):
             # else: # This will never be reached? What to do about G
             #     letter_upper = "G"
             #     special_struct = uproot.models.TLeaf._tleafl1_format0
-            if isinstance(leaf, uproot.models.TLeaf.Model_TLeafElement_v1):
-                special_struct = uproot.models.TLeaf._tleafelement1_format1
-                out.append((b"TLeafElement") + b"\x00")
-            else:
-                out.append(("TLeaf" + letter_upper).encode() + b"\x00")
-                # single TLeaf
+            # if isinstance(leaf, uproot.models.TLeaf.Model_TLeafElement_v1): # TLeafElement...
+            #     special_struct = uproot.models.TLeaf._tleafelement1_format1
+            #     out.append((b"TLeafElement") + b"\x00")
+            # else:
+            out.append(("TLeaf" + letter_upper).encode() + b"\x00")
+            # single TLeaf
             leaf_name = datum["fName"].encode(errors="surrogateescape")
             leaf_title = (
                 datum["fLeaves"][0].member("fTitle").encode(errors="surrogateescape")
@@ -858,6 +857,7 @@ class OldBranches(CascadeLeaf):
                     leaf.member("fIsUnsigned"),
                 )
             )
+
             if leaf.member("fLeafCount") is not None:
                 out.append(
                     uproot.deserialization._read_object_any_format1.pack(
@@ -881,6 +881,7 @@ class OldBranches(CascadeLeaf):
             # else:
             # specialized TLeaf* members (fMinimum, fMaximum)
             # datum["tleaf_special_struct"] = special_struct
+
             out.append(
                 special_struct.pack(
                     int(leaf.member("fMinimum")), int(leaf.member("fMaximum"))
@@ -948,7 +949,7 @@ class OldBranches(CascadeLeaf):
                 uproot.const.kNewClassTag,
             )
         )
-        return out
+        return out, datum["tleaf_reference_number"]
 
     def read_members(self, branch):
         name = branch.member("fName")

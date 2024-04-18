@@ -910,11 +910,10 @@ class Tree:
             for branch in self._existing_branches:
                 # create OldTBranch object
                 # members = uproot.branch.read_members()
-                out = old_branches.serialize(
+                out, temp = old_branches.serialize(
                     out, branch
                 )  # should call uproot.models.TBranch._tbranch13_format...pack or something
-                # tleaf_reference_numbers.append(temp)  # and don't forget the tleaves
-
+                tleaf_reference_numbers.append(temp)  # and don't forget the tleaves
         for datum in self._branch_data:
             if datum["kind"] == "record":
                 continue
