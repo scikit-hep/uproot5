@@ -79,14 +79,21 @@ def ak_test():
             "nb4",
             "b4",
         ]
-        assert ak.all(new["tree"]["b1"].array() == ak.Array([[1, 2, 3], [1, 2], [6, 7]]))
-        assert ak.all(new["tree"]["b2"].array() == ak.Array([[1, 2, 3], [1, 2], [6, 7, 8]]))
+        assert ak.all(
+            new["tree"]["b1"].array() == ak.Array([[1, 2, 3], [1, 2], [6, 7]])
+        )
+        assert ak.all(
+            new["tree"]["b2"].array() == ak.Array([[1, 2, 3], [1, 2], [6, 7, 8]])
+        )
         assert ak.all(new["tree"]["b3"].array() == ak.Array([[5, 4, 5], [6], [7]]))
         assert ak.all(new["tree"]["b4"].array() == ak.Array([[7], [8], [9]]))
 
-with uproot.open("/Users/zobil/Documents/samples/uproot-HZZ.root", minimal_ttree_metadata=False) as test:
+
+with uproot.open(
+    "/Users/zobil/Documents/samples/uproot-HZZ.root", minimal_ttree_metadata=False
+) as test:
     # print(test['events']["Jet_Px"].all_members)
-    print(test['events'])
+    print(test["events"])
     # print(test['events'].all_members)
 
 
@@ -95,8 +102,7 @@ with uproot.open("/Users/zobil/Documents/samples/uproot-HZZ.root", minimal_ttree
 #     test.add("events", {"data": data}, source="events")
 
 with uproot.open("/Users/zobil/Documents/samples/uproot-HZZ2.root") as check:
-    print(check['events'].arrays())
+    print(check["events"].arrays())
 
 # simple_test()
 ak_test()
-
