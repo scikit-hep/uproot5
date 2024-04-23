@@ -46,6 +46,17 @@ def test_skip_recursively_empty_structs():
         assert len(jets[0].pt) == 5
 
 
+def test_empty_page_list():
+    filename = skhep_testdata.data_path("test_ntuple_extension_columns.root")
+    with uproot.open(filename) as f:
+        obj = f["EventData"]
+        col_id = 12
+        assert obj.column_records[col_id].type == 14
+        data = obj.read_col_page(col_id, 0)
+        assert len(data) == 1
+        assert data[0] == 0
+
+
 def test_split_encoding():
     filename = skhep_testdata.data_path(
         "Run2012BC_DoubleMuParked_Muons_rntuple_1000evts.root"
