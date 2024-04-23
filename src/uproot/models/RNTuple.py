@@ -295,7 +295,6 @@ in file {self.file.file_path}"""
     def col_form(self, field_id):
         ak = uproot.extras.awkward()
 
-        # TODO: can there be multiple levels of aliasing?
         cfid = field_id
         if cfid in self._alias_columns_dict:
             cfid = self._alias_columns_dict[cfid]
@@ -467,11 +466,11 @@ in file {self.file.file_path}"""
         # needed to chop off extra bits incase we used `unpackbits`
         destination[:] = content[:num_elements]
 
-    def read_col_pages(self, ncol, cluster_range, pad_first_ele=False):
+    def read_col_pages(self, ncol, cluster_range, pad_missing_ele=False):
         res = numpy.concatenate(
             [self.read_col_page(ncol, i) for i in cluster_range], axis=0
         )
-        if pad_first_ele:
+        if pad_missing_ele:
             first_ele_index = self.column_records[ncol].first_ele_index
             res = numpy.pad(res, (first_ele_index, 0))
         return res
@@ -545,7 +544,7 @@ in file {self.file.file_path}"""
                 content = self.read_col_pages(
                     key_nr,
                     range(start_cluster_idx, stop_cluster_idx),
-                    pad_first_ele=True,
+                    pad_missing_ele=True,
                 )
                 if "cardinality" in key:
                     content = numpy.diff(content)
