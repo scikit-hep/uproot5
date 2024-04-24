@@ -57,6 +57,18 @@ def test_empty_page_list():
         assert data[0] == 0
 
 
+def test_multiple_page_lists():
+    url = "http://root.cern/files/tutorials/ntpl004_dimuon_v1rc2.root"
+    with uproot.open(f"simplecache::{url}") as f:
+        obj = f["Events"]
+        data = obj.read_col_page(0, 0)
+        # each page of column 0 has 8192 elements
+        # so this checks that data was stitched together correctly
+        assert data[8192] - data[8191] == 2
+        arrays = obj.arrays()
+        assert len(arrays.nMuon) == 4_000_000
+
+
 def test_split_encoding():
     filename = skhep_testdata.data_path(
         "Run2012BC_DoubleMuParked_Muons_rntuple_1000evts.root"
