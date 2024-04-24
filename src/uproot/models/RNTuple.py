@@ -484,24 +484,26 @@ in file {self.file.file_path}"""
 
         total_len = numpy.sum([desc.num_elements for desc in pagelist], dtype=int)
         res = numpy.empty(total_len, dtype)
-        tracker = 0
         split = 14 <= dtype_byte <= 21 or 26 <= dtype_byte <= 28
+        zigzag = 26 <= dtype_byte <= 28
+        delta = dtype_byte in (14, 15)
+        index = dtype_byte in (0, 1, 14, 15)
         nbits = uproot.const.rntuple_col_num_to_size_dict[dtype_byte]
+        tracker = 0
+        cumsum = 0
         for page_desc in pagelist:
             n_elements = page_desc.num_elements
             tracker_end = tracker + n_elements
             self.read_pagedesc(
                 res[tracker:tracker_end], page_desc, dtype_str, dtype, nbits, split
             )
+            if delta:
+                res[tracker] -= cumsum
+                cumsum += numpy.sum(res[tracker:tracker_end])
             tracker = tracker_end
 
-        if (
-            dtype_byte <= uproot.const.rntuple_col_type_to_num_dict["index32"]
-            or 14 <= dtype_byte <= 15
-        ):
+        if index:
             res = numpy.insert(res, 0, 0)  # for offsets
-        zigzag = 26 <= dtype_byte <= 28
-        delta = 14 <= dtype_byte <= 15
         if zigzag:
             res = from_zigzag(res)
         elif delta:
