@@ -80,6 +80,23 @@ class AsObjects(uproot.interpretation.Interpretation):
     def __eq__(self, other):
         return isinstance(other, AsObjects) and self._model == other._model
 
+    def __getstate__(self):
+        return {
+            k: (
+                uproot.model._LockPlaceholder()
+                if isinstance(v, uproot.model._LockPlaceholder.lock_type)
+                else v
+            )
+            for k, v in self.__dict__.items()
+        }
+
+    def __setstate__(self, state):
+        instance_data = {
+            k: threading.Lock() if isinstance(v, uproot.model._LockPlaceholder) else v
+            for k, v in state.items()
+        }
+        self.__dict__.update(instance_data)
+
     @property
     def numpy_dtype(self):
         return numpy.dtype(object)
