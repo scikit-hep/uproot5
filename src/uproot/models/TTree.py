@@ -10,6 +10,8 @@ from __future__ import annotations
 
 import time
 
+tbranch_only_times = []
+
 import struct
 
 import numpy
@@ -782,6 +784,7 @@ in file {self.file.file_path}"""
         )
 
         print(f"{time.perf_counter() - uproot.reading.start_stopwatch:.6f} between TBranches and TLeaves ({len(self._members['fBranches'])} branches!)")
+        print(f"time spent in the TBranches themselves: {numpy.sum(tbranch_only_times):.6f}")
 
         self._members["fLeaves"] = file.class_named("TObjArray").read(
             chunk, cursor, context, file, self._file, self.concrete

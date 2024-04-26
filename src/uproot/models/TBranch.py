@@ -8,6 +8,8 @@ functions.
 """
 from __future__ import annotations
 
+import time
+
 import struct
 
 import numpy
@@ -434,6 +436,8 @@ class Model_TBranch_v13(uproot.behaviors.TBranch.TBranch, uproot.model.Versioned
     behaviors = (uproot.behaviors.TBranch.TBranch,)
 
     def read_members(self, chunk, cursor, context, file):
+        starttime = time.perf_counter()
+
         if uproot._awkwardforth.get_forth_obj(context) is not None:
             raise uproot.interpretation.objects.CannotBeForth()
         if self.is_memberwise:
@@ -522,6 +526,9 @@ in file {self.file.file_path}"""
             self._members["fFileName"] = file.class_named("TString").read(
                 chunk, cursor, context, file, self._file, self.concrete
             )
+
+        stoptime = time.perf_counter()
+        uproot.models.TTree.tbranch_only_times.append(stoptime - starttime)
 
     @property
     def member_names(self):
