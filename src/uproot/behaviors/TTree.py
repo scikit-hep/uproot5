@@ -6,6 +6,8 @@ functions in :doc:`uproot.behaviors.TBranch`.
 """
 from __future__ import annotations
 
+import time
+
 import uproot
 
 
@@ -158,4 +160,7 @@ class TTree(uproot.behaviors.TBranch.HasBranches):
             name = branch.member("fName")
             if name not in self._lookup:
                 self._lookup[name] = branch
+
+        print(f"{time.perf_counter() - uproot.reading.start_stopwatch:.6f} finished postprocessing TTree")
+
         return self

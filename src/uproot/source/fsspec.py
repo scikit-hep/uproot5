@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import time
+
 import asyncio
 import concurrent.futures
 import queue
@@ -107,6 +109,9 @@ class FSSpecSource(uproot.source.chunk.Source):
         Request a byte range of data from the file as a
         :doc:`uproot.source.chunk.Chunk`.
         """
+
+        print(f"{time.perf_counter() - uproot.reading.start_stopwatch:.6f} requesting single chunk")
+
         self._num_requests += 1
         self._num_requested_chunks += 1
         self._num_requested_bytes += stop - start
@@ -148,6 +153,9 @@ class FSSpecSource(uproot.source.chunk.Source):
         it is triggered by already-filled chunks, rather than waiting for
         chunks to be filled.
         """
+
+        print(f"{time.perf_counter() - uproot.reading.start_stopwatch:.6f} requesting {len(ranges)} chunks")
+
         self._num_requests += 1
         self._num_requested_chunks += len(ranges)
         self._num_requested_bytes += sum(stop - start for start, stop in ranges)

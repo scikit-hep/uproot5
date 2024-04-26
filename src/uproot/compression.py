@@ -7,6 +7,8 @@ as functions for compressing and decompressing a :doc:`uproot.source.chunk.Chunk
 
 from __future__ import annotations
 
+import time
+
 import struct
 
 import numpy
@@ -414,6 +416,8 @@ def decompress(
         block_compressed_bytes = c1 + (c2 << 8) + (c3 << 16)
         block_uncompressed_bytes = u1 + (u2 << 8) + (u3 << 16)
 
+        print(f"{time.perf_counter() - uproot.reading.start_stopwatch:.6f} starting decompression of {algo}")
+
         if algo == _decompress_ZLIB._2byte:
             decompressor = _decompress_ZLIB
             data = cursor.bytes(chunk, block_compressed_bytes, context)
@@ -502,6 +506,8 @@ in file {chunk.source.file_path}"""
             num_blocks=num_blocks,
             output=output,
         )
+
+    print(f"{time.perf_counter() - uproot.reading.start_stopwatch:.6f} finished decompression of {algo}")
 
     return uproot.source.chunk.Chunk.wrap(chunk.source, output)
 

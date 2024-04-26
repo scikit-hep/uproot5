@@ -8,6 +8,8 @@ functions.
 """
 from __future__ import annotations
 
+import time
+
 import struct
 
 import numpy
@@ -685,6 +687,8 @@ class Model_TTree_v20(uproot.behaviors.TTree.TTree, uproot.model.VersionedModel)
     behaviors = (uproot.behaviors.TTree.TTree,)
 
     def read_members(self, chunk, cursor, context, file):
+        print(f"{time.perf_counter() - uproot.reading.start_stopwatch:.6f} interpreting members of TTree")
+
         if uproot._awkwardforth.get_forth_obj(context) is not None:
             raise uproot.interpretation.objects.CannotBeForth()
         if self.is_memberwise:
@@ -770,12 +774,21 @@ in file {self.file.file_path}"""
         self._members["fIOFeatures"] = file.class_named("ROOT::TIOFeatures").read(
             chunk, cursor, context, file, self._file, self.concrete
         )
+
+        print(f"{time.perf_counter() - uproot.reading.start_stopwatch:.6f} just before TBranches")
+
         self._members["fBranches"] = file.class_named("TObjArray").read(
             chunk, cursor, context, file, self._file, self.concrete
         )
+
+        print(f"{time.perf_counter() - uproot.reading.start_stopwatch:.6f} between TBranches and TLeaves ({len(self._members['fBranches'])} branches!)")
+
         self._members["fLeaves"] = file.class_named("TObjArray").read(
             chunk, cursor, context, file, self._file, self.concrete
         )
+
+        print(f"{time.perf_counter() - uproot.reading.start_stopwatch:.6f} just after TLeaves")
+
         self._members["fAliases"] = uproot.deserialization.read_object_any(
             chunk, cursor, context, file, self._file, self.concrete
         )
@@ -800,6 +813,8 @@ in file {self.file.file_path}"""
             self._members["fBranchRef"] = uproot.deserialization.read_object_any(
                 chunk, cursor, context, file, self._file, self.concrete
             )
+
+        print(f"{time.perf_counter() - uproot.reading.start_stopwatch:.6f} finished interpreting TTree")
 
     @property
     def member_names(self):

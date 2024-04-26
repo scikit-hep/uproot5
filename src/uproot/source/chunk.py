@@ -12,6 +12,8 @@ Also defines abstract classes for :doc:`uproot.source.chunk.Resource` and
 
 from __future__ import annotations
 
+import time
+
 import dataclasses
 import numbers
 import queue
@@ -385,7 +387,11 @@ class Chunk:
         :ref:`uproot.source.chunk.Chunk.future` completes).
         """
         if self._raw_data is None:
-            self._raw_data = numpy.frombuffer(self._future.result(), dtype=self._dtype)
+            tmp = self._future.result()
+
+            print(f"{time.perf_counter() - uproot.reading.start_stopwatch:.6f} got data for {getattr(self, '_model', 'unknown')}")
+
+            self._raw_data = numpy.frombuffer(tmp, dtype=self._dtype)
             if insist is True:
                 requirement = len(self._raw_data) == self._stop - self._start
             elif isinstance(insist, numbers.Integral):

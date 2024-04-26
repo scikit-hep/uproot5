@@ -788,6 +788,8 @@ class Model:
         old_breadcrumbs = context.get("breadcrumbs", ())
         context["breadcrumbs"] = (*old_breadcrumbs, self)
 
+        chunk._model = cls.__name__
+
         self.hook_before_read(chunk=chunk, cursor=cursor, context=context, file=file)
         forth_obj = uproot._awkwardforth.get_forth_obj(context)
         if forth_obj is not None:
@@ -1300,7 +1302,7 @@ class DispatchByVersion:
                 from its :ref:`uproot.reading.ReadOnlyFile.streamers`.
             selffile (:doc:`uproot.reading.CommonFileMethods`): A possibly
                 :doc:`uproot.reading.DetachedFile` associated with this object.
-            parent (None or calling object): The previous ``read`` in the
+            Parent (None or calling object): The previous ``read`` in the
                 recursive descent.
             concrete (None or :doc:`uproot.model.Model` instance): If None,
                 this model corresponds to the concrete (instantiated) class in

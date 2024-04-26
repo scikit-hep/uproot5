@@ -9,6 +9,8 @@ and :doc:`uproot.reading.ReadOnlyKey` (``TKey``).
 """
 from __future__ import annotations
 
+import time
+
 import re
 import struct
 import sys
@@ -21,6 +23,9 @@ import uproot
 import uproot.behaviors.TBranch
 import uproot.source.fsspec
 from uproot._util import no_filter
+
+
+start_stopwatch = 0
 
 
 def open(
@@ -118,6 +123,12 @@ def open(
     for security reasons, it is recommended basic authentication only be used
     for HTTPS resources.
     """
+
+    global start_stopwatch
+    start_stopwatch = time.perf_counter()
+
+    print(f"{time.perf_counter() - start_stopwatch:.6f} uproot.open")
+
     if isinstance(path, dict) and len(path) == 1:
         ((file_path, object_path),) = path.items()
 
@@ -575,6 +586,8 @@ class ReadOnlyFile(CommonFileMethods):
         ).detach_memmap()
 
         self.hook_before_interpret()
+
+        self._begin_chunk._model = "TFile header"
 
         (
             magic,
@@ -1405,6 +1418,8 @@ class ReadOnlyDirectory(Mapping):
                 keys_chunk=keys_chunk,
                 keys_cursor=keys_cursor,
             )
+
+            keys_chunk._model = "root directory header"
 
             # header_key is never used, but we do need to seek past it
             ReadOnlyKey(keys_chunk, keys_cursor, {}, file, self, read_strings=True)
@@ -2509,6 +2524,8 @@ class ReadOnlyKey:
 
             cls = self._file.class_named(self._fClassName)
 
+            chunk._model = f"{self._fClassName} from uncompressed block"
+
             try:
                 out = cls.read(chunk, cursor, context, self._file, selffile, parent)
 
@@ -2559,6 +2576,8 @@ class ReadOnlyKey:
         chunk = self._file.chunk(data_start, data_stop)
 
         if self.is_compressed:
+            chunk._model = f"compressed {self._fClassName}"
+
             # Decompression creates a new buffer; no need to copy any memmap arrays.
             uncompressed_chunk = uproot.compression.decompress(
                 chunk,
