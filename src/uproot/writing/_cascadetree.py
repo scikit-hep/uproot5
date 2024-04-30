@@ -86,6 +86,7 @@ class Tree:
         initial_basket_capacity,
         resize_factor,
         existing_branches=None,
+        existing_ttree=None,
     ):
         self._directory = directory
         self._name = name
@@ -312,6 +313,10 @@ class Tree:
             "fAutoFlush": -30000000,
             "fEstimate": 1000000,
         }
+        if existing_ttree:
+            self._metadata["fTotBytes"] = existing_ttree.member("fTotBytes")
+            self._metadata["fZipBytes"] = existing_ttree.member("fZipBytes")
+
         self._key = None
 
     def _branch_ak_to_np(self, branch_datashape):
@@ -821,9 +826,7 @@ class Tree:
                 fBasketEntry[i + 1] = num_entries + fBasketEntry[i]
 
             datum["fBasketSeek"][self._num_baskets] = location
-
             datum["arrays_write_stop"] = self._num_baskets + 1
-
         # update TTree metadata in file
         self._num_entries += num_entries
         self._num_baskets += 1
@@ -956,7 +959,6 @@ class Tree:
                     self._num_entries,  # fEntryNumber
                 )
             )
-
             # fIOFeatures (TIOFeatures)
             out.append(b"@\x00\x00\x07\x00\x00\x1a\xa1/\x10\x00")
 
@@ -971,7 +973,6 @@ class Tree:
                     datum["fZipBytes"],
                 )
             )
-
             # empty TObjArray of TBranches
             out.append(
                 b"@\x00\x00\x15\x00\x03\x00\x01\x00\x00\x00\x00\x03\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
@@ -1118,7 +1119,6 @@ class Tree:
                     fIsUnsigned,
                 )
             )
-
             if datum["counter"] is None:
                 # null fLeafCount
                 out.append(b"\x00\x00\x00\x00")
@@ -1132,6 +1132,7 @@ class Tree:
 
             # specialized TLeaf* members (fMinimum, fMaximum)
             out.append(special_struct.pack(0, 0))
+
             datum["tleaf_special_struct"] = special_struct
 
             out[subany_tleaf_index] = (
@@ -1160,15 +1161,12 @@ class Tree:
             # speedbump and fBasketBytes
             out.append(b"\x01")
             out.append(uproot._util.tobytes(datum["fBasketBytes"]))
-
             # speedbump and fBasketEntry
             out.append(b"\x01")
             out.append(uproot._util.tobytes(datum["fBasketEntry"]))
-
             # speedbump and fBasketSeek
             out.append(b"\x01")
             out.append(uproot._util.tobytes(datum["fBasketSeek"]))
-
             # empty fFileName
             out.append(b"\x00")
 
@@ -1220,7 +1218,6 @@ class Tree:
         self._metadata_start = sum(len(x) for x in out[:metadata_out_index])
 
         raw_data = b"".join(out)
-
         self._key = self._directory.add_object(
             sink,
             "TTree",
@@ -1257,7 +1254,6 @@ class Tree:
                 self._metadata["fEstimate"],
             ),
         )
-
         for datum in self._branch_data:
             if datum["kind"] == "record":
                 continue
@@ -1302,27 +1298,21 @@ class Tree:
                 datum["fBasketEntry"][start : stop + 1]
             )
             fBasketSeek_part = uproot._util.tobytes(datum["fBasketSeek"][start:stop])
-
             position = base + datum["basket_metadata_start"] + 1
             position += datum["fBasketBytes"][:start].nbytes
             sink.write(position, fBasketBytes_part)
             position += len(fBasketBytes_part)
             position += datum["fBasketBytes"][stop:].nbytes
-
             position += 1
             position += datum["fBasketEntry"][:start].nbytes
             sink.write(position, fBasketEntry_part)
             position += len(fBasketEntry_part)
             position += datum["fBasketEntry"][stop + 1 :].nbytes
-
             position += 1
             position += datum["fBasketSeek"][:start].nbytes
             sink.write(position, fBasketSeek_part)
             position += len(fBasketSeek_part)
             position += datum["fBasketSeek"][stop:].nbytes
-
-            datum["arrays_write_start"] = datum["arrays_write_stop"]
-
             if datum["dtype"] == ">U0":
                 position = (
                     base
@@ -1388,7 +1378,6 @@ class Tree:
         parent_location = self._directory.key.location  # FIXME: is this correct?
 
         location = self._freesegments.allocate(fNbytes, dry_run=False)
-
         out = []
         out.append(
             uproot.reading._key_format_big.pack(
@@ -1593,6 +1582,7 @@ class Tree:
         # do checks before getting here...easier
         # add to a single branch?
         # remember not to alter data!
+
         if self._num_baskets >= self._basket_capacity - 1:
             self._basket_capacity = max(
                 self._basket_capacity + 1,
@@ -1619,7 +1609,6 @@ class Tree:
                 datum["fBasketEntry"][: len(fBasketEntry)] = fBasketEntry
                 datum["fBasketSeek"][: len(fBasketSeek)] = fBasketSeek
                 datum["fBasketEntry"][len(fBasketEntry)] = self._num_entries
-
             oldloc = start = self._key.location
             stop = start + self._key.num_bytes + self._key.compressed_bytes
 
@@ -1914,9 +1903,7 @@ class Tree:
                 fBasketEntry[i + 1] = num_entries + fBasketEntry[i]
 
             datum["fBasketSeek"][self._num_baskets] = location
-
             datum["arrays_write_stop"] = self._num_baskets + 1
-
         # update TTree metadata in file
         self._num_entries += num_entries
         self._num_baskets += 1

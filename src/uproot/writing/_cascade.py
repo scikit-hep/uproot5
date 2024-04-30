@@ -649,7 +649,6 @@ class OldBranches(CascadeLeaf):
         tbranch_tnamed._bases.append(tbranch_tobject)
         tbranch_tnamed._members["fTitle"] = datum["fTitle"]
         tbranch_tnamed._serialize(out, True, datum["fName"], numpy.uint32(0x00400000))
-
         # TAttFill v2, fFillColor: 0, fFillStyle: 1001
         # make model TAttFill v2 with fFillColor and fFillStyle
         tattfill = uproot.models.TAtt.Model_TAttFill_v2.empty()
@@ -712,12 +711,11 @@ class OldBranches(CascadeLeaf):
         #     out.append(uproot.serialization.serialize_object_any(self._branch.member("fBranchCount2")))
         # empty TObjArray of TBranches
 
-        out.append(  # TODO how to handle this? Make sure to be TBranchElements will be handled too
-            datum["fBranches"].serialize(
-                out,
-            )
+        # TODO how to handle this? Make sure to be TBranchElements will be handled too
+        # empty TObjArray of TBranches
+        out.append(
+            b"@\x00\x00\x15\x00\x03\x00\x01\x00\x00\x00\x00\x03\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
         )
-
         subtobjarray_of_leaves_index = len(out)
         out.append(None)
 
@@ -904,8 +902,8 @@ class OldBranches(CascadeLeaf):
         # empty TObjArray of fBaskets (embedded)
         # TODO "fBranches, which is a TObjArray of nested TBranch instances (possibly TBranchElement)"
 
-        # if len(self._branch_data["fBaskets"]) != 1:
-        #     raise NotImplementedError
+        if len(datum["fBaskets"]) >= 1:
+            raise NotImplementedError
 
         # out.append(
         #     self._branch_data["fBaskets"].serialize(
@@ -933,15 +931,11 @@ class OldBranches(CascadeLeaf):
         # speedbump and fBasketSeek
         out.append(b"\x01")
         out.append(uproot._util.tobytes(datum["fBasketSeek"]))
-
         # out.append(datum["fFileName"].serialize())  # name = None?
-
         out.append(b"\x00")
-
         out[tbranch_index] = uproot.serialization.numbytes_version(
             sum(len(x) for x in out[tbranch_index + 1 :]), 13  # TBranch
         )
-
         out[any_tbranch_index] = (
             uproot.serialization._serialize_object_any_format1.pack(
                 numpy.uint32(sum(len(x) for x in out[any_tbranch_index + 1 :]) + 4)
@@ -949,6 +943,7 @@ class OldBranches(CascadeLeaf):
                 uproot.const.kNewClassTag,
             )
         )
+
         return out, datum["tleaf_reference_number"]
 
     def read_members(self, branch):
@@ -2147,8 +2142,9 @@ class Directory(CascadeNode):
         field_name,
         initial_basket_capacity,
         resize_factor,
-        existing_branches=None,
-        new_branches=None,
+        existing_ttree,
+        existing_branches,
+        new_branches,
     ):
         import uproot.writing._cascadetree
 
@@ -2163,9 +2159,11 @@ class Directory(CascadeNode):
             initial_basket_capacity,
             resize_factor,
             existing_branches,
+            existing_ttree,
         )
         tree.write_anew(sink)
-        tree.add_data(sink._file, sink, new_branches)
+        tree.extend(sink._file, sink, new_branches)
+
         return tree
 
     def add_rntuple(self, sink, name, title, akform):
@@ -2688,7 +2686,6 @@ def create_empty(
     filename = "dynamic.root" if filename is None else os.path.split(filename)[-1]
     if len(filename) >= 256:
         raise ValueError("ROOT file names must be less than 256 bytes")
-
     fileheader = FileHeader(
         None,
         None,
@@ -2700,7 +2697,6 @@ def create_empty(
         None,
         uuid_function(),
     )
-
     freesegments_key = Key(
         None,
         None,
@@ -2758,6 +2754,7 @@ def create_empty(
         fileheader.begin,
         None,
     )
+
     directory_data = DirectoryData(None, initial_directory_bytes, [])
     rootdirectory = RootDirectory(
         directory_key,
@@ -2789,7 +2786,6 @@ def create_empty(
     )
     fileheader.info_location = streamers_key.location
     fileheader.info_num_bytes = streamers_key.allocation + streamers.allocation
-
     rootdirectory.write(sink)
     streamers.write(sink)
 

@@ -122,7 +122,6 @@ def recreate(file_path: str | Path | IO, **options):
             "unrecognized options for uproot.create or uproot.recreate: "
             + ", ".join(repr(x) for x in options)
         )
-
     cascading = uproot.writing._cascade.create_empty(
         sink,
         compression,
@@ -173,7 +172,6 @@ def update(file_path: str | Path | IO, **options):
             "unrecognized options for uproot.update: "
             + ", ".join(repr(x) for x in options)
         )
-
     cascading = uproot.writing._cascade.update_existing(
         sink,
         initial_directory_bytes,
@@ -232,7 +230,6 @@ class WritableFile(uproot.reading.CommonFileMethods):
     @property
     def sink(self) -> uproot.sink.file.FileSink:
         """
-        Returns a :doc:`uproot.sink.file.FileSink`, the physical layer for writing
         (and sometimes reading) data.
         """
         return self._sink
@@ -1346,9 +1343,8 @@ in file {self.file_path} in directory {self.path}"""
 
     def add(  # variation of mktree for copying ttree
         self,
-        name,
-        branches,
         source,
+        branches,
         title="",
         *,
         counter_name=lambda counted: "n" + counted,
@@ -1387,7 +1383,6 @@ in file {self.file_path} in directory {self.path}"""
             raise ValueError(
                 f"""TTree {old_ttree.name} in file {old_ttree.file_path} is empty."""
             )
-
         try:  # Will this throw an error? proabably?
             at = old_ttree.name.rindex("/")
         except ValueError:
@@ -1396,6 +1391,11 @@ in file {self.file_path} in directory {self.path}"""
         else:
             dirpath, treename = old_ttree.name[:at], old_ttree.name[at + 1 :]
             directory = self.mkdir(dirpath)
+        import copy
+
+        ot = copy.deepcopy(old_ttree)
+
+        del self[old_ttree.name]
 
         path = (*directory._path, treename)
 
@@ -1490,14 +1490,15 @@ in file {self.file_path} in directory {self.path}"""
             directory._file,
             directory._cascading.copy_tree(
                 directory._file.sink,
-                name,
+                ot.name,
                 title,
                 metadata,
                 counter_name,
                 field_name,
                 initial_basket_capacity,
                 resize_factor,
-                old_ttree.branches,
+                ot,
+                ot.branches,
                 branches,
             ),
         )
@@ -2054,7 +2055,7 @@ class WritableTree:
         self, data, **more_data
     ):  # Eventually... def add(self, as_dict=None, **as_kwds):
         # data must be a dict,
-        self._cascading.add_data(self._file, self._file.sink, data)
+        self._cascading.extend(self._file, self._file.sink, data)
 
 
 class WritableBranch:
