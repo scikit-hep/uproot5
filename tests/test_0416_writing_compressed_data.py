@@ -34,7 +34,8 @@ def test_ZLIB(use_isal):
 
 @pytest.mark.parametrize("use_deflate", [False, True])
 def test_deflate(use_deflate):
-    if use_deflate:
+    # FIXME: https://github.com/dcwatson/deflate/issues/42
+    if use_deflate and not uproot._util.macos:
         pytest.importorskip("deflate")
         uproot.ZLIB.library = "deflate"
     else:
@@ -133,7 +134,8 @@ def test_histogram_ZLIB(tmp_path, use_isal):
 
 @pytest.mark.parametrize("use_deflate", [False, True])
 def test_histogram_deflate(tmp_path, use_deflate):
-    if use_deflate:
+    # FIXME: https://github.com/dcwatson/deflate/issues/42
+    if use_deflate and not uproot._util.macos:
         pytest.importorskip("deflate")
         uproot.ZLIB.library = "deflate"
     else:
@@ -591,7 +593,8 @@ def test_multicompression_5(tmp_path, use_isal):
 
 @pytest.mark.parametrize("use_deflate", [False, True])
 def test_multicompression_1_deflate(tmp_path, use_deflate):
-    if use_deflate:
+    # FIXME: https://github.com/dcwatson/deflate/issues/42
+    if use_deflate and not uproot._util.macos:
         pytest.importorskip("deflate")
         uproot.ZLIB.library = "deflate"
     else:
@@ -625,7 +628,8 @@ def test_multicompression_1_deflate(tmp_path, use_deflate):
 
 @pytest.mark.parametrize("use_deflate", [False, True])
 def test_multicompression_2_deflate(tmp_path, use_deflate):
-    if use_deflate:
+    # FIXME: https://github.com/dcwatson/deflate/issues/42
+    if use_deflate and not uproot._util.macos:
         pytest.importorskip("deflate")
         uproot.ZLIB.library = "deflate"
     else:
@@ -658,7 +662,8 @@ def test_multicompression_2_deflate(tmp_path, use_deflate):
 
 @pytest.mark.parametrize("use_deflate", [False, True])
 def test_multicompression_3_deflate(tmp_path, use_deflate):
-    if use_deflate:
+    # FIXME: https://github.com/dcwatson/deflate/issues/42
+    if use_deflate and not uproot._util.macos:
         pytest.importorskip("deflate")
         uproot.ZLIB.library = "deflate"
     else:
@@ -692,7 +697,8 @@ def test_multicompression_3_deflate(tmp_path, use_deflate):
 
 @pytest.mark.parametrize("use_deflate", [False, True])
 def test_multicompression_4_deflate(tmp_path, use_deflate):
-    if use_deflate:
+    # FIXME: https://github.com/dcwatson/deflate/issues/42
+    if use_deflate and not uproot._util.macos:
         pytest.importorskip("deflate")
         uproot.ZLIB.library = "deflate"
     else:
@@ -724,7 +730,8 @@ def test_multicompression_4_deflate(tmp_path, use_deflate):
 
 @pytest.mark.parametrize("use_deflate", [False, True])
 def test_multicompression_5_deflate(tmp_path, use_deflate):
-    if use_deflate:
+    # FIXME: https://github.com/dcwatson/deflate/issues/42
+    if use_deflate and not uproot._util.macos:
         pytest.importorskip("deflate")
         uproot.ZLIB.library = "deflate"
     else:
