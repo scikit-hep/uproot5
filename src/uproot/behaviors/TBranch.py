@@ -3007,8 +3007,10 @@ def _ranges_or_baskets_to_arrays(
             )
 
         # check for CannotBeAwkward errors on the main thread before reading any data
-        if isinstance(library, uproot.interpretation.library.Awkward) and isinstance(
-            interpretation, uproot.interpretation.objects.AsObjects
+        if (
+            isinstance(library, uproot.interpretation.library.Awkward)
+            and isinstance(interpretation, uproot.interpretation.objects.AsObjects)
+            and cache_key in branchid_to_branch
         ):
             branchid_to_branch[cache_key]._awkward_check(interpretation)
 
