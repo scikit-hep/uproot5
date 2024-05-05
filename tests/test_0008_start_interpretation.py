@@ -49,7 +49,7 @@ def test_file_header(use_isal):
 
 @pytest.mark.parametrize("use_deflate", [False, True])
 def test_file_header(use_deflate):
-    if use_deflate:
+    if use_deflate and not uproot._util.macos:
         pytest.importorskip("deflate")
     uproot.ZLIB.use_deflate = use_deflate
     filename = skhep_testdata.data_path("uproot-Zmumu.root")
