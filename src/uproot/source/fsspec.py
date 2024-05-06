@@ -91,7 +91,7 @@ class FSSpecSource(uproot.source.chunk.Source):
         self._num_requests += 1
         self._num_requested_chunks += 1
         self._num_requested_bytes += stop - start
-        data = self._fs.cat_file(self._file_path, start, stop)
+        data = self._fs.cat_file(self._file_path, start=start, end=stop)
         future = uproot.source.futures.TrivialFuture(data)
         return uproot.source.chunk.Chunk(self, start, stop, future)
 
