@@ -214,7 +214,7 @@ in file {self.file.file_path}"""
                 self._data,
                 max_line_width=numpy.inf,
                 separator=", ",
-                formatter={"float": lambda x: "%g" % x},
+                formatter={"float": lambda x: f"{x:g}"},
                 threshold=6,
             ),
             id(self),

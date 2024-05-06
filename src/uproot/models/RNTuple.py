@@ -32,6 +32,7 @@ _rntuple_checksum_format = struct.Struct("<Q")
 _rntuple_envlink_size_format = struct.Struct("<Q")
 _rntuple_page_num_elements_format = struct.Struct("<I")
 _rntuple_column_group_id_format = struct.Struct("<I")
+_rntuple_first_ele_index_format = struct.Struct("<I")
 
 
 def from_zigzag(n):
@@ -53,7 +54,7 @@ class Model_ROOT_3a3a_Experimental_3a3a_RNTuple(uproot.model.Model):
     @property
     def _keys(self):
         keys = []
-        field_records = self.header.field_records
+        field_records = self.field_records
         for i, fr in enumerate(field_records):
             if fr.parent_field_id == i and fr.type_name != "":
                 keys.append(fr.field_name)
@@ -89,8 +90,13 @@ in file {self.file.file_path}"""
         self._footer_chunk_ready = False
         self._header, self._footer = None, None
 
+        self._field_records = None
         self._field_names = None
         self._column_records = None
+        self._alias_column_records = None
+        self._alias_columns_dict_ = None
+        self._related_ids_ = None
+        self._column_records_dict_ = None
 
         self._page_list_envelopes = []
 
@@ -152,14 +158,63 @@ in file {self.file.file_path}"""
         return self._header
 
     @property
+    def field_records(self):
+        if self._field_records is None:
+            self._field_records = list(self.header.field_records)
+            self._field_records.extend(self.footer.extension_links.field_records)
+        return self._field_records
+
+    @property
     def field_names(self):
         if self._field_names is None:
-            self._field_names = [r.field_name for r in self.header.field_records]
+            self._field_names = [r.field_name for r in self.field_records]
         return self._field_names
 
     @property
     def column_records(self):
-        return self.header.column_records
+        if self._column_records is None:
+            self._column_records = list(self.header.column_records)
+            self._column_records.extend(self.footer.extension_links.column_records)
+            for i, cr in enumerate(self._column_records):
+                cr.idx = i
+        return self._column_records
+
+    @property
+    def alias_column_records(self):
+        if self._alias_column_records is None:
+            self._alias_column_records = list(self.header.alias_column_records)
+            self._alias_column_records.extend(
+                self.footer.extension_links.alias_column_records
+            )
+        return self._alias_column_records
+
+    @property
+    def _alias_columns_dict(self):
+        if self._alias_columns_dict_ is None:
+            self._alias_columns_dict_ = {
+                el.field_id: el.physical_id for el in self.alias_column_records
+            }
+        return self._alias_columns_dict_
+
+    @property
+    def _column_records_dict(self):
+        if self._column_records_dict_ is None:
+            self._column_records_dict_ = {}
+            for cr in self.column_records:
+                if cr.field_id not in self._column_records_dict_:
+                    self._column_records_dict_[cr.field_id] = [cr]
+                else:
+                    self._column_records_dict_[cr.field_id].append(cr)
+        return self._column_records_dict_
+
+    @property
+    def _related_ids(self):
+        if self._related_ids_ is None:
+            self._related_ids_ = defaultdict(list)
+            for i, el in enumerate(self.field_records):
+                if el.parent_field_id != i:
+                    self._related_ids_[el.parent_field_id].append(i)
+        return self._related_ids_
 
     @property
     def footer(self):
@@ -218,10 +273,10 @@ in file {self.file.file_path}"""
 
         return self._page_list_envelopes
 
-    def base_col_form(self, cr, col_id, parameters=None):
+    def base_col_form(self, cr, col_id, parameters=None, cardinality=False):
         ak = uproot.extras.awkward()
 
-        form_key = f"column-{col_id}"
+        form_key = f"column-{col_id}" + ("-cardinality" if cardinality else "")
         dtype_byte = cr.type
         if dtype_byte == uproot.const.rntuple_role_union:
             return form_key
@@ -240,34 +295,32 @@ in file {self.file.file_path}"""
     def col_form(self, field_id):
         ak = uproot.extras.awkward()
 
-        if field_id in self._column_records_dict:
-            rel_crs = self._column_records_dict[field_id]["rel_crs"]
-            rel_crs_idxs = self._column_records_dict[field_id]["rel_crs_idxs"]
-        elif field_id in self._alias_columns_dict:
-            rel_crs = self._column_records_dict[self._alias_columns_dict[field_id]][
-                "rel_crs"
-            ]
-            rel_crs_idxs = self._column_records_dict[
-                self._alias_columns_dict[field_id]
-            ]["rel_crs_idxs"]
-        else:
+        cfid = field_id
+        if cfid in self._alias_columns_dict:
+            cfid = self._alias_columns_dict[cfid]
+        if cfid not in self._column_records_dict:
             raise (
                 RuntimeError(
-                    f"The filed_id: {field_id} is missing both from the columns records and the alias columns."
+                    f"The field_id: {cfid} is missing from the columns records."
                 )
             )
 
+        rel_crs = self._column_records_dict[cfid]
+
         if len(rel_crs) == 1:  # base case
-            return self.base_col_form(rel_crs[0], rel_crs_idxs[0])
+            cardinality = "RNTupleCardinality" in self.field_records[field_id].type_name
+            return self.base_col_form(
+                rel_crs[0], rel_crs[0].idx, cardinality=cardinality
+            )
         elif (
-            len(rel_crs_idxs) == 2
+            len(rel_crs) == 2
             and rel_crs[1].type == uproot.const.rntuple_col_type_to_num_dict["char"]
         ):
             # string field splits->2 in col records
             inner = self.base_col_form(
-                rel_crs[1], rel_crs_idxs[-1], parameters={"__array__": "char"}
+                rel_crs[1], rel_crs[1].idx, parameters={"__array__": "char"}
             )
-            form_key = f"column-{rel_crs_idxs[0]}"
+            form_key = f"column-{rel_crs[0].idx}"
             return ak.forms.ListOffsetForm(
                 "i64", inner, form_key=form_key, parameters={"__array__": "string"}
             )
@@ -277,7 +330,7 @@ in file {self.file.file_path}"""
     def field_form(self, this_id, seen):
         ak = uproot.extras.awkward()
 
-        field_records = self.header.field_records
+        field_records = self.field_records
         this_record = field_records[this_id]
         seen.add(this_id)
         structural_role = this_record.struct_role
@@ -294,14 +347,32 @@ in file {self.file.file_path}"""
                 child_id = self._related_ids[this_id][0]
 
             inner = self.field_form(child_id, seen)
-            return ak.forms.RegularForm(inner, this_record.repetition)
+            keyname = f"RegularForm-{this_id}"
+            return ak.forms.RegularForm(inner, this_record.repetition, form_key=keyname)
         elif structural_role == uproot.const.rntuple_role_vector:
-            keyname = f"column-{this_id}"
+            if this_id not in self._related_ids or len(self._related_ids[this_id]) != 1:
+                keyname = f"vector-{this_id}"
+                newids = self._related_ids.get(this_id, [])
+                # go find N in the rest, N is the # of fields in vector
+                recordlist = [self.field_form(i, seen) for i in newids]
+                namelist = [field_records[i].field_name for i in newids]
+                return ak.forms.RecordForm(recordlist, namelist, form_key="whatever")
+            cfid = this_id
+            if cfid in self._alias_columns_dict:
+                cfid = self._alias_columns_dict[cfid]
+            if cfid not in self._column_records_dict:
+                raise (
+                    RuntimeError(
+                        f"The field_id: {cfid} is missing from the columns records."
+                    )
+                )
+            col_id = self._column_records_dict[cfid][0].idx
+            keyname = f"column-{col_id}"
             #  this only has one child
             if this_id in self._related_ids:
                 child_id = self._related_ids[this_id][0]
             inner = self.field_form(child_id, seen)
-            return ak.forms.ListOffsetForm("u32", inner, form_key=keyname)
+            return ak.forms.ListOffsetForm("i64", inner, form_key=keyname)
         elif structural_role == uproot.const.rntuple_role_struct:
             newids = []
             if this_id in self._related_ids:
@@ -324,13 +395,15 @@ in file {self.file.file_path}"""
     def to_akform(self):
         ak = uproot.extras.awkward()
 
-        field_records = self.header.field_records
+        field_records = self.field_records
         recordlist = []
         topnames = self.keys()
         seen = set()
         for i in range(len(field_records)):
             if i not in seen:
-                recordlist.append(self.field_form(i, seen))
+                ff = self.field_form(i, seen)
+                if field_records[i].type_name != "":
+                    recordlist.append(ff)
 
         form = ak.forms.RecordForm(recordlist, topnames, form_key="toplevel")
         return form
@@ -358,7 +431,6 @@ in file {self.file.file_path}"""
                 res = numpy.empty(len(content), numpy.uint8)
                 res[0::2] = content[len(res) * 0 // 2 : len(res) * 1 // 2]
                 res[1::2] = content[len(res) * 1 // 2 : len(res) * 2 // 2]
-                res = res.view(numpy.uint16)
 
             elif nbits == 32:
                 # AAAAABBBBBCCCCCDDDDD needs to become
@@ -368,7 +440,6 @@ in file {self.file.file_path}"""
                 res[1::4] = content[len(res) * 1 // 4 : len(res) * 2 // 4]
                 res[2::4] = content[len(res) * 2 // 4 : len(res) * 3 // 4]
                 res[3::4] = content[len(res) * 3 // 4 : len(res) * 4 // 4]
-                res = res.view(numpy.uint32)
 
             elif nbits == 64:
                 # AAAAABBBBBCCCCCDDDDDEEEEEFFFFFGGGGGHHHHH needs to become
@@ -382,9 +453,8 @@ in file {self.file.file_path}"""
                 res[5::8] = content[len(res) * 5 // 8 : len(res) * 6 // 8]
                 res[6::8] = content[len(res) * 6 // 8 : len(res) * 7 // 8]
                 res[7::8] = content[len(res) * 7 // 8 : len(res) * 8 // 8]
-                res = res.view(numpy.uint64)
 
-            content = res
+            content = res.view(dtype)
 
         if isbit:
             content = (
@@ -396,10 +466,14 @@ in file {self.file.file_path}"""
         # needed to chop off extra bits incase we used `unpackbits`
         destination[:] = content[:num_elements]
 
-    def read_col_pages(self, ncol, cluster_range):
-        return numpy.concatenate(
+    def read_col_pages(self, ncol, cluster_range, pad_missing_ele=False):
+        res = numpy.concatenate(
             [self.read_col_page(ncol, i) for i in cluster_range], axis=0
         )
+        if pad_missing_ele:
+            first_ele_index = self.column_records[ncol].first_ele_index
+            res = numpy.pad(res, (first_ele_index, 0))
+        return res
 
     def read_col_page(self, ncol, cluster_i):
         linklist = self.page_list_envelopes.pagelinklist[cluster_i]
@@ -408,30 +482,28 @@ in file {self.file.file_path}"""
         dtype_str = uproot.const.rntuple_col_num_to_dtype_dict[dtype_byte]
         dtype = numpy.dtype("bool") if dtype_str == "bit" else numpy.dtype(dtype_str)
 
-        # FIXME vector read
-        # n.b. it's possible pagelist is empty
-        if not pagelist:
-            return numpy.empty(0, dtype)
-        total_len = numpy.sum([desc.num_elements for desc in pagelist])
+        total_len = numpy.sum([desc.num_elements for desc in pagelist], dtype=int)
         res = numpy.empty(total_len, dtype)
-        tracker = 0
         split = 14 <= dtype_byte <= 21 or 26 <= dtype_byte <= 28
+        zigzag = 26 <= dtype_byte <= 28
+        delta = dtype_byte in (14, 15)
+        index = dtype_byte in (0, 1, 14, 15)
         nbits = uproot.const.rntuple_col_num_to_size_dict[dtype_byte]
+        tracker = 0
+        cumsum = 0
         for page_desc in pagelist:
             n_elements = page_desc.num_elements
             tracker_end = tracker + n_elements
             self.read_pagedesc(
                 res[tracker:tracker_end], page_desc, dtype_str, dtype, nbits, split
             )
+            if delta:
+                res[tracker] -= cumsum
+                cumsum += numpy.sum(res[tracker:tracker_end])
             tracker = tracker_end
 
-        if (
-            dtype_byte <= uproot.const.rntuple_col_type_to_num_dict["index32"]
-            or 14 <= dtype_byte <= 15
-        ):
+        if index:
             res = numpy.insert(res, 0, 0)  # for offsets
-        zigzag = 26 <= dtype_byte <= 28
-        delta = 14 <= dtype_byte <= 15
         if zigzag:
             res = from_zigzag(res)
         elif delta:
@@ -462,27 +534,6 @@ in file {self.file.file_path}"""
             [c.num_entries for c in clusters[start_cluster_idx:stop_cluster_idx]]
         )
 
-        self._alias_columns_dict = {
-            el.field_id: el.physical_id for el in self.header.alias_columns
-        }
-        self._column_records_dict = {}
-        self._column_records_idx_to_id = {}
-        for i, cr in enumerate(self.header.column_records):
-            if cr.field_id not in self._column_records_dict:
-                self._column_records_dict[cr.field_id] = {
-                    "rel_crs": [cr],
-                    "rel_crs_idxs": [i],
-                }
-            else:
-                self._column_records_dict[cr.field_id]["rel_crs"].append(cr)
-                self._column_records_dict[cr.field_id]["rel_crs_idxs"].append(i)
-            self._column_records_idx_to_id[i] = cr.field_id
-
-        self._related_ids = defaultdict(list)
-        for i, el in enumerate(self.header.field_records):
-            if el.parent_field_id != i:
-                self._related_ids[el.parent_field_id].append(i)
-
         form = self.to_akform().select_columns(filter_names)
         # only read columns mentioned in the awkward form
         target_cols = []
@@ -491,22 +542,14 @@ in file {self.file.file_path}"""
         for key in target_cols:
             if "column" in key:
                 key_nr = int(key.split("-")[1])
-                key_fid = self._column_records_idx_to_id[key_nr]
-                if key_fid in self._column_records_dict:
-                    id = key_fid
-                elif key_nr in self._alias_columns_dict:
-                    id = self._alias_columns_dict[key_fid]
-                else:
-                    raise (
-                        RuntimeError(
-                            f"The key: {key} is missing both from the columns records and the alias columns."
-                        )
-                    )
-
-                dtype_byte = self._column_records_dict[id]["rel_crs"][0].type
+                dtype_byte = self.column_records[key_nr].type
                 content = self.read_col_pages(
-                    key_nr, range(start_cluster_idx, stop_cluster_idx)
+                    key_nr,
+                    range(start_cluster_idx, stop_cluster_idx),
+                    pad_missing_ele=True,
                 )
+                if "cardinality" in key:
+                    content = numpy.diff(content)
                 if dtype_byte == uproot.const.rntuple_col_type_to_num_dict["switch"]:
                     kindex, tags = _split_switch_bits(content)
                     container_dict[f"{key}-index"] = kindex
@@ -667,6 +710,12 @@ class ColumnRecordReader:
         out.type, out.nbits, out.field_id, out.flags = cursor.fields(
             chunk, _rntuple_column_record_format, context
         )
+        if out.flags & 0x08:
+            out.first_ele_index = cursor.field(
+                chunk, _rntuple_first_ele_index_format, context
+            )
+        else:
+            out.first_ele_index = 0
         return out
 
 
@@ -716,21 +765,14 @@ class HeaderReader:
 
         out.field_records = self.list_field_record_frames.read(chunk, cursor, context)
         out.column_records = self.list_column_record_frames.read(chunk, cursor, context)
-        out.alias_columns = self.list_alias_column_frames.read(chunk, cursor, context)
+        out.alias_column_records = self.list_alias_column_frames.read(
+            chunk, cursor, context
+        )
         out.extra_type_infos = self.list_extra_type_info_reader.read(
             chunk, cursor, context
         )
         out.checksum = cursor.field(chunk, _rntuple_checksum_format, context)
 
-        return out
-
-    def read_extension_header(self, out, chunk, cursor, context):
-        out.field_records = self.list_field_record_frames.read(chunk, cursor, context)
-        out.column_records = self.list_column_record_frames.read(chunk, cursor, context)
-        out.alias_columns = self.list_alias_column_frames.read(chunk, cursor, context)
-        out.extra_type_infos = self.list_extra_type_info_reader.read(
-            chunk, cursor, context
-        )
         return out
 
 
@@ -780,7 +822,7 @@ class RNTupleSchemaExtension:
         out.column_records = ListFrameReader(
             RecordFrameReader(ColumnRecordReader())
         ).read(chunk, cursor, context)
-        out.alias_records = ListFrameReader(
+        out.alias_column_records = ListFrameReader(
             RecordFrameReader(AliasColumnReader())
         ).read(chunk, cursor, context)
         out.extra_type_info = ListFrameReader(
