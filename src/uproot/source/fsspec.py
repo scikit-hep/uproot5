@@ -12,13 +12,14 @@ import fsspec.asyn
 import uproot
 import uproot.source.chunk
 import uproot.source.futures
-from uproot.source.coalesce import coalesce_requests
+from uproot.source.coalesce import CoalesceConfig, coalesce_requests
 
 
 class FSSpecSource(uproot.source.chunk.Source):
     """
     Args:
         file_path (str): A URL for the file to open.
+        coalesce_config (struct, optional): Configuration options for read coalescing
         **kwargs (dict): any extra arguments to be forwarded to the particular
             FileSystem instance constructor. This might include S3 access keys,
             or HTTP headers, etc.
@@ -27,8 +28,11 @@ class FSSpecSource(uproot.source.chunk.Source):
     to get many chunks in one request.
     """
 
-    def __init__(self, file_path: str, **options):
+    def __init__(
+        self, file_path: str, coalesce_config: CoalesceConfig | None = None, **options
+    ):
         super().__init__()
+        self._coalesce_config = coalesce_config
         self._fs, self._file_path = fsspec.core.url_to_fs(
             file_path, **self.extract_fsspec_options(options)
         )
@@ -162,7 +166,9 @@ class FSSpecSource(uproot.source.chunk.Source):
             )
             return self._executor.submit(coroutine)
 
-        return coalesce_requests(ranges, submit, self, notifications)
+        return coalesce_requests(
+            ranges, submit, self, notifications, config=self._coalesce_config
+        )
 
     @property
     def async_impl(self) -> bool:

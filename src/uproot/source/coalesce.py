@@ -115,8 +115,10 @@ def coalesce_requests(
     submit_fn: Callable[[list[tuple[int, int]]], Future],
     source: uproot.source.chunk.Source,
     notifications: queue.Queue,
-    config: CoalesceConfig = DEFAULT_CONFIG,
+    config: CoalesceConfig | None = None,
 ):
+    if config is None:
+        config = DEFAULT_CONFIG
     all_requests = [RangeRequest(start, stop, None) for start, stop in ranges]
     for merged_request in _coalesce(all_requests, config):
         future = submit_fn(merged_request.ranges())
