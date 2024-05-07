@@ -13,7 +13,6 @@ import itertools
 import numbers
 import os
 import re
-import sys
 import warnings
 from collections.abc import Iterable
 from pathlib import Path
@@ -27,8 +26,6 @@ import packaging.version
 import uproot.source.chunk
 import uproot.source.fsspec
 import uproot.source.object
-
-macos = sys.platform == "darwin"
 
 
 def tobytes(array):
