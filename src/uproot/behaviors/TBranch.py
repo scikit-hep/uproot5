@@ -1424,7 +1424,7 @@ class HasBranches(Mapping):
                     if filter_name is no_filter or _filter_name_deep(
                         filter_name, self, v
                     ):
-                        if ignore_duplicates and branch.name in keys_set:
+                        if ignore_duplicates and k2 in keys_set:
                             pass
                         else:
                             keys_set.add(k2)
