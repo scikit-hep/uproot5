@@ -2159,8 +2159,10 @@ class FileHeader(CascadeLeaf):
                 uuid_bytes,
             ) = uproot.reading._file_header_fields_big.unpack(raw_bytes)
             assert units == 8
+            outversion = version - 1000000
         else:
             assert units == 4
+            outversion = version
 
         assert begin >= uproot.reading._file_header_fields_small.size
         assert free_location >= 0
@@ -2183,7 +2185,7 @@ class FileHeader(CascadeLeaf):
             info_num_bytes,
             uuid.UUID(bytes=uuid_bytes),
         )
-        out._version = version - 1000000
+        out._version = outversion
         out._begin = begin
         return out
 
