@@ -354,10 +354,11 @@ class Tree:
         if letter is None:
             raise TypeError(f"cannot write NumPy dtype {branch_dtype} in TTree")
 
-        if branch_shape == ():
-            dims = ""
-        else:
-            dims = "".join("[" + str(x) + "]" for x in branch_shape)
+        dims = ""
+        if counter is not None:
+            dims = "[" + counter["fName"] + "]"
+        if len(branch_shape) > 0:
+            dims = dims + "".join("[" + str(x) + "]" for x in branch_shape)
 
         title = f"{branch_name}{dims}/{letter}"
 

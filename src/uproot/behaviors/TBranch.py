@@ -1424,7 +1424,7 @@ class HasBranches(Mapping):
                     if filter_name is no_filter or _filter_name_deep(
                         filter_name, self, v
                     ):
-                        if ignore_duplicates and branch.name in keys_set:
+                        if ignore_duplicates and k2 in keys_set:
                             pass
                         else:
                             keys_set.add(k2)
@@ -3007,8 +3007,10 @@ def _ranges_or_baskets_to_arrays(
             )
 
         # check for CannotBeAwkward errors on the main thread before reading any data
-        if isinstance(library, uproot.interpretation.library.Awkward) and isinstance(
-            interpretation, uproot.interpretation.objects.AsObjects
+        if (
+            isinstance(library, uproot.interpretation.library.Awkward)
+            and isinstance(interpretation, uproot.interpretation.objects.AsObjects)
+            and cache_key in branchid_to_branch
         ):
             branchid_to_branch[cache_key]._awkward_check(interpretation)
 
