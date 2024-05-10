@@ -12,26 +12,14 @@ import fsspec.asyn
 import uproot
 import uproot.source.chunk
 import uproot.source.futures
-
-
-class PartFuture:
-    """For splitting the result of fs._cat_ranges into its components"""
-
-    def __init__(self, parent_future: concurrent.futures.Future, part_index: int):
-        self._parent = parent_future
-        self._part_index = part_index
-
-    def add_done_callback(self, callback, *, context=None):
-        self._parent.add_done_callback(callback)
-
-    def result(self, timeout=None):
-        return self._parent.result(timeout=timeout)[self._part_index]
+from uproot.source.coalesce import CoalesceConfig, coalesce_requests
 
 
 class FSSpecSource(uproot.source.chunk.Source):
     """
     Args:
         file_path (str): A URL for the file to open.
+        coalesce_config (struct, optional): Configuration options for read coalescing
         **kwargs (dict): any extra arguments to be forwarded to the particular
             FileSystem instance constructor. This might include S3 access keys,
             or HTTP headers, etc.
@@ -40,8 +28,11 @@ class FSSpecSource(uproot.source.chunk.Source):
     to get many chunks in one request.
     """
 
-    def __init__(self, file_path: str, **options):
+    def __init__(
+        self, file_path: str, coalesce_config: CoalesceConfig | None = None, **options
+    ):
         super().__init__()
+        self._coalesce_config = coalesce_config
         self._fs, self._file_path = fsspec.core.url_to_fs(
             file_path, **self.extract_fsspec_options(options)
         )
@@ -50,7 +41,6 @@ class FSSpecSource(uproot.source.chunk.Source):
         self._async_impl = self._fs.async_impl
 
         self._file = None
-        self._fh = None
 
         self._open()
 
@@ -75,25 +65,20 @@ class FSSpecSource(uproot.source.chunk.Source):
         return f"<{type(self).__name__} {path} at 0x{id(self):012x}>"
 
     def __getstate__(self):
-        self._fh = None
         state = dict(self.__dict__)
         state.pop("_executor")
         state.pop("_file")
-        state.pop("_fh")
         return state
 
     def __setstate__(self, state):
         self.__dict__ = state
         self._file = None
-        self._fh = None
         self._open()
 
     def __enter__(self):
-        self._fh = self._file.__enter__()
         return self
 
     def __exit__(self, exception_type, exception_value, traceback):
-        self._fh = None
         self._file.__exit__(exception_type, exception_value, traceback)
         self._executor.shutdown()
 
@@ -110,20 +95,16 @@ class FSSpecSource(uproot.source.chunk.Source):
         self._num_requests += 1
         self._num_requested_chunks += 1
         self._num_requested_bytes += stop - start
-        if self._fh:
-            self._fh.seek(start)
-            data = self._fh.read(stop - start)
-        else:
-            data = self._fs.cat_file(self._file_path, start, stop)
+        data = self._fs.cat_file(self._file_path, start=start, end=stop)
         future = uproot.source.futures.TrivialFuture(data)
         return uproot.source.chunk.Chunk(self, start, stop, future)
 
     def chunks(
-        self, ranges: list[(int, int)], notifications: queue.Queue
+        self, ranges: list[tuple[int, int]], notifications: queue.Queue
     ) -> list[uproot.source.chunk.Chunk]:
         """
         Args:
-            ranges (list of (int, int) 2-tuples): Intervals to fetch
+            ranges (list of tuple[int, int] 2-tuples): Intervals to fetch
                 as (start, stop) pairs in a single request, if possible.
             notifications (``queue.Queue``): Indicator of completed
                 chunks. After each gets filled, it is ``put`` on the
@@ -171,29 +152,23 @@ class FSSpecSource(uproot.source.chunk.Source):
             # TODO: when python 3.8 is dropped, use `asyncio.to_thread` instead (also remove the try/except block above)
             return await to_thread(blocking_func, *args, **kwargs)
 
-        paths = [self._file_path] * len(ranges)
-        starts = [start for start, _ in ranges]
-        ends = [stop for _, stop in ranges]
-        # _cat_ranges is async while cat_ranges is not.
-        coroutine = (
-            self._fs._cat_ranges(paths=paths, starts=starts, ends=ends)
-            if self._async_impl
-            else async_wrapper_thread(
-                self._fs.cat_ranges, paths=paths, starts=starts, ends=ends
+        def submit(request_ranges: list[tuple[int, int]]):
+            paths = [self._file_path] * len(request_ranges)
+            starts = [start for start, _ in request_ranges]
+            ends = [stop for _, stop in request_ranges]
+            # _cat_ranges is async while cat_ranges is not.
+            coroutine = (
+                self._fs._cat_ranges(paths=paths, starts=starts, ends=ends)
+                if self._async_impl
+                else async_wrapper_thread(
+                    self._fs.cat_ranges, paths=paths, starts=starts, ends=ends
+                )
             )
+            return self._executor.submit(coroutine)
+
+        return coalesce_requests(
+            ranges, submit, self, notifications, config=self._coalesce_config
         )
-
-        future = self._executor.submit(coroutine)
-
-        chunks = []
-        for index, (start, stop) in enumerate(ranges):
-            chunk_future = PartFuture(future, index)
-            chunk = uproot.source.chunk.Chunk(self, start, stop, chunk_future)
-            chunk_future.add_done_callback(
-                uproot.source.chunk.notifier(chunk, notifications)
-            )
-            chunks.append(chunk)
-        return chunks
 
     @property
     def async_impl(self) -> bool:
