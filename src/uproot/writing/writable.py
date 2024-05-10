@@ -951,7 +951,6 @@ class WritableDirectory(MutableMapping):
                             keys=last._cascading.data.key_names,
                             file_path=self.file_path,
                         )
-
             return step
 
         else:
@@ -1341,11 +1340,10 @@ in file {self.file_path} in directory {self.path}"""
 
         return tree
 
-    def add(  # variation of mktree for copying ttree
+    def add_branches(  # variation of mktree for copying ttree
         self,
         source,
         branches,
-        title="",
         *,
         counter_name=lambda counted: "n" + counted,
         field_name=lambda outer, inner: inner if outer == "" else outer + "_" + inner,
@@ -1368,7 +1366,7 @@ in file {self.file_path} in directory {self.path}"""
         to make an empty TTree or to control its parameters.
         """
         if self._file.sink.closed:
-            raise ValueError("cannot create a TTree in a closed file")
+            raise ValueError("cannot modify a TTree in a closed file")
 
         try:
             file = uproot.open(self.file_path, minimal_ttree_metadata=False)
@@ -1383,31 +1381,16 @@ in file {self.file_path} in directory {self.path}"""
             raise ValueError(
                 f"""TTree {old_ttree.name} in file {old_ttree.file_path} is empty."""
             )
+        at = -1
         try:  # Will this throw an error? proabably?
             at = old_ttree.name.rindex("/")
         except ValueError:
             treename = old_ttree.name
             directory = self
-        else:
-            dirpath, treename = old_ttree.name[:at], old_ttree.name[at + 1 :]
-            directory = self.mkdir(dirpath)
-        import copy
-
-        ot = copy.deepcopy(old_ttree)
-
-        del self[old_ttree.name]
-
+        treename = old_ttree.name[at + 1 :]
         path = (*directory._path, treename)
 
-        # # if awkward:
-        # if uproot._util.from_module(branches, "awkward"):
-
-        #     # Go through all fields? Check lengths and get dtypes?
-        #     data[branch_name] = branch_array
-        #     metadata[branch_name] = branch_array.type
-
         awkward = uproot.extras.awkward()
-        # branch_types = {name: array.type for name, array in zip(awkward.fields(branches), awkward.unzip(branches))}
         import numpy
 
         if uproot._util.from_module(branches, "awkward"):
@@ -1484,25 +1467,26 @@ in file {self.file_path} in directory {self.path}"""
                         if branch_shape != ():
                             branch_dtype = numpy.dtype((branch_dtype, branch_shape))
                         metadata[branch_name] = branch_dtype
-
+        file.close()
         tree = WritableTree(
             path,
             directory._file,
-            directory._cascading.copy_tree(
+            directory._cascading.add_branches(
                 directory._file.sink,
-                ot.name,
-                title,
+                old_ttree.name,
+                old_ttree.title,
                 metadata,
                 counter_name,
                 field_name,
                 initial_basket_capacity,
                 resize_factor,
-                ot,
-                ot.branches,
+                old_ttree,
+                old_ttree.branches,
                 branches,
+                directory,
             ),
         )
-        directory._file._new_tree(tree)
+        # directory._file._new_tree(tree)
 
         seen = set()
         streamers = []
@@ -1529,7 +1513,6 @@ in file {self.file_path} in directory {self.path}"""
         directory._file._cascading.streamers.update_streamers(
             directory._file.sink, streamers
         )
-
         return tree
 
     def mkrntuple(
@@ -2050,12 +2033,6 @@ class WritableTree:
             interpretation_width=interpretation_width,
             stream=stream,
         )
-
-    def add_data(
-        self, data, **more_data
-    ):  # Eventually... def add(self, as_dict=None, **as_kwds):
-        # data must be a dict,
-        self._cascading.extend(self._file, self._file.sink, data)
 
 
 class WritableBranch:

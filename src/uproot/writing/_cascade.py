@@ -824,6 +824,7 @@ class OldBranches(CascadeLeaf):
             )
 
             out.append(uproot._util.tobytes(leaf_header))
+
             if len(leaf_name) < 255:
                 out.append(
                     struct.pack(">B%ds" % len(leaf_name), len(leaf_name), leaf_name)
@@ -904,12 +905,6 @@ class OldBranches(CascadeLeaf):
 
         if len(datum["fBaskets"]) >= 1:
             raise NotImplementedError
-
-        # out.append(
-        #     self._branch_data["fBaskets"].serialize(
-        #         out,
-        #     )
-        # )
 
         out.append(
             b"@\x00\x00\x15\x00\x03\x00\x01\x00\x00\x00\x00\x03\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
@@ -2132,7 +2127,7 @@ class Directory(CascadeNode):
         tree.write_anew(sink)
         return tree
 
-    def copy_tree(
+    def add_branches(
         self,
         sink,
         name,
@@ -2145,6 +2140,7 @@ class Directory(CascadeNode):
         existing_ttree,
         existing_branches,
         new_branches,
+        directory,
     ):
         import uproot.writing._cascadetree
 
@@ -2161,9 +2157,19 @@ class Directory(CascadeNode):
             existing_branches,
             existing_ttree,
         )
-        tree.write_anew(sink)
-        tree.extend(sink._file, sink, new_branches)
+        tree.add_branches(
+            sink, directory.file, new_branches
+        )  # need new_branches for extend...
+        # start = key.seek_location
+        # stop = start + key.num_bytes + key.compressed_bytes
+        # directory._cascading.freesegments.release(start, stop)
 
+        # directory._cascading._data.remove_key(key)
+        # self._cascading.header.modified_on = datetime.datetime.now()
+
+        # directory._cascading.write(self._file.sink)
+        # directory._file.sink.set_file_length(self._cascading.freesegments.fileheader.end)
+        # directory._file.sink.flush()
         return tree
 
     def add_rntuple(self, sink, name, title, akform):
