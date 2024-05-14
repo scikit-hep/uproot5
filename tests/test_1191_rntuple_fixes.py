@@ -57,6 +57,9 @@ def test_empty_page_list():
         assert data[0] == 0
 
 
+@pytest.mark.skip(
+    reason="The file takes too long to download (about 5 seconds). Need to find a smaller test file."
+)
 def test_multiple_page_lists():
     url = "http://root.cern/files/tutorials/ntpl004_dimuon_v1rc2.root"
     with uproot.open(f"simplecache::{url}") as f:
