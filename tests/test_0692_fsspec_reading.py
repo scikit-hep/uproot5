@@ -97,10 +97,6 @@ def test_open_fsspec_local():
 )
 def test_open_fsspec_s3(handler):
     pytest.importorskip("s3fs")
-    if sys.version_info < (3, 11):
-        pytest.skip(
-            "https://github.com/scikit-hep/uproot5/pull/1012",
-        )
 
     with uproot.open(
         "s3://pivarski-princeton/pythia_ppZee_run17emb.picoDst.root:PicoDst",
@@ -461,10 +457,6 @@ def test_fsspec_globbing_xrootd_no_files(handler):
 )
 def test_fsspec_globbing_s3(handler):
     pytest.importorskip("s3fs")
-    if sys.version_info < (3, 11):
-        pytest.skip(
-            "https://github.com/scikit-hep/uproot5/pull/1012",
-        )
 
     iterator = uproot.iterate(
         {"s3://pivarski-princeton/pythia_ppZee_run17emb.*.root": "PicoDst"},
