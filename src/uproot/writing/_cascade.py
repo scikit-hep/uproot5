@@ -713,9 +713,21 @@ class OldBranches(CascadeLeaf):
 
         # TODO how to handle this? Make sure to be TBranchElements will be handled too
         # empty TObjArray of TBranches
-        out.append(
-            b"@\x00\x00\x15\x00\x03\x00\x01\x00\x00\x00\x00\x03\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
-        )
+        if len(datum["fBranches"]) == 0:
+            out.append(
+                b"@\x00\x00\x15\x00\x03\x00\x01\x00\x00\x00\x00\x03\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+            )
+        else:
+            #     print("serialize branches!!")
+            #     # TObjArray header with fName: ""
+            out.append(b"\x00\x01\x00\x00\x00\x00\x03\x00@\x00\x00")
+            out.append(
+                uproot.models.TObjArray._tobjarray_format1.pack(
+                    len(self._branch_data["fBranches"]),  # TObjArray fSize
+                    0,  # TObjArray fLowerBound
+                )
+            )
+
         subtobjarray_of_leaves_index = len(out)
         out.append(None)
 
@@ -904,7 +916,9 @@ class OldBranches(CascadeLeaf):
         # TODO "fBranches, which is a TObjArray of nested TBranch instances (possibly TBranchElement)"
 
         if len(datum["fBaskets"]) >= 1:
-            raise NotImplementedError
+            # print("NotImplementedError, cannot yet write TObjArray of fBaskets")
+            msg = "Cannot yet write baskets"
+            raise NotImplementedError(msg)
 
         out.append(
             b"@\x00\x00\x15\x00\x03\x00\x01\x00\x00\x00\x00\x03\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
@@ -918,11 +932,9 @@ class OldBranches(CascadeLeaf):
         # speedbump and fBasketBytes
         out.append(b"\x01")
         out.append(uproot._util.tobytes(datum["fBasketBytes"]))
-
         # speedbump and fBasketEntry
         out.append(b"\x01")
         out.append(uproot._util.tobytes(datum["fBasketEntry"]))
-
         # speedbump and fBasketSeek
         out.append(b"\x01")
         out.append(uproot._util.tobytes(datum["fBasketSeek"]))
@@ -2157,7 +2169,7 @@ class Directory(CascadeNode):
             existing_branches,
             existing_ttree,
         )
-        tree.add_branches(
+        updated_streamers = tree.add_branches(
             sink, directory.file, new_branches
         )  # need new_branches for extend...
         # start = key.seek_location
@@ -2170,7 +2182,7 @@ class Directory(CascadeNode):
         # directory._cascading.write(self._file.sink)
         # directory._file.sink.set_file_length(self._cascading.freesegments.fileheader.end)
         # directory._file.sink.flush()
-        return tree
+        return tree, updated_streamers
 
     def add_rntuple(self, sink, name, title, akform):
         import uproot.writing._cascadentuple

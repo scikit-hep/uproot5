@@ -897,8 +897,7 @@ class Tree:
         num_branches = sum(
             0 if datum["kind"] == "record" else 1 for datum in self._branch_data
         )
-        if self._existing_branches:
-            num_branches += len(self._existing_branches)
+
         # TObjArray header with fName: ""
         out.append(b"\x00\x01\x00\x00\x00\x00\x03\x00@\x00\x00")
         out.append(
@@ -908,16 +907,6 @@ class Tree:
             )
         )
 
-        # Write old branches?
-        if self._existing_branches:
-            old_branches = uproot.writing._cascade.OldBranches(self._existing_branches)
-            for branch in self._existing_branches:
-                # create OldTBranch object
-                # members = uproot.branch.read_members()
-                out, temp = old_branches.serialize(
-                    out, branch
-                )  # should call uproot.models.TBranch._tbranch13_format...pack or something
-                tleaf_reference_numbers.append(temp)  # and don't forget the tleaves
         for datum in self._branch_data:
             if datum["kind"] == "record":
                 continue
@@ -1369,7 +1358,6 @@ class Tree:
         itemsize = array.dtype.itemsize
         for item in array.shape[1:]:
             itemsize *= item
-
         uncompressed_data = uproot._util.tobytes(array)
         compressed_data = uproot.compression.compress(uncompressed_data, compression)
 
@@ -1590,16 +1578,20 @@ class Tree:
 
     def add_branches(self, sink, file, new_branches):
         old_key = self.get_tree_key()
-        self.write_with_new_branches(sink, old_key)
-        start = old_key.location
-        stop = start + old_key.num_bytes + old_key.compressed_bytes
-        self._freesegments.release(start, stop)
-        sink.set_file_length(self._freesegments.fileheader.end)
-        sink.flush()
-
+        #     start = old_key.location
+        #     stop = start + old_key.num_bytes + old_key.compressed_bytes
+        #     self._freesegments.release(start, stop)
+        #     sink.set_file_length(self._freesegments.fileheader.end)
+        #     sink.flush()
+        # streamers = [x for x in file._cascading.tlist_of_streamers]
+        streamers = self.write_with_new_branches(sink, old_key)
+        # Reset
+        # old_key = self.get_tree_key()
         self.extend(file, sink, new_branches)
+        return streamers
 
     def write_with_new_branches(self, sink, old_key):
+        models_for_streamers = []
         key_num_bytes = uproot.reading._key_format_big.size + 6
         name_asbytes = self._name.encode(errors="surrogateescape")
         title_asbytes = self._title.encode(errors="surrogateescape")
@@ -1660,6 +1652,7 @@ class Tree:
         num_branches = sum(
             0 if datum["kind"] == "record" else 1 for datum in self._branch_data
         )
+        # Include original branches in num_branches
         if self._existing_branches:
             num_branches += len(self._existing_branches)
         # TObjArray header with fName: ""
@@ -1671,16 +1664,13 @@ class Tree:
             )
         )
 
-        # Write old branches?
+        # Write old branches
         if self._existing_branches:
             old_branches = uproot.writing._cascade.OldBranches(self._existing_branches)
             for branch in self._existing_branches:
                 # create OldTBranch object
-                # members = uproot.branch.read_members()
-                out, temp = old_branches.serialize(
-                    out, branch
-                )  # should call uproot.models.TBranch._tbranch13_format...pack or something
-                tleaf_reference_numbers.append(temp)  # and don't forget the tleaves
+                out, temp = old_branches.serialize(out, branch)
+                tleaf_reference_numbers.append(temp)
         for datum in self._branch_data:
             if datum["kind"] == "record":
                 continue
@@ -1764,22 +1754,32 @@ class Tree:
             out.append(("TLeaf" + letter_upper).encode() + b"\x00")
             if letter_upper == "O":
                 special_struct = uproot.models.TLeaf._tleafO1_format1
+                model = uproot.models.TLeaf.Model_TLeafO_v1.class_rawstreamers
             elif letter_upper == "B":
                 special_struct = uproot.models.TLeaf._tleafb1_format1
+                model = uproot.models.TLeaf.Model_TLeafB_v1
             elif letter_upper == "S":
                 special_struct = uproot.models.TLeaf._tleafs1_format1
+                model = uproot.models.TLeaf.Model_TLeafS_v1
             elif letter_upper == "I":
                 special_struct = uproot.models.TLeaf._tleafi1_format1
+                model = uproot.models.TLeaf.Model_TLeafI_v1
             elif letter_upper == "G":
                 special_struct = uproot.models.TLeaf._tleafl1_format0
             elif letter_upper == "L":
                 special_struct = uproot.models.TLeaf._tleafl1_format0
+                model = uproot.models.TLeaf.Model_TLeafL_v1
             elif letter_upper == "F":
                 special_struct = uproot.models.TLeaf._tleaff1_format1
+                model = uproot.models.TLeaf.Model_TLeafF_v1
             elif letter_upper == "D":
                 special_struct = uproot.models.TLeaf._tleafd1_format1
+                model = uproot.models.TLeaf.Model_TLeafD_v1
             elif letter_upper == "C":
                 special_struct = uproot.models.TLeaf._tleafc1_format1
+                model = uproot.models.TLeaf.Model_TLeafC_v1
+
+            models_for_streamers.append(model)
             fLenType = datum["dtype"].itemsize
             fIsUnsigned = letter != letter_upper
 
@@ -1992,6 +1992,7 @@ class Tree:
             replaces=old_key,
             big=True,
         )
+        return models_for_streamers
 
 
 _tbasket_offsets_length = struct.Struct(">I")

@@ -1379,7 +1379,7 @@ in file {self.file_path} in directory {self.path}"""
         names = old_ttree.keys()
         if len(names) == 0:
             raise ValueError(
-                f"""TTree {old_ttree.name} in file {old_ttree.file_path} is empty."""
+                f"""TTree {old_ttree.name} in file {old_ttree.file_path} is empty."""  # TODO does this check need to be here?
             )
         at = -1
         try:  # Will this throw an error? proabably?
@@ -1411,7 +1411,11 @@ in file {self.file_path} in directory {self.path}"""
                 branch_array = uproot.writing._cascadetree.recarray_to_dict(  # noqa: PLW2901 (overwriting branch_array)
                     branch_array
                 )
-
+            entries = old_ttree.member("fEntries")
+            if len(branch_array) != old_ttree.member("fEntries"):
+                raise ValueError(
+                    f"'add_branches' must fill every branch with the same number of entries; new branches should have {entries} entries, but {branch_name!r} has {len(branch_array)} entries"
+                )
             if isinstance(branch_array, Mapping) and all(
                 isinstance(x, str) for x in branch_array
             ):
@@ -1468,40 +1472,31 @@ in file {self.file_path} in directory {self.path}"""
                             branch_dtype = numpy.dtype((branch_dtype, branch_shape))
                         metadata[branch_name] = branch_dtype
         file.close()
-        tree = WritableTree(
-            path,
-            directory._file,
-            directory._cascading.add_branches(
-                directory._file.sink,
-                old_ttree.name,
-                old_ttree.title,
-                metadata,
-                counter_name,
-                field_name,
-                initial_basket_capacity,
-                resize_factor,
-                old_ttree,
-                old_ttree.branches,
-                branches,
-                directory,
-            ),
+        update_streamers = []
+        obj, update_streamers = directory._cascading.add_branches(
+            directory._file.sink,
+            old_ttree.name,
+            old_ttree.title,
+            metadata,
+            counter_name,
+            field_name,
+            initial_basket_capacity,
+            resize_factor,
+            old_ttree,
+            old_ttree.branches,
+            branches,
+            directory,
         )
-        # directory._file._new_tree(tree)
-
+        tree = WritableTree(path, directory._file, obj)
+        update_streamers.append(
+            uproot.models.TBranch.Model_TBranch_v13,
+        )
+        update_streamers.append(
+            uproot.models.TTree.Model_TTree_v20,
+        )
         seen = set()
         streamers = []
-        for model in (
-            uproot.models.TLeaf.Model_TLeafB_v1,
-            uproot.models.TLeaf.Model_TLeafS_v1,
-            uproot.models.TLeaf.Model_TLeafI_v1,
-            uproot.models.TLeaf.Model_TLeafL_v1,
-            uproot.models.TLeaf.Model_TLeafF_v1,
-            uproot.models.TLeaf.Model_TLeafD_v1,
-            uproot.models.TLeaf.Model_TLeafC_v1,
-            uproot.models.TLeaf.Model_TLeafO_v1,
-            uproot.models.TBranch.Model_TBranch_v13,
-            uproot.models.TTree.Model_TTree_v20,
-        ):
+        for model in update_streamers:
             for rawstreamer in model.class_rawstreamers:
                 classname_version = rawstreamer[-2], rawstreamer[-1]
                 if classname_version not in seen:
@@ -1509,9 +1504,9 @@ in file {self.file_path} in directory {self.path}"""
                     streamers.append(
                         uproot.writing._cascade.RawStreamerInfo(*rawstreamer)
                     )
-
         directory._file._cascading.streamers.update_streamers(
-            directory._file.sink, streamers
+            directory._file.sink,
+            streamers,
         )
         return tree
 
@@ -1696,7 +1691,6 @@ in file {source.file_path} in directory {source.path}"""
         update.
         """
         streamers = []
-
         if pairs is not None:
             if hasattr(pairs, "keys"):
                 all_pairs = itertools.chain(
@@ -1722,11 +1716,7 @@ in file {source.file_path} in directory {source.path}"""
                 directory = directory[item]
 
             uproot.writing.identify.add_to_directory(v, name, directory, streamers)
-
         self._file._cascading.streamers.update_streamers(self._file.sink, streamers)
-
-
-# class UpdatableTree:
 
 
 class WritableTree:
