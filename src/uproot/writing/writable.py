@@ -1352,18 +1352,29 @@ in file {self.file_path} in directory {self.path}"""
     ):
         """
         Args:
-            source (TTree): existing TTree to copy/replace
-        Creates an empty TTree in this directory.
-
-        Note that TTrees can be created by assigning TTree-like data to a directory
-        (see :doc:`uproot.writing.writable.WritableTree` for recognized TTree-like types):
+            source (TTree): Name of existing TTree to copy/replace
+            branch_types (dict or pairs of str \u2192 NumPy dtype/Awkward type): Name
+                and type specification for the TBranches.
+            title (str): Title for the new TTree.
+            counter_name (callable of str \u2192 str): Function to generate counter-TBranch
+                names for Awkward Arrays of variable-length lists.
+            field_name (callable of str \u2192 str): Function to generate TBranch
+                names for columns of an Awkward record array or a Pandas DataFrame.
+            initial_basket_capacity (int): Number of TBaskets that can be written to the
+                TTree without rewriting the TTree metadata to make room.
+            resize_factor (float): When the TTree metadata needs to be rewritten,
+                this specifies how many more TBasket slots to allocate as a multiplicative
+                factor.
+        Adds new branches to existing TTrees by rewriting the whole TTree with the new data.
+        To maintain custom ``counter_name``, ``field_name``, ``initial_basket_capacity`` or
+        ``resize_factor`` values for the new branches, pass the custom values to the parameters.
+        Currently, writing new branches in batches is not possible; data in new ``branches``
+        must fit in memory.
 
         .. code-block:: python
 
-            my_directory["tree"] = {"branch1": np.array(...), "branch2": ak.Array(...)}
+            my_directory.add_branches("tree", {"branch1": np.array(...), "branch2": ak.Array(...)})
 
-        but TTrees created this way will never be empty. Use this method
-        to make an empty TTree or to control its parameters.
         """
         if self._file.sink.closed:
             raise ValueError("cannot modify a TTree in a closed file")
@@ -1472,7 +1483,6 @@ in file {self.file_path} in directory {self.path}"""
                             branch_dtype = numpy.dtype((branch_dtype, branch_shape))
                         metadata[branch_name] = branch_dtype
         file.close()
-        update_streamers = []
         obj, update_streamers = directory._cascading.add_branches(
             directory._file.sink,
             old_ttree.name,
@@ -1488,9 +1498,6 @@ in file {self.file_path} in directory {self.path}"""
             directory,
         )
         tree = WritableTree(path, directory._file, obj)
-        update_streamers.append(
-            uproot.models.TBranch.Model_TBranch_v13,
-        )
         update_streamers.append(
             uproot.models.TTree.Model_TTree_v20,
         )

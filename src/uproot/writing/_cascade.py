@@ -624,15 +624,13 @@ class OldBranches(CascadeLeaf):
         return total
 
     def serialize(self, out, branch):
-        # superclass TNamed (Model_TNamed(uproot.model.Model))
-        # superclass TAttFill
         self.read_members(branch)
         any_tbranch_index = len(out)
         out.append(None)
-        # if 'fClonesName' in self._branch.all_members.keys():
-        #     out.append(b"TBranchElement\x00")
-        # else:
-        out.append(b"TBranch\x00")
+        if "fClonesName" in self._branch_data.keys():
+            out.append(b"TBranchElement\x00")
+        else:
+            out.append(b"TBranch\x00")
 
         tbranch_index = len(out)
         out.append(None)
@@ -650,9 +648,7 @@ class OldBranches(CascadeLeaf):
         tbranch_tnamed._members["fTitle"] = datum["fTitle"]
         tbranch_tnamed._serialize(out, True, datum["fName"], numpy.uint32(0x00400000))
         # TAttFill v2, fFillColor: 0, fFillStyle: 1001
-        # make model TAttFill v2 with fFillColor and fFillStyle
         tattfill = uproot.models.TAtt.Model_TAttFill_v2.empty()
-        # tattfill._deeply_writable = True # ?
         tattfill._members["fFillColor"] = datum["fFillColor"]
         tattfill._members["fFillStyle"] = datum["fFillStyle"]
 
@@ -672,14 +668,15 @@ class OldBranches(CascadeLeaf):
                 datum["fCompress"],
                 datum["fBasketSize"],
                 datum["fEntryOffsetLen"],
-                datum["fWriteBasket"],  # fWriteBasket
-                datum["fEntryNumber"],  # fEntryNumber
+                datum["fWriteBasket"],
+                datum["fEntryNumber"],
             )
         )
 
+        # TODO Check this?
         # fIOFeatures (TIOFeatures)
         out.append(b"@\x00\x00\x07\x00\x00\x1a\xa1/\x10\x00")
-        # out.append(self._branch_data["fIOFeatures"].serialize())
+        # print(self._branch_data["fIOFeatures"].serialize())
         # 0 to bytestring??
 
         out.append(
@@ -711,22 +708,49 @@ class OldBranches(CascadeLeaf):
         #     out.append(uproot.serialization.serialize_object_any(self._branch.member("fBranchCount2")))
         # empty TObjArray of TBranches
 
-        # TODO how to handle this? Make sure to be TBranchElements will be handled too
-        # empty TObjArray of TBranches
+        # TODO Test this! Later make sure TBranchElements are handled
+
         if len(datum["fBranches"]) == 0:
+            # empty TObjArray of TBranches
             out.append(
                 b"@\x00\x00\x15\x00\x03\x00\x01\x00\x00\x00\x00\x03\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
             )
-        else:
-            #     print("serialize branches!!")
-            #     # TObjArray header with fName: ""
-            out.append(b"\x00\x01\x00\x00\x00\x00\x03\x00@\x00\x00")
-            out.append(
-                uproot.models.TObjArray._tobjarray_format1.pack(
-                    len(self._branch_data["fBranches"]),  # TObjArray fSize
-                    0,  # TObjArray fLowerBound
-                )
-            )
+        # else:
+        #     out.append(b"\x00\x01\x00\x00\x00\x00\x03\x00@\x00\x00")
+        #     out.append(
+        #         uproot.models.TObjArray._tobjarray_format1.pack(
+        #             len(self._branch_data["fBranches"]),  # TObjArray fSize
+        #             0,  # TObjArray fLowerBound
+        #         )
+        #     )
+        #     for branch in self._branch_data["fBranches"]:
+        #         out.append(
+        #             uproot.models.TBranch._tbranch13_format1.pack(
+        #                 datum["fCompress"],
+        #                 datum["fBasketSize"],
+        #                 datum["fEntryOffsetLen"],
+        #                 datum["fWriteBasket"],
+        #                 datum["fEntryNumber"],
+        #             )
+        #         )
+
+        #         # TODO Check this?
+        #         # fIOFeatures (TIOFeatures)
+        #         out.append(b"@\x00\x00\x07\x00\x00\x1a\xa1/\x10\x00")
+        #         # print(self._branch_data["fIOFeatures"].serialize())
+        #         # 0 to bytestring??
+
+        #         out.append(
+        #             uproot.models.TBranch._tbranch13_format2.pack(
+        #                 datum["fOffset"],
+        #                 datum["fMaxBaskets"],  # fMaxBaskets
+        #                 datum["fSplitLevel"],
+        #                 datum["fEntries"],  # fEntries
+        #                 datum["fFirstEntry"],
+        #                 datum["fTotBytes"],
+        #                 datum["fZipBytes"],
+        #             )
+        #         )
 
         subtobjarray_of_leaves_index = len(out)
         out.append(None)
@@ -913,11 +937,8 @@ class OldBranches(CascadeLeaf):
             )
 
         # empty TObjArray of fBaskets (embedded)
-        # TODO "fBranches, which is a TObjArray of nested TBranch instances (possibly TBranchElement)"
-
         if len(datum["fBaskets"]) >= 1:
-            # print("NotImplementedError, cannot yet write TObjArray of fBaskets")
-            msg = "Cannot yet write baskets"
+            msg = f"NotImplementedError, cannot yet write TObjArray of fBaskets. Branch {datum['fName']} has {len(datum['fBaskets'])} fBaskets."
             raise NotImplementedError(msg)
 
         out.append(

@@ -1727,6 +1727,8 @@ class Tree:
                     datum["fZipBytes"],
                 )
             )
+            if uproot.models.TBranch.Model_TBranch_v13 not in models_for_streamers:
+                models_for_streamers.append(uproot.models.TBranch.Model_TBranch_v13)
             # empty TObjArray of TBranches
             out.append(
                 b"@\x00\x00\x15\x00\x03\x00\x01\x00\x00\x00\x00\x03\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
@@ -1778,8 +1780,8 @@ class Tree:
             elif letter_upper == "C":
                 special_struct = uproot.models.TLeaf._tleafc1_format1
                 model = uproot.models.TLeaf.Model_TLeafC_v1
-
-            models_for_streamers.append(model)
+            if model not in models_for_streamers:
+                models_for_streamers.append(model)
             fLenType = datum["dtype"].itemsize
             fIsUnsigned = letter != letter_upper
 
