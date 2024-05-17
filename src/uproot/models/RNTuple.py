@@ -480,9 +480,13 @@ in file {self.file.file_path}"""
         pagelist = linklist[ncol]
         dtype_byte = self.column_records[ncol].type
         dtype_str = uproot.const.rntuple_col_num_to_dtype_dict[dtype_byte]
-        dtype = numpy.dtype("bool") if dtype_str == "bit" else numpy.dtype(dtype_str)
-
         total_len = numpy.sum([desc.num_elements for desc in pagelist], dtype=int)
+        if dtype_str == "switch":
+            dtype = numpy.dtype([("index", "int64"), ("tag", "int32")])
+        elif dtype_str == "bit":
+            dtype = numpy.dtype("bool")
+        else:
+            dtype = numpy.dtype(dtype_str)
         res = numpy.empty(total_len, dtype)
         split = 14 <= dtype_byte <= 21 or 26 <= dtype_byte <= 28
         zigzag = 26 <= dtype_byte <= 28
@@ -568,8 +572,8 @@ in file {self.file.file_path}"""
 
 # Supporting function and classes
 def _split_switch_bits(content):
-    kindex = numpy.bitwise_and(content, numpy.int64(0x00000000000FFFFF))
-    tags = (content >> 44).astype("int8") - 1
+    tags = content["tag"].astype(numpy.dtype("int8")) - 1
+    kindex = content["index"]
     return kindex, tags
 
 
