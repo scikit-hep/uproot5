@@ -96,6 +96,61 @@ source = "vcs"
 [tool.isort]
 profile = "black"
 
+[tool.pixi.dependencies]
+aiohttp = "*"
+awkward-pandas = "*"
+boost-histogram = ">=0.13"
+cramjam = ">=2.5.0"
+dask = "*"
+dask-awkward = "*"
+fsspec = "*"
+fsspec-xrootd = "*"
+hist = ">=1.2"
+minio = "*"
+numpy = "*"
+packaging = "*"
+pandas = "*"
+paramiko = "*"
+pytest = "*"
+pytest-rerunfailures = "*"
+pytest-timeout = "*"
+rangehttpserver = "*"
+requests = "*"
+s3fs = "*"
+scikit-hep-testdata = "*"
+typing_extensions = ">=4.1.0"
+xxhash = "*"
+
+[tool.pixi.environments]
+py310 = ["py310"]
+py312 = ["py312"]
+py38 = ["py38"]
+root310 = ["root", "py310"]
+
+[tool.pixi.feature.py310.dependencies]
+python = "3.10.*"
+
+[tool.pixi.feature.py312.dependencies]
+python = "3.12.*"
+
+[tool.pixi.feature.py38.dependencies]
+python = "3.8.*"
+
+[tool.pixi.feature.root.dependencies]
+root = "*"
+xrootd = "*"
+
+[tool.pixi.project]
+channels = ["conda-forge"]
+name = "uproot"
+platforms = ["linux-64", "osx-64", "osx-arm64"]
+
+[tool.pixi.pypi-dependencies]
+uproot = {path = ".", editable = true, extras = ["test", "dev"]}
+
+[tool.pixi.tasks]
+test = "pytest -vv tests --reruns 10 --reruns-delay 30 --only-rerun '(?i)http|ssl|timeout|expired|connection|socket'"
+
 [tool.pytest.ini_options]
 addopts = ["-ra", "--showlocals", "--strict-markers", "--strict-config"]
 filterwarnings = [
