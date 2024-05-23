@@ -338,6 +338,15 @@ in file {self.file.file_path}"""
             structural_role == uproot.const.rntuple_role_leaf
             and this_record.repetition == 0
         ):
+            # deal with std::atomic
+            # they have no associated column, but exactly one subfield containing the underlying data
+            tmp_id = self._alias_columns_dict.get(this_id, this_id)
+            if (
+                tmp_id not in self._column_records_dict
+                and len(self._related_ids[tmp_id]) == 1
+            ):
+                this_id = self._related_ids[tmp_id][0]
+                seen.add(this_id)
             # base case of recursion
             # n.b. the split may happen in column
             return self.col_form(this_id)
