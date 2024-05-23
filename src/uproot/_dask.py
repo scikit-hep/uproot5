@@ -23,7 +23,6 @@ from uproot._util import no_filter, unset
 from uproot.behaviors.TBranch import HasBranches, TBranch, _regularize_step_size
 
 if TYPE_CHECKING:
-    from awkward._nplikes.typetracer import TypeTracerReport
     from awkward.forms import Form
     from awkward.highlevel import Array as AwkArray
 
@@ -889,7 +888,9 @@ class TrivialFormMappingInfo(ImplementsFormMappingInfo):
         keys: set[str] = set()
         for buffer_key in buffer_keys:
             # Identify form key
-            form_key, attribute = buffer_key.replace("@.", "<root>.").rsplit("-", maxsplit=1)
+            form_key, attribute = buffer_key.replace("@.", "<root>.").rsplit(
+                "-", maxsplit=1
+            )
             # Identify key from form_key
             keys.add(self._form_key_to_key[form_key])
         return frozenset(keys)
