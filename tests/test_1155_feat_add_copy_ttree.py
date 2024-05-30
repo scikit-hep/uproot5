@@ -19,8 +19,8 @@ def test_vector(tmp_path):
     #     minimal_ttree_metadata=False,
     # ) as read:
     #     print(read['t']['x'].debug(1))
-        # print(read.cursor.debug(read.file.chunk(start=0, stop=5852)))
-        # print(read.file.chunk(start=0, stop=5852).raw_data.tobytes())
+    # print(read.cursor.debug(read.file.chunk(start=0, stop=5852)))
+    # print(read.file.chunk(start=0, stop=5852).raw_data.tobytes())
 
     # with uproot.update(
     #     os.path.join(tmp_path, "cp-vectorVectorDouble.root"),
@@ -39,6 +39,7 @@ def test_vector(tmp_path):
         print(getattr(x, "x"))
     ROOT.TClass.TBranchElement
     # inFile.Close()
+
 
 def simple_test(tmp_path):
     data = np.array([1, 2, 3, 4, 5], dtype=np.int64)
@@ -77,6 +78,7 @@ def simple_test(tmp_path):
                 indx += 1
         print(check.file.chunk(start=0, stop=8000).raw_data.tobytes())
 
+
 def test_multiple_trees(tmp_path):
     data = np.array([1, 2, 3, 4, 5], dtype=np.int64)
     data1 = np.array(
@@ -108,10 +110,10 @@ def test_multiple_trees(tmp_path):
         with uproot.open(
             os.path.join(tmp_path, "arrays2.root"), minimal_ttree_metadata=False
         ) as new:
-            assert ak.all(new['whatever']['b1'].array() == data)
-            assert ak.all(new['whatever1']['b4'].array() == data1)
-            assert ak.all(new['whatever1']['b2'].array() == data1)
-            assert ak.all(new['whatever1']['b4'].array() == data1)
+            assert ak.all(new["whatever"]["b1"].array() == data)
+            assert ak.all(new["whatever1"]["b4"].array() == data1)
+            assert ak.all(new["whatever1"]["b2"].array() == data1)
+            assert ak.all(new["whatever1"]["b4"].array() == data1)
             inFile = ROOT.TFile.Open(os.path.join(tmp_path, "arrays2.root"), "READ")
             tree = inFile.Get("whatever;1")
             indx = 0
@@ -119,6 +121,7 @@ def test_multiple_trees(tmp_path):
                 assert getattr(x, "b1") == data[indx]
                 assert getattr(x, "b2") == data1[indx]
                 indx += 1
+
 
 def test_different_fEntries(tmp_path):
     data = np.array([1, 2, 3, 4, 5], dtype=np.int64)
@@ -135,8 +138,10 @@ def test_different_fEntries(tmp_path):
                 },
             )
 
+
 def test_all_dtypes(tmp_path):
     print("to-do")
+
 
 def test_ak_arrays(tmp_path):
 
@@ -180,6 +185,7 @@ def test_ak_arrays(tmp_path):
             assert ak.all(npy3["b1"] == [data, data1, data2])
             assert ak.all(npy3["b2"] == [data1, data2, data])
             assert ak.all(npy3["b3"] == [data2, data, data1])
+
 
 def test_streamers_same_dtypes(tmp_path):
     # Make file with ROOT
@@ -239,6 +245,7 @@ def test_streamers_same_dtypes(tmp_path):
         for i in set(file.file.streamers):
             assert i in check
         inFile.Close()
+
 
 def test_streamers_diff_dtypes(tmp_path):
     # Make file with ROOT
@@ -302,6 +309,7 @@ def test_streamers_diff_dtypes(tmp_path):
             assert i in check
         inFile.Close()
 
+
 def HZZ_test(tmp_path):
     with uproot.open(
         data_path("uproot-HZZ.root"), minimal_ttree_metadata=False
@@ -336,12 +344,14 @@ def HZZ_test(tmp_path):
             #     assert ak.all(npy3[key] == control['events'][key].array())
             assert ak.all(npy3 == data)
             inFile.Close()
+
 
 def test_nested_branches(tmp_path):
     # Make example
     with uproot.open(data_path("uproot-HZZ-objects.root")):
         print("examine this ")
-    
+
+
 def HZZ_test(tmp_path):
     with uproot.open(
         data_path("uproot-HZZ.root"), minimal_ttree_metadata=False
@@ -377,15 +387,18 @@ def HZZ_test(tmp_path):
             assert ak.all(npy3 == data)
             inFile.Close()
 
+
 def test_branch_v8(tmp_path):
-    with uproot.open(os.path.join(tmp_path, 'uproot-issue-250.root')) as control:
-        with uproot.update(os.path.join(tmp_path, 'uproot-issue-250.root')) as new:
+    with uproot.open(os.path.join(tmp_path, "uproot-issue-250.root")) as control:
+        with uproot.update(os.path.join(tmp_path, "uproot-issue-250.root")) as new:
             print("hi")
         # with uproot.open(os.path.join("uproot-from-geant4.root copy")) as new:
 
+
 # test_vector("/Users/zobil/Desktop/directory/vectorVector")
 
-files = ['uproot-from-geant4.root'] # Values in fBaskets, can't open with uproot.update()
+files = [
+    "uproot-from-geant4.root"
+]  # Values in fBaskets, can't open with uproot.update()
 
 # Try uproot unit tests to generate uproot-events maybe?
-

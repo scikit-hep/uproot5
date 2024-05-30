@@ -694,8 +694,8 @@ class OldBranches(CascadeLeaf):
         # TODO Test this! Later make sure TBranchElements are handled
 
         # if len(datum["fBranches"]) == 0:
-            # empty TObjArray of TBranches
-        
+        # empty TObjArray of TBranches
+
         out.append(
             b"@\x00\x00\x15\x00\x03\x00\x01\x00\x00\x00\x00\x03\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
         )
@@ -780,7 +780,9 @@ class OldBranches(CascadeLeaf):
             # else: # This will never be reached? What to do about G
             #     letter_upper = "G"
             #     special_struct = uproot.models.TLeaf._tleafl1_format0
-            if isinstance(leaf, uproot.models.TLeaf.Model_TLeafElement_v1): # TLeafElement...
+            if isinstance(
+                leaf, uproot.models.TLeaf.Model_TLeafElement_v1
+            ):  # TLeafElement...
                 special_struct = uproot.models.TLeaf._tleafelement1_format1
                 out.append((b"TLeafElement") + b"\x00")
             else:
@@ -897,9 +899,8 @@ class OldBranches(CascadeLeaf):
             else:
                 out.append(b"\x00\x00\x00\x00")
 
-           
             if not isinstance(leaf, uproot.models.TLeaf.Model_TLeafElement_v1):
-            # specialized TLeaf* members (fMinimum, fMaximum)
+                # specialized TLeaf* members (fMinimum, fMaximum)
                 datum["tleaf_special_struct"] = special_struct
 
                 out.append(
@@ -925,7 +926,7 @@ class OldBranches(CascadeLeaf):
         if len(datum["fBaskets"]) >= 1:
             # msg = f"NotImplementedError, cannot yet write TObjArray of fBaskets. Branch {datum['fName']} has {len(datum['fBaskets'])} fBaskets."
             # raise NotImplementedError(msg)
-            print("fBaskets", datum['fBaskets'][0])
+            print("fBaskets", datum["fBaskets"][0])
 
         out.append(
             b"@\x00\x00\x15\x00\x03\x00\x01\x00\x00\x00\x00\x03\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
@@ -947,7 +948,7 @@ class OldBranches(CascadeLeaf):
         out.append(uproot._util.tobytes(datum["fBasketSeek"]))
         # out.append(datum["fFileName"].serialize())  # name = None?
         out.append(b"\x00")
-        if 'fClonesName' in branch.all_members.keys(): 
+        if "fClonesName" in branch.all_members.keys():
             out[tbranch_index] = uproot.serialization.numbytes_version(
                 sum(len(x) for x in out[tbranch_index + 1 :]), 10  # TBranchElement (?)
             )
@@ -962,8 +963,12 @@ class OldBranches(CascadeLeaf):
                 uproot.const.kNewClassTag,
             )
         )
-        if 'fClonesName' in branch.all_members.keys(): # TBranchElement - find a more robust way to check....or make sure this can't be misleading
-            out.append(branch.member("fClassName").serialize()) # These three are TStrings
+        if (
+            "fClonesName" in branch.all_members.keys()
+        ):  # TBranchElement - find a more robust way to check....or make sure this can't be misleading
+            out.append(
+                branch.member("fClassName").serialize()
+            )  # These three are TStrings
             out.append(branch.member("fParentName").serialize())
             out.append(branch.member("fClonesName").serialize())
             out.append(
@@ -976,9 +981,15 @@ class OldBranches(CascadeLeaf):
                     branch.member("fMaximum"),
                 )
             )
-            out.append(uproot.serialization.serialize_object_any(branch.member("fBranchCount")))
-            out.append(uproot.serialization.serialize_object_any(branch.member("fBranchCount2")))
-        
+            out.append(
+                uproot.serialization.serialize_object_any(branch.member("fBranchCount"))
+            )
+            out.append(
+                uproot.serialization.serialize_object_any(
+                    branch.member("fBranchCount2")
+                )
+            )
+
         return out, datum["tleaf_reference_number"]
 
     def read_members(self, branch):

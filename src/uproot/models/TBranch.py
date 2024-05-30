@@ -299,7 +299,7 @@ class Model_TBranch_v12(uproot.behaviors.TBranch.TBranch, uproot.model.Versioned
     """
     A :doc:`uproot.model.VersionedModel` for ``TBranch`` version 12.
     """
-    
+
     behaviors = (uproot.behaviors.TBranch.TBranch,)
 
     def read_members(self, chunk, cursor, context, file):
