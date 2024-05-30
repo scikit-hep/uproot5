@@ -299,10 +299,11 @@ class Model_TBranch_v12(uproot.behaviors.TBranch.TBranch, uproot.model.Versioned
     """
     A :doc:`uproot.model.VersionedModel` for ``TBranch`` version 12.
     """
-
+    
     behaviors = (uproot.behaviors.TBranch.TBranch,)
 
     def read_members(self, chunk, cursor, context, file):
+        # print("reading here in TBranch V12")
         if uproot._awkwardforth.get_forth_obj(context) is not None:
             raise uproot.interpretation.objects.CannotBeForth()
         if self.is_memberwise:
@@ -435,6 +436,7 @@ class Model_TBranch_v13(uproot.behaviors.TBranch.TBranch, uproot.model.Versioned
     behaviors = (uproot.behaviors.TBranch.TBranch,)
 
     def read_members(self, chunk, cursor, context, file):
+        # print("Reading in TBranch 13")
         if uproot._awkwardforth.get_forth_obj(context) is not None:
             raise uproot.interpretation.objects.CannotBeForth()
         if self.is_memberwise:
@@ -744,6 +746,7 @@ class Model_TBranchElement_v10(
     behaviors = (uproot.behaviors.TBranch.TBranch,)
 
     def read_members(self, chunk, cursor, context, file):
+        # print("read here in TBranchElement V10")
         if uproot._awkwardforth.get_forth_obj(context) is not None:
             raise uproot.interpretation.objects.CannotBeForth()
         if self.is_memberwise:
@@ -751,8 +754,9 @@ class Model_TBranchElement_v10(
                 f"""memberwise serialization of {type(self).__name__}
 in file {self.file.file_path}"""
             )
+        # print("got here")
         self._bases.append(
-            file.class_named("TBranch", 12).read(
+            file.class_named("TBranch", 13).read(
                 chunk,
                 cursor,
                 context,
@@ -787,7 +791,7 @@ in file {self.file.file_path}"""
             chunk, cursor, context, file, self._file, self.concrete
         )
 
-    base_names_versions = [("TBranch", 12)]
+    base_names_versions = [("TBranch", 13)]
     member_names = [
         "fClassName",
         "fParentName",

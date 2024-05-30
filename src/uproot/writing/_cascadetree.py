@@ -1585,8 +1585,6 @@ class Tree:
         #     sink.flush()
         # streamers = [x for x in file._cascading.tlist_of_streamers]
         streamers = self.write_with_new_branches(sink, old_key)
-        # Reset
-        # old_key = self.get_tree_key()
         self.extend(file, sink, new_branches)
         return streamers
 
