@@ -999,14 +999,14 @@ class Model_TStreamerBasicType(Model_TStreamerElement):
                 else:
                     # AwkwardForth testing E: test_0637's 01,02,05,08,09,11,12,13,15,16,29,35,39,45,46,47,49,50,56
                     read_members.append("        if forth_obj is not None:")
-                    for i in range(len(formats[0])):
+                    for i in range(len(formats[-1])):
                         read_members.extend(
                             [
                                 "           key = key_number ; key_number += 1",
                                 '           form_key = f"node{key}-data"',
-                                f'           nested_forth_stash = af.Node(f"node{{key}}", field_name={fields[0][i]!r}, form_details={{ "class": "NumpyArray", "primitive": "{af.struct_to_dtype_name[formats[0][i]]}", "inner_shape": [], "parameters": {{}}, "form_key": f"node{{key}}"}})',
-                                f'           nested_forth_stash.header_code.append(f"output {{form_key}} {af.struct_to_dtype_name[formats[0][i]]}\\n")',
-                                f'           nested_forth_stash.pre_code.append(f"stream !{formats[0][i]}-> {{form_key}}\\n")',
+                                f'           nested_forth_stash = af.Node(f"node{{key}}", field_name={fields[-1][i]!r}, form_details={{ "class": "NumpyArray", "primitive": "{af.struct_to_dtype_name[formats[-1][i]]}", "inner_shape": [], "parameters": {{}}, "form_key": f"node{{key}}"}})',
+                                f'           nested_forth_stash.header_code.append(f"output {{form_key}} {af.struct_to_dtype_name[formats[-1][i]]}\\n")',
+                                f'           nested_forth_stash.pre_code.append(f"stream !{formats[-1][i]}-> {{form_key}}\\n")',
                                 "           forth_obj.add_node(nested_forth_stash)",
                             ]
                         )
