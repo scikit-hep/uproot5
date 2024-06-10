@@ -882,7 +882,7 @@ class TrivialFormMappingInfo(ImplementsFormMappingInfo):
     buffer_key: Final[str] = "{form_key}-{attribute}"
 
     def parse_buffer_key(self, buffer_key: str) -> tuple[str, str]:
-        form_key, attribute = buffer_key.rsplit("-", maxsplit=1)
+        form_key, *attribute = buffer_key.rsplit("-", maxsplit=1)
         return form_key, attribute
 
     def keys_for_buffer_keys(self, buffer_keys: frozenset[str]) -> frozenset[str]:
@@ -954,11 +954,14 @@ T = TypeVar("T")
 class UprootReadMixin:
     base_form: Form
     expected_form: Form
-    behavior = {}
     form_mapping_info: ImplementsFormMappingInfo
     common_keys: frozenset[str]
     interp_options: dict[str, Any]
     allow_read_errors_with_report: bool | tuple[type[BaseException], ...]
+
+    @property
+    def behavior(self):
+        return self.form_mapping_info.behavior
 
     @property
     def allowed_exceptions(self):
