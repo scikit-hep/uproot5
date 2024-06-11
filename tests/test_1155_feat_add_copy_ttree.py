@@ -14,31 +14,49 @@ import awkward as ak
 
 
 def test_vector(tmp_path):
-    # with uproot.open(
-    #     os.path.join(tmp_path, "uproot-vectorVectorDouble.root"),
-    #     minimal_ttree_metadata=False,
-    # ) as read:
-    #     print(read['t']['x'].debug(1))
-    # print(read.cursor.debug(read.file.chunk(start=0, stop=5852)))
-    # print(read.file.chunk(start=0, stop=5852).raw_data.tobytes())
+    with uproot.open(
+        os.path.join(tmp_path, "uproot-vectorVectorDouble.root"),
+        minimal_ttree_metadata=False,
+    ) as read:
+        print(read["t"]["x"])
 
-    # with uproot.update(
-    #     os.path.join(tmp_path, "cp-vectorVectorDouble.root"),
-    # ) as write:
-    #     write.add_branches("t", {"branch": [1,2,3,4,5]})
+    # print("break \n \n", uproot.models.TBranch._tbranch13_format1.size)
 
-    # with uproot.open(
-    #     os.path.join(tmp_path, "cp-vectorVectorDouble.root"),
-    #     minimal_ttree_metadata=False,
-    # ) as read:
-    #     print(read['t'])
+    with uproot.update(
+        os.path.join(tmp_path, "cp-vectorVectorDouble.root"),
+    ) as write:
+        write.add_branches("t", {"branch": [1, 2, 3, 4, 5]})
 
-    inFile = ROOT.TFile.Open(os.path.join(tmp_path, "vectorVectorDouble.root"), "READ")
-    tree = inFile.Get("t")
-    for x in tree:
-        print(getattr(x, "x"))
-    ROOT.TClass.TBranchElement
-    # inFile.Close()
+    with uproot.open(
+        os.path.join(tmp_path, "cp-vectorVectorDouble.root"),
+        minimal_ttree_metadata=False,
+    ) as read:
+        # print(read['t']['x'].member('fLeaves')[0].cursor.index)
+        print("chunk bytes", read["t"])
+    # with uproot.open("/Users/zobil/Desktop/directory/arrays1.root") as file:
+    #     print(file.file.show_streamers())
+    # inFile = ROOT.TFile.Open(os.path.join(tmp_path, "cp-vectorVectorDouble.root"), "READ")
+    # tree = inFile.Get("t")
+    # for x in tree:
+    #     print(getattr(x, "x"))
+
+
+# with uproot.recreate("score.root") as file:
+#     data = np.array([1, 2, 3], dtype=np.int64)
+#     data1 = np.array([2, 3, 4], dtype=np.int64)
+#     data2 = np.array([3, 4, 5], dtype=np.int64)
+#     file["whatever"] = {
+#             "b1": ak.Array([data, data1, data2]),
+#             "b2": ak.Array([data1, data2, data]),
+#             "b3": ak.Array([data2, data, data1]),
+#         }
+
+# with uproot.update("score.root") as file:
+#     data = []
+#     for i in range(2421):
+#         data.append(np.arange(0, 3, 1))
+#     data = ak.Array(data, np.int64)
+#     file['whatever'].extend({"b1": data, "b2": data, "b3": data})
 
 
 def simple_test(tmp_path):
@@ -55,7 +73,7 @@ def simple_test(tmp_path):
     )
 
     with uproot.recreate(os.path.join(tmp_path, "arrays1.root")) as f:
-        f["whatever"] = {"b1": data, "b2": data1}
+        f["whatever"] = {"b1": data, "b2": data1, "b3": data, "b4": data1}
 
     with uproot.recreate(os.path.join(tmp_path, "arrays2.root")) as f:
         f["whatever"] = {"b1": data, "b2": data1}
@@ -69,6 +87,18 @@ def simple_test(tmp_path):
         with uproot.open(
             os.path.join(tmp_path, "arrays2.root"), minimal_ttree_metadata=False
         ) as new:
+            # print("???", new['whatever'].branches)
+            # print("???", check['whatever']['b1'].all_members)
+            # string = uproot.models.TString.Model_TString(check['whatever']['b1'].classname)
+            # print(type(string))
+            # print(new['whatever'].chunk.raw_data.tobytes())
+            # print(new["whatever"].chunk.raw_data.tobytes())
+            print(check["whatever"].chunk.raw_data.tobytes())
+            # print(check["whatever"].chunk.raw_data.tobytes())
+            assert ak.all(new["whatever"]["b1"].array() == data)
+            assert ak.all(new["whatever"]["b2"].array() == data1)
+            assert ak.all(new["whatever"]["b3"].array() == data)
+            assert ak.all(new["whatever"]["b4"].array() == data1)
             inFile = ROOT.TFile.Open(os.path.join(tmp_path, "arrays2.root"), "READ")
             tree = inFile.Get("whatever;1")
             indx = 0
@@ -76,7 +106,6 @@ def simple_test(tmp_path):
                 assert getattr(x, "b1") == data[indx]
                 assert getattr(x, "b2") == data1[indx]
                 indx += 1
-        print(check.file.chunk(start=0, stop=8000).raw_data.tobytes())
 
 
 def test_multiple_trees(tmp_path):
@@ -92,29 +121,29 @@ def test_multiple_trees(tmp_path):
         dtype=np.int32,
     )
 
-    with uproot.recreate(os.path.join(tmp_path, "arrays1.root")) as f:
+    with uproot.recreate(os.path.join(tmp_path, "mult_trees1.root")) as f:
         f["whatever"] = {"b1": data, "b2": data1, "b3": data, "b4": data1}
         f["whatever1"] = {"b1": data, "b2": data1, "b3": data, "b4": data1}
 
-    with uproot.recreate(os.path.join(tmp_path, "arrays2.root")) as f:
+    with uproot.recreate(os.path.join(tmp_path, "mult_trees2.root")) as f:
         f["whatever"] = {"b1": data, "b2": data1}
         f["whatever1"] = {"b1": data, "b2": data1, "b3": data}
 
-    with uproot.update(os.path.join(tmp_path, "arrays2.root")) as f:
+    with uproot.update(os.path.join(tmp_path, "mult_trees2.root")) as f:
         f.add_branches("whatever", {"b3": data, "b4": data1})
         f.add_branches("whatever1", {"b4": data1})
 
     with uproot.open(
-        os.path.join(tmp_path, "arrays1.root"), minimal_ttree_metadata=False
+        os.path.join(tmp_path, "mult_trees1.root"), minimal_ttree_metadata=False
     ) as check:
         with uproot.open(
-            os.path.join(tmp_path, "arrays2.root"), minimal_ttree_metadata=False
+            os.path.join(tmp_path, "mult_trees2.root"), minimal_ttree_metadata=False
         ) as new:
             assert ak.all(new["whatever"]["b1"].array() == data)
             assert ak.all(new["whatever1"]["b4"].array() == data1)
             assert ak.all(new["whatever1"]["b2"].array() == data1)
             assert ak.all(new["whatever1"]["b4"].array() == data1)
-            inFile = ROOT.TFile.Open(os.path.join(tmp_path, "arrays2.root"), "READ")
+            inFile = ROOT.TFile.Open(os.path.join(tmp_path, "mult_trees2.root"), "READ")
             tree = inFile.Get("whatever;1")
             indx = 0
             for x in tree:
@@ -175,16 +204,18 @@ def test_ak_arrays(tmp_path):
         with uproot.open(
             os.path.join(tmp_path, "ak_test.root"), minimal_ttree_metadata=False
         ) as new:
-            inFile = ROOT.TFile.Open(os.path.join(tmp_path, "ak_test.root"), "READ")
-            tree = inFile.Get("whatever")
-            for x in tree:
-                getattr(x, "b1")
-            inFile.Close()
-            df3 = ROOT.RDataFrame("whatever", os.path.join(tmp_path, "ak_test.root"))
-            npy3 = ak.from_rdataframe(df3, columns=("b1", "b2", "b3"), keep_order=True)
-            assert ak.all(npy3["b1"] == [data, data1, data2])
-            assert ak.all(npy3["b2"] == [data1, data2, data])
-            assert ak.all(npy3["b3"] == [data2, data, data1])
+            print(correct["whatever"]["b3"].member("fLeaves")[0].all_members)
+            print(new["whatever"]["b3"].member("fLeaves")[0].all_members)
+            # inFile = ROOT.TFile.Open(os.path.join(tmp_path, "ak_test.root"), "READ")
+            # tree = inFile.Get("whatever")
+            # for x in tree:
+            #     getattr(x, "b1")
+            # inFile.Close()
+            # df3 = ROOT.RDataFrame("whatever", os.path.join(tmp_path, "ak_test.root"))
+            # npy3 = ak.from_rdataframe(df3, columns=("b1", "b2", "b3"), keep_order=True)
+            # assert ak.all(npy3["b1"] == [data, data1, data2])
+            # assert ak.all(npy3["b2"] == [data1, data2, data])
+            # assert ak.all(npy3["b3"] == [data2, data, data1])
 
 
 def test_streamers_same_dtypes(tmp_path):
@@ -395,10 +426,7 @@ def test_branch_v8(tmp_path):
         # with uproot.open(os.path.join("uproot-from-geant4.root copy")) as new:
 
 
-# test_vector("/Users/zobil/Desktop/directory/vectorVector")
-
-files = [
-    "uproot-from-geant4.root"
-]  # Values in fBaskets, can't open with uproot.update()
+simple_test("/Users/zobil/Desktop/directory/")
+# test_ak_arrays("/Users/zobil/Desktop/directory/vectorVector")
 
 # Try uproot unit tests to generate uproot-events maybe?

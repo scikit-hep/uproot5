@@ -787,7 +787,6 @@ class Model:
         self._is_memberwise = False
         old_breadcrumbs = context.get("breadcrumbs", ())
         context["breadcrumbs"] = (*old_breadcrumbs, self)
-
         self.hook_before_read(chunk=chunk, cursor=cursor, context=context, file=file)
         forth_obj = uproot._awkwardforth.get_forth_obj(context)
         if forth_obj is not None:
@@ -798,6 +797,7 @@ class Model:
         if context.get("reading", True):
             temp_index = cursor._index
             self.read_numbytes_version(chunk, cursor, context)
+
             length = cursor._index - temp_index
             if length != 0 and forth_obj is not None:
                 forth_stash.pre_code.append(f"{length} stream skip\n")
@@ -843,6 +843,7 @@ class Model:
                 cursor.skip(4)
 
         if context.get("reading", True):
+
             self.hook_before_read_members(
                 chunk=chunk, cursor=cursor, context=context, file=file
             )
@@ -868,7 +869,7 @@ class Model:
         out = self.postprocess(chunk, cursor, context, file)
 
         context["breadcrumbs"] = old_breadcrumbs
-
+        # print(out)
         return out
 
     def read_numbytes_version(self, chunk, cursor, context):

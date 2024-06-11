@@ -1511,7 +1511,6 @@ in file {self.file_path} in directory {self.path}"""
                     streamers.append(
                         uproot.writing._cascade.RawStreamerInfo(*rawstreamer)
                     )
-        print(update_streamers)
         directory._file._cascading.streamers.update_streamers(
             directory._file.sink,
             streamers,

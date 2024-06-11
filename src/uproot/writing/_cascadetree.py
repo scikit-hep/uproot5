@@ -97,6 +97,7 @@ class Tree:
         self._basket_capacity = initial_basket_capacity
         self._resize_factor = resize_factor
         self._existing_branches = existing_branches
+        self._existing_ttree = existing_ttree
         if isinstance(branch_types, dict):
             branch_types_items = branch_types.items()
         else:
@@ -316,6 +317,23 @@ class Tree:
         if existing_ttree:
             self._metadata["fTotBytes"] = existing_ttree.member("fTotBytes")
             self._metadata["fZipBytes"] = existing_ttree.member("fZipBytes")
+            self._metadata["fSavedBytes"] = existing_ttree.member("fSavedBytes")
+            self._metadata["fFlushedBytes"] = existing_ttree.member("fFlushedBytes")
+            self._metadata["fWeight"] = existing_ttree.member("fWeight")
+            self._metadata["fTimerInterval"] = existing_ttree.member("fTimerInterval")
+            self._metadata["fScanField"] = existing_ttree.member("fScanField")
+            self._metadata["fUpdate"] = existing_ttree.member("fUpdate")
+            self._metadata["fDefaultEntryOffsetLen"] = existing_ttree.member(
+                "fDefaultEntryOffsetLen"
+            )
+            if "fNClusterRange" in existing_ttree.all_members.keys():
+                self._metadata["fNClusterRange"] = existing_ttree.member(
+                    "fNClusterRange"
+                )
+            self._metadata["fMaxEntries"] = existing_ttree.member("fMaxEntries")
+            self._metadata["fMaxEntryLoop"] = existing_ttree.member("fMaxEntryLoop")
+            self._metadata["fAutoSave"] = existing_ttree.member("fAutoSave")
+            self._metadata["fEstimate"] = existing_ttree.member("fEstimate")
 
         self._key = None
 
@@ -1163,7 +1181,6 @@ class Tree:
             out[tbranch_index] = uproot.serialization.numbytes_version(
                 sum(len(x) for x in out[tbranch_index + 1 :]), 13  # TBranch
             )
-
             out[any_tbranch_index] = (
                 uproot.serialization._serialize_object_any_format1.pack(
                     numpy.uint32(sum(len(x) for x in out[any_tbranch_index + 1 :]) + 4)
@@ -1171,7 +1188,6 @@ class Tree:
                     uproot.const.kNewClassTag,
                 )
             )
-
         out[tobjarray_of_branches_index] = uproot.serialization.numbytes_version(
             sum(len(x) for x in out[tobjarray_of_branches_index + 1 :]), 3  # TObjArray
         )
@@ -1189,7 +1205,6 @@ class Tree:
                 b"\x00\x00\x00\x00",
             )
         )
-
         out.append(tleaf_reference_bytes)
 
         # null fAliases (b"\x00\x00\x00\x00")
@@ -1576,7 +1591,7 @@ class Tree:
             key = self._directory.data.get_key(self._name, None)
         return key
 
-    def add_branches(self, sink, file, new_branches):
+    def add_branches(self, sink, directory, new_branches):
         old_key = self.get_tree_key()
         #     start = old_key.location
         #     stop = start + old_key.num_bytes + old_key.compressed_bytes
@@ -1584,11 +1599,13 @@ class Tree:
         #     sink.set_file_length(self._freesegments.fileheader.end)
         #     sink.flush()
         # streamers = [x for x in file._cascading.tlist_of_streamers]
-        streamers = self.write_with_new_branches(sink, old_key)
-        self.extend(file, sink, new_branches)
+
+        streamers = self.write_with_new_branches(sink, old_key, directory)
+        # streamers = self.update_ttree_add_branches(directory.file, sink, old_key, new_branches)
+        self.extend(directory.file, sink, new_branches)
         return streamers
 
-    def write_with_new_branches(self, sink, old_key):
+    def write_with_new_branches(self, sink, old_key, directory):
         models_for_streamers = []
         key_num_bytes = uproot.reading._key_format_big.size + 6
         name_asbytes = self._name.encode(errors="surrogateescape")
@@ -1650,6 +1667,7 @@ class Tree:
         num_branches = sum(
             0 if datum["kind"] == "record" else 1 for datum in self._branch_data
         )
+
         # Include original branches in num_branches
         if self._existing_branches:
             num_branches += len(self._existing_branches)
@@ -1664,11 +1682,57 @@ class Tree:
 
         # Write old branches
         if self._existing_branches:
-            old_branches = uproot.writing._cascade.OldBranches(self._existing_branches)
+            # old_branches = uproot.writing._cascade.OldBranches(self._existing_branches)
             for branch in self._existing_branches:
-                # create OldTBranch object
-                out, temp = old_branches.serialize(out, branch)
-                tleaf_reference_numbers.append(temp)
+                #     # create OldTBranch object
+
+                cursor = (
+                    branch.cursor.copy()
+                )  # cursor before TObjArray of TBranches...hopefully
+                first_indx = cursor.index
+                cursor.skip_after(branch)
+                second_indx = cursor.index
+                cursor1 = branch.member("fLeaves").cursor.copy()
+                f_indx = cursor1.index
+                cursor1.skip_after(branch.member("fLeaves"))
+                # s_indx = cursor1.index
+
+                branch_start = (
+                    len(
+                        uproot.writing.identify.to_TString(branch.classname).serialize()
+                    )
+                    + 2
+                )
+
+                key_num_bytes = uproot.reading._key_format_big.size + 6
+                name_asbytes = branch.name.encode(errors="surrogateescape")
+                title_asbytes = branch.title.encode(errors="surrogateescape")
+                key_num_bytes += (1 if len(name_asbytes) < 255 else 5) + len(
+                    name_asbytes
+                )
+                key_num_bytes += (1 if len(title_asbytes) < 255 else 5) + len(
+                    title_asbytes
+                )
+
+                out.append(
+                    self._existing_ttree.chunk.raw_data.tobytes()[
+                        first_indx - branch_start : f_indx + 25
+                    ]
+                )  # to leaf reference...
+
+                absolute_location = key_num_bytes + sum(
+                    len(x) for x in out if x is not None
+                )
+                absolute_location += 8 + 6 * (
+                    sum(1 if x is None else 0 for x in out) - 1
+                )
+                tleaf_reference_numbers.append(absolute_location + 2)
+                out.append(
+                    self._existing_ttree.chunk.raw_data.tobytes()[
+                        f_indx + 25 : second_indx
+                    ]
+                )
+
         for datum in self._branch_data:
             if datum["kind"] == "record":
                 continue
@@ -1906,7 +1970,6 @@ class Tree:
                     uproot.const.kNewClassTag,
                 )
             )
-
             out[subtobjarray_of_leaves_index] = uproot.serialization.numbytes_version(
                 sum(len(x) for x in out[subtobjarray_of_leaves_index + 1 :]),
                 3,  # TObjArray
@@ -1950,6 +2013,8 @@ class Tree:
             sum(len(x) for x in out[tobjarray_of_branches_index + 1 :]), 3  # TObjArray
         )
 
+        # TODO find tleaf reference numbers and append them ?? or update and then append
+
         # TObjArray of TLeaf references
         tleaf_reference_bytes = uproot._util.tobytes(
             numpy.array(tleaf_reference_numbers, ">u4")
@@ -1965,7 +2030,6 @@ class Tree:
         )
 
         out.append(tleaf_reference_bytes)
-
         # null fAliases (b"\x00\x00\x00\x00")
         # empty fIndexValues array (4-byte length is zero)
         # empty fIndex array (4-byte length is zero)

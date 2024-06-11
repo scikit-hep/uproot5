@@ -629,11 +629,13 @@ class OldBranches(CascadeLeaf):
         out.append(None)
         if "fClonesName" in branch.all_members.keys():
             out.append(b"TBranchElement\x00")
+            tbranchelement_index = len(out)
+            out.append(None)
         else:
             out.append(b"TBranch\x00")
 
-        tbranch_index = len(out)
-        out.append(None)
+            tbranch_index = len(out)
+            out.append(None)
 
         datum = self._branch_data[branch.member("fName")]
         key_num_bytes = uproot.reading._key_format_big.size + 6
@@ -653,7 +655,6 @@ class OldBranches(CascadeLeaf):
         tattfill._members["fFillStyle"] = datum["fFillStyle"]
 
         out.append(tattfill.serialize(out))
-
         datum["metadata_start"] = (6 + 6 + 8 + 6) + sum(
             len(x) for x in out if x is not None
         )
@@ -662,6 +663,7 @@ class OldBranches(CascadeLeaf):
         # https://github.com/root-project/root/blob/87a998d48803bc207288d90038e60ff148827664/tree/tree/src/TBasket.cxx#L560-L578
         # Without this, when small buffers are left uncompressed, ROOT complains about them not being compressed.
         # (I don't know where the "no, really, this is uncompressed" bit is.)
+
         out.append(
             uproot.models.TBranch._tbranch13_format1.pack(
                 datum["fCompress"],
@@ -879,13 +881,6 @@ class OldBranches(CascadeLeaf):
                     leaf.member("fIsUnsigned"),
                 )
             )
-            if isinstance(leaf, uproot.models.TLeaf.Model_TLeafElement_v1):
-                out.append(
-                    uproot.models.TLeaf._tleafelement1_format1.pack(
-                        leaf.member("fID"),  # fIsRange
-                        leaf.member("fType"),
-                    )
-                )
             if leaf.member("fLeafCount") is not None:
                 out.append(
                     uproot.deserialization._read_object_any_format1.pack(
@@ -908,7 +903,13 @@ class OldBranches(CascadeLeaf):
                         int(leaf.member("fMinimum")), int(leaf.member("fMaximum"))
                     )
                 )
-
+            if isinstance(leaf, uproot.models.TLeaf.Model_TLeafElement_v1):
+                out.append(
+                    uproot.models.TLeaf._tleafelement1_format1.pack(
+                        leaf.member("fID"),  # fIsRange
+                        leaf.member("fType"),
+                    )
+                )
             out[subany_tleaf_index] = (
                 uproot.serialization._serialize_object_any_format1.pack(
                     numpy.uint32(sum(len(x) for x in out[subany_tleaf_index + 1 :]) + 4)
@@ -924,9 +925,8 @@ class OldBranches(CascadeLeaf):
 
         # empty TObjArray of fBaskets (embedded)
         if len(datum["fBaskets"]) >= 1:
-            # msg = f"NotImplementedError, cannot yet write TObjArray of fBaskets. Branch {datum['fName']} has {len(datum['fBaskets'])} fBaskets."
-            # raise NotImplementedError(msg)
-            print("fBaskets", datum["fBaskets"][0])
+            msg = f"NotImplementedError, cannot yet write TObjArray of fBaskets. Branch {datum['fName']} has {len(datum['fBaskets'])} fBaskets."
+            raise NotImplementedError(msg)
 
         out.append(
             b"@\x00\x00\x15\x00\x03\x00\x01\x00\x00\x00\x00\x03\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
@@ -948,10 +948,15 @@ class OldBranches(CascadeLeaf):
         out.append(uproot._util.tobytes(datum["fBasketSeek"]))
         # out.append(datum["fFileName"].serialize())  # name = None?
         out.append(b"\x00")
+
         if "fClonesName" in branch.all_members.keys():
-            out[tbranch_index] = uproot.serialization.numbytes_version(
-                sum(len(x) for x in out[tbranch_index + 1 :]), 10  # TBranchElement (?)
+            out[tbranchelement_index] = uproot.serialization.numbytes_version(
+                sum(len(x) for x in out[tbranchelement_index + 1 :] if x is not None),
+                10,  # TBranchElement (?)
             )
+            # out[tbranch_index] = uproot.serialization.numbytes_version(
+            # sum(len(x) for x in out[tbranch_index + 1 :]), 13  # TBranch
+            # )
         else:
             out[tbranch_index] = uproot.serialization.numbytes_version(
                 sum(len(x) for x in out[tbranch_index + 1 :]), 13  # TBranch
@@ -965,7 +970,7 @@ class OldBranches(CascadeLeaf):
         )
         if (
             "fClonesName" in branch.all_members.keys()
-        ):  # TBranchElement - find a more robust way to check....or make sure this can't be misleading
+        ):  # TBranchElement - find a more robust way to check....or make sure this is only is True if branch is a TBranchElement
             out.append(
                 branch.member("fClassName").serialize()
             )  # These three are TStrings
@@ -2209,7 +2214,7 @@ class Directory(CascadeNode):
             existing_ttree,
         )
         updated_streamers = tree.add_branches(
-            sink, directory.file, new_branches
+            sink, directory, new_branches
         )  # need new_branches for extend...
         # start = key.seek_location
         # stop = start + key.num_bytes + key.compressed_bytes

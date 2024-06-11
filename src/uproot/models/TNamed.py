@@ -34,7 +34,7 @@ in file {self.file.file_path}"""
                 concrete=self.concrete,
             )
         )
-
+        # print("tnamed", context, chunk.raw_data.tobytes())
         self._members["fName"] = cursor.string(chunk, context)
         self._members["fTitle"] = cursor.string(chunk, context)
 
