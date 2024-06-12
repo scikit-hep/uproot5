@@ -3,20 +3,11 @@
 import pytest
 import skhep_testdata
 
-import uproot
+from uproot.containers import AsPointer
+from uproot.interpretation.identify import parse_typename
+from uproot.models.TH import Model_TH1I
 
 
-@pytest.fixture(scope="module")
-def datafile(tmpdir_factory):
-    yield skhep_testdata.data_path("uproot-issue-1229.root")
-
-
-@pytest.fixture
-def tree(datafile):
-    with uproot.open(datafile) as f:
-        yield f["tree"]
-
-
-def test_const_in_typename(tree):
-    assert tree["branch/pointer"].typename == 'TFooMember*'
-    assert tree["branch/const_pointer"].typename == 'TFooMember*'
+def test_const_in_typename():
+    assert parse_typename("TH1I*") == AsPointer(Model_TH1I)
+    assert parse_typename("const TH1I*") == AsPointer(Model_TH1I)
