@@ -997,6 +997,7 @@ class Tree:
             absolute_location = key_num_bytes + sum(
                 len(x) for x in out if x is not None
             )
+
             absolute_location += 8 + 6 * (sum(1 if x is None else 0 for x in out) - 1)
             datum["tleaf_reference_number"] = absolute_location + 2
             tleaf_reference_numbers.append(datum["tleaf_reference_number"])
@@ -1206,7 +1207,6 @@ class Tree:
             )
         )
         out.append(tleaf_reference_bytes)
-
         # null fAliases (b"\x00\x00\x00\x00")
         # empty fIndexValues array (4-byte length is zero)
         # empty fIndex array (4-byte length is zero)
@@ -1685,7 +1685,6 @@ class Tree:
             # old_branches = uproot.writing._cascade.OldBranches(self._existing_branches)
             for branch in self._existing_branches:
                 #     # create OldTBranch object
-
                 cursor = (
                     branch.cursor.copy()
                 )  # cursor before TObjArray of TBranches...hopefully
@@ -1704,16 +1703,6 @@ class Tree:
                     + 2
                 )
 
-                key_num_bytes = uproot.reading._key_format_big.size + 6
-                name_asbytes = branch.name.encode(errors="surrogateescape")
-                title_asbytes = branch.title.encode(errors="surrogateescape")
-                key_num_bytes += (1 if len(name_asbytes) < 255 else 5) + len(
-                    name_asbytes
-                )
-                key_num_bytes += (1 if len(title_asbytes) < 255 else 5) + len(
-                    title_asbytes
-                )
-
                 out.append(
                     self._existing_ttree.chunk.raw_data.tobytes()[
                         first_indx - branch_start : f_indx + 25
@@ -1726,7 +1715,9 @@ class Tree:
                 absolute_location += 8 + 6 * (
                     sum(1 if x is None else 0 for x in out) - 1
                 )
-                tleaf_reference_numbers.append(absolute_location + 2)
+
+                tleaf_reference_numbers.append(absolute_location)
+
                 out.append(
                     self._existing_ttree.chunk.raw_data.tobytes()[
                         f_indx + 25 : second_indx
@@ -1957,7 +1948,6 @@ class Tree:
                         datum["counter"]["tleaf_reference_number"]
                     )
                 )
-
             # specialized TLeaf* members (fMinimum, fMaximum)
             out.append(special_struct.pack(0, 0))
 
@@ -2019,7 +2009,7 @@ class Tree:
         tleaf_reference_bytes = uproot._util.tobytes(
             numpy.array(tleaf_reference_numbers, ">u4")
         )
-        out.append(
+        out.append(  # This is still fine
             struct.pack(
                 ">I13sI4s",
                 (21 + len(tleaf_reference_bytes)) | uproot.const.kByteCountMask,

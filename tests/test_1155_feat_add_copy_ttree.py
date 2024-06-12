@@ -87,14 +87,10 @@ def simple_test(tmp_path):
         with uproot.open(
             os.path.join(tmp_path, "arrays2.root"), minimal_ttree_metadata=False
         ) as new:
-            # print("???", new['whatever'].branches)
-            # print("???", check['whatever']['b1'].all_members)
-            # string = uproot.models.TString.Model_TString(check['whatever']['b1'].classname)
-            # print(type(string))
-            # print(new['whatever'].chunk.raw_data.tobytes())
-            # print(new["whatever"].chunk.raw_data.tobytes())
-            print(check["whatever"].chunk.raw_data.tobytes())
-            # print(check["whatever"].chunk.raw_data.tobytes())
+            for key in new["whatever"].keys():
+                assert ak.all(
+                    new["whatever"].arrays()[key] == check["whatever"].arrays()[key]
+                )
             assert ak.all(new["whatever"]["b1"].array() == data)
             assert ak.all(new["whatever"]["b2"].array() == data1)
             assert ak.all(new["whatever"]["b3"].array() == data)
@@ -103,6 +99,7 @@ def simple_test(tmp_path):
             tree = inFile.Get("whatever;1")
             indx = 0
             for x in tree:
+                print(getattr(x, "b1"))
                 assert getattr(x, "b1") == data[indx]
                 assert getattr(x, "b2") == data1[indx]
                 indx += 1
@@ -173,7 +170,6 @@ def test_all_dtypes(tmp_path):
 
 
 def test_ak_arrays(tmp_path):
-
     data = np.array([1, 2, 3], dtype=np.int64)
     data1 = np.array([2, 3, 4], dtype=np.int64)
     data2 = np.array([3, 4, 5], dtype=np.int64)
@@ -187,13 +183,13 @@ def test_ak_arrays(tmp_path):
     with uproot.recreate(os.path.join(tmp_path, "ak_test.root")) as file:
         file["whatever"] = {
             "b1": ak.Array([data, data1, data2]),
+            "b2": ak.Array([data1, data2, data]),
         }
 
     with uproot.update(os.path.join(tmp_path, "ak_test.root")) as write:
         write.add_branches(
             "whatever",
             {
-                "b2": ak.Array([data1, data2, data]),
                 "b3": ak.Array([data2, data, data1]),
             },
         )
@@ -204,18 +200,20 @@ def test_ak_arrays(tmp_path):
         with uproot.open(
             os.path.join(tmp_path, "ak_test.root"), minimal_ttree_metadata=False
         ) as new:
-            print(correct["whatever"]["b3"].member("fLeaves")[0].all_members)
-            print(new["whatever"]["b3"].member("fLeaves")[0].all_members)
-            # inFile = ROOT.TFile.Open(os.path.join(tmp_path, "ak_test.root"), "READ")
-            # tree = inFile.Get("whatever")
-            # for x in tree:
-            #     getattr(x, "b1")
-            # inFile.Close()
-            # df3 = ROOT.RDataFrame("whatever", os.path.join(tmp_path, "ak_test.root"))
-            # npy3 = ak.from_rdataframe(df3, columns=("b1", "b2", "b3"), keep_order=True)
-            # assert ak.all(npy3["b1"] == [data, data1, data2])
-            # assert ak.all(npy3["b2"] == [data1, data2, data])
-            # assert ak.all(npy3["b3"] == [data2, data, data1])
+            new["whatever"].arrays()
+            print(correct["whatever"]["b2"].member("fLeaves")[0].all_members)
+            print(new["whatever"]["b2"].member("fLeaves")[0].all_members)
+            print(new["whatever"]["b3"].arrays())
+            inFile = ROOT.TFile.Open(os.path.join(tmp_path, "ak_test.root"), "READ")
+            tree = inFile.Get("whatever")
+            for x in tree:
+                getattr(x, "b1")
+            inFile.Close()
+            df3 = ROOT.RDataFrame("whatever", os.path.join(tmp_path, "ak_test.root"))
+            npy3 = ak.from_rdataframe(df3, columns=("b1", "b2", "b3"), keep_order=True)
+            assert ak.all(npy3["b1"] == [data, data1, data2])
+            assert ak.all(npy3["b2"] == [data1, data2, data])
+            assert ak.all(npy3["b3"] == [data2, data, data1])
 
 
 def test_streamers_same_dtypes(tmp_path):
@@ -341,42 +339,6 @@ def test_streamers_diff_dtypes(tmp_path):
         inFile.Close()
 
 
-def HZZ_test(tmp_path):
-    with uproot.open(
-        data_path("uproot-HZZ.root"), minimal_ttree_metadata=False
-    ) as control:
-        with uproot.update(os.path.join(tmp_path, "uproot-HZZ.root copy")) as new:
-            data = []
-            for i in range(2421):
-                data.append(np.arange(0, 3, 1))
-            data = ak.Array(data)
-            new.add_branches("events", {"data": data})
-
-        with uproot.open(
-            os.path.join(tmp_path, "uproot-HZZ.root copy"),
-            minimal_ttree_metadata=False,
-        ) as new:
-            for key in control["events"].keys():
-                assert key in new["events"].keys()
-                assert ak.all(
-                    new["events"][key].array() == control["events"][key].array()
-                )
-            inFile = ROOT.TFile.Open(
-                os.path.join(tmp_path, "uproot-HZZ.root copy"), "READ"
-            )
-            tree = inFile.Get("events")
-            indx = 0
-            inFile.Close()
-            df3 = ROOT.RDataFrame(
-                "events", os.path.join(tmp_path, "uproot-HZZ.root copy")
-            )
-            npy3 = ak.from_rdataframe(df3, columns=("data"), keep_order=True)
-            # for key in npy3.keys():
-            #     assert ak.all(npy3[key] == control['events'][key].array())
-            assert ak.all(npy3 == data)
-            inFile.Close()
-
-
 def test_nested_branches(tmp_path):
     # Make example
     with uproot.open(data_path("uproot-HZZ-objects.root")):
@@ -424,9 +386,3 @@ def test_branch_v8(tmp_path):
         with uproot.update(os.path.join(tmp_path, "uproot-issue-250.root")) as new:
             print("hi")
         # with uproot.open(os.path.join("uproot-from-geant4.root copy")) as new:
-
-
-simple_test("/Users/zobil/Desktop/directory/")
-# test_ak_arrays("/Users/zobil/Desktop/directory/vectorVector")
-
-# Try uproot unit tests to generate uproot-events maybe?
