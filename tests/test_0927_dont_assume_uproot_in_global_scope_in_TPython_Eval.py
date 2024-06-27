@@ -8,6 +8,7 @@ import pytest
 ROOT = pytest.importorskip("ROOT")
 
 
+@pytest.mark.skip(reason="segfault in ROOT: see #1237")
 def test():
     name = "".join(random.choices(string.ascii_lowercase, k=10))
     h = ROOT.TProfile3D()
