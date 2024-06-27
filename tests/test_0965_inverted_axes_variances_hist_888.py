@@ -29,6 +29,7 @@ def test_axes_of_variances_to_hist_2D_weighted():
     assert (vuproot == vhist).all()
 
 
+@pytest.mark.skip(reason="segfault in ROOT: see #1237")
 def test_axes_variances_to_hist_3D_weighted():
     hroot3 = ROOT.TH3F("hroot3", "", 3, 0, 1, 2, 0, 1, 5, 0, 1)
     hroot3.Sumw2()
