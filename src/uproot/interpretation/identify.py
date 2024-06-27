@@ -577,6 +577,8 @@ def _parse_node(tokens, i, typename, file, quote, header, inner_header):
     if tokens[i].group(0) == ",":
         _parse_error(tokens[i].start() + 1, typename, file)
 
+    elif tokens[i].group(0) == "const":
+        return _parse_node(tokens, i + 1, typename, file, quote, header, inner_header)
     elif tokens[i].group(0) == "Bool_t":
         return i + 1, _parse_maybe_quote('numpy.dtype("?")', quote)
     elif tokens[i].group(0) == "bool":
