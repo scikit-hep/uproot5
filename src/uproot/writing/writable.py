@@ -1386,14 +1386,76 @@ in file {self.file_path} in directory {self.path}"""
             msg = f"TTree {source} not found in file {self.file}"
             raise ValueError(msg) from None
         if not isinstance(old_ttree, uproot.TTree):
-            raise TypeError("'source' must be a TTree")  # ?
+            raise TypeError("'source' must be the name of a TTree")  # ?
+        if not isinstance(old_ttree, uproot.models.TTree.Model_TTree_v20):
+            if uproot.model.classname_version(old_ttree.encoded_classname) < 20:
+                raise TypeError(
+                    f"Cannot update TTree models older than v20 in place. This TTree is {old_ttree.encoded_classname} from before 2017."
+                )  # TODO rewrite!
+            raise TypeError(
+                f"Can only update Model_TTree_v20 in place, not {old_ttree.encoded_classname}."
+            )  # TODO rewrite?
+        elif (
+            uproot.model.classname_decode(old_ttree.branches[0].encoded_classname)[0]
+            == "TBranch"
+            and uproot.model.classname_decode(old_ttree.branches[0].encoded_classname)[
+                1
+            ]
+            != 13
+        ):
+            if (
+                uproot.model.classname_decode(old_ttree.branches[0].encoded_classname)[
+                    1
+                ]
+                < 13
+            ):
+                raise TypeError(
+                    f"Cannot update TBranch models older than v13 in place. This TBranch is {old_ttree.branches[0].encoded_classname} from before 2017."
+                )  # TODO rewrite!
+            raise TypeError(
+                f"Can only update Model_TBranch_v13 in place, not {old_ttree.branches[0].encoded_classname}."
+            )  # TODO rewrite?
+        elif (
+            uproot.model.classname_decode(old_ttree.branches[0].encoded_classname)[0]
+            == "TBranchElement"
+            and uproot.model.classname_decode(old_ttree.branches[0].encoded_classname)[
+                1
+            ]
+            != 10
+        ):
+            if (
+                uproot.model.classname_decode(old_ttree.branches[0].encoded_classname)[
+                    1
+                ]
+                < 10
+            ):
+                raise TypeError(
+                    f"Cannot update TBranchElement models older than v10 in place. This TBranchElement is {old_ttree.branches[0].encoded_classname} from before 2017."
+                )  # TODO rewrite!
+            raise TypeError(
+                "Can only update TBranchElement models v10 in place."
+            )  # TODO rewrite?
+        leaf = uproot.model.classname_decode(
+            old_ttree.branches[0].member("fLeaves")[0].encoded_classname
+        )
+        if leaf[0].startswith("TLeaf") and leaf[1] != 1:
+            if leaf[1] < 1:
+                raise TypeError(
+                    f"Cannot only update version 1 TLeaf* and TLeafElements. This TLeaf* is a {old_ttree.branches[0].member('fLeaves')[0].encoded_classname} from before 2017."
+                )
+            else:
+                raise TypeError(
+                    f"Cannot only update version 1 TLeaf* and TLeafElements, not {old_ttree.branches[0].member('fLeaves')[0].encoded_classname}."
+                )
+
         names = old_ttree.keys()
         if len(names) == 0:
             raise ValueError(
-                f"""TTree {old_ttree.name} in file {old_ttree.file_path} is empty."""  # TODO does this check need to be here?
+                f"""TTree {old_ttree.name} in file {old_ttree.file_path} is empty."""
             )
+
         at = -1
-        try:  # Will this throw an error? proabably?
+        try:
             at = old_ttree.name.rindex("/")
         except ValueError:
             treename = old_ttree.name

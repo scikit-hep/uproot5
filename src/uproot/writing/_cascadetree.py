@@ -492,6 +492,7 @@ class Tree:
             for datum in self._branch_data:
                 if datum["kind"] == "record":
                     continue
+
                 fBasketBytes = datum["fBasketBytes"]
                 fBasketEntry = datum["fBasketEntry"]
                 fBasketSeek = datum["fBasketSeek"]
@@ -619,6 +620,7 @@ class Tree:
                         f"branch {kk!r} provided both as an explicit array and generated as a counter, and they disagree"
                     )
                 provided[k] = v
+
         actual_branches = {}
         for datum in self._branch_data:
             if datum["kind"] == "record":
@@ -845,7 +847,9 @@ class Tree:
                 fBasketEntry[i + 1] = num_entries + fBasketEntry[i]
 
             datum["fBasketSeek"][self._num_baskets] = location
+
             datum["arrays_write_stop"] = self._num_baskets + 1
+
         # update TTree metadata in file
         self._num_entries += num_entries
         self._num_baskets += 1
@@ -1809,7 +1813,7 @@ class Tree:
             out.append(("TLeaf" + letter_upper).encode() + b"\x00")
             if letter_upper == "O":
                 special_struct = uproot.models.TLeaf._tleafO1_format1
-                model = uproot.models.TLeaf.Model_TLeafO_v1.class_rawstreamers
+                model = uproot.models.TLeaf.Model_TLeafO_v1
             elif letter_upper == "B":
                 special_struct = uproot.models.TLeaf._tleafb1_format1
                 model = uproot.models.TLeaf.Model_TLeafB_v1
