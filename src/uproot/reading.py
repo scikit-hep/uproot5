@@ -466,6 +466,7 @@ class DetachedFile(CommonFileMethods):
 _file_header_fields_small = struct.Struct(">4siiiiiiiBiiiH16s")
 _file_header_fields_big = struct.Struct(">4siiqqiiiBiqiH16s")
 
+
 class ReadOnlyFile(CommonFileMethods):
     """
     Args:
@@ -1262,6 +1263,7 @@ in file {self._file_path}"""
 _directory_format_small = struct.Struct(">hIIiiiii")
 _directory_format_big = struct.Struct(">hIIiiqqq")
 _directory_format_num_keys = struct.Struct(">i")
+
 
 class ReadOnlyDirectory(Mapping):
     """
