@@ -1352,10 +1352,9 @@ in file {self.file_path} in directory {self.path}"""
     ):
         """
         Args:
-            source (TTree): Name of existing TTree to copy/replace
-            branch_types (dict or pairs of str \u2192 NumPy dtype/Awkward type): Name
-                and type specification for the TBranches.
-            title (str): Title for the new TTree.
+            source (TTree): Name of existing TTree to copy/replace. TTree must be version 20.
+            branches (dict of pairs of str \u2192 NumPy dtype/Awkward type): Names and data
+                of branches to be added to the TTree.
             counter_name (callable of str \u2192 str): Function to generate counter-TBranch
                 names for Awkward Arrays of variable-length lists.
             field_name (callable of str \u2192 str): Function to generate TBranch
@@ -1366,8 +1365,9 @@ in file {self.file_path} in directory {self.path}"""
                 this specifies how many more TBasket slots to allocate as a multiplicative
                 factor.
         Adds new branches to existing TTrees by rewriting the whole TTree with the new data.
-        To maintain custom ``counter_name``, ``field_name``, ``initial_basket_capacity`` or
-        ``resize_factor`` values for the new branches, pass the custom values to the parameters.
+        This function can only copy TTrees version 20, TBranches version 13, and TBranchElements
+        version 10. To maintain custom ``counter_name``, ``field_name``, ``initial_basket_capacity``
+        or ``resize_factor`` values for the new branches, pass the custom values to the parameters.
         Currently, writing new branches in batches is not possible; data in new ``branches``
         must fit in memory.
 
