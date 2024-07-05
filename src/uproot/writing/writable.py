@@ -1386,7 +1386,7 @@ in file {self.file_path} in directory {self.path}"""
             msg = f"TTree {source} not found in file {self.file}"
             raise ValueError(msg) from None
         if not isinstance(old_ttree, uproot.TTree):
-            raise TypeError("'source' must be the name of a TTree")  # ?
+            raise TypeError("'source' must be the name of a TTree")
         if not isinstance(old_ttree, uproot.models.TTree.Model_TTree_v20):
             if uproot.model.classname_version(old_ttree.encoded_classname) < 20:
                 raise TypeError(

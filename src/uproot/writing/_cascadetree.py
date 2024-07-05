@@ -98,16 +98,17 @@ class Tree:
         self._resize_factor = resize_factor
         self._existing_branches = existing_branches
         self._existing_ttree = existing_ttree
+
         if isinstance(branch_types, dict):
             branch_types_items = branch_types.items()
         else:
             branch_types_items = branch_types
+
         if len(branch_types) == 0:
             raise ValueError("TTree must have at least one branch")
 
         self._branch_data = []
         self._branch_lookup = {}
-
         for branch_name, branch_type in branch_types_items:
             branch_dict = None
             branch_dtype = None
@@ -125,7 +126,8 @@ class Tree:
                     if isinstance(branch_type, str) and branch_type.strip() == "bytes":
                         raise TypeError
                     branch_dtype = numpy.dtype(branch_type)
-                except TypeError as err:
+
+                except (TypeError, ValueError) as err:
                     try:
                         awkward = uproot.extras.awkward()
                     except ModuleNotFoundError as err:
@@ -150,6 +152,7 @@ class Tree:
                         branch_datashape = branch_datashape.content
 
                     branch_dtype = self._branch_ak_to_np(branch_datashape)
+
             if branch_dict is not None:
                 if branch_name not in self._branch_lookup:
                     self._branch_lookup[branch_name] = len(self._branch_data)
@@ -173,6 +176,7 @@ class Tree:
                         self._branch_data.append(
                             self._branch_np(subname, content, dtype)
                         )
+
             elif branch_dtype is not None:
                 if branch_name not in self._branch_lookup:
                     self._branch_lookup[branch_name] = len(self._branch_data)
@@ -204,7 +208,6 @@ class Tree:
                     counter = self._branch_np(
                         counter_name, counter_dtype, counter_dtype, kind="counter"
                     )
-
                     if counter_name in self._branch_lookup:
                         # counters always replace non-counters
                         del self._branch_data[self._branch_lookup[counter_name]]
@@ -314,27 +317,6 @@ class Tree:
             "fAutoFlush": -30000000,
             "fEstimate": 1000000,
         }
-        if existing_ttree:
-            self._metadata["fTotBytes"] = existing_ttree.member("fTotBytes")
-            self._metadata["fZipBytes"] = existing_ttree.member("fZipBytes")
-            self._metadata["fSavedBytes"] = existing_ttree.member("fSavedBytes")
-            self._metadata["fFlushedBytes"] = existing_ttree.member("fFlushedBytes")
-            self._metadata["fWeight"] = existing_ttree.member("fWeight")
-            self._metadata["fTimerInterval"] = existing_ttree.member("fTimerInterval")
-            self._metadata["fScanField"] = existing_ttree.member("fScanField")
-            self._metadata["fUpdate"] = existing_ttree.member("fUpdate")
-            self._metadata["fDefaultEntryOffsetLen"] = existing_ttree.member(
-                "fDefaultEntryOffsetLen"
-            )
-            if "fNClusterRange" in existing_ttree.all_members.keys():
-                self._metadata["fNClusterRange"] = existing_ttree.member(
-                    "fNClusterRange"
-                )
-            self._metadata["fMaxEntries"] = existing_ttree.member("fMaxEntries")
-            self._metadata["fMaxEntryLoop"] = existing_ttree.member("fMaxEntryLoop")
-            self._metadata["fAutoSave"] = existing_ttree.member("fAutoSave")
-            self._metadata["fEstimate"] = existing_ttree.member("fEstimate")
-
         self._key = None
 
     def _branch_ak_to_np(self, branch_datashape):
@@ -359,7 +341,6 @@ class Tree:
     def _branch_np(
         self, branch_name, branch_type, branch_dtype, counter=None, kind="normal"
     ):
-
         branch_dtype = branch_dtype.newbyteorder(">")
 
         if branch_dtype.subdtype is None:
@@ -368,7 +349,6 @@ class Tree:
             branch_dtype, branch_shape = branch_dtype.subdtype
 
         letter = _dtype_to_char.get(branch_dtype)
-
         if letter is None:
             raise TypeError(f"cannot write NumPy dtype {branch_dtype} in TTree")
 
@@ -971,6 +951,7 @@ class Tree:
                     self._num_entries,  # fEntryNumber
                 )
             )
+
             # fIOFeatures (TIOFeatures)
             out.append(b"@\x00\x00\x07\x00\x00\x1a\xa1/\x10\x00")
 
@@ -985,6 +966,7 @@ class Tree:
                     datum["fZipBytes"],
                 )
             )
+
             # empty TObjArray of TBranches
             out.append(
                 b"@\x00\x00\x15\x00\x03\x00\x01\x00\x00\x00\x00\x03\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
@@ -1001,10 +983,10 @@ class Tree:
             absolute_location = key_num_bytes + sum(
                 len(x) for x in out if x is not None
             )
-
             absolute_location += 8 + 6 * (sum(1 if x is None else 0 for x in out) - 1)
             datum["tleaf_reference_number"] = absolute_location + 2
             tleaf_reference_numbers.append(datum["tleaf_reference_number"])
+
             subany_tleaf_index = len(out)
             out.append(None)
 
@@ -1029,6 +1011,7 @@ class Tree:
                 special_struct = uproot.models.TLeaf._tleafd1_format1
             elif letter_upper == "C":
                 special_struct = uproot.models.TLeaf._tleafc1_format1
+
             fLenType = datum["dtype"].itemsize
             fIsUnsigned = letter != letter_upper
 
@@ -1039,6 +1022,7 @@ class Tree:
 
             if datum["counter"] is not None:
                 dims = "[" + datum["counter"]["fName"] + "]" + dims
+
             # single TLeaf
             leaf_name = datum["fName"].encode(errors="surrogateescape")
             leaf_title = (datum["fName"] + dims).encode(errors="surrogateescape")
@@ -1132,6 +1116,7 @@ class Tree:
                     fIsUnsigned,
                 )
             )
+
             if datum["counter"] is None:
                 # null fLeafCount
                 out.append(b"\x00\x00\x00\x00")
@@ -1145,7 +1130,6 @@ class Tree:
 
             # specialized TLeaf* members (fMinimum, fMaximum)
             out.append(special_struct.pack(0, 0))
-
             datum["tleaf_special_struct"] = special_struct
 
             out[subany_tleaf_index] = (
@@ -1174,18 +1158,22 @@ class Tree:
             # speedbump and fBasketBytes
             out.append(b"\x01")
             out.append(uproot._util.tobytes(datum["fBasketBytes"]))
+
             # speedbump and fBasketEntry
             out.append(b"\x01")
             out.append(uproot._util.tobytes(datum["fBasketEntry"]))
+
             # speedbump and fBasketSeek
             out.append(b"\x01")
             out.append(uproot._util.tobytes(datum["fBasketSeek"]))
+
             # empty fFileName
             out.append(b"\x00")
 
             out[tbranch_index] = uproot.serialization.numbytes_version(
                 sum(len(x) for x in out[tbranch_index + 1 :]), 13  # TBranch
             )
+
             out[any_tbranch_index] = (
                 uproot.serialization._serialize_object_any_format1.pack(
                     numpy.uint32(sum(len(x) for x in out[any_tbranch_index + 1 :]) + 4)
@@ -1193,6 +1181,7 @@ class Tree:
                     uproot.const.kNewClassTag,
                 )
             )
+
         out[tobjarray_of_branches_index] = uproot.serialization.numbytes_version(
             sum(len(x) for x in out[tobjarray_of_branches_index + 1 :]), 3  # TObjArray
         )
@@ -1210,7 +1199,9 @@ class Tree:
                 b"\x00\x00\x00\x00",
             )
         )
+
         out.append(tleaf_reference_bytes)
+
         # null fAliases (b"\x00\x00\x00\x00")
         # empty fIndexValues array (4-byte length is zero)
         # empty fIndex array (4-byte length is zero)
@@ -1263,6 +1254,7 @@ class Tree:
                 self._metadata["fEstimate"],
             ),
         )
+
         for datum in self._branch_data:
             if datum["kind"] == "record":
                 continue
@@ -1307,21 +1299,27 @@ class Tree:
                 datum["fBasketEntry"][start : stop + 1]
             )
             fBasketSeek_part = uproot._util.tobytes(datum["fBasketSeek"][start:stop])
+
             position = base + datum["basket_metadata_start"] + 1
             position += datum["fBasketBytes"][:start].nbytes
             sink.write(position, fBasketBytes_part)
             position += len(fBasketBytes_part)
             position += datum["fBasketBytes"][stop:].nbytes
+
             position += 1
             position += datum["fBasketEntry"][:start].nbytes
             sink.write(position, fBasketEntry_part)
             position += len(fBasketEntry_part)
             position += datum["fBasketEntry"][stop + 1 :].nbytes
+
             position += 1
             position += datum["fBasketSeek"][:start].nbytes
             sink.write(position, fBasketSeek_part)
             position += len(fBasketSeek_part)
             position += datum["fBasketSeek"][stop:].nbytes
+
+            datum["arrays_write_start"] = datum["arrays_write_stop"]
+
             if datum["dtype"] == ">U0":
                 position = (
                     base
@@ -1377,6 +1375,7 @@ class Tree:
         itemsize = array.dtype.itemsize
         for item in array.shape[1:]:
             itemsize *= item
+
         uncompressed_data = uproot._util.tobytes(array)
         compressed_data = uproot.compression.compress(uncompressed_data, compression)
 
@@ -1386,6 +1385,7 @@ class Tree:
         parent_location = self._directory.key.location  # FIXME: is this correct?
 
         location = self._freesegments.allocate(fNbytes, dry_run=False)
+
         out = []
         out.append(
             uproot.reading._key_format_big.pack(
@@ -1414,6 +1414,7 @@ class Tree:
         out.append(b"\x00")  # part of the Key (included in fKeylen, at least)
 
         out.append(compressed_data)
+
         sink.write(location, b"".join(out))
         self._freesegments.write(sink)
         sink.set_file_length(self._freesegments.fileheader.end)
@@ -1586,30 +1587,20 @@ class Tree:
 
         return fKeylen + fObjlen, fNbytes, location
 
-    def get_tree_key(self):
+    def add_branches(self, sink, directory, new_branches):
+        # Get readonlykey for old tree
         if ";" in self._name:
             at = self._name.rindex(";")
             item, cycle = self._name[:at], self._name[at + 1 :]
             key = self._directory.data.get_key(item, cycle)
         else:
             key = self._directory.data.get_key(self._name, None)
-        return key
 
-    def add_branches(self, sink, directory, new_branches):
-        old_key = self.get_tree_key()
-        #     start = old_key.location
-        #     stop = start + old_key.num_bytes + old_key.compressed_bytes
-        #     self._freesegments.release(start, stop)
-        #     sink.set_file_length(self._freesegments.fileheader.end)
-        #     sink.flush()
-        # streamers = [x for x in file._cascading.tlist_of_streamers]
-
-        streamers = self.write_with_new_branches(sink, old_key, directory)
-        # streamers = self.update_ttree_add_branches(directory.file, sink, old_key, new_branches)
+        streamers = self._write_with_new_branches(sink, key)
         self.extend(directory.file, sink, new_branches)
         return streamers
 
-    def write_with_new_branches(self, sink, old_key, directory):
+    def _write_with_new_branches(self, sink, old_key):
         models_for_streamers = []
         key_num_bytes = uproot.reading._key_format_big.size + 6
         name_asbytes = self._name.encode(errors="surrogateescape")
@@ -1673,8 +1664,8 @@ class Tree:
         )
 
         # Include original branches in num_branches
-        if self._existing_branches:
-            num_branches += len(self._existing_branches)
+        num_branches += len(self._existing_branches)
+
         # TObjArray header with fName: ""
         out.append(b"\x00\x01\x00\x00\x00\x00\x03\x00@\x00\x00")
         out.append(
@@ -1686,19 +1677,15 @@ class Tree:
 
         # Write old branches
         if self._existing_branches:
-            # old_branches = uproot.writing._cascade.OldBranches(self._existing_branches)
             for branch in self._existing_branches:
-                #     # create OldTBranch object
-                cursor = (
-                    branch.cursor.copy()
-                )  # cursor before TObjArray of TBranches...hopefully
+                cursor = branch.cursor.copy()
+
+                # cursor before TObjArray of TBranches
                 first_indx = cursor.index
                 cursor.skip_after(branch)
                 second_indx = cursor.index
-                cursor1 = branch.member("fLeaves").cursor.copy()
-                f_indx = cursor1.index
-                cursor1.skip_after(branch.member("fLeaves"))
-                # s_indx = cursor1.index
+
+                f_indx = branch.member("fLeaves").cursor.index
 
                 branch_start = (
                     len(
@@ -1711,8 +1698,9 @@ class Tree:
                     self._existing_ttree.chunk.raw_data.tobytes()[
                         first_indx - branch_start : f_indx + 25
                     ]
-                )  # to leaf reference...
+                )
 
+                # Write TLeaf Reference
                 absolute_location = key_num_bytes + sum(
                     len(x) for x in out if x is not None
                 )
@@ -1722,6 +1710,7 @@ class Tree:
 
                 tleaf_reference_numbers.append(absolute_location)
 
+                # Write remainder of branch
                 out.append(
                     self._existing_ttree.chunk.raw_data.tobytes()[
                         f_indx + 25 : second_indx
