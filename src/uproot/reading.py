@@ -466,7 +466,6 @@ class DetachedFile(CommonFileMethods):
 _file_header_fields_small = struct.Struct(">4siiiiiiiBiiiH16s")
 _file_header_fields_big = struct.Struct(">4siiqqiiiBiqiH16s")
 
-
 class ReadOnlyFile(CommonFileMethods):
     """
     Args:
@@ -1264,7 +1263,6 @@ _directory_format_small = struct.Struct(">hIIiiiii")
 _directory_format_big = struct.Struct(">hIIiiqqq")
 _directory_format_num_keys = struct.Struct(">i")
 
-
 class ReadOnlyDirectory(Mapping):
     """
     Args:
@@ -2032,6 +2030,7 @@ class ReadOnlyDirectory(Mapping):
         Note that this does not read any data from the file.
         """
         where = uproot._util.ensure_str(where)
+
         if "/" in where:
             step, last_item = self.descent_into_path(where)
             return step.key(last_item)
@@ -2056,8 +2055,7 @@ class ReadOnlyDirectory(Mapping):
             # Follow ROOT's behaviour in comparing negative fCycle values
             elif cycle is None and abs(last.fCycle) < abs(key.fCycle):
                 last = key
-        chunk, tmp_cursor = key.get_uncompressed_chunk_cursor()
-        # print("debug", tmp_cursor.debug(chunk))
+
         if last is not None:
             return last
         elif cycle is None:
@@ -2070,8 +2068,6 @@ class ReadOnlyDirectory(Mapping):
             )
 
     def __getitem__(self, where):
-        # if where == "x":
-        # print("getitem readonlydirectory")
         if "/" in where or ":" in where:
             items = where.split("/")
             step = last = self
@@ -2340,7 +2336,6 @@ class ReadOnlyKey:
         file where the data begins (the object to be read, after its copy of the
         ``TKey`` and before the object's number of bytes/version header).
         """
-        # print("data_cursor!!", self._fClassName)
         return uproot.source.cursor.Cursor(self._fSeekKey + self._fKeylen)
 
     @property
@@ -2482,6 +2477,7 @@ class ReadOnlyKey:
                     del self._file.object_cache[self.cache_key]
                 else:
                     return out
+
         if self._fClassName in must_be_attached:
             selffile = self._file
             parent = self
