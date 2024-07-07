@@ -165,7 +165,7 @@ class Library:
         return repr(self.name)
 
     def __eq__(self, other):
-        return type(_libraries[self.name]) is type(_libraries[other.name])  # noqa: E721
+        return type(_libraries[self.name]) is type(_libraries[other.name])
 
 
 class NumPy(Library):
@@ -751,14 +751,14 @@ class Awkward(Library):
 def _is_pandas_rangeindex(pandas, index):
     if hasattr(pandas, "RangeIndex") and isinstance(index, pandas.RangeIndex):
         return True
-    if hasattr(index, "is_integer") and index.is_integer():
+    elif hasattr(index, "is_integer") and index.is_integer():
         return True
-    if uproot._util.parse_version(pandas.__version__) < uproot._util.parse_version(
+    elif uproot._util.parse_version(pandas.__version__) < uproot._util.parse_version(
         "1.4.0"
     ) and isinstance(index, pandas.Int64Index):
         return True
-
-    return False
+    else:
+        return False
 
 
 def _strided_to_pandas(path, interpretation, data, arrays, columns):
