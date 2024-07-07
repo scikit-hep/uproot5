@@ -134,7 +134,8 @@ ignore = [
   "SIM114",  # combine `if` branches using logical `or` operator
   "S307",  # no eval allowed
   "PLC1901",  # empty string is falsey (but I don't want to rely on such weak typing)
-  "RUF012"  # enforces type annotations on a codebase that lacks type annotations
+  "RUF012",  # enforces type annotations on a codebase that lacks type annotations
+  "SIM103"  # interferes with my if-elif-elif-else blocks
 ]
 select = [
   "E",
