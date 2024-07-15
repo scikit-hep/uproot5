@@ -558,7 +558,7 @@ in file {self.file.file_path}"""
     ):
         ak = uproot.extras.awkward()
 
-        entry_stop = entry_stop or self._length
+        entry_stop = entry_stop or self.num_entries
 
         clusters = self.cluster_summaries
         cluster_starts = numpy.array([c.num_first_entry for c in clusters])
