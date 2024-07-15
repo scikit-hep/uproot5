@@ -97,6 +97,8 @@ in file {self.file.file_path}"""
         self._alias_columns_dict_ = None
         self._related_ids_ = None
         self._column_records_dict_ = None
+        self._num_entries = None
+        self._length = None
 
         self._page_list_envelopes = []
 
@@ -236,12 +238,15 @@ in file {self.file.file_path}"""
     def cluster_summaries(self):
         return self.page_list_envelopes.cluster_summaries
 
-    # FIXME
     @property
-    def _length(self):
-        return sum(x.num_entries for x in self.cluster_summaries)
+    def num_entries(self):
+        if self._num_entries is None:
+            self._num_entries = sum(x.num_entries for x in self.cluster_summaries)
+        return self._num_entries
 
     def __len__(self):
+        if self._length is None:
+            self._length = len(self.to_akform().fields)
         return self._length
 
     def read_locator(self, loc, uncomp_size, context):
