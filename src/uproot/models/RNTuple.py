@@ -249,6 +249,34 @@ in file {self.file.file_path}"""
             self._length = len(self.to_akform().fields)
         return self._length
 
+    def __repr__(self):
+        if len(self) == 0:
+            return f"<RNTuple {self.name!r} at 0x{id(self):012x}>"
+        else:
+            return f"<RNTuple {self.name!r} ({len(self)} columns) at 0x{id(self):012x}>"
+
+    @property
+    def name(self):
+        """
+        Name of the ``RNTuple``.
+        """
+        return self.parent.fName
+
+    @property
+    def object_path(self):
+        """
+        Object path of the ``RNTuple``.
+        """
+        return self.parent.object_path
+
+    @property
+    def cache_key(self):
+        """
+        String that uniquely specifies this ``RNTuple`` in its path, to use as
+        part of object and array cache keys.
+        """
+        return f"{self.parent.cache_key}{self.name};{self.parent.fCycle}"
+
     def read_locator(self, loc, uncomp_size, context):
         cursor = uproot.source.cursor.Cursor(loc.offset)
         chunk = self.file.source.chunk(loc.offset, loc.offset + loc.num_bytes)
