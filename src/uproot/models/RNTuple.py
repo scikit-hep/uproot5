@@ -549,7 +549,9 @@ in file {self.file.file_path}"""
             [c.num_entries for c in clusters[start_cluster_idx:stop_cluster_idx]]
         )
 
-        form = self.to_akform().select_columns(filter_names)
+        form = self.to_akform().select_columns(
+            filter_names, prune_unions_and_records=False
+        )
         # only read columns mentioned in the awkward form
         target_cols = []
         container_dict = {}
