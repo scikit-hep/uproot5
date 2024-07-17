@@ -835,7 +835,6 @@ class Tree:
         self._num_baskets += 1
         self._metadata["fTotBytes"] += uncompressed_bytes
         self._metadata["fZipBytes"] += compressed_bytes
-
         self.write_updates(sink)
 
     def write_anew(self, sink):
@@ -1181,7 +1180,6 @@ class Tree:
                     uproot.const.kNewClassTag,
                 )
             )
-
         out[tobjarray_of_branches_index] = uproot.serialization.numbytes_version(
             sum(len(x) for x in out[tobjarray_of_branches_index + 1 :]), 3  # TObjArray
         )
@@ -1648,7 +1646,6 @@ class Tree:
                 self._metadata["fEstimate"],
             )
         )
-
         # speedbump (0), fClusterRangeEnd (empty array),
         # speedbump (0), fClusterSize (empty array)
         # fIOFeatures (TIOFeatures)
@@ -1674,7 +1671,6 @@ class Tree:
                 0,  # TObjArray fLowerBound
             )
         )
-
         # Write old branches
         if self._existing_branches:
             for branch in self._existing_branches:
@@ -1694,29 +1690,98 @@ class Tree:
                     + 2
                 )
 
-                out.append(
-                    self._existing_ttree.chunk.raw_data.tobytes()[
-                        first_indx - branch_start : f_indx + 25
-                    ]
-                )
+                if len(branch.branches) == 0:
+                    # No subbranches
+                    # Write remainder of branch
+                    out.append(
+                        self._existing_ttree.chunk.raw_data.tobytes()[
+                            first_indx - branch_start : f_indx + 25
+                        ]
+                    )
+                    absolute_location = key_num_bytes + sum(
+                        len(x) for x in out if x is not None
+                    )
 
-                # Write TLeaf Reference
-                absolute_location = key_num_bytes + sum(
-                    len(x) for x in out if x is not None
-                )
-                absolute_location += 8 + 6 * (
-                    sum(1 if x is None else 0 for x in out) - 1
-                )
+                    absolute_location += 8 + 6 * (
+                        sum(1 if x is None else 0 for x in out) - 1
+                    )
 
-                tleaf_reference_numbers.append(absolute_location)
+                    tleaf_reference_numbers.append(absolute_location)
+                    out.append(
+                        self._existing_ttree.chunk.raw_data.tobytes()[
+                            f_indx + 25 : second_indx
+                        ]
+                    )
+                else:
+                    # With subbranches
+                    subbranch = branch.branches[0]
+                    cursor = subbranch.cursor.copy()
+                    # cursor before TObjArray of TBranches
+                    first_indx1 = cursor.index
+                    cursor.skip_after(subbranch)
+                    second_indx1 = cursor.index
 
-                # Write remainder of branch
-                out.append(
-                    self._existing_ttree.chunk.raw_data.tobytes()[
-                        f_indx + 25 : second_indx
-                    ]
-                )
+                    f_indx1 = subbranch.member("fLeaves").cursor.index
 
+                    out.append(
+                        self._existing_ttree.chunk.raw_data.tobytes()[
+                            first_indx - branch_start : first_indx1 - 8
+                        ]
+                    )
+                    for (
+                        subbranch
+                    ) in branch.branches:  # how to get it to not copy all subbranches?
+                        cursor = subbranch.cursor.copy()
+                        # cursor before TObjArray of TBranches
+                        first_indx1 = cursor.index
+                        cursor.skip_after(subbranch)
+                        second_indx1 = cursor.index
+
+                        f_indx1 = subbranch.member("fLeaves").cursor.index
+
+                        branch_start = (
+                            len(
+                                uproot.writing.identify.to_TString(
+                                    subbranch.classname
+                                ).serialize()
+                            )
+                            + 2
+                        )
+                        out.append(
+                            self._existing_ttree.chunk.raw_data.tobytes()[
+                                first_indx1 - 8 : f_indx1 + 25
+                            ]
+                        )
+                        # Write TLeaf Reference
+                        absolute_location = key_num_bytes + sum(
+                            len(x) for x in out if x is not None
+                        )
+                        absolute_location += 8 + 6 * (
+                            sum(1 if x is None else 0 for x in out) - 1
+                        )
+
+                        tleaf_reference_numbers.append(absolute_location)
+
+                        # Write remainder of branch
+                        out.append(
+                            self._existing_ttree.chunk.raw_data.tobytes()[
+                                f_indx1 + 25 : second_indx1
+                            ]
+                        )
+                    # Write TLeaf Reference
+                    absolute_location = key_num_bytes + sum(
+                        len(x) for x in out if x is not None
+                    )
+                    absolute_location += 8 + 6 * (
+                        sum(1 if x is None else 0 for x in out) - 1
+                    )
+
+                    tleaf_reference_numbers.append(absolute_location)
+                    out.append(
+                        self._existing_ttree.chunk.raw_data.tobytes()[
+                            second_indx1:second_indx
+                        ]
+                    )
         for datum in self._branch_data:
             if datum["kind"] == "record":
                 continue
@@ -1995,13 +2060,13 @@ class Tree:
         out[tobjarray_of_branches_index] = uproot.serialization.numbytes_version(
             sum(len(x) for x in out[tobjarray_of_branches_index + 1 :]), 3  # TObjArray
         )
-
         # TODO find tleaf reference numbers and append them ?? or update and then append
 
         # TObjArray of TLeaf references
         tleaf_reference_bytes = uproot._util.tobytes(
             numpy.array(tleaf_reference_numbers, ">u4")
         )
+
         out.append(  # This is still fine
             struct.pack(
                 ">I13sI4s",
@@ -2029,6 +2094,7 @@ class Tree:
         self._metadata_start = sum(len(x) for x in out[:metadata_out_index])
 
         raw_data = b"".join(out)
+
         self._key = self._directory.add_object(
             sink,
             "TTree",
