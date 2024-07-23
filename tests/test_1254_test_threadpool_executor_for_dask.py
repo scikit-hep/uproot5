@@ -9,8 +9,8 @@ pytest.importorskip("pandas")
 def test_decompression_threadpool_executor_for_dask():
 
     class TestThreadPoolExecutor(uproot.source.futures.ThreadPoolExecutor):
-        def __init__(self, max_workers = None):
-            super().__init__(max_workers = max_workers)
+        def __init__(self, max_workers=None):
+            super().__init__(max_workers=max_workers)
             self.submit_count = 0
 
         def submit(self, task, /, *args, **kwargs):
