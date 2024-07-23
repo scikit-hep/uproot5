@@ -149,6 +149,7 @@ import uproot.models.TGraph
 import uproot.models.TMatrixT
 
 from uproot.models.TTree import num_entries
+from uproot.models.TGraph import as_TGraph
 
 from uproot.containers import STLVector
 from uproot.containers import STLSet
