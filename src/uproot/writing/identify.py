@@ -2152,6 +2152,8 @@ def to_TGraph(
     fLineColor:int=602,
     fLineStyle:int=1,
     fLineWidth:int=1,
+    fFillColor:int=0,
+    fFillStyle:int=1001,
     fMarkerColor:int=1,
     fMarkerStyle:int=1,
     fMarkerSize:float=1.0,
@@ -2168,6 +2170,8 @@ def to_TGraph(
         fLineColor (int): Line color. (https://root.cern.ch/doc/master/classTAttLine.html)
         fLineStyle (int): Line style.
         fLineWidth (int): Line width.
+        fFillColor (int): Fill area color. (https://root.cern.ch/doc/master/classTAttFill.html)
+        fFillStyle (int): Fill area style.
         fMarkerColor (int): Marker color. (https://root.cern.ch/doc/master/classTAttMarker.html)
         fMarkerStyle (int): Marker style.
         fMarkerSize (float): Marker size.
@@ -2181,12 +2185,12 @@ def to_TGraph(
     tnamed._deeply_writable = True
     tnamed._bases.append(tobject)
     tnamed._members["fName"] = "" #  Temporary name, will be overwritten by the writing process because Uproot's write syntax is ``file[name] = histogram``
-
     # Constraint so user won't break TGraph naming
     if ";" in title or ";" in xAxisLabel or ";" in yAxisLabel:
         raise ValueError("title and xAxisLabel and yAxisLabel can't contain ';'!")
     fTitle = f"{title};{xAxisLabel};{yAxisLabel}"
     tnamed._members["fTitle"] = fTitle
+
 
     # setting line styling
     tattline = uproot.models.TAtt.Model_TAttLine_v2.empty()
@@ -2195,11 +2199,11 @@ def to_TGraph(
     tattline._members["fLineStyle"] = fLineStyle
     tattline._members["fLineWidth"] = fLineWidth
 
-    # setting filling styling, does not do anything
+    # setting filling styling, does not do anything to TGraph
     tattfill = uproot.models.TAtt.Model_TAttFill_v2.empty()
     tattfill._deeply_writable = True
-    tattfill._members["fFillColor"] = 0
-    tattfill._members["fFillStyle"] = 1001
+    tattfill._members["fFillColor"] = fFillColor
+    tattfill._members["fFillStyle"] = fFillStyle
 
 
     # setting marker styling, those are points on graph
@@ -2236,7 +2240,7 @@ def to_TGraph(
     elif not isinstance(maxY, (int, float)):
         raise ValueError(f"fMinium has to be None or a number! But is {type(maxY)}")
 
-
+    # setting necessary information about TGraph
     tGraph._members["fNpoints"] = len(fX)
     tGraph._members["fX"] = fX
     tGraph._members["fY"] = fY
