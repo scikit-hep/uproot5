@@ -2152,8 +2152,6 @@ def to_TGraph(
     fLineColor:int=602,
     fLineStyle:int=1,
     fLineWidth:int=1,
-    fFillColor:int=0,
-    fFillStyle:int=1001,
     fMarkerColor:int=1,
     fMarkerStyle:int=1,
     fMarkerSize:float=1.0,
@@ -2170,8 +2168,6 @@ def to_TGraph(
         fLineColor (int): Line color. (https://root.cern.ch/doc/master/classTAttLine.html)
         fLineStyle (int): Line style.
         fLineWidth (int): Line width.
-        fFillColor (int): Fill area color. (https://root.cern.ch/doc/master/classTAttFill.html)
-        fFillStyle (int): Fill area style.
         fMarkerColor (int): Marker color. (https://root.cern.ch/doc/master/classTAttMarker.html)
         fMarkerStyle (int): Marker style.
         fMarkerSize (float): Marker size.
@@ -2184,25 +2180,29 @@ def to_TGraph(
     tnamed = uproot.models.TNamed.Model_TNamed.empty()
     tnamed._deeply_writable = True
     tnamed._bases.append(tobject)
-    tnamed._members["fName"] = ""
+    tnamed._members["fName"] = "" #  Temporary name, will be overwritten by the writing process because Uproot's write syntax is ``file[name] = histogram``
 
-    # Constraint so user won't break TGraph namind
+    # Constraint so user won't break TGraph naming
     if ";" in title or ";" in xAxisLabel or ";" in yAxisLabel:
         raise ValueError("title and xAxisLabel and yAxisLabel can't contain ';'!")
     fTitle = f"{title};{xAxisLabel};{yAxisLabel}"
     tnamed._members["fTitle"] = fTitle
 
+    # setting line styling
     tattline = uproot.models.TAtt.Model_TAttLine_v2.empty()
     tattline._deeply_writable = True
     tattline._members["fLineColor"] = fLineColor
     tattline._members["fLineStyle"] = fLineStyle
     tattline._members["fLineWidth"] = fLineWidth
 
+    # setting filling styling, does not do anything
     tattfill = uproot.models.TAtt.Model_TAttFill_v2.empty()
     tattfill._deeply_writable = True
-    tattfill._members["fFillColor"] = fFillColor
-    tattfill._members["fFillStyle"] = fFillStyle
+    tattfill._members["fFillColor"] = 0
+    tattfill._members["fFillStyle"] = 1001
 
+
+    # setting marker styling, those are points on graph
     tattmarker = uproot.models.TAtt.Model_TAttMarker_v2.empty()
     tattmarker._deeply_writable = True
     tattmarker._members["fMarkerColor"] = fMarkerColor
@@ -2218,32 +2218,27 @@ def to_TGraph(
     tGraph._bases.append(tattmarker)
 
     
-    if not isinstance(fX, np.ndarray):
-        raise ValueError("fX has to be instance of numpy.ndarray")
-    if not isinstance(fY, np.ndarray):
-        raise ValueError("fY has to be instance of numpy.ndarray")
 
     if len(fX) != len(fY):
         raise ValueError(f"Arrays fX and fY must have the same length!")
+    if len(fX.shape) != 1:
+        raise ValueError(f"fX has to be 1D, but is {len(fX.shape)}D!")
+    if len(fY.shape) != 1:
+        raise ValueError(f"fY has to be 1D, but is {len(fY.shape)}D!")
 
-
-    
     if minY is None:
         minY = min(fX)
     elif not isinstance(minY, (int, float)):
-        raise ValueError(f"fMinium has to be None or number! But is {type(minY)}")
+        raise ValueError(f"fMinium has to be None or a number! But is {type(minY)}")
     
     if maxY is None:
         maxY = max(fX)
     elif not isinstance(maxY, (int, float)):
-        raise ValueError(f"fMinium has to be None or number! But is {type(maxY)}")
-
-    import numpy as np
-
+        raise ValueError(f"fMinium has to be None or a number! But is {type(maxY)}")
 
 
     tGraph._members["fNpoints"] = len(fX)
-    tGraph._members["fX"] = np.array(fX)
+    tGraph._members["fX"] = fX
     tGraph._members["fY"] = fY
     tGraph._members["fMinimum"] = minY
     tGraph._members["fMaximum"] = maxY
