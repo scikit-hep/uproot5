@@ -125,6 +125,8 @@ from uproot.writing import WritableBranch
 from uproot.writing import to_writable
 from uproot.writing import dask_write
 
+from uproot.writing.identify import to_TGraph
+
 import uproot.models.TObject
 import uproot.models.TString
 import uproot.models.TArray
@@ -149,7 +151,6 @@ import uproot.models.TGraph
 import uproot.models.TMatrixT
 
 from uproot.models.TTree import num_entries
-from uproot.models.TGraph import as_TGraph
 
 from uproot.containers import STLVector
 from uproot.containers import STLSet

@@ -2138,3 +2138,115 @@ def to_TProfile3D(
     tprofile3d._deeply_writable = th3x._deeply_writable
 
     return tprofile3d
+
+
+
+def to_TGraph(
+    fX,
+    fY,
+    title="",
+    xAxisLabel="",
+    yAxisLabel="",
+    minY=None, 
+    maxY=None,
+    fLineColor:int=602,
+    fLineStyle:int=1,
+    fLineWidth:int=1,
+    fFillColor:int=0,
+    fFillStyle:int=1001,
+    fMarkerColor:int=1,
+    fMarkerStyle:int=1,
+    fMarkerSize:float=1.0,
+):
+    """
+    Args:
+        fX (1D numpy.ndarray): x values of TGraph (length of fX and fY has to be the same).
+        fY (1D numpy.ndarray): y values of TGraph (length of fX and fY has to be the same).
+        title (str): Title of the histogram.
+        xAxisLabel (str): Label of the X axis.
+        yAxisLabel (str): Label of the Y axis.
+        minY (None or float): Minimum value on the Y axis to be shown, if set to None then minY=min(fY)
+        maxY (None or float): Maximum value on the Y axis to be shown, if set to None then maxY=max(fY)
+        fLineColor (int): Line color. (https://root.cern.ch/doc/master/classTAttLine.html)
+        fLineStyle (int): Line style.
+        fLineWidth (int): Line width.
+        fFillColor (int): Fill area color. (https://root.cern.ch/doc/master/classTAttFill.html)
+        fFillStyle (int): Fill area style.
+        fMarkerColor (int): Marker color. (https://root.cern.ch/doc/master/classTAttMarker.html)
+        fMarkerStyle (int): Marker style.
+        fMarkerSize (float): Marker size.
+
+    Function that converts two arrays of values into TGraph. It makes possible to save TGraph to a .root file.
+    """
+
+    tobject = uproot.models.TObject.Model_TObject.empty()
+
+    tnamed = uproot.models.TNamed.Model_TNamed.empty()
+    tnamed._deeply_writable = True
+    tnamed._bases.append(tobject)
+    tnamed._members["fName"] = ""
+
+    # Constraint so user won't break TGraph namind
+    if ";" in title or ";" in xAxisLabel or ";" in yAxisLabel:
+        raise ValueError("title and xAxisLabel and yAxisLabel can't contain ';'!")
+    fTitle = f"{title};{xAxisLabel};{yAxisLabel}"
+    tnamed._members["fTitle"] = fTitle
+
+    tattline = uproot.models.TAtt.Model_TAttLine_v2.empty()
+    tattline._deeply_writable = True
+    tattline._members["fLineColor"] = fLineColor
+    tattline._members["fLineStyle"] = fLineStyle
+    tattline._members["fLineWidth"] = fLineWidth
+
+    tattfill = uproot.models.TAtt.Model_TAttFill_v2.empty()
+    tattfill._deeply_writable = True
+    tattfill._members["fFillColor"] = fFillColor
+    tattfill._members["fFillStyle"] = fFillStyle
+
+    tattmarker = uproot.models.TAtt.Model_TAttMarker_v2.empty()
+    tattmarker._deeply_writable = True
+    tattmarker._members["fMarkerColor"] = fMarkerColor
+    tattmarker._members["fMarkerStyle"] = fMarkerStyle
+    tattmarker._members["fMarkerSize"] = fMarkerSize
+
+
+    tGraph = uproot.models.TGraph.Model_TGraph_v4.empty()
+
+    tGraph._bases.append(tnamed)
+    tGraph._bases.append(tattline)
+    tGraph._bases.append(tattfill)
+    tGraph._bases.append(tattmarker)
+
+    
+    if not isinstance(fX, np.ndarray):
+        raise ValueError("fX has to be instance of numpy.ndarray")
+    if not isinstance(fY, np.ndarray):
+        raise ValueError("fY has to be instance of numpy.ndarray")
+
+    if len(fX) != len(fY):
+        raise ValueError(f"Arrays fX and fY must have the same length!")
+
+
+    
+    if minY is None:
+        minY = min(fX)
+    elif not isinstance(minY, (int, float)):
+        raise ValueError(f"fMinium has to be None or number! But is {type(minY)}")
+    
+    if maxY is None:
+        maxY = max(fX)
+    elif not isinstance(maxY, (int, float)):
+        raise ValueError(f"fMinium has to be None or number! But is {type(maxY)}")
+
+    import numpy as np
+
+
+
+    tGraph._members["fNpoints"] = len(fX)
+    tGraph._members["fX"] = np.array(fX)
+    tGraph._members["fY"] = fY
+    tGraph._members["fMinimum"] = minY
+    tGraph._members["fMaximum"] = maxY
+
+
+    return tGraph
