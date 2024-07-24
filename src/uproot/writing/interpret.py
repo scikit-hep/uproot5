@@ -127,14 +127,18 @@ def _to_TGraph(
         raise ValueError(f"y has to be 1D, but is {len(y.shape)}D!")
 
     if minY is None:
-        minY = min(x)
+        new_minY = min(x)
     elif not isinstance(minY, (int, float)):
         raise ValueError(f"fMinium has to be None or a number! But is {type(minY)}")
+    else:
+        new_minY = minY
     
     if maxY is None:
-        maxY = max(x)
+        new_maxY = max(x)
     elif not isinstance(maxY, (int, float)):
         raise ValueError(f"fMinium has to be None or a number! But is {type(maxY)}")
+    else:
+        new_maxY = maxY
 
 
 
@@ -148,8 +152,8 @@ def _to_TGraph(
     tGraph._members["fNpoints"] = len(x)
     tGraph._members["fX"] = x
     tGraph._members["fY"] = y
-    tGraph._members["fMinimum"] = minY
-    tGraph._members["fMaximum"] = maxY
+    tGraph._members["fMinimum"] = minY if minY is not None else new_minY - 0.1 * (new_maxY - new_minY)  # by default graph line wont touch the edge of the chart
+    tGraph._members["fMaximum"] = maxY if maxY is not None else new_maxY + 0.1 * (new_maxY - new_minY)  # by default graph line wont touch the edge of the chart
 
     returned_TGraph = tGraph
 
@@ -211,8 +215,6 @@ def to_TGraph(
         lineColor (int): Line color. (https://root.cern.ch/doc/master/classTAttLine.html)
         lineStyle (int): Line style.
         lineWidth (int): Line width.
-        fillColor (int): Fill area color. (https://root.cern.ch/doc/master/classTAttFill.html)
-        fillStyle (int): Fill area style.
         markerColor (int): Marker color. (https://root.cern.ch/doc/master/classTAttMarker.html)
         markerStyle (int): Marker style.
         markerSize (float): Marker size.
