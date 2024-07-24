@@ -121,20 +121,23 @@ def _to_TGraph(
 
     if len(x) != len(y):
         raise ValueError(f"Arrays x and y must have the same length!")
+    if len(x) == 0:
+        raise ValueError(f"Arguments and values arrays can't be emty")
     if len(x.shape) != 1:
         raise ValueError(f"x has to be 1D, but is {len(x.shape)}D!")
     if len(y.shape) != 1:
         raise ValueError(f"y has to be 1D, but is {len(y.shape)}D!")
+    
 
     if minY is None:
-        new_minY = min(x)
+        new_minY = min(x,default=0)
     elif not isinstance(minY, (int, float)):
         raise ValueError(f"fMinium has to be None or a number! But is {type(minY)}")
     else:
         new_minY = minY
     
     if maxY is None:
-        new_maxY = max(x)
+        new_maxY = max(x,default=0)
     elif not isinstance(maxY, (int, float)):
         raise ValueError(f"fMinium has to be None or a number! But is {type(maxY)}")
     else:
