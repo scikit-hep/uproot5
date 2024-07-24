@@ -2141,9 +2141,15 @@ def to_TProfile3D(
 
 
 
-def to_TGraph(
-    fX,
-    fY,
+def _to_TGraph(
+    x,
+    y,
+    x_errors=None,
+    y_errors=None,
+    x_errors_low=None,
+    x_errors_high=None,
+    y_errors_low=None,
+    y_errors_high=None,
     title="",
     xAxisLabel="",
     yAxisLabel="",
@@ -2160,13 +2166,19 @@ def to_TGraph(
 ):
     """
     Args:
-        fX (1D numpy.ndarray): x values of TGraph (length of fX and fY has to be the same).
-        fY (1D numpy.ndarray): y values of TGraph (length of fX and fY has to be the same).
+        x (1D numpy.ndarray): x values of TGraph (length of x and y has to be the same).
+        y (1D numpy.ndarray): y values of TGraph (length of x and y has to be the same).
+        x_errors(None or 1D numpy.ndarray): Symethrical values of errors for corresponding x value (length of x_errors has to be the same as x and y)
+        y_errors(None or 1D numpy.ndarray): Symethrical values of errors for corresponding y value (length of y_errors has to be the same as x and y)
+        x_errors_low(None or 1D numpy.ndarray): Asymmetrical lower values of errors for corresponding x value (length of x_errors_low has to be the same as x and y)
+        x_errors_high(None or 1D numpy.ndarray): Asymmetrical upper values of errors for corresponding x value (length of x_errors_high has to be the same as x and y)
+        y_errors_low(None or 1D numpy.ndarray): Asymmetrical lower values of errors for corresponding y value (length of y_errors_low has to be the same as x and y)
+        y_errors_high(None or 1D numpy.ndarray): Asymmetrical upper values of errors for corresponding y value (length of y_errors_high has to be the same as x and y)
         title (str): Title of the histogram.
         xAxisLabel (str): Label of the X axis.
         yAxisLabel (str): Label of the Y axis.
-        minY (None or float): Minimum value on the Y axis to be shown, if set to None then minY=min(fY)
-        maxY (None or float): Maximum value on the Y axis to be shown, if set to None then maxY=max(fY)
+        minY (None or float): Minimum value on the Y axis to be shown, if set to None then minY=min(y)
+        maxY (None or float): Maximum value on the Y axis to be shown, if set to None then maxY=max(y)
         fLineColor (int): Line color. (https://root.cern.ch/doc/master/classTAttLine.html)
         fLineStyle (int): Line style.
         fLineWidth (int): Line width.
@@ -2176,8 +2188,40 @@ def to_TGraph(
         fMarkerStyle (int): Marker style.
         fMarkerSize (float): Marker size.
 
-    Function that converts two arrays of values into TGraph. It makes possible to save TGraph to a .root file.
+    WARNING! This function only works for TGraph, because serialization of TGraphErrors and TGraphAsymmErrors is not implemented yet.
+
+    Function that converts arguments into TGraph, TGraphErrors or TGraphAsymmErros based on the given arguments.
+    When all errors are unspecified, detected object is TGraph.
+    When x_errors, y_errors are specified, detected object is TGraphErrors.
+    When x_errors_low, x_errors_high, y_errors_low, y_errors_high are specified, detected object is TGraphAsymmErrors.
+    Note that both x_errors, y_errors need to be specified or set to None. 
+    The same rule applies to x_errors_low, x_errors_high, y_errors_low, y_errors_high.
+    Also can't specify x_errors, y_errors and x_errors_low, x_errors_high, y_errors_low, y_errors_high at the same time.
+    All rules are designed to remove any ambiguity.
     """
+
+    sym_errors = [x_errors, y_errors]
+    sym_errors_bool = [err is not None for err in sym_errors]
+
+    asym_errors = [x_errors_low,x_errors_high,y_errors_low,y_errors_high]
+    asym_errors_bool = [err is not None for err in asym_errors]
+
+    tgraph_type = "TGraph"
+
+    # Detecting which type of TGraph to chose
+    if any(sym_errors_bool):
+        if not all(sym_errors_bool):
+            raise ValueError("Have to specify both x_errors and y_errors")
+        if any(asym_errors_bool):
+            raise ValueError("Can's specify both symetrical errors and asymetrical errors")
+        tgraph_type = "TGraphErrors"
+    
+    elif any(asym_errors_bool):
+        if not all(asym_errors_bool):
+            raise ValueError("Have to specify all: x_errors_low, x_errors_high, y_errors_low, y_errors_high")
+        if any(sym_errors_bool):
+            raise ValueError("Can's specify both symetrical errors and asymetrical errors")
+        tgraph_type = "TGraphAsymmErrors"
 
     tobject = uproot.models.TObject.Model_TObject.empty()
 
@@ -2214,6 +2258,25 @@ def to_TGraph(
     tattmarker._members["fMarkerSize"] = fMarkerSize
 
 
+    if len(x) != len(y):
+        raise ValueError(f"Arrays x and y must have the same length!")
+    if len(x.shape) != 1:
+        raise ValueError(f"x has to be 1D, but is {len(x.shape)}D!")
+    if len(y.shape) != 1:
+        raise ValueError(f"y has to be 1D, but is {len(y.shape)}D!")
+
+    if minY is None:
+        minY = min(x)
+    elif not isinstance(minY, (int, float)):
+        raise ValueError(f"fMinium has to be None or a number! But is {type(minY)}")
+    
+    if maxY is None:
+        maxY = max(x)
+    elif not isinstance(maxY, (int, float)):
+        raise ValueError(f"fMinium has to be None or a number! But is {type(maxY)}")
+
+
+
     tGraph = uproot.models.TGraph.Model_TGraph_v4.empty()
 
     tGraph._bases.append(tnamed)
@@ -2221,31 +2284,100 @@ def to_TGraph(
     tGraph._bases.append(tattfill)
     tGraph._bases.append(tattmarker)
 
-    
-
-    if len(fX) != len(fY):
-        raise ValueError(f"Arrays fX and fY must have the same length!")
-    if len(fX.shape) != 1:
-        raise ValueError(f"fX has to be 1D, but is {len(fX.shape)}D!")
-    if len(fY.shape) != 1:
-        raise ValueError(f"fY has to be 1D, but is {len(fY.shape)}D!")
-
-    if minY is None:
-        minY = min(fX)
-    elif not isinstance(minY, (int, float)):
-        raise ValueError(f"fMinium has to be None or a number! But is {type(minY)}")
-    
-    if maxY is None:
-        maxY = max(fX)
-    elif not isinstance(maxY, (int, float)):
-        raise ValueError(f"fMinium has to be None or a number! But is {type(maxY)}")
-
-    # setting necessary information about TGraph
-    tGraph._members["fNpoints"] = len(fX)
-    tGraph._members["fX"] = fX
-    tGraph._members["fY"] = fY
+    tGraph._members["fNpoints"] = len(x)
+    tGraph._members["fX"] = x
+    tGraph._members["fY"] = y
     tGraph._members["fMinimum"] = minY
     tGraph._members["fMaximum"] = maxY
 
+    returned_TGraph = tGraph
 
-    return tGraph
+    if tgraph_type == "TGraphErrors":
+        if not (len(x_errors) == len(y_errors) == len(x)):
+            raise ValueError("Length of all error arrays has to be the same as length of arrays X and Y")
+        tGraphErrors = uproot.models.TGraph.Model_TGraphErrors_v3.empty()
+        tGraphErrors._bases.append(tGraph)
+        tGraphErrors._members["fEX"] = x_errors
+        tGraphErrors._members["fEY"] = y_errors
+
+        returned_TGraph = tGraphErrors
+    elif tgraph_type == "TGraphAsymmErrors":
+        if not (len(x_errors_low) == len(x_errors_high) == len(y_errors_low) == len(y_errors_high) == len(x)):
+            raise ValueError("Length of errors all error arrays has to be the same as length of arrays X and Y")
+        tGraphAsymmErrors = uproot.models.TGraph.Model_TGraphAsymmErrors_v3.empty()
+        tGraphAsymmErrors._bases.append(tGraph)
+        tGraphAsymmErrors._members["fEXlow"] = x_errors_low
+        tGraphAsymmErrors._members["fEXhigh"] = x_errors_high
+        tGraphAsymmErrors._members["fEYlow"] = y_errors_low
+        tGraphAsymmErrors._members["fEYhigh"] = y_errors_high
+
+        returned_TGraph = tGraphAsymmErrors
+
+    return returned_TGraph
+
+
+def to_TGraph(
+    df,
+    title="",
+    xAxisLabel="",
+    yAxisLabel="",
+    minY=None, 
+    maxY=None,
+    fLineColor:int=602,
+    fLineStyle:int=1,
+    fLineWidth:int=1,
+    fFillColor:int=0,
+    fFillStyle:int=1001,
+    fMarkerColor:int=1,
+    fMarkerStyle:int=1,
+    fMarkerSize:float=1.0,
+):
+    """
+    Args:
+        df (DataFrame): DataFrame object with column names as followss:
+            x (float): x values of TGraph.
+            y (float): y values of TGraph.
+            x_errors (float or left unspecified): Symethrical error values for corresponding x value
+            y_errors (float or left unspecified): Symethrical error values for corresponding y value
+            x_errors_low (float or left unspecified): Asymmetrical lower error values for corresponding x value
+            x_errors_high (float or left unspecified): Asymmetrical upper error values for corresponding x value
+            y_errors_low (float or left unspecified): Asymmetrical lower error values for corresponding y value
+            y_errors_high (float or left unspecified): Asymmetrical upper error values for corresponding y value
+        title (str): Title of the histogram.
+        xAxisLabel (str): Label of the X axis.
+        yAxisLabel (str): Label of the Y axis.
+        minY (None or float): Minimum value on the Y axis to be shown, if set to None then minY=min(y)
+        maxY (None or float): Maximum value on the Y axis to be shown, if set to None then maxY=max(y)
+        fLineColor (int): Line color. (https://root.cern.ch/doc/master/classTAttLine.html)
+        fLineStyle (int): Line style.
+        fLineWidth (int): Line width.
+        fFillColor (int): Fill area color. (https://root.cern.ch/doc/master/classTAttFill.html)
+        fFillStyle (int): Fill area style.
+        fMarkerColor (int): Marker color. (https://root.cern.ch/doc/master/classTAttMarker.html)
+        fMarkerStyle (int): Marker style.
+        fMarkerSize (float): Marker size.
+
+    WARNING! This function only works for TGraph, because serialization of TGraphErrors and TGraphAsymmErrors is not implemented yet.
+
+    Function that converts DataFrame into TGraph, TGraphErrors or TGraphAsymmErros based on the specified DataFrame columns.
+    When all error columns are unspecified, detected object is TGraph.
+    When x_errors, y_errors are specified, detected object is TGraphErrors.
+    When x_errors_low, x_errors_high, y_errors_low, y_errors_high are specified, detected object is TGraphAsymmErrors.
+    Note that both {x_errors, x_errors} need to be specified or set to None. 
+    The same rule applies {to x_errors_low, x_errors_high, x_errors_low, x_errors_high}.
+    Also can't specify {x_errors, y_errors} and {x_errors_low, x_errors_high, y_errors_low, y_errors_high} at the same time.
+    """
+    
+    x = numpy.array(df["x"]) if df.get("x", None) is not None else None
+    y = numpy.array(df["y"]) if df.get("y", None) is not None else None
+    x_errors = numpy.array(df["x_errors"]) if df.get("x_errors", None) is not None else None
+    y_errors = numpy.array(df["y_errors"]) if df.get("y_errors", None) is not None else None
+    x_errors_low = numpy.array(df["x_errors_low"]) if df.get("x_errors_low", None) is not None else None
+    x_errors_high = numpy.array(df["x_errors_high"]) if df.get("x_errors_high", None) is not None else None
+    y_errors_low = numpy.array(df["y_errors_low"]) if df.get("y_errors_low", None) is not None else None
+    y_errors_high = numpy.array(df["y_errors_high"]) if df.get("y_errors_high", None) is not None else None
+
+    return _to_TGraph(x, y, x_errors, y_errors, x_errors_low, x_errors_high, y_errors_low, y_errors_high, title, 
+                      xAxisLabel, yAxisLabel, minY, maxY, fLineColor, fLineStyle, fLineWidth, fFillColor, fFillStyle, 
+                      fMarkerColor, fMarkerStyle, fMarkerSize)
+
