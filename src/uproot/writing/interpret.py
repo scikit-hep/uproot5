@@ -1,4 +1,7 @@
+from __future__ import annotations
+
 import numpy
+
 import uproot
 
 
@@ -14,16 +17,16 @@ def _to_TGraph(
     title="",
     xAxisLabel="",
     yAxisLabel="",
-    minY=None, 
+    minY=None,
     maxY=None,
-    lineColor:int=602,
-    lineStyle:int=1,
-    lineWidth:int=1,
-    fillColor:int=0,
-    fillStyle:int=1001,
-    markerColor:int=1,
-    markerStyle:int=1,
-    markerSize:float=1.0,
+    lineColor: int = 602,
+    lineStyle: int = 1,
+    lineWidth: int = 1,
+    fillColor: int = 0,
+    fillStyle: int = 1001,
+    markerColor: int = 1,
+    markerStyle: int = 1,
+    markerSize: float = 1.0,
 ):
     """
     Args:
@@ -55,7 +58,7 @@ def _to_TGraph(
     When all errors are unspecified, detected object is TGraph.
     When x_errors, y_errors are specified, detected object is TGraphErrors.
     When x_errors_low, x_errors_high, y_errors_low, y_errors_high are specified, detected object is TGraphAsymmErrors.
-    Note that both x_errors, y_errors need to be specified or set to None. 
+    Note that both x_errors, y_errors need to be specified or set to None.
     The same rule applies to x_errors_low, x_errors_high, y_errors_low, y_errors_high.
     Also can't specify x_errors, y_errors and x_errors_low, x_errors_high, y_errors_low, y_errors_high at the same time.
     All rules are designed to remove any ambiguity.
@@ -64,7 +67,7 @@ def _to_TGraph(
     sym_errors = [x_errors, y_errors]
     sym_errors_bool = [err is not None for err in sym_errors]
 
-    asym_errors = [x_errors_low,x_errors_high,y_errors_low,y_errors_high]
+    asym_errors = [x_errors_low, x_errors_high, y_errors_low, y_errors_high]
     asym_errors_bool = [err is not None for err in asym_errors]
 
     tgraph_type = "TGraph"
@@ -74,14 +77,20 @@ def _to_TGraph(
         if not all(sym_errors_bool):
             raise ValueError("Have to specify both x_errors and y_errors")
         if any(asym_errors_bool):
-            raise ValueError("Can's specify both symetrical errors and asymetrical errors")
+            raise ValueError(
+                "Can's specify both symetrical errors and asymetrical errors"
+            )
         tgraph_type = "TGraphErrors"
-    
+
     elif any(asym_errors_bool):
         if not all(asym_errors_bool):
-            raise ValueError("Have to specify all: x_errors_low, x_errors_high, y_errors_low, y_errors_high")
+            raise ValueError(
+                "Have to specify all: x_errors_low, x_errors_high, y_errors_low, y_errors_high"
+            )
         if any(sym_errors_bool):
-            raise ValueError("Can's specify both symetrical errors and asymetrical errors")
+            raise ValueError(
+                "Can's specify both symetrical errors and asymetrical errors"
+            )
         tgraph_type = "TGraphAsymmErrors"
 
     tobject = uproot.models.TObject.Model_TObject.empty()
@@ -89,13 +98,14 @@ def _to_TGraph(
     tnamed = uproot.models.TNamed.Model_TNamed.empty()
     tnamed._deeply_writable = True
     tnamed._bases.append(tobject)
-    tnamed._members["fName"] = "" #  Temporary name, will be overwritten by the writing process because Uproot's write syntax is ``file[name] = histogram``
+    tnamed._members["fName"] = (
+        ""  #  Temporary name, will be overwritten by the writing process because Uproot's write syntax is ``file[name] = histogram``
+    )
     # Constraint so user won't break TGraph naming
     if ";" in title or ";" in xAxisLabel or ";" in yAxisLabel:
         raise ValueError("title and xAxisLabel and yAxisLabel can't contain ';'!")
     fTitle = f"{title};{xAxisLabel};{yAxisLabel}"
     tnamed._members["fTitle"] = fTitle
-
 
     # setting line styling
     tattline = uproot.models.TAtt.Model_TAttLine_v2.empty()
@@ -110,7 +120,6 @@ def _to_TGraph(
     tattfill._members["fFillColor"] = fillColor
     tattfill._members["fFillStyle"] = fillStyle
 
-
     # setting marker styling, those are points on graph
     tattmarker = uproot.models.TAtt.Model_TAttMarker_v2.empty()
     tattmarker._deeply_writable = True
@@ -118,32 +127,28 @@ def _to_TGraph(
     tattmarker._members["fMarkerStyle"] = markerStyle
     tattmarker._members["fMarkerSize"] = markerSize
 
-
     if len(x) != len(y):
-        raise ValueError(f"Arrays x and y must have the same length!")
+        raise ValueError("Arrays x and y must have the same length!")
     if len(x) == 0:
-        raise ValueError(f"Arguments and values arrays can't be emty")
+        raise ValueError("Arguments and values arrays can't be emty")
     if len(x.shape) != 1:
         raise ValueError(f"x has to be 1D, but is {len(x.shape)}D!")
     if len(y.shape) != 1:
         raise ValueError(f"y has to be 1D, but is {len(y.shape)}D!")
-    
 
     if minY is None:
-        new_minY = min(x,default=0)
+        new_minY = min(x, default=0)
     elif not isinstance(minY, (int, float)):
         raise ValueError(f"fMinium has to be None or a number! But is {type(minY)}")
     else:
         new_minY = minY
-    
+
     if maxY is None:
-        new_maxY = max(x,default=0)
+        new_maxY = max(x, default=0)
     elif not isinstance(maxY, (int, float)):
         raise ValueError(f"fMinium has to be None or a number! But is {type(maxY)}")
     else:
         new_maxY = maxY
-
-
 
     tGraph = uproot.models.TGraph.Model_TGraph_v4.empty()
 
@@ -155,14 +160,20 @@ def _to_TGraph(
     tGraph._members["fNpoints"] = len(x)
     tGraph._members["fX"] = x
     tGraph._members["fY"] = y
-    tGraph._members["fMinimum"] = minY if minY is not None else new_minY - 0.1 * (new_maxY - new_minY)  # by default graph line wont touch the edge of the chart
-    tGraph._members["fMaximum"] = maxY if maxY is not None else new_maxY + 0.1 * (new_maxY - new_minY)  # by default graph line wont touch the edge of the chart
+    tGraph._members["fMinimum"] = (
+        minY if minY is not None else new_minY - 0.1 * (new_maxY - new_minY)
+    )  # by default graph line wont touch the edge of the chart
+    tGraph._members["fMaximum"] = (
+        maxY if maxY is not None else new_maxY + 0.1 * (new_maxY - new_minY)
+    )  # by default graph line wont touch the edge of the chart
 
     returned_TGraph = tGraph
 
     if tgraph_type == "TGraphErrors":
         if not (len(x_errors) == len(y_errors) == len(x)):
-            raise ValueError("Length of all error arrays has to be the same as length of arrays X and Y")
+            raise ValueError(
+                "Length of all error arrays has to be the same as length of arrays X and Y"
+            )
         tGraphErrors = uproot.models.TGraph.Model_TGraphErrors_v3.empty()
         tGraphErrors._bases.append(tGraph)
         tGraphErrors._members["fEX"] = x_errors
@@ -170,8 +181,16 @@ def _to_TGraph(
 
         returned_TGraph = tGraphErrors
     elif tgraph_type == "TGraphAsymmErrors":
-        if not (len(x_errors_low) == len(x_errors_high) == len(y_errors_low) == len(y_errors_high) == len(x)):
-            raise ValueError("Length of errors all error arrays has to be the same as length of arrays X and Y")
+        if not (
+            len(x_errors_low)
+            == len(x_errors_high)
+            == len(y_errors_low)
+            == len(y_errors_high)
+            == len(x)
+        ):
+            raise ValueError(
+                "Length of errors all error arrays has to be the same as length of arrays X and Y"
+            )
         tGraphAsymmErrors = uproot.models.TGraph.Model_TGraphAsymmErrors_v3.empty()
         tGraphAsymmErrors._bases.append(tGraph)
         tGraphAsymmErrors._members["fEXlow"] = x_errors_low
@@ -189,14 +208,14 @@ def to_TGraph(
     title="",
     xAxisLabel="",
     yAxisLabel="",
-    minY=None, 
+    minY=None,
     maxY=None,
-    lineColor:int=602,
-    lineStyle:int=1,
-    lineWidth:int=1,
-    markerColor:int=1,
-    markerStyle:int=1,
-    markerSize:float=1.0,
+    lineColor: int = 602,
+    lineStyle: int = 1,
+    lineWidth: int = 1,
+    markerColor: int = 1,
+    markerStyle: int = 1,
+    markerSize: float = 1.0,
 ):
     """
     Args:
@@ -228,21 +247,60 @@ def to_TGraph(
     When all error columns are unspecified, detected object is TGraph.
     When x_errors, y_errors are specified, detected object is TGraphErrors.
     When x_errors_low, x_errors_high, y_errors_low, y_errors_high are specified, detected object is TGraphAsymmErrors.
-    Note that both {x_errors, x_errors} need to be specified or set to None. 
+    Note that both {x_errors, x_errors} need to be specified or set to None.
     The same rule applies {to x_errors_low, x_errors_high, x_errors_low, x_errors_high}.
     Also can't specify {x_errors, y_errors} and {x_errors_low, x_errors_high, y_errors_low, y_errors_high} at the same time.
     """
-    
+
     x = numpy.array(df["x"]) if df.get("x", None) is not None else None
     y = numpy.array(df["y"]) if df.get("y", None) is not None else None
-    x_errors = numpy.array(df["x_errors"]) if df.get("x_errors", None) is not None else None
-    y_errors = numpy.array(df["y_errors"]) if df.get("y_errors", None) is not None else None
-    x_errors_low = numpy.array(df["x_errors_low"]) if df.get("x_errors_low", None) is not None else None
-    x_errors_high = numpy.array(df["x_errors_high"]) if df.get("x_errors_high", None) is not None else None
-    y_errors_low = numpy.array(df["y_errors_low"]) if df.get("y_errors_low", None) is not None else None
-    y_errors_high = numpy.array(df["y_errors_high"]) if df.get("y_errors_high", None) is not None else None
+    x_errors = (
+        numpy.array(df["x_errors"]) if df.get("x_errors", None) is not None else None
+    )
+    y_errors = (
+        numpy.array(df["y_errors"]) if df.get("y_errors", None) is not None else None
+    )
+    x_errors_low = (
+        numpy.array(df["x_errors_low"])
+        if df.get("x_errors_low", None) is not None
+        else None
+    )
+    x_errors_high = (
+        numpy.array(df["x_errors_high"])
+        if df.get("x_errors_high", None) is not None
+        else None
+    )
+    y_errors_low = (
+        numpy.array(df["y_errors_low"])
+        if df.get("y_errors_low", None) is not None
+        else None
+    )
+    y_errors_high = (
+        numpy.array(df["y_errors_high"])
+        if df.get("y_errors_high", None) is not None
+        else None
+    )
 
-    return _to_TGraph(x, y, x_errors, y_errors, x_errors_low, x_errors_high, y_errors_low, y_errors_high, title, 
-                      xAxisLabel, yAxisLabel, minY, maxY, lineColor, lineStyle, lineWidth, 0, 1001, 
-                      markerColor, markerStyle, markerSize)
-
+    return _to_TGraph(
+        x,
+        y,
+        x_errors,
+        y_errors,
+        x_errors_low,
+        x_errors_high,
+        y_errors_low,
+        y_errors_high,
+        title,
+        xAxisLabel,
+        yAxisLabel,
+        minY,
+        maxY,
+        lineColor,
+        lineStyle,
+        lineWidth,
+        0,
+        1001,
+        markerColor,
+        markerStyle,
+        markerSize,
+    )

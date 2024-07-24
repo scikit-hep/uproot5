@@ -770,7 +770,6 @@ class Model_TGraphAsymmErrors(uproot.model.DispatchByVersion):
     known_versions = {3: Model_TGraphAsymmErrors_v3}
 
 
-
 uproot.classes["TGraph"] = Model_TGraph
 uproot.classes["TGraphErrors"] = Model_TGraphErrors
 uproot.classes["TGraphAsymmErrors"] = Model_TGraphAsymmErrors
