@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-import numpy
+import numpy as np
 
 import uproot
-
 
 def _to_TGraph(
     x,
@@ -137,14 +136,14 @@ def _to_TGraph(
         raise ValueError(f"y has to be 1D, but is {len(y.shape)}D!")
 
     if minY is None:
-        new_minY = min(x, default=0)
+        new_minY = np.min(x)
     elif not isinstance(minY, (int, float)):
         raise ValueError(f"fMinium has to be None or a number! But is {type(minY)}")
     else:
         new_minY = minY
 
     if maxY is None:
-        new_maxY = max(x, default=0)
+        new_maxY = np.max(x)
     elif not isinstance(maxY, (int, float)):
         raise ValueError(f"fMinium has to be None or a number! But is {type(maxY)}")
     else:
@@ -252,31 +251,31 @@ def to_TGraph(
     Also can't specify {x_errors, y_errors} and {x_errors_low, x_errors_high, y_errors_low, y_errors_high} at the same time.
     """
 
-    x = numpy.array(df["x"]) if df.get("x", None) is not None else None
-    y = numpy.array(df["y"]) if df.get("y", None) is not None else None
+    x = np.array(df["x"]) if df.get("x", None) is not None else None
+    y = np.array(df["y"]) if df.get("y", None) is not None else None
     x_errors = (
-        numpy.array(df["x_errors"]) if df.get("x_errors", None) is not None else None
+        np.array(df["x_errors"]) if df.get("x_errors", None) is not None else None
     )
     y_errors = (
-        numpy.array(df["y_errors"]) if df.get("y_errors", None) is not None else None
+        np.array(df["y_errors"]) if df.get("y_errors", None) is not None else None
     )
     x_errors_low = (
-        numpy.array(df["x_errors_low"])
+        np.array(df["x_errors_low"])
         if df.get("x_errors_low", None) is not None
         else None
     )
     x_errors_high = (
-        numpy.array(df["x_errors_high"])
+        np.array(df["x_errors_high"])
         if df.get("x_errors_high", None) is not None
         else None
     )
     y_errors_low = (
-        numpy.array(df["y_errors_low"])
+        np.array(df["y_errors_low"])
         if df.get("y_errors_low", None) is not None
         else None
     )
     y_errors_high = (
-        numpy.array(df["y_errors_high"])
+        np.array(df["y_errors_high"])
         if df.get("y_errors_high", None) is not None
         else None
     )
