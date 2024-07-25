@@ -89,7 +89,7 @@ def _to_TGraph(
             )
         if any(sym_errors_bool):
             raise ValueError(
-                "Can's specify both symetrical errors and asymetrical errors"
+                "uproot.to_TGraph can accept symmetrical errors OR asymmetrical errors, but not both"
             )
         tgraph_type = "TGraphAsymmErrors"
 
