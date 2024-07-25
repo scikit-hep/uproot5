@@ -11,7 +11,6 @@ pd = pytest.importorskip("pandas")
 ROOT = pytest.importorskip("ROOT")
 
 
-
 def test_saving_TGraph_to_file(tmp_path):
     newfile = os.path.join(tmp_path, "test_file.root")
     x = [i for i in range(10)]
