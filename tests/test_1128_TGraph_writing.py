@@ -29,8 +29,8 @@ def test_saving_TGraph_to_file(tmp_path):
         y_new = tgraph.values("y")
 
         for i in range(len(x)):
-            assert abs(x_new[i] - x[i]) < EPS
-            assert abs(y_new[i] - y[i]) < EPS
+            assert x_new[i] == pytest.approx(x[i])
+            assert y_new[i] == pytest.approx(y[i])
 
 
 def test_opening_TGraph_with_root(tmp_path):
