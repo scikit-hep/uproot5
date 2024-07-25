@@ -1,9 +1,14 @@
-import uproot
+# BSD 3-Clause License; see https://github.com/scikit-hep/uproot5/blob/main/LICENSE
+
 import os
-import pandas as pd
+
 import pytest
-import ROOT
 import numpy as np
+
+import uproot
+
+pd = pytest.importorskip("pandas")
+ROOT = pytest.importorskip("ROOT")
 
 EPS = 1e-6
 
