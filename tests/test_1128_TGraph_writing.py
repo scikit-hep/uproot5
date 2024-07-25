@@ -56,5 +56,5 @@ def test_opening_TGraph_with_root(tmp_path):
         for i in range(len(x)):
             xAxis = tgraph.GetX()
             yAxis = tgraph.GetY()
-            assert abs(xAxis[i] - x[i]) < EPS
-            assert abs(yAxis[i] - y[i]) < EPS
+            assert xAxis[i] == pytest.approx(x[i])
+            assert yAxis[i] == pytest.approx(y[i])
