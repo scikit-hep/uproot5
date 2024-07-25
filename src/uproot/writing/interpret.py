@@ -85,7 +85,7 @@ def _to_TGraph(
     elif any(asym_errors_bool):
         if not all(asym_errors_bool):
             raise ValueError(
-                "Have to specify all: x_errors_low, x_errors_high, y_errors_low, y_errors_high"
+                "uproot.to_TGraph requires all of the following: x_errors_low, x_errors_high, y_errors_low, y_errors_high"
             )
         if any(sym_errors_bool):
             raise ValueError(
