@@ -123,7 +123,7 @@ class Tree:
                         raise TypeError
                     branch_dtype = numpy.dtype(branch_type)
 
-                except TypeError as err:
+                except (TypeError, ValueError) as err:
                     try:
                         awkward = uproot.extras.awkward()
                     except ModuleNotFoundError as err:
@@ -166,9 +166,7 @@ class Tree:
                             dtype = numpy.dtype(content)
                         except Exception as err:
                             raise TypeError(
-                                "values of a dict must be NumPy types\n\n    key {} has type {}".format(
-                                    repr(key), repr(content)
-                                )
+                                f"values of a dict must be NumPy types\n\n    key {key!r} has type {content!r}"
                             ) from err
                         self._branch_lookup[subname] = len(self._branch_data)
                         self._branch_data.append(
@@ -234,9 +232,7 @@ class Tree:
                                 dtype = self._branch_ak_to_np(cont)
                                 if dtype is None:
                                     raise TypeError(
-                                        "fields of a record must be NumPy types, though the record itself may be in a jagged array\n\n    field {} has type {}".format(
-                                            repr(key), str(cont)
-                                        )
+                                        f"fields of a record must be NumPy types, though the record itself may be in a jagged array\n\n    field {key!r} has type {cont!s}"
                                     )
                                 if subname not in self._branch_lookup:
                                     self._branch_lookup[subname] = len(
@@ -252,9 +248,7 @@ class Tree:
                         dt = self._branch_ak_to_np(content)
                         if dt is None:
                             raise TypeError(
-                                "cannot write Awkward Array type to ROOT file:\n\n    {}".format(
-                                    str(branch_datashape)
-                                )
+                                f"cannot write Awkward Array type to ROOT file:\n\n    {branch_datashape!s}"
                             )
                         if branch_name not in self._branch_lookup:
                             self._branch_lookup[branch_name] = len(self._branch_data)
@@ -284,9 +278,7 @@ class Tree:
                             dtype = self._branch_ak_to_np(content)
                             if dtype is None:
                                 raise TypeError(
-                                    "fields of a record must be NumPy types, though the record itself may be in a jagged array\n\n    field {} has type {}".format(
-                                        repr(key), str(content)
-                                    )
+                                    f"fields of a record must be NumPy types, though the record itself may be in a jagged array\n\n    field {key!r} has type {content!s}"
                                 )
                             if subname not in self._branch_lookup:
                                 self._branch_lookup[subname] = len(self._branch_data)
@@ -296,9 +288,7 @@ class Tree:
 
                 else:
                     raise TypeError(
-                        "cannot write Awkward Array type to ROOT file:\n\n    {}".format(
-                            str(branch_datashape)
-                        )
+                        f"cannot write Awkward Array type to ROOT file:\n\n    {branch_datashape!s}"
                     )
 
         self._num_entries = 0
@@ -358,10 +348,11 @@ class Tree:
         if letter is None:
             raise TypeError(f"cannot write NumPy dtype {branch_dtype} in TTree")
 
-        if branch_shape == ():
-            dims = ""
-        else:
-            dims = "".join("[" + str(x) + "]" for x in branch_shape)
+        dims = ""
+        if counter is not None:
+            dims = "[" + counter["fName"] + "]"
+        if len(branch_shape) > 0:
+            dims = dims + "".join("[" + str(x) + "]" for x in branch_shape)
 
         title = f"{branch_name}{dims}/{letter}"
 
@@ -663,10 +654,7 @@ class Tree:
                 num_entries = len(branch_array)
             elif num_entries != len(branch_array):
                 raise ValueError(
-                    "'extend' must fill every branch with the same number of entries; {} has {} entries".format(
-                        repr(branch_name),
-                        len(branch_array),
-                    )
+                    f"'extend' must fill every branch with the same number of entries; {branch_name!r} has {len(branch_array)} entries"
                 )
 
             datum = self._branch_data[self._branch_lookup[branch_name]]

@@ -217,6 +217,8 @@ class ThreadPoolExecutor(Executor):
                 import multiprocessing
 
                 self._max_workers = multiprocessing.cpu_count()
+        else:
+            self._max_workers = max_workers
 
         self._work_queue = queue.Queue()
         self._workers = []

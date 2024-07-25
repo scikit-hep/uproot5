@@ -1,12 +1,5 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/main/LICENSE
 
-import pytest
-import uproot
-import uproot.source.fsspec
-import uproot.source.file
-import uproot.source.xrootd
-import uproot.source.s3
-
 from typing import BinaryIO
 import skhep_testdata
 import queue
@@ -14,6 +7,14 @@ import fsspec
 import requests
 import os
 import sys
+
+import pytest
+
+import uproot
+import uproot.source.fsspec
+import uproot.source.file
+import uproot.source.xrootd
+import uproot.source.s3
 
 is_windows = sys.platform.startswith("win")
 
@@ -96,10 +97,6 @@ def test_open_fsspec_local():
 )
 def test_open_fsspec_s3(handler):
     pytest.importorskip("s3fs")
-    if sys.version_info < (3, 11):
-        pytest.skip(
-            "https://github.com/scikit-hep/uproot5/pull/1012",
-        )
 
     with uproot.open(
         "s3://pivarski-princeton/pythia_ppZee_run17emb.picoDst.root:PicoDst",
@@ -243,7 +240,7 @@ def test_fsspec_chunks(http_server):
             chunk = notifications.get()
             expected.pop((chunk.start, chunk.stop))
 
-        chunk_data_sum = {sum(chunk.raw_data) for chunk in chunks}
+        chunk_data_sum = {sum(map(int, chunk.raw_data)) for chunk in chunks}
         assert chunk_data_sum == {3967, 413, 10985}, "Chunk data does not match"
 
 
@@ -395,6 +392,7 @@ def test_issue_1035(handler):
             assert len(data) == 40
 
 
+@pytest.mark.skip(reason="This test occasionally takes too long: GitHub kills it.")
 @pytest.mark.network
 @pytest.mark.xrootd
 @pytest.mark.parametrize(
@@ -459,10 +457,6 @@ def test_fsspec_globbing_xrootd_no_files(handler):
 )
 def test_fsspec_globbing_s3(handler):
     pytest.importorskip("s3fs")
-    if sys.version_info < (3, 11):
-        pytest.skip(
-            "https://github.com/scikit-hep/uproot5/pull/1012",
-        )
 
     iterator = uproot.iterate(
         {"s3://pivarski-princeton/pythia_ppZee_run17emb.*.root": "PicoDst"},

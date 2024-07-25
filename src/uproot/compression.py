@@ -87,7 +87,7 @@ class _DecompressZLIB:
     name = "ZLIB"
     _2byte = b"ZL"
     _method = b"\x08"
-    library = "zlib"  # options: "zlib", "isal"
+    library = "zlib"  # options: "zlib", "isal", "deflate"
 
     def decompress(self, data: bytes, uncompressed_bytes=None) -> bytes:
         if uncompressed_bytes is None:
@@ -103,9 +103,13 @@ class _DecompressZLIB:
             isal_zlib = uproot.extras.isal().isal_zlib
             return isal_zlib.decompress(data, bufsize=uncompressed_bytes)
 
+        elif self.library == "deflate":
+            deflate = uproot.extras.deflate()
+            return deflate.zlib_decompress(data, bufsize=uncompressed_bytes)
+
         else:
             raise ValueError(
-                f"unrecognized ZLIB.library: {self.library!r}; must be one of ['zlib', 'isal']"
+                f"unrecognized ZLIB.library: {self.library!r}; must be one of ['zlib', 'isal', 'deflate']"
             )
 
 
@@ -120,7 +124,9 @@ class ZLIB(Compression, _DecompressZLIB):
     If ``ZLIB.library`` is ``"zlib"`` (default), Uproot uses ``zlib`` from the
     Python standard library.
 
-    If ``ZLIB.library`` is ``"isal"`` (default), Uproot uses ``isal.isal_zlib``.
+    If ``ZLIB.library`` is ``"isal"``, Uproot uses ``isal.isal_zlib``.
+
+    If ``ZLIB.library`` is ``"deflate"``, Uproot uses ``deflate.deflate_zlib``.
     """
 
     def __init__(self, level):
@@ -162,9 +168,18 @@ class ZLIB(Compression, _DecompressZLIB):
                 )
             return isal_zlib.compress(data, level=round(self._level / 3))
 
+        elif self.library == "deflate":
+            deflate = uproot.extras.deflate()
+            if self._level == 0:
+                raise ValueError(
+                    'ZLIB.library="deflate", and therefore requesting no compression '
+                    "implicitly with level 0 is not allowed."
+                )
+            return deflate.zlib_compress(data, round(self._level))
+
         else:
             raise ValueError(
-                f"unrecognized ZLIB.library: {self.library!r}; must be one of ['zlib', 'isal']"
+                f"unrecognized ZLIB.library: {self.library!r}; must be one of ['zlib', 'isal', 'deflate']"
             )
 
 
@@ -175,13 +190,13 @@ class _DecompressLZMA:
 
     def decompress(self, data: bytes, uncompressed_bytes=None) -> bytes:
         cramjam = uproot.extras.cramjam()
-        lzma = getattr(cramjam, "lzma", None) or getattr(
+        lzma = getattr(cramjam, "xz", None) or getattr(
             getattr(cramjam, "experimental", None), "lzma", None
         )
         if lzma is None:
-            raise RuntimeError(
-                "lzma not found in the cramjam package! (requires cramjam >= 2.8.1)"
-            )
+            import lzma
+
+            return lzma.decompress(data)
         if uncompressed_bytes is None:
             raise ValueError(
                 "lzma decompression requires the number of uncompressed bytes"
@@ -222,13 +237,11 @@ class LZMA(Compression, _DecompressLZMA):
 
     def compress(self, data: bytes) -> bytes:
         cramjam = uproot.extras.cramjam()
-        lzma = getattr(cramjam, "lzma", None) or getattr(
+        lzma = getattr(cramjam, "xz", None) or getattr(
             getattr(cramjam, "experimental", None), "lzma", None
         )
         if lzma is None:
-            raise RuntimeError(
-                "lzma not found in the cramjam package! (requires cramjam >= 2.8.1)"
-            )
+            import lzma
         return lzma.compress(data, preset=self._level)
 
 
@@ -421,10 +434,8 @@ def decompress(
             computed_checksum = xxhash.xxh64(data).intdigest()
             if computed_checksum != expected_checksum:
                 raise ValueError(
-                    """computed checksum {} didn't match expected checksum {}
-in file {}""".format(
-                        computed_checksum, expected_checksum, chunk.source.file_path
-                    )
+                    f"""computed checksum {computed_checksum} didn't match expected checksum {expected_checksum}
+in file {chunk.source.file_path}"""
                 )
 
         elif algo == _decompress_ZSTD._2byte:
@@ -455,16 +466,10 @@ in file {chunk.source.file_path}"""
 
         if len(uncompressed_bytestring) != block_uncompressed_bytes:
             raise ValueError(
-                """after successfully decompressing {} blocks, a block of """
-                """compressed size {} decompressed to {} bytes, but the """
-                """block header expects {} bytes.
-in file {}""".format(
-                    num_blocks,
-                    block_compressed_bytes,
-                    len(uncompressed_bytestring),
-                    block_uncompressed_bytes,
-                    chunk.source.file_path,
-                )
+                f"""after successfully decompressing {num_blocks} blocks, a block of """
+                f"""compressed size {block_compressed_bytes} decompressed to {len(uncompressed_bytestring)} bytes, but the """
+                f"""block header expects {block_uncompressed_bytes} bytes.
+in file {chunk.source.file_path}"""
             )
 
         uncompressed_array = numpy.frombuffer(

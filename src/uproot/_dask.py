@@ -5,6 +5,9 @@ import math
 import socket
 import time
 from collections.abc import Callable, Iterable, Mapping
+from concurrent.futures import Executor
+
+from uproot.source.chunk import SourcePerformanceCounters
 
 try:
     from typing import TYPE_CHECKING, Final
@@ -603,6 +606,7 @@ def _get_dask_array(
                 filter_typename=filter_typename,
                 filter_branch=real_filter_branch,
                 full_paths=full_paths,
+                ignore_duplicates=True,
             )
 
             if common_keys is None:
@@ -624,12 +628,7 @@ def _get_dask_array(
         raise ValueError(
             "allow_missing=True and no TTrees found in\n\n    {}".format(
                 "\n    ".join(
-                    "{"
-                    + "{}: {}".format(
-                        repr(f.file_path if isinstance(f, HasBranches) else f),
-                        repr(f.object_path if isinstance(f, HasBranches) else o),
-                    )
-                    + "}"
+                    f"{{{f.file_path if isinstance(f, HasBranches) else f!r}: {f.object_path if isinstance(f, HasBranches) else o!r}}}"
                     for f, o in files
                 )
             )
@@ -639,12 +638,7 @@ def _get_dask_array(
         raise ValueError(
             "TTrees in\n\n    {}\n\nhave no TBranches in common".format(
                 "\n    ".join(
-                    "{"
-                    + "{}: {}".format(
-                        repr(f.file_path if isinstance(f, HasBranches) else f),
-                        repr(f.object_path if isinstance(f, HasBranches) else o),
-                    )
-                    + "}"
+                    f"{{{f.file_path if isinstance(f, HasBranches) else f!r}: {f.object_path if isinstance(f, HasBranches) else o!r}}}"
                     for f, o in files
                 )
             )
@@ -754,6 +748,7 @@ def _get_dask_array_delay_open(
         filter_typename=filter_typename,
         filter_branch=filter_branch,
         full_paths=full_paths,
+        ignore_duplicates=True,
     )
 
     dask_dict = {}
@@ -833,6 +828,8 @@ class ImplementsFormMappingInfo(Protocol):
         keys: frozenset[str],
         start: int,
         stop: int,
+        decompression_executor: Executor,
+        interpretation_executor: Executor,
         options: Any,
     ) -> Mapping[str, AwkArray]: ...
 
@@ -972,7 +969,9 @@ class UprootReadMixin:
     def return_report(self) -> bool:
         return bool(self.allow_read_errors_with_report)
 
-    def read_tree(self, tree: HasBranches, start: int, stop: int) -> AwkArray:
+    def read_tree(
+        self, tree: HasBranches, start: int, stop: int
+    ) -> tuple[AwkArray, SourcePerformanceCounters]:
         assert start <= stop
 
         from awkward._nplikes.numpy import Numpy
@@ -1017,13 +1016,15 @@ class UprootReadMixin:
                     dtype=dtype,
                 )
 
-        return awkward.from_buffers(
+        out = awkward.from_buffers(
             self.expected_form,
             stop - start,
             container,
             behavior=self.form_mapping_info.behavior,
             buffer_key=self.form_mapping_info.buffer_key,
         )
+        assert tree.source  # we must be reading something here
+        return out, tree.source.performance_counters
 
     def mock(self) -> AwkArray:
         awkward = uproot.extras.awkward()
@@ -1114,6 +1115,7 @@ def _report_failure(exception, call_time, *args, **kwargs):
             {
                 "call_time": call_time,
                 "duration": None,
+                "performance_counters": None,
                 "args": [repr(a) for a in args],
                 "kwargs": [[k, repr(v)] for k, v in kwargs.items()],
                 "exception": type(exception).__name__,
@@ -1127,11 +1129,13 @@ def _report_failure(exception, call_time, *args, **kwargs):
 
 def _report_success(duration, *args, **kwargs):
     awkward = uproot.extras.awkward()
+    counters = kwargs.pop("counters")
     return awkward.Array(
         [
             {
                 "call_time": None,
                 "duration": duration,
+                "performance_counters": counters.asdict(),
                 "args": [repr(a) for a in args],
                 "kwargs": [[k, repr(v)] for k, v in kwargs.items()],
                 "exception": None,
@@ -1195,7 +1199,9 @@ class _UprootRead(UprootReadMixin):
         if self.return_report:
             call_time = time.time_ns()
             try:
-                result, duration = with_duration(self._call_impl)(i, start, stop)
+                (result, counters), duration = with_duration(self._call_impl)(
+                    i, start, stop
+                )
                 return (
                     result,
                     _report_success(
@@ -1203,6 +1209,7 @@ class _UprootRead(UprootReadMixin):
                         self.ttrees[i],
                         start,
                         stop,
+                        counters=counters,
                     ),
                 )
             except self.allowed_exceptions as err:
@@ -1217,7 +1224,8 @@ class _UprootRead(UprootReadMixin):
                     ),
                 )
 
-        return self._call_impl(i, start, stop)
+        result, _ = self._call_impl(i, start, stop)
+        return result
 
     def _call_impl(self, i, start, stop):
         return self.read_tree(
@@ -1305,7 +1313,7 @@ which has {num_entries} entries"""
         if self.return_report:
             call_time = time.time_ns()
             try:
-                result, duration = with_duration(self._call_impl)(
+                (result, counters), duration = with_duration(self._call_impl)(
                     file_path, object_path, i_step_or_start, n_steps_or_stop, is_chunk
                 )
                 return (
@@ -1317,6 +1325,7 @@ which has {num_entries} entries"""
                         i_step_or_start,
                         n_steps_or_stop,
                         is_chunk,
+                        counters=counters,
                     ),
                 )
             except self.allowed_exceptions as err:
@@ -1333,9 +1342,10 @@ which has {num_entries} entries"""
                     ),
                 )
 
-        return self._call_impl(
+        result, _ = self._call_impl(
             file_path, object_path, i_step_or_start, n_steps_or_stop, is_chunk
         )
+        return result
 
     def project_keys(self: T, keys: frozenset[str]) -> T:
         return _UprootOpenAndRead(
@@ -1433,6 +1443,7 @@ def _get_dak_array(
                 filter_typename=filter_typename,
                 filter_branch=real_filter_branch,
                 full_paths=full_paths,
+                ignore_duplicates=True,
             )
 
             if common_keys is None:
@@ -1454,12 +1465,7 @@ def _get_dak_array(
         raise ValueError(
             "allow_missing=True and no TTrees found in\n\n    {}".format(
                 "\n    ".join(
-                    "{"
-                    + "{}: {}".format(
-                        repr(f.file_path if isinstance(f, HasBranches) else f),
-                        repr(f.object_path if isinstance(f, HasBranches) else o),
-                    )
-                    + "}"
+                    f"{{{f.file_path if isinstance(f, HasBranches) else f!r}: {f.object_path if isinstance(f, HasBranches) else o!r}}}"
                     for f, o in files
                 )
             )
@@ -1469,12 +1475,7 @@ def _get_dak_array(
         raise ValueError(
             "TTrees in\n\n    {}\n\nhave no TBranches in common".format(
                 "\n    ".join(
-                    "{"
-                    + "{}: {}".format(
-                        repr(f.file_path if isinstance(f, HasBranches) else f),
-                        repr(f.object_path if isinstance(f, HasBranches) else o),
-                    )
-                    + "}"
+                    f"{{{f.file_path if isinstance(f, HasBranches) else f!r}: {f.object_path if isinstance(f, HasBranches) else o!r}}}"
                     for f, o in files
                 )
             )
@@ -1588,7 +1589,7 @@ def _get_dak_array_delay_open(
     ffile_path, fobject_path = files[0][0:2]
 
     if known_base_form is not None:
-        common_keys = list(known_base_form.fields)
+        common_keys = list(dict.fromkeys(known_base_form.fields))
         base_form = known_base_form
     else:
         obj = uproot._util.regularize_object_path(
@@ -1600,6 +1601,7 @@ def _get_dak_array_delay_open(
             filter_typename=filter_typename,
             filter_branch=filter_branch,
             full_paths=full_paths,
+            ignore_duplicates=True,
         )
         base_form = _get_ttree_form(
             awkward, obj, common_keys, interp_options.get("ak_add_doc")

@@ -10,7 +10,7 @@ error messages containing instructions on how to install the library.
 from __future__ import annotations
 
 import atexit
-import importlib.metadata as importlib_metadata
+import importlib.metadata
 import os
 
 from uproot._util import parse_version
@@ -36,9 +36,7 @@ to output as NumPy arrays, rather than Awkward arrays.
         return awkward
     else:
         raise ModuleNotFoundError(
-            "Uproot 5.1+ can only be used with Awkward 2.4.6 or newer; you have Awkward {}".format(
-                awkward.__version__
-            )
+            f"Uproot 5.1+ can only be used with Awkward 2.4.6 or newer; you have Awkward {awkward.__version__}"
         )
 
 
@@ -151,11 +149,11 @@ def xrootd_version():
     Gets the XRootD version if installed, otherwise returns None.
     """
     try:
-        return importlib_metadata.version("xrootd")
+        return importlib.metadata.version("xrootd")
     except ModuleNotFoundError:
         try:
             # Versions before 4.11.1 used pyxrootd as the package name
-            return importlib_metadata.version("pyxrootd")
+            return importlib.metadata.version("pyxrootd")
         except ModuleNotFoundError:
             return None
 
@@ -168,7 +166,7 @@ def isal():
         import isal
     except ModuleNotFoundError as err:
         raise ModuleNotFoundError(
-            """install the 'cramjam' package with:
+            """install the 'isal' package with:
 
     pip install isal
 
@@ -178,6 +176,26 @@ or
         ) from err
     else:
         return isal
+
+
+def deflate():
+    """
+    Import and return ``deflate``.
+    """
+    try:
+        import deflate
+    except ModuleNotFoundError as err:
+        raise ModuleNotFoundError(
+            """install the 'deflate' package with:
+
+    pip install deflate
+
+or
+
+    conda install libdeflate"""
+        ) from err
+    else:
+        return deflate
 
 
 def cramjam():
@@ -308,9 +326,7 @@ or
         return dask_awkward
     else:
         raise ModuleNotFoundError(
-            "Uproot 5.1+ can only be used with dask-awkward 2023.10.0 or newer; you have dask-awkward {}".format(
-                dask_awkward.__version__
-            )
+            f"Uproot 5.1+ can only be used with dask-awkward 2023.10.0 or newer; you have dask-awkward {dask_awkward.__version__}"
         )
 
 

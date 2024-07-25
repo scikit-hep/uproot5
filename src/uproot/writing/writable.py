@@ -1234,10 +1234,8 @@ class WritableDirectory(MutableMapping):
 
         elif key.classname.string not in ("TDirectory", "TDirectoryFile"):
             raise TypeError(
-                """cannot make a directory named {} because a {} already has that name
-in file {} in directory {}""".format(
-                    repr(name), key.classname.string, self.file_path, self.path
-                )
+                f"""cannot make a directory named {name!r} because a {key.classname.string} already has that name
+in file {self.file_path} in directory {self.path}"""
             )
 
         else:

@@ -667,12 +667,7 @@ class AsArray(AsContainer):
 
     @property
     def cache_key(self):
-        return "AsArray({},{},{},{})".format(
-            self.header,
-            self.speedbump,
-            _content_cache_key(self._values),
-            self.inner_shape,
-        )
+        return f"AsArray({self.header},{self.speedbump},{_content_cache_key(self._values)},{self.inner_shape})"
 
     @property
     def typename(self):
@@ -869,7 +864,9 @@ class AsVectorLike(AsContainer):
 
     def __init__(self, header, values):
         self.header = header
-        if isinstance(values, AsContainer):
+        if isinstance(self, uproot.containers.AsBitSet):
+            self._items = numpy.dtype(numpy.bool_)
+        elif isinstance(values, AsContainer):
             self._items = values
         elif isinstance(values, type) and issubclass(
             values, (uproot.model.Model, uproot.model.DispatchByVersion)
@@ -956,18 +953,14 @@ class AsVectorLike(AsContainer):
             # FIXME: let's hard-code in logic for std::pair<T1,T2> for now
             if not _value_typename.startswith("pair"):
                 raise NotImplementedError(
-                    """memberwise serialization of {}({})
-    in file {}""".format(
-                        type(self).__name__, _value_typename, selffile.file_path
-                    )
+                    f"""memberwise serialization of {type(self).__name__}({_value_typename})
+    in file {selffile.file_path}"""
                 )
 
             if not issubclass(self._items, uproot.model.DispatchByVersion):
                 raise NotImplementedError(
-                    """streamerless memberwise serialization of class {}({})
-    in file {}""".format(
-                        type(self).__name__, _value_typename, selffile.file_path
-                    )
+                    f"""streamerless memberwise serialization of class {type(self).__name__}({_value_typename})
+    in file {selffile.file_path}"""
                 )
 
             # uninterpreted header
@@ -1120,6 +1113,63 @@ class AsVector(AsVectorLike):
         return STLVector
 
 
+class AsList(AsVectorLike):
+    """
+    Args:
+        header (bool): Sets the :ref:`uproot.containers.AsContainer.header`.
+        values (:doc:`uproot.model.Model` or :doc:`uproot.containers.Container`): Data
+            type for data nested in the container.
+    A :doc:`uproot.containers.AsContainer` for ``std::list``.
+    """
+
+    _specialpathitem_name = "list"
+
+    @property
+    def typename(self):
+        return f"std::list<{_content_typename(self.values)}>"
+
+    @property
+    def values(self):
+        """
+        Data type for data nested in the container.
+        """
+        return self._items
+
+    @property
+    def _container_type(self):
+        return STLList
+
+
+class AsBitSet(AsVectorLike):
+    """
+    Args:
+        header (bool): Sets the :ref:`uproot.containers.AsContainer.header`.
+        keys (:doc:`uproot.model.Model` or :doc:`uproot.containers.Container`): Data
+            type for data nested in the container.
+
+    A :doc:`uproot.containers.AsContainer` for ``std::bitset``.
+    """
+
+    _specialpathitem_name = "bitset"
+
+    @property
+    def typename(self):
+        return f"std::bitset<{_content_typename(self.keys)}>"
+
+    @property
+    def keys(self):
+        """
+        Data type for data nested in the container.
+        """
+        return self._items
+
+    _form_parameters = {"__array__": "bitset"}
+
+    @property
+    def _container_type(self):
+        return STLBitSet
+
+
 class AsSet(AsVectorLike):
     """
     Args:
@@ -1220,17 +1270,11 @@ class AsMap(AsContainer):
 
     @property
     def cache_key(self):
-        return "AsMap({},{},{})".format(
-            self._header,
-            _content_cache_key(self._keys),
-            _content_cache_key(self._values),
-        )
+        return f"AsMap({self._header},{_content_cache_key(self._keys)},{_content_cache_key(self._values)})"
 
     @property
     def typename(self):
-        return "std::map<{}, {}>".format(
-            _content_typename(self._keys), _content_typename(self._values)
-        )
+        return f"std::map<{_content_typename(self._keys)}, {_content_typename(self._values)}>"
 
     def awkward_form(self, file, context):
         awkward = uproot.extras.awkward()
@@ -1496,6 +1540,65 @@ class ROOTRVec(Container, Sequence):
         else:
             return False
 
+    def __array__(self, *args, **kwargs):
+        return numpy.asarray(self._vector, *args, **kwargs)
+
+    def tolist(self):
+        return [
+            x.tolist() if isinstance(x, (Container, numpy.ndarray)) else x for x in self
+        ]
+
+
+class STLList(Container, Sequence):
+    """
+    Args:
+        values (``numpy.ndarray`` or iterable): Contents of the ``std::list``.
+
+    Representation of a C++ ``std::list`` as a Python ``Sequence``.
+    """
+
+    def __init__(self, values):
+        if isinstance(values, types.GeneratorType):
+            values = numpy.asarray(list(values))
+        elif isinstance(values, Set):
+            values = numpy.asarray(list(values))
+        elif isinstance(values, (list, tuple)):
+            values = numpy.asarray(values)
+
+        self._values = values
+
+    def __str__(self, limit=85):
+        def tostring(i):
+            return _tostring(self._values[i])
+
+        return _str_with_ellipsis(tostring, len(self), "[", "]", limit)
+
+    def __repr__(self, limit=85):
+        return f"<STLList {self.__str__(limit=limit - 30)} at 0x{id(self):012x}>"
+
+    def __getitem__(self, where):
+        return self._values[where]
+
+    def __len__(self):
+        return len(self._values)
+
+    def __contains__(self, what):
+        return what in self._values
+
+    def __iter__(self):
+        return iter(self._values)
+
+    def __reversed__(self):
+        return STLList(self._values[::-1])
+
+    def __eq__(self, other):
+        if isinstance(other, STLList):
+            return self._values == other._values
+        elif isinstance(other, Sequence):
+            return self._values == other
+        else:
+            return False
+
     def tolist(self):
         return [
             x.tolist() if isinstance(x, (Container, numpy.ndarray)) else x for x in self
@@ -1549,6 +1652,52 @@ class STLVector(Container, Sequence):
             return self._values == other._values
         elif isinstance(other, Sequence):
             return self._values == other
+        else:
+            return False
+
+    def __array__(self, *args, **kwargs):
+        return numpy.asarray(self._vector, *args, **kwargs)
+
+    def tolist(self):
+        return [
+            x.tolist() if isinstance(x, (Container, numpy.ndarray)) else x for x in self
+        ]
+
+
+class STLBitSet(Container, Sequence):
+    """
+    Args:
+        values (``numpy.ndarray`` or iterable): Contents of the ``std::vector``.
+
+    Representation of a C++ ``std::bitset`` as a Python ``Sequence``.
+    """
+
+    def __init__(self, numbytes):
+        self._numbytes = numpy.asarray(numbytes)
+
+    def __str__(self, limit=85):
+        def tostring(i):
+            return _tostring(self._values[i])
+
+        return _str_with_ellipsis(tostring, len(self), "[", "]", limit)
+
+    def __repr__(self, limit=85):
+        return f"<STLBitSet {self.__str__(limit=limit - 30)} at 0x{id(self):012x}>"
+
+    def __getitem__(self, where):
+        return self._numbytes[where]
+
+    def __len__(self):
+        return self._numbytes
+
+    def __iter__(self):
+        return iter(self._numbytes)
+
+    def __eq__(self, other):
+        if isinstance(other, STLBitSet):
+            return self._numbytes == other._numbytes
+        elif isinstance(other, Sequence):
+            return self._numbytes == other
         else:
             return False
 
@@ -1616,6 +1765,9 @@ class STLSet(Container, Set):
             return keys_same
         else:
             return numpy.all(keys_same)
+
+    def __array__(self, *args, **kwargs):
+        return numpy.asarray(self._keys, *args, **kwargs)
 
     def tolist(self):
         return {

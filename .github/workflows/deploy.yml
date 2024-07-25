@@ -6,33 +6,39 @@ on:
     types:
       - published
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  dist:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
 
-      - name: Build wheel and SDist
-        run: pipx run build
-
-      - name: Check metadata
-        run: pipx run twine check dist/*
-
-      - uses: actions/upload-artifact@v4
-        with:
-          path: dist/*
-
+  build_dist:
+    name: Build and upload sdist and wheel
+    if: github.repository_owner == 'scikit-hep'
+    uses: ./.github/workflows/build-distributions.yml
 
   publish:
-    needs: [dist]
+    needs: [build_dist]
     runs-on: ubuntu-latest
     if: github.event_name == 'release' && github.event.action == 'published'
+    permissions:
+      id-token: write
+      attestations: write
+      contents: read
 
     steps:
       - uses: actions/download-artifact@v4
         with:
-          name: artifact
+          name: distribution-artifact
           path: dist
+
+      - name: List distributions to be deployed
+        run: ls -lha dist/
+
+      - name: Generate artifact attestation for sdist and wheel
+        uses: actions/attest-build-provenance@bdd51370e0416ac948727f861e03c2f05d32d78e # v1.3.2
+        with:
+          subject-path: dist/uproot-*
 
       - uses: pypa/gh-action-pypi-publish@release/v1
         with:

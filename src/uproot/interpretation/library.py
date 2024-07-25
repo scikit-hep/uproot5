@@ -165,7 +165,7 @@ class Library:
         return repr(self.name)
 
     def __eq__(self, other):
-        return type(_libraries[self.name]) is type(_libraries[other.name])  # noqa: E721
+        return type(_libraries[self.name]) is type(_libraries[other.name])
 
 
 class NumPy(Library):
@@ -303,10 +303,10 @@ def _object_to_awkward_json(form, obj):
         return out
 
     elif form["class"][:15] == "ListOffsetArray":
-        if form["parameters"].get("__array__") == "string":
+        if form.get("parameters", {}).get("__array__") == "string":
             return obj
 
-        elif form["content"]["parameters"].get("__array__") == "sorted_map":
+        elif form["content"].get("parameters", {}).get("__array__") == "sorted_map":
             key_form = form["content"]["contents"][0]
             value_form = form["content"]["contents"][1]
             return [
@@ -385,30 +385,30 @@ def _awkward_json_to_array(awkward, form, array):
                 names.append(name)
         length = len(array) if len(contents) == 0 else None
         return awkward.contents.RecordArray(
-            contents, names, length, parameters=form["parameters"]
+            contents, names, length, parameters=form.get("parameters", {})
         )
 
     elif form["class"][:15] == "ListOffsetArray":
-        if form["parameters"].get("__array__") == "string":
+        if form.get("parameters", {}).get("__array__") == "string":
             if isinstance(array, awkward.contents.EmptyArray):
                 content = awkward.contents.NumpyArray(
                     numpy.empty(0, dtype=numpy.uint8),
-                    parameters=form["content"]["parameters"],
+                    parameters=form["content"].get("parameters", {}),
                 )
                 return awkward.contents.ListOffsetArray(
                     awkward.index.Index64(numpy.array([0], dtype=numpy.uint8)),
                     content,
-                    parameters=form["parameters"],
+                    parameters=form.get("parameters", {}),
                 )
             else:
                 content = _awkward_json_to_array(
                     awkward, form["content"], array.content
                 )
                 return type(array)(
-                    array.offsets, content, parameters=form["parameters"]
+                    array.offsets, content, parameters=form.get("parameters", {})
                 )
 
-        elif form["content"]["parameters"].get("__array__") == "sorted_map":
+        elif form["content"].get("parameters", {}).get("__array__") == "sorted_map":
             offsets = _awkward_offsets(awkward, form, array)
             key_form = form["content"]["contents"][0]
             value_form = form["content"]["contents"][1]
@@ -419,7 +419,7 @@ def _awkward_json_to_array(awkward, form, array):
                     (keys, values),
                     None,
                     0,
-                    parameters=form["content"]["parameters"],
+                    parameters=form["content"].get("parameters", {}),
                 )
             else:
                 keys = _awkward_json_to_array(awkward, key_form, array.content["0"])
@@ -429,10 +429,10 @@ def _awkward_json_to_array(awkward, form, array):
                     (keys, values),
                     None,
                     length,
-                    parameters=form["content"]["parameters"],
+                    parameters=form["content"].get("parameters", {}),
                 )
             cls = uproot._util._content_cls_from_name(awkward, form["class"])
-            return cls(offsets, content, parameters=form["parameters"])
+            return cls(offsets, content, parameters=form.get("parameters", {}))
 
         else:
             offsets = _awkward_offsets(awkward, form, array)
@@ -443,7 +443,7 @@ def _awkward_json_to_array(awkward, form, array):
                     awkward, form["content"], array.content
                 )
             cls = uproot._util._content_cls_from_name(awkward, form["class"])
-            return cls(offsets, content, parameters=form["parameters"])
+            return cls(offsets, content, parameters=form.get("parameters", {}))
 
     elif form["class"] == "RegularArray":
         if isinstance(array, awkward.contents.EmptyArray):
@@ -451,7 +451,7 @@ def _awkward_json_to_array(awkward, form, array):
         else:
             content = _awkward_json_to_array(awkward, form["content"], array.content)
         return awkward.contents.RegularArray(
-            content, form["size"], parameters=form["parameters"]
+            content, form["size"], parameters=form.get("parameters", {})
         )
 
     else:
@@ -751,14 +751,14 @@ class Awkward(Library):
 def _is_pandas_rangeindex(pandas, index):
     if hasattr(pandas, "RangeIndex") and isinstance(index, pandas.RangeIndex):
         return True
-    if hasattr(index, "is_integer") and index.is_integer():
+    elif hasattr(index, "is_integer") and index.is_integer():
         return True
-    if uproot._util.parse_version(pandas.__version__) < uproot._util.parse_version(
+    elif uproot._util.parse_version(pandas.__version__) < uproot._util.parse_version(
         "1.4.0"
     ) and isinstance(index, pandas.Int64Index):
         return True
-
-    return False
+    else:
+        return False
 
 
 def _strided_to_pandas(path, interpretation, data, arrays, columns):
@@ -981,9 +981,7 @@ def _regularize_library(library):
             return _libraries[library.name]
         else:
             raise ValueError(
-                "library {} ({}) cannot be used in this function".format(
-                    type(library).__name__, repr(library.name)
-                )
+                f"library {type(library).__name__} ({library.name!r}) cannot be used in this function"
             )
 
     elif isinstance(library, type) and issubclass(library, Library):
@@ -991,9 +989,7 @@ def _regularize_library(library):
             return _libraries[library().name]
         else:
             raise ValueError(
-                "library {} ({}) cannot be used in this function".format(
-                    library.__name__, repr(library().name)
-                )
+                f"library {library.__name__} ({library().name!r}) cannot be used in this function"
             )
 
     else:

@@ -964,7 +964,7 @@ def _parse_node(tokens, i, typename, file, quote, header, inner_header):
         return (
             i + 4,
             _parse_maybe_quote(
-                f'uproot.containers.AsFIXME("std::bitset<{num_bits}>")',
+                f"uproot.containers.AsBitSet({header}, {num_bits})",
                 quote,
             ),
         )
@@ -983,6 +983,21 @@ def _parse_node(tokens, i, typename, file, quote, header, inner_header):
             )
         else:
             return i + 1, uproot.containers.AsVector(header, values)
+
+    elif tokens[i].group(0) == "list" or _simplify_token(tokens[i]) == "std::list":
+        _parse_expect("<", tokens, i + 1, typename, file)
+        i, values = _parse_node(
+            tokens, i + 2, typename, file, quote, inner_header, inner_header
+        )
+        i = _parse_ignore_extra_arguments(tokens, i, typename, file, 1)
+        _parse_expect(">", tokens, i, typename, file)
+        if quote:
+            return (
+                i + 1,
+                f"uproot.containers.AsList({header}, {values})",
+            )
+        else:
+            return i + 1, uproot.containers.AsList(header, values)
 
     elif (
         tokens[i].group(0) == "RVec"

@@ -80,6 +80,23 @@ class AsObjects(uproot.interpretation.Interpretation):
     def __eq__(self, other):
         return isinstance(other, AsObjects) and self._model == other._model
 
+    def __getstate__(self):
+        return {
+            k: (
+                uproot.model._LockPlaceholder()
+                if isinstance(v, uproot.model._LockPlaceholder.lock_type)
+                else v
+            )
+            for k, v in self.__dict__.items()
+        }
+
+    def __setstate__(self, state):
+        instance_data = {
+            k: threading.Lock() if isinstance(v, uproot.model._LockPlaceholder) else v
+            for k, v in state.items()
+        }
+        self.__dict__.update(instance_data)
+
     @property
     def numpy_dtype(self):
         return numpy.dtype(object)
@@ -184,7 +201,7 @@ class AsObjects(uproot.interpretation.Interpretation):
         options,
     ):
         awkward = uproot.extras.awkward()
-        import awkward.forth
+        import awkward.forth  # noqa: F811
 
         self.hook_before_basket_array(
             data=data,
@@ -832,15 +849,9 @@ class AsStridedObjects(uproot.interpretation.numerical.AsDtype):
 
         except ValueError as err:
             raise ValueError(
-                """basket {} in tree/branch {} has the wrong number of bytes ({}) """
-                """for interpretation {}
-in file {}""".format(
-                    basket.basket_num,
-                    branch.object_path,
-                    len(data),
-                    self,
-                    branch.file.file_path,
-                )
+                f"""basket {basket.basket_num} in tree/branch {branch.object_path} has the wrong number of bytes ({len(data)}) """
+                f"""for interpretation {self}
+in file {branch.file.file_path}"""
             ) from err
         self.hook_after_basket_array(
             data=data,
@@ -925,14 +936,7 @@ class ObjectArray:
         self._detached_file = self._branch.file.detached
 
     def __repr__(self):
-        return "ObjectArray({}, {}, {}, {}, {}, {})".format(
-            self._model,
-            self._branch,
-            self._context,
-            self._byte_offsets,
-            self._byte_content,
-            self._cursor_offset,
-        )
+        return f"ObjectArray({self._model}, {self._branch}, {self._context}, {self._byte_offsets}, {self._byte_content}, {self._cursor_offset})"
 
     @property
     def model(self):

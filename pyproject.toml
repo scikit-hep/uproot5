@@ -38,8 +38,7 @@ classifiers = [
 ]
 dependencies = [
   "awkward>=2.4.6",
-  "cramjam>=2.8.1",
-  "importlib-metadata;python_version<\"3.8\"",
+  "cramjam>=2.5.0",
   "numpy",
   "fsspec",
   "packaging",
@@ -63,8 +62,11 @@ dev = [
   "pandas",
   "awkward-pandas"
 ]
+http = ["aiohttp"]
+s3 = ["s3fs"]
 test = [
   "isal",
+  "deflate",
   "xxhash",
   "minio",
   "aiohttp",
@@ -78,6 +80,7 @@ test = [
   "scikit-hep-testdata",
   "rangehttpserver"
 ]
+xrootd = ["fsspec-xrootd"]
 
 [project.urls]
 Download = "https://github.com/scikit-hep/uproot5/releases"
@@ -97,7 +100,8 @@ profile = "black"
 addopts = ["-ra", "--showlocals", "--strict-markers", "--strict-config"]
 filterwarnings = [
   "error",
-  "default:module 'sre_.*' is deprecated:DeprecationWarning"
+  "default:module 'sre_.*' is deprecated:DeprecationWarning",
+  "ignore:unclosed transport <asyncio.sslproto._SSLProtocolTransport"  # https://github.com/aio-libs/aiohttp/issues/1115
 ]
 log_cli_level = "info"
 markers = [
@@ -130,7 +134,8 @@ ignore = [
   "SIM114",  # combine `if` branches using logical `or` operator
   "S307",  # no eval allowed
   "PLC1901",  # empty string is falsey (but I don't want to rely on such weak typing)
-  "RUF012"  # enforces type annotations on a codebase that lacks type annotations
+  "RUF012",  # enforces type annotations on a codebase that lacks type annotations
+  "SIM103"  # interferes with my if-elif-elif-else blocks
 ]
 select = [
   "E",

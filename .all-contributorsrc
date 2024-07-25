@@ -542,6 +542,33 @@
       "contributions": [
         "code"
       ]
+    },
+    {
+      "login": "bojohnson5",
+      "name": "Bo Johnson",
+      "avatar_url": "https://avatars.githubusercontent.com/u/20647190?v=4",
+      "profile": "https://github.com/bojohnson5",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "milesgranger",
+      "name": "Miles",
+      "avatar_url": "https://avatars.githubusercontent.com/u/13764397?v=4",
+      "profile": "https://github.com/milesgranger",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "djw9497",
+      "name": "djw9497",
+      "avatar_url": "https://avatars.githubusercontent.com/u/51672890?v=4",
+      "profile": "https://github.com/djw9497",
+      "contributions": [
+        "code"
+      ]
     }
   ],
   "contributorsPerLine": 7,

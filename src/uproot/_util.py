@@ -80,7 +80,9 @@ def ensure_numpy(array, types=(numpy.bool_, numpy.integer, numpy.floating)):
 
     awkward = uproot.extras.awkward()
     with warnings.catch_warnings():
-        warnings.simplefilter("error", numpy.VisibleDeprecationWarning)
+        warnings.simplefilter(
+            "error", getattr(numpy, "exceptions", numpy).VisibleDeprecationWarning
+        )
         if isinstance(array, awkward.contents.Content):
             out = awkward.to_numpy(array)
         else:

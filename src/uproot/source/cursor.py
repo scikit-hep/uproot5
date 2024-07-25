@@ -386,7 +386,7 @@ class Cursor:
             length_data = chunk.get(start, stop, self, context)
             length = numpy.frombuffer(length_data, dtype=self._u1).view(self._i4)[0]
         start = stop
-        stop = start + length
+        stop = start + int(length)
         if move:
             self._index = stop
         return uproot._util.tobytes(chunk.get(start, stop, self, context))
@@ -486,10 +486,8 @@ class Cursor:
         while char != 0:
             if local_stop > len(remainder):
                 raise OSError(
-                    """C-style string has no terminator (null byte) in Chunk {}:{}
-of file path {}""".format(
-                        self._start, self._stop, self._source.file_path
-                    )
+                    f"""C-style string has no terminator (null byte) in Chunk {self._start}:{self._stop}
+of file path {self._source.file_path}"""
                 )
             char = remainder[local_stop]
             local_stop += 1

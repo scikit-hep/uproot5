@@ -2,7 +2,7 @@
 
 [![PyPI version](https://badge.fury.io/py/uproot.svg)](https://pypi.org/project/uproot)
 [![Conda-Forge](https://img.shields.io/conda/vn/conda-forge/uproot)](https://github.com/conda-forge/uproot-feedstock)
-[![Python 3.7‒3.11](https://img.shields.io/badge/python-3.7%E2%80%923.11-blue)](https://www.python.org)
+[![Python 3.7‒3.12](https://img.shields.io/badge/python-3.7%E2%80%923.12-blue)](https://www.python.org)
 [![BSD-3 Clause License](https://img.shields.io/badge/license-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
 [![Continuous integration tests](https://github.com/scikit-hep/uproot5/actions/workflows/build-test.yml/badge.svg)](https://github.com/scikit-hep/uproot5/actions)
 
@@ -184,6 +184,9 @@ Thanks especially to the gracious help of Uproot contributors (including the [or
     <tr>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/bnavigator"><img src="https://avatars.githubusercontent.com/u/4623504?v=4?s=100" width="100px;" alt="Ben Greiner"/><br /><sub><b>Ben Greiner</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot5/commits?author=bnavigator" title="Tests">⚠️</a></td>
       <td align="center" valign="top" width="14.28%"><a href="http://tooldev.de"><img src="https://avatars.githubusercontent.com/u/1640386?v=4?s=100" width="100px;" alt="Robin Sonnabend"/><br /><sub><b>Robin Sonnabend</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot5/commits?author=YSelfTool" title="Code">💻</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/bojohnson5"><img src="https://avatars.githubusercontent.com/u/20647190?v=4?s=100" width="100px;" alt="Bo Johnson"/><br /><sub><b>Bo Johnson</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot5/commits?author=bojohnson5" title="Code">💻</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/milesgranger"><img src="https://avatars.githubusercontent.com/u/13764397?v=4?s=100" width="100px;" alt="Miles"/><br /><sub><b>Miles</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot5/commits?author=milesgranger" title="Code">💻</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/djw9497"><img src="https://avatars.githubusercontent.com/u/51672890?v=4?s=100" width="100px;" alt="djw9497"/><br /><sub><b>djw9497</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot5/commits?author=djw9497" title="Code">💻</a></td>
     </tr>
   </tbody>
 </table>
