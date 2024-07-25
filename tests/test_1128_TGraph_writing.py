@@ -18,7 +18,7 @@ def test_saving_TGraph_to_file(tmp_path):
     df = pd.DataFrame({"x": x, "y": y})
 
     with uproot.recreate(newfile) as f:
-        f["myTGraph"] = uproot.to_TGraph(df)
+        f["myTGraph"] = uproot.as_TGraph(df)
 
     with uproot.open(newfile) as f:
         tgraph = f["myTGraph"]
@@ -42,7 +42,7 @@ def test_opening_TGraph_with_root(tmp_path):
     yLabel = "yLabel"
 
     with uproot.recreate(newfile) as f:
-        f[tGraphName] = uproot.to_TGraph(
+        f[tGraphName] = uproot.as_TGraph(
             df, title=title, xAxisLabel=xLabel, yAxisLabel=yLabel
         )
 

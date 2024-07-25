@@ -6,7 +6,7 @@ import numbers
 import uproot
 
 
-def _to_TGraph(
+def _as_TGraph(
     x,
     y,
     x_errors=None,
@@ -204,7 +204,7 @@ def _to_TGraph(
     return returned_TGraph
 
 
-def to_TGraph(
+def as_TGraph(
     df,
     title="",
     xAxisLabel="",
@@ -282,7 +282,7 @@ def to_TGraph(
         else None
     )
 
-    return _to_TGraph(
+    return _as_TGraph(
         x,
         y,
         x_errors,
