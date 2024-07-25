@@ -10,7 +10,6 @@ import uproot
 pd = pytest.importorskip("pandas")
 ROOT = pytest.importorskip("ROOT")
 
-EPS = 1e-6
 
 
 def test_saving_TGraph_to_file(tmp_path):
