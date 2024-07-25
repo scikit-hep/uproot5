@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import numpy as np
+import numbers
 
 import uproot
+
 
 def _to_TGraph(
     x,
@@ -137,14 +139,14 @@ def _to_TGraph(
 
     if minY is None:
         new_minY = np.min(x)
-    elif not isinstance(minY, (int, float)):
+    elif not isinstance(minY, numbers.Real):
         raise ValueError(f"fMinium has to be None or a number! But is {type(minY)}")
     else:
         new_minY = minY
 
     if maxY is None:
         new_maxY = np.max(x)
-    elif not isinstance(maxY, (int, float)):
+    elif not isinstance(maxY, numbers.Real):
         raise ValueError(f"fMinium has to be None or a number! But is {type(maxY)}")
     else:
         new_maxY = maxY
