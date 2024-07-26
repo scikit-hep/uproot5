@@ -77,21 +77,21 @@ def _as_TGraph(
     # Detecting which type of TGraph to chose
     if any(sym_errors_bool):
         if not all(sym_errors_bool):
-            raise ValueError("uproot.to_TGraph requires both x_errors and y_errors")
+            raise ValueError("uproot.as_TGraph requires both x_errors and y_errors")
         if any(asym_errors_bool):
             raise ValueError(
-                "uproot.to_TGraph can accept symmetrical errors OR asymmetrical errors, but not both"
+                "uproot.as_TGraph can accept symmetrical errors OR asymmetrical errors, but not both"
             )
         tgraph_type = "TGraphErrors"
 
     elif any(asym_errors_bool):
         if not all(asym_errors_bool):
             raise ValueError(
-                "uproot.to_TGraph requires all of the following: x_errors_low, x_errors_high, y_errors_low, y_errors_high"
+                "uproot.as_TGraph requires all of the following: x_errors_low, x_errors_high, y_errors_low, y_errors_high"
             )
         if any(sym_errors_bool):
             raise ValueError(
-                "uproot.to_TGraph can accept symmetrical errors OR asymmetrical errors, but not both"
+                "uproot.as_TGraph can accept symmetrical errors OR asymmetrical errors, but not both"
             )
         tgraph_type = "TGraphAsymmErrors"
 
