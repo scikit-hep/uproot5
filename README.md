@@ -187,6 +187,7 @@ Thanks especially to the gracious help of Uproot contributors (including the [or
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/bojohnson5"><img src="https://avatars.githubusercontent.com/u/20647190?v=4?s=100" width="100px;" alt="Bo Johnson"/><br /><sub><b>Bo Johnson</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot5/commits?author=bojohnson5" title="Code">💻</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/milesgranger"><img src="https://avatars.githubusercontent.com/u/13764397?v=4?s=100" width="100px;" alt="Miles"/><br /><sub><b>Miles</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot5/commits?author=milesgranger" title="Code">💻</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/djw9497"><img src="https://avatars.githubusercontent.com/u/51672890?v=4?s=100" width="100px;" alt="djw9497"/><br /><sub><b>djw9497</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot5/commits?author=djw9497" title="Code">💻</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/Pepesob"><img src="https://avatars.githubusercontent.com/u/113636251?v=4?s=100" width="100px;" alt="Piotr Sobczyński"/><br /><sub><b>Piotr Sobczyński</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot5/commits?author=Pepesob" title="Code">💻</a></td>
     </tr>
   </tbody>
 </table>
