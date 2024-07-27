@@ -141,14 +141,18 @@ def _as_TGraph(
     if minY is None:
         new_minY = np.min(x)
     elif not isinstance(minY, numbers.Real):
-        raise ValueError(f"uproot.as_TGraph minY has to be None or a number, not {type(minY)}")
+        raise ValueError(
+            f"uproot.as_TGraph minY has to be None or a number, not {type(minY)}"
+        )
     else:
         new_minY = minY
 
     if maxY is None:
         new_maxY = np.max(x)
     elif not isinstance(maxY, numbers.Real):
-        raise ValueError(f"uproot.as_TGraph minY has to be None or a number, not {type(maxY)}")
+        raise ValueError(
+            f"uproot.as_TGraph minY has to be None or a number, not {type(maxY)}"
+        )
     else:
         new_maxY = maxY
 
