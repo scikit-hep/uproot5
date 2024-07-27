@@ -132,7 +132,7 @@ def _as_TGraph(
     if len(x) != len(y):
         raise ValueError("Arrays x and y must have the same length!")
     if len(x) == 0:
-        raise ValueError("x and Y arrays can't be emty")
+        raise ValueError("uproot.as_TGraph x and y arrays can't be empty")
     if len(x.shape) != 1:
         raise ValueError(f"x has to be 1D, but is {len(x.shape)}D!")
     if len(y.shape) != 1:
@@ -141,14 +141,14 @@ def _as_TGraph(
     if minY is None:
         new_minY = np.min(x)
     elif not isinstance(minY, numbers.Real):
-        raise ValueError(f"minY has to be None or a number! But is {type(minY)}")
+        raise ValueError(f"uproot.as_TGraph minY has to be None or a number, not {type(minY)}")
     else:
         new_minY = minY
 
     if maxY is None:
         new_maxY = np.max(x)
     elif not isinstance(maxY, numbers.Real):
-        raise ValueError(f"minY has to be None or a number! But is {type(maxY)}")
+        raise ValueError(f"uproot.as_TGraph minY has to be None or a number, not {type(maxY)}")
     else:
         new_maxY = maxY
 
