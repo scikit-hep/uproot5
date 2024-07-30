@@ -201,7 +201,7 @@ class AsObjects(uproot.interpretation.Interpretation):
         options,
     ):
         awkward = uproot.extras.awkward()
-        import awkward.forth
+        import awkward.forth  # noqa: F811
 
         self.hook_before_basket_array(
             data=data,
