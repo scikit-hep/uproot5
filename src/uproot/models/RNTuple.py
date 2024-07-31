@@ -97,6 +97,8 @@ in file {self.file.file_path}"""
         self._alias_columns_dict_ = None
         self._related_ids_ = None
         self._column_records_dict_ = None
+        self._num_entries = None
+        self._length = None
 
         self._page_list_envelopes = []
 
@@ -236,13 +238,44 @@ in file {self.file.file_path}"""
     def cluster_summaries(self):
         return self.page_list_envelopes.cluster_summaries
 
-    # FIXME
     @property
-    def _length(self):
-        return sum(x.num_entries for x in self.cluster_summaries)
+    def num_entries(self):
+        if self._num_entries is None:
+            self._num_entries = sum(x.num_entries for x in self.cluster_summaries)
+        return self._num_entries
 
     def __len__(self):
+        if self._length is None:
+            self._length = len(self.to_akform().fields)
         return self._length
+
+    def __repr__(self):
+        if len(self) == 0:
+            return f"<RNTuple {self.name!r} at 0x{id(self):012x}>"
+        else:
+            return f"<RNTuple {self.name!r} ({len(self)} columns) at 0x{id(self):012x}>"
+
+    @property
+    def name(self):
+        """
+        Name of the ``RNTuple``.
+        """
+        return self.parent.fName
+
+    @property
+    def object_path(self):
+        """
+        Object path of the ``RNTuple``.
+        """
+        return self.parent.object_path
+
+    @property
+    def cache_key(self):
+        """
+        String that uniquely specifies this ``RNTuple`` in its path, to use as
+        part of object and array cache keys.
+        """
+        return f"{self.parent.cache_key}{self.name};{self.parent.fCycle}"
 
     def read_locator(self, loc, uncomp_size, context):
         cursor = uproot.source.cursor.Cursor(loc.offset)
@@ -525,7 +558,7 @@ in file {self.file.file_path}"""
     ):
         ak = uproot.extras.awkward()
 
-        entry_stop = entry_stop or self._length
+        entry_stop = entry_stop or self.num_entries
 
         clusters = self.cluster_summaries
         cluster_starts = numpy.array([c.num_first_entry for c in clusters])
