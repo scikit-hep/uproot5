@@ -122,7 +122,6 @@ def recreate(file_path: str | Path | IO, **options):
             "unrecognized options for uproot.create or uproot.recreate: "
             + ", ".join(repr(x) for x in options)
         )
-
     cascading = uproot.writing._cascade.create_empty(
         sink,
         compression,
@@ -173,7 +172,6 @@ def update(file_path: str | Path | IO, **options):
             "unrecognized options for uproot.update: "
             + ", ".join(repr(x) for x in options)
         )
-
     cascading = uproot.writing._cascade.update_existing(
         sink,
         initial_directory_bytes,
@@ -232,7 +230,6 @@ class WritableFile(uproot.reading.CommonFileMethods):
     @property
     def sink(self) -> uproot.sink.file.FileSink:
         """
-        Returns a :doc:`uproot.sink.file.FileSink`, the physical layer for writing
         (and sometimes reading) data.
         """
         return self._sink
@@ -954,7 +951,6 @@ class WritableDirectory(MutableMapping):
                             keys=last._cascading.data.key_names,
                             file_path=self.file_path,
                         )
-
             return step
 
         else:
@@ -1344,6 +1340,245 @@ in file {self.file_path} in directory {self.path}"""
 
         return tree
 
+    def add_branches(  # variation of mktree for copying ttree
+        self,
+        source,
+        branches,
+        *,
+        counter_name=lambda counted: "n" + counted,
+        field_name=lambda outer, inner: inner if outer == "" else outer + "_" + inner,
+        initial_basket_capacity=10,
+        resize_factor=10.0,
+    ):
+        """
+        Args:
+            source (TTree): Name of existing TTree to copy/replace. TTree must be version 20.
+            branches (dict of pairs of str \u2192 NumPy dtype/Awkward type): Names and data
+                of branches to be added to the TTree.
+            counter_name (callable of str \u2192 str): Function to generate counter-TBranch
+                names for Awkward Arrays of variable-length lists.
+            field_name (callable of str \u2192 str): Function to generate TBranch
+                names for columns of an Awkward record array or a Pandas DataFrame.
+            initial_basket_capacity (int): Number of TBaskets that can be written to the
+                TTree without rewriting the TTree metadata to make room.
+            resize_factor (float): When the TTree metadata needs to be rewritten,
+                this specifies how many more TBasket slots to allocate as a multiplicative
+                factor.
+        Adds new branches to existing TTrees by rewriting the whole TTree with the new data.
+        This function can only copy TTrees version 20, TBranches version 13, and TBranchElements
+        version 10. To maintain custom ``counter_name``, ``field_name``, ``initial_basket_capacity``
+        or ``resize_factor`` values for the new branches, pass the custom values to the parameters.
+        Currently, writing new branches in batches is not possible; data in new ``branches``
+        must fit in memory.
+
+        .. code-block:: python
+
+            my_directory.add_branches("tree", {"branch1": np.array(...), "branch2": ak.Array(...)})
+
+        """
+        if self._file.sink.closed:
+            raise ValueError("cannot modify a TTree in a closed file")
+
+        try:
+            file = uproot.open(self.file_path, minimal_ttree_metadata=False)
+            old_ttree = file[source]
+        except ValueError:
+            msg = f"TTree {source} not found in file {self.file}"
+            raise ValueError(msg) from None
+        if not isinstance(old_ttree, uproot.TTree):
+            raise TypeError("'source' must be the name of a TTree")
+        if not isinstance(old_ttree, uproot.models.TTree.Model_TTree_v20):
+            if uproot.model.classname_version(old_ttree.encoded_classname) < 20:
+                raise TypeError(
+                    f"Cannot update TTree models older than v20 in place. This TTree is {old_ttree.encoded_classname} from before 2017."
+                )  # TODO rewrite!
+            raise TypeError(
+                f"Can only update Model_TTree_v20 in place, not {old_ttree.encoded_classname}."
+            )  # TODO rewrite?
+        elif (
+            uproot.model.classname_decode(old_ttree.branches[0].encoded_classname)[0]
+            == "TBranch"
+            and uproot.model.classname_decode(old_ttree.branches[0].encoded_classname)[
+                1
+            ]
+            != 13
+        ):
+            if (
+                uproot.model.classname_decode(old_ttree.branches[0].encoded_classname)[
+                    1
+                ]
+                < 13
+            ):
+                raise TypeError(
+                    f"Cannot update TBranch models older than v13 in place. This TBranch is {old_ttree.branches[0].encoded_classname} from before 2017."
+                )  # TODO rewrite!
+            raise TypeError(
+                f"Can only update Model_TBranch_v13 in place, not {old_ttree.branches[0].encoded_classname}."
+            )  # TODO rewrite?
+        elif (
+            uproot.model.classname_decode(old_ttree.branches[0].encoded_classname)[0]
+            == "TBranchElement"
+            and uproot.model.classname_decode(old_ttree.branches[0].encoded_classname)[
+                1
+            ]
+            != 10
+        ):
+            if (
+                uproot.model.classname_decode(old_ttree.branches[0].encoded_classname)[
+                    1
+                ]
+                < 10
+            ):
+                raise TypeError(
+                    f"Cannot update TBranchElement models older than v10 in place. This TBranchElement is {old_ttree.branches[0].encoded_classname} from before 2017."
+                )  # TODO rewrite!
+            raise TypeError(
+                "Can only update TBranchElement models v10 in place."
+            )  # TODO rewrite?
+        leaf = uproot.model.classname_decode(
+            old_ttree.branches[0].member("fLeaves")[0].encoded_classname
+        )
+        if leaf[0].startswith("TLeaf") and leaf[1] != 1:
+            if leaf[1] < 1:
+                raise TypeError(
+                    f"Cannot only update version 1 TLeaf* and TLeafElements. This TLeaf* is a {old_ttree.branches[0].member('fLeaves')[0].encoded_classname} from before 2017."
+                )
+            else:
+                raise TypeError(
+                    f"Cannot only update version 1 TLeaf* and TLeafElements, not {old_ttree.branches[0].member('fLeaves')[0].encoded_classname}."
+                )
+
+        names = old_ttree.keys()
+        if len(names) == 0:
+            raise ValueError(
+                f"""TTree {old_ttree.name} in file {old_ttree.file_path} is empty."""
+            )
+
+        at = -1
+        try:
+            at = old_ttree.name.rindex("/")
+        except ValueError:
+            treename = old_ttree.name
+            directory = self
+        treename = old_ttree.name[at + 1 :]
+        path = (*directory._path, treename)
+
+        awkward = uproot.extras.awkward()
+        import numpy
+
+        if uproot._util.from_module(branches, "awkward"):
+            import awkward
+
+            if isinstance(branches, awkward.Array):
+                branches = {"": branches}
+
+        if isinstance(branches, numpy.ndarray) and branches.dtype.fields is not None:
+            branches = uproot.writing._cascadetree.recarray_to_dict(branches)
+        data = {}
+        metadata = {}
+        for branch_name, branch_array in branches.items():
+            if (
+                isinstance(branch_array, numpy.ndarray)
+                and branch_array.dtype.fields is not None
+            ):
+                branch_array = uproot.writing._cascadetree.recarray_to_dict(  # noqa: PLW2901 (overwriting branch_array)
+                    branch_array
+                )
+            entries = old_ttree.member("fEntries")
+            if len(branch_array) != old_ttree.member("fEntries"):
+                raise ValueError(
+                    f"'add_branches' must fill every branch with the same number of entries; new branches should have {entries} entries, but {branch_name!r} has {len(branch_array)} entries"
+                )
+            if isinstance(branch_array, Mapping) and all(
+                isinstance(x, str) for x in branch_array
+            ):
+                datum = {}
+                metadatum = {}
+                for kk, vv in branch_array.items():
+                    try:
+                        vv = (  # noqa: PLW2901 (overwriting vv)
+                            uproot._util.ensure_numpy(vv)
+                        )
+                    except TypeError:
+                        raise TypeError(
+                            f"unrecognizable array type {type(branch_array)} associated with {branch_name!r}"
+                        ) from None
+                    datum[kk] = vv
+                    branch_dtype = vv.dtype
+                    branch_shape = vv.shape[1:]
+                    if branch_shape != ():
+                        branch_dtype = numpy.dtype((branch_dtype, branch_shape))
+                    metadatum[kk] = branch_dtype
+
+                data[branch_name] = datum
+                metadata[branch_name] = metadatum
+
+            else:
+                if uproot._util.from_module(branch_array, "awkward"):
+                    data[branch_name] = branch_array
+                    metadata[branch_name] = branch_array.type
+
+                else:
+                    try:
+                        branch_array = uproot._util.ensure_numpy(  # noqa: PLW2901 (overwriting branch_array)
+                            branch_array
+                        )
+                    except TypeError:
+                        awkward = uproot.extras.awkward()
+                        try:
+                            branch_array = awkward.from_iter(  # noqa: PLW2901 (overwriting branch_array)
+                                branch_array
+                            )
+                        except Exception:
+                            raise TypeError(
+                                f"unrecognizable array type {type(branch_array)} associated with {branch_name!r}"
+                            ) from None
+                        else:
+                            data[branch_name] = branch_array
+                            metadata[branch_name] = awkward.type(branch_array)
+
+                    else:
+                        data[branch_name] = branch_array
+                        branch_dtype = branch_array.dtype
+                        branch_shape = branch_array.shape[1:]
+                        if branch_shape != ():
+                            branch_dtype = numpy.dtype((branch_dtype, branch_shape))
+                        metadata[branch_name] = branch_dtype
+        file.close()
+        obj, update_streamers = directory._cascading.add_branches(
+            directory._file.sink,
+            old_ttree.name,
+            old_ttree.title,
+            metadata,
+            counter_name,
+            field_name,
+            initial_basket_capacity,
+            resize_factor,
+            old_ttree,
+            old_ttree.branches,
+            branches,
+            directory,
+        )
+        tree = WritableTree(path, directory._file, obj)
+        update_streamers.append(
+            uproot.models.TTree.Model_TTree_v20,
+        )
+        seen = set()
+        streamers = []
+        for model in update_streamers:
+            for rawstreamer in model.class_rawstreamers:
+                classname_version = rawstreamer[-2], rawstreamer[-1]
+                if classname_version not in seen:
+                    seen.add(classname_version)
+                    streamers.append(
+                        uproot.writing._cascade.RawStreamerInfo(*rawstreamer)
+                    )
+        directory._file._cascading.streamers.update_streamers(
+            directory._file.sink,
+            streamers,
+        )
+        return tree
+
     def mkrntuple(
         self,
         name,
@@ -1525,7 +1760,6 @@ in file {source.file_path} in directory {source.path}"""
         update.
         """
         streamers = []
-
         if pairs is not None:
             if hasattr(pairs, "keys"):
                 all_pairs = itertools.chain(
@@ -1551,7 +1785,6 @@ in file {source.file_path} in directory {source.path}"""
                 directory = directory[item]
 
             uproot.writing.identify.add_to_directory(v, name, directory, streamers)
-
         self._file._cascading.streamers.update_streamers(self._file.sink, streamers)
 
 

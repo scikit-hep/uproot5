@@ -14,6 +14,7 @@ import numpy
 
 import uproot
 import uproot.models.TH
+import uproot.models.TObjArray
 
 _tbranch10_format1 = struct.Struct(">iiiiqiIiqqq")
 _tbranch10_dtype1 = numpy.dtype(">i4")
