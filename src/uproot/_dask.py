@@ -1036,9 +1036,11 @@ class UprootReadMixin:
         return self.expected_form
 
     def project(self, columns) -> T:
-        keys = self.form_mapping_info.keys_for_buffer_keys(columns) & frozenset(
-            self.common_keys
-        )
+        from dask_awkward.lib.utils import _buf_to_col
+        keys = [_buf_to_col(c).replace(".", "_")  for c in columns] + ["nJet", "nMuon", "nElectron", "nPhoton", "nTau"]
+        if not isinstance(self.form_mapping_info, TrivialFormMappingInfo):
+            roots = {_.split("_", 1)[0] for _ in keys if "_" in _}
+            keys.extend([f"n{_}" for _ in roots])
         return self.project_keys(keys)
 
     def project_keys(self: T, keys: frozenset[str]) -> T:
