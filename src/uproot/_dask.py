@@ -1036,7 +1036,7 @@ class UprootReadMixin:
         return self.expected_form
 
     def project(self, columns) -> T:
-        from dask_awkward.lib.utils import _buf_to_col
+
         if not isinstance(self.form_mapping_info, TrivialFormMappingInfo):
             roots = {_.split("_", 1)[0] for _ in keys if "_" in _}
             keys.extend([f"n{_}" for _ in roots])
