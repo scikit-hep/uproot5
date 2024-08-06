@@ -30,7 +30,7 @@ _rntuple_locator_format = struct.Struct("<iQ")
 _rntuple_cluster_summary_format = struct.Struct("<QQ")
 _rntuple_checksum_format = struct.Struct("<Q")
 _rntuple_envlink_size_format = struct.Struct("<Q")
-_rntuple_page_num_elements_format = struct.Struct("<I")
+_rntuple_page_num_elements_format = struct.Struct("<i")
 _rntuple_column_group_id_format = struct.Struct("<I")
 _rntuple_first_ele_index_format = struct.Struct("<I")
 
@@ -605,9 +605,9 @@ def _recursive_find(form, res):
 class PageDescription:
     def read(self, chunk, cursor, context):
         out = MetaData(type(self).__name__)
-        out.num_elements = cursor.field(
-            chunk, _rntuple_page_num_elements_format, context
-        )
+        num_elements = cursor.field(chunk, _rntuple_page_num_elements_format, context)
+        out.has_checksum = num_elements < 0
+        out.num_elements = abs(num_elements)
         out.locator = LocatorReader().read(chunk, cursor, context)
         return out
 
