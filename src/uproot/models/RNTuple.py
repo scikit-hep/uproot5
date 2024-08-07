@@ -397,9 +397,11 @@ in file {self.file.file_path}"""
             newids = []
             if this_id in self._related_ids:
                 newids = self._related_ids[this_id]
-            recordlist = [ak.forms.RecordForm([], [], form_key="inv_var")]
-            recordlist.extend([self.field_form(i, seen) for i in newids])
-            return ak.forms.UnionForm("i8", "i64", recordlist, form_key=keyname)
+            recordlist = [self.field_form(i, seen) for i in newids]
+            inner = ak.forms.UnionForm(
+                "i8", "i64", recordlist, form_key=keyname + "-union"
+            )
+            return ak.forms.IndexedOptionForm("i64", inner, form_key=keyname)
         else:
             # everything should recurse above this branch
             raise AssertionError("this should be unreachable")
@@ -558,7 +560,7 @@ in file {self.file.file_path}"""
         container_dict = {}
         _recursive_find(form, target_cols)
         for key in target_cols:
-            if "column" in key:
+            if "column" in key and "union" not in key:
                 key_nr = int(key.split("-")[1])
                 dtype_byte = self.column_records[key_nr].type
                 content = self.read_col_pages(
@@ -570,8 +572,20 @@ in file {self.file.file_path}"""
                     content = numpy.diff(content)
                 if dtype_byte == uproot.const.rntuple_col_type_to_num_dict["switch"]:
                     kindex, tags = _split_switch_bits(content)
-                    container_dict[f"{key}-index"] = kindex
-                    container_dict[f"{key}-tags"] = tags
+                    # Find invalid variants and adjust buffers accordingly
+                    invalid = numpy.flatnonzero(tags == -1)
+                    if len(invalid) > 0:
+                        kindex = numpy.delete(kindex, invalid)
+                        tags = numpy.delete(tags, invalid)
+                        invalid -= numpy.arange(len(invalid))
+                        optional_index = numpy.insert(
+                            numpy.arange(len(kindex)), invalid, -1
+                        )
+                    else:
+                        optional_index = numpy.arange(len(kindex))
+                    container_dict[f"{key}-index"] = optional_index
+                    container_dict[f"{key}-union-index"] = kindex
+                    container_dict[f"{key}-union-tags"] = tags
                 else:
                     # don't distinguish data and offsets
                     container_dict[f"{key}-data"] = content
@@ -579,14 +593,14 @@ in file {self.file.file_path}"""
         cluster_offset = cluster_starts[start_cluster_idx]
         entry_start -= cluster_offset
         entry_stop -= cluster_offset
-        return ak.from_buffers(form, cluster_num_entries, container_dict)[
-            entry_start:entry_stop
-        ]
+        return ak.from_buffers(
+            form, cluster_num_entries, container_dict, allow_noncanonical_form=True
+        )[entry_start:entry_stop]
 
 
 # Supporting function and classes
 def _split_switch_bits(content):
-    tags = content["tag"].astype(numpy.dtype("int8"))
+    tags = content["tag"].astype(numpy.dtype("int8")) - 1
     kindex = content["index"]
     return kindex, tags
 

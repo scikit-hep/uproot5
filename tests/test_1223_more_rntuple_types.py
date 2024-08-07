@@ -84,4 +84,4 @@ def test_invalid_variant():
 
         a = obj.arrays("variant")
 
-        assert a.variant.tolist() == [1, 1, {}]
+        assert a.variant.tolist() == [1, 1, None]
