@@ -397,7 +397,8 @@ in file {self.file.file_path}"""
             newids = []
             if this_id in self._related_ids:
                 newids = self._related_ids[this_id]
-            recordlist = [self.field_form(i, seen) for i in newids]
+            recordlist = [ak.forms.RecordForm([], [], form_key="inv_var")]
+            recordlist.extend([self.field_form(i, seen) for i in newids])
             return ak.forms.UnionForm("i8", "i64", recordlist, form_key=keyname)
         else:
             # everything should recurse above this branch
@@ -585,7 +586,7 @@ in file {self.file.file_path}"""
 
 # Supporting function and classes
 def _split_switch_bits(content):
-    tags = content["tag"].astype(numpy.dtype("int8")) - 1
+    tags = content["tag"].astype(numpy.dtype("int8"))
     kindex = content["index"]
     return kindex, tags
 
