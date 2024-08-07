@@ -579,10 +579,10 @@ in file {self.file.file_path}"""
                         tags = numpy.delete(tags, invalid)
                         invalid -= numpy.arange(len(invalid))
                         optional_index = numpy.insert(
-                            numpy.arange(len(kindex)), invalid, -1
+                            numpy.arange(len(kindex), dtype=numpy.int64), invalid, -1
                         )
                     else:
-                        optional_index = numpy.arange(len(kindex))
+                        optional_index = numpy.arange(len(kindex), dtype=numpy.int64)
                     container_dict[f"{key}-index"] = optional_index
                     container_dict[f"{key}-union-index"] = kindex
                     container_dict[f"{key}-union-tags"] = tags
