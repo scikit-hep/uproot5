@@ -811,7 +811,10 @@ class HasBranches(Mapping):
         checked = set()
         for _, context in expression_context:
             for branch in context["branches"]:
-                if branch.cache_key not in checked:
+                if branch.cache_key not in checked and not isinstance(
+                    branchid_interpretation[branch.cache_key],
+                    uproot.interpretation.grouped.AsGrouped,
+                ):
                     checked.add(branch.cache_key)
                     for (
                         basket_num,
@@ -1035,7 +1038,10 @@ class HasBranches(Mapping):
                 checked = set()
                 for _, context in expression_context:
                     for branch in context["branches"]:
-                        if branch.cache_key not in checked:
+                        if branch.cache_key not in checked and not isinstance(
+                            branchid_interpretation[branch.cache_key],
+                            uproot.interpretation.grouped.AsGrouped,
+                        ):
                             checked.add(branch.cache_key)
                             for (
                                 basket_num,
