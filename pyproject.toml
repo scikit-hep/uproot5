@@ -80,6 +80,21 @@ test = [
   "scikit-hep-testdata",
   "rangehttpserver"
 ]
+test-emscripten = [
+  "xxhash",
+  "minio",
+  "aiohttp",
+  "fsspec-xrootd",
+  "s3fs",
+  "paramiko",
+  "pytest>=6",
+  "pytest-timeout",
+  "pytest-rerunfailures",
+  "requests",
+  "scikit-hep-testdata",
+  "rangehttpserver",
+  "pyodide-http"
+]
 xrootd = ["fsspec-xrootd"]
 
 [project.urls]
