@@ -116,3 +116,56 @@ jobs:
       - name: Run pytest
         run: |
           python -m pytest -vv tests --reruns 10 --reruns-delay 30 --only-rerun "(?i)http|ssl|timeout|expired|connection|socket"
+
+  emscripten-build:
+    name: Build and test with Emscripten
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install pyodide-build
+        run: python3 -m pip install pyodide-build
+
+      - name: Determine EMSDK version
+        id: compute-emsdk-version
+        run: |
+          pyodide config list
+          # Save EMSDK version
+          EMSCRIPTEN_VERSION=$(pyodide config get emscripten_version)
+          echo "emsdk-version=$EMSCRIPTEN_VERSION" >> $GITHUB_OUTPUT
+
+      - name: Install EMSDK
+        uses: mymindstorm/setup-emsdk@v14
+        with:
+          version: ${{ steps.compute-emsdk-version.outputs.emsdk-version }}
+
+      - name: Build the package
+        run: pyodide build
+
+      - name: Set up Pyodide virtual environment
+        run: |
+          pyodide venv .venv-pyodide
+          source .venv-pyodide/bin/activate
+          # clone and install scikit-hep-testdata so that test files are available locally
+          git clone https://github.com/scikit-hep/scikit-hep-testdata.git
+          python -m pip install -e scikit-hep-testdata
+          python -m pip install .[test-emscripten]
+
+      - name: Run pytest
+        run: |
+          source .venv-pyodide/bin/activate
+          # run a few tests compatible with wasm
+          # cache and timeout don't work in wasm so we disable them
+          python -m pytest -p no:cacheprovider --timeout 0 -vv \
+            tests/test_0014_all_ttree_versions.py \
+            tests/test_0016_interpretations.py \
+            tests/test_0962_RNTuple_update.py \
+            tests/test_1191_rntuple_fixes.py
