@@ -6,8 +6,7 @@ import skhep_testdata
 
 
 def test_ttime_custom():
-    # filename = skhep_testdata.data_path("uproot-issue-1275.root")
-    filename = "uproot-issue-1275.root"
+    filename = skhep_testdata.data_path("uproot-issue-1275.root")
 
     with uproot.open(filename) as file:
         spline = file["spline"]
@@ -29,8 +28,3 @@ def test_ttime_custom():
         assert spline.member("fPoly")[2].member("fB") == 5.5
         assert spline.member("fPoly")[2].member("fC") == 1.0
         assert spline.member("fPoly")[2].member("fD") == 1.7142857142857144
-
-
-
-
-
