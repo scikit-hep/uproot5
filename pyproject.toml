@@ -83,7 +83,8 @@ test = [
 test-pyodide = [
   "pytest>=6",
   "pytest-pyodide",
-  "pytest-timeout"
+  "pytest-timeout",
+  "scikit-hep-testdata"
 ]
 xrootd = ["fsspec-xrootd"]
 

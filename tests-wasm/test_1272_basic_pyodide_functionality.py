@@ -1,12 +1,7 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot5/blob/main/LICENSE
 from __future__ import annotations
 
-import pytest
-
-try:
-    from utils import run_test_in_pyodide
-except ImportError:
-    pytest.skip("Pyodide is not available", allow_module_level=True)
+from utils import run_test_in_pyodide
 
 
 @run_test_in_pyodide(test_file="test_ntuple_extension_columns.root")

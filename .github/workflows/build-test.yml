@@ -178,4 +178,4 @@ jobs:
 
       - name: Run pytest
         run: |
-          python -m pytest -vv --dist-dir=./pyodide-dist/ --runner=selenium --rt=chrome tests-wasm
+          pytest -vv --dist-dir=./pyodide-dist/ --runner=selenium --rt=chrome tests-wasm
