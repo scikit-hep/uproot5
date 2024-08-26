@@ -117,8 +117,7 @@ jobs:
         run: |
           python -m pytest -vv tests --reruns 10 --reruns-delay 30 --only-rerun "(?i)http|ssl|timeout|expired|connection|socket"
 
-  emscripten-build:
-    name: Build and test with Emscripten
+  pyodide-build:
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
@@ -132,7 +131,7 @@ jobs:
           python-version: '3.12'
 
       - name: Install pyodide-build
-        run: python3 -m pip install pyodide-build
+        run: python3 -m pip install pyodide-build==0.28.0
 
       - name: Determine EMSDK version
         id: compute-emsdk-version
@@ -150,22 +149,16 @@ jobs:
       - name: Build the package
         run: pyodide build
 
-      - name: Set up Pyodide virtual environment
+      - name: Build an awkward wheel compatible with the awkward-cpp version in pyodide
         run: |
-          pyodide venv .venv-pyodide
-          source .venv-pyodide/bin/activate
-          # clone and install scikit-hep-testdata so that test files are available locally
-          git clone https://github.com/scikit-hep/scikit-hep-testdata.git
-          python -m pip install -e scikit-hep-testdata
-          python -m pip install .[test-emscripten]
+          git clone --depth 1 --branch v2.6.4 https://github.com/scikit-hep/awkward.git dependencies/awkward
+          pyodide build dependencies/awkward
+          rm -rf dependencies/
 
       - name: Run pytest
-        run: |
-          source .venv-pyodide/bin/activate
-          # run a few tests compatible with wasm
-          # cache and timeout don't work in wasm so we disable them
-          python -m pytest -p no:cacheprovider --timeout 0 -vv \
-            tests/test_0014_all_ttree_versions.py \
-            tests/test_0016_interpretations.py \
-            tests/test_0962_RNTuple_update.py \
-            tests/test_1191_rntuple_fixes.py
+        uses: pyodide/pytest-pyodide/.github/workflows/main.yaml@main
+        with:
+          build-artifact-name: none
+          build-artifact-path: dist
+          pyodide-version: 0.26.2
+          pytest-extra-args: -vv tests-wasm
