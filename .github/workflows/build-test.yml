@@ -163,7 +163,6 @@ jobs:
 
   pyodide-test:
     needs: pyodide-build
-    timeout-minutes: 30
     uses: pyodide/pytest-pyodide/.github/workflows/main.yaml@main
     with:
       build-artifact-name: pyodide_wheels
