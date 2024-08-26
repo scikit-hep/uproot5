@@ -120,6 +120,10 @@ jobs:
   pyodide-build:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    env:
+      PYODIDE_VERSION: 0.26.2
+      PYODIDE_BUILD_VERSION: 0.28.0
+      AWKWARD_VERSION: v2.6.4
 
     steps:
       - name: Checkout
@@ -131,7 +135,7 @@ jobs:
           python-version: '3.12'
 
       - name: Install pyodide-build
-        run: python3 -m pip install pyodide-build==0.28.0
+        run: python3 -m pip install pyodide-build==$PYODIDE_BUILD_VERSION
 
       - name: Determine EMSDK version
         id: compute-emsdk-version
@@ -151,21 +155,27 @@ jobs:
 
       - name: Build an awkward wheel compatible with the awkward-cpp version in pyodide
         run: |
-          git clone --depth 1 --branch v2.6.4 https://github.com/scikit-hep/awkward.git dependencies/awkward
+          git clone --depth 1 --branch $AWKWARD_VERSION https://github.com/scikit-hep/awkward.git dependencies/awkward
           pyodide build dependencies/awkward
           rm -rf dependencies/
 
-      - name: Upload wheels artifact
-        uses: actions/upload-artifact@v3
+      - name: Download Pyodide
+        uses: pyodide/pyodide-actions/download-pyodide@v1
         with:
-          name: pyodide_wheels
-          path: dist
+          version: ${{ env.PYODIDE_VERSION }}
+          to: pyodide-dist
 
-  pyodide-test:
-    needs: pyodide-build
-    uses: pyodide/pytest-pyodide/.github/workflows/main.yaml@main
-    with:
-      build-artifact-name: pyodide_wheels
-      build-artifact-path: dist
-      pyodide-version: 0.26.2
-      pytest-extra-args: -vv tests-wasm
+      - name: Install browser
+        uses: pyodide/pyodide-actions/install-browser@v1
+        with:
+          runner: selenium
+          browser: chrome
+          browser-version: latest
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install dependencies
+        run: pip install .[test-pyodide] pyodide-py==$PYODIDE_VERSION
+
+      - name: Run pytest
+        run: |
+          python -m pytest -vv --dist-dir=./pyodide-dist/ --runner=selenium --rt=chrome tests-wasm
