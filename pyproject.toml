@@ -81,7 +81,9 @@ test = [
   "rangehttpserver"
 ]
 test-pyodide = [
-  "pytest-pyodide"
+  "pytest>=6",
+  "pytest-pyodide",
+  "pytest-timeout"
 ]
 xrootd = ["fsspec-xrootd"]
 
