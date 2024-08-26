@@ -155,10 +155,18 @@ jobs:
           pyodide build dependencies/awkward
           rm -rf dependencies/
 
-      - name: Run pytest
-        uses: pyodide/pytest-pyodide/.github/workflows/main.yaml@main
+      - name: Upload wheels artifact
+        uses: actions/upload-artifact@v3
         with:
-          build-artifact-name: none
-          build-artifact-path: dist
-          pyodide-version: 0.26.2
-          pytest-extra-args: -vv tests-wasm
+          name: pyodide_wheels
+          path: dist
+
+  pyodide-test:
+    needs: pyodide-build
+    timeout-minutes: 30
+    uses: pyodide/pytest-pyodide/.github/workflows/main.yaml@main
+    with:
+      build-artifact-name: pyodide_wheels
+      build-artifact-path: dist
+      pyodide-version: 0.26.2
+      pytest-extra-args: -vv tests-wasm
