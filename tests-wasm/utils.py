@@ -24,7 +24,7 @@ def ensure_testdata(filename):
         shutil.copyfile(filepath, "skhep_testdata/" + filename)
 
 
-def run_test_in_pyodide(test_file=None):
+def run_test_in_pyodide(test_file=None, **kwargs):
     def decorator(test_func):
         @wraps(test_func)
         def wrapper(selenium):
@@ -41,7 +41,7 @@ def run_test_in_pyodide(test_file=None):
                 install_wheels=True,
             )
             def inner_func(selenium):
-                run_in_pyodide()(test_func)(selenium)
+                run_in_pyodide(**kwargs)(test_func)(selenium)
 
             return inner_func(selenium)
 

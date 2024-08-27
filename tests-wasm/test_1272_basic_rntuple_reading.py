@@ -4,6 +4,7 @@ from __future__ import annotations
 from utils import run_test_in_pyodide
 
 
+# Taken from test_1191_rntuple_fixes.py
 @run_test_in_pyodide(test_file="test_ntuple_extension_columns.root")
 def test_schema_extension(selenium):
     import uproot
@@ -28,8 +29,9 @@ def test_schema_extension(selenium):
         assert len(jets.pt) == len(pbs)
 
 
+# Taken from test_1191_rntuple_fixes.py
 @run_test_in_pyodide(test_file="Run2012BC_DoubleMuParked_Muons_rntuple_1000evts.root")
-def test_split_encoding():
+def test_split_encoding(selenium):
     import uproot
 
     with uproot.open("Run2012BC_DoubleMuParked_Muons_rntuple_1000evts.root") as f:
