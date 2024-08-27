@@ -26,3 +26,17 @@ def test_schema_extension(selenium):
 
         jets = arrays["HLT_AntiKt4EMPFlowJets_subresjesgscIS_ftf_TLAAux:"]
         assert len(jets.pt) == len(pbs)
+
+
+@run_test_in_pyodide(test_file="Run2012BC_DoubleMuParked_Muons_rntuple_1000evts.root")
+def test_split_encoding():
+    import uproot
+
+    with uproot.open("Run2012BC_DoubleMuParked_Muons_rntuple_1000evts.root") as f:
+        obj = f["Events"]
+        arrays = obj.arrays()
+
+        expected_pt = [10.763696670532227, 15.736522674560547]
+        expected_charge = [-1, -1]
+        assert arrays["Muon_pt"][0].tolist() == expected_pt
+        assert arrays["Muon_charge"][0].tolist() == expected_charge
