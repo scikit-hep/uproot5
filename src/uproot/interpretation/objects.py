@@ -512,6 +512,27 @@ input stream
 
             start = stop
 
+        # If *some* of the baskets are Awkward and *some* are not,
+        # convert the ones that are not, individually.
+        if any(
+            uproot._util.from_module(x, "awkward") for x in basket_arrays.values()
+        ) and isinstance(
+            library,
+            (
+                uproot.interpretation.library.Awkward,
+                uproot.interpretation.library.Pandas,
+            ),
+        ):
+            awkward = uproot.extras.awkward()
+            for k, v in basket_arrays.items():
+                if not uproot._util.from_module(v, "awkward"):
+                    form = json.loads(self.awkward_form(branch.file).to_json())
+                    basket_arrays[k] = (
+                        uproot.interpretation.library._object_to_awkward_array(
+                            awkward, form, v
+                        )
+                    )
+
         if len(basket_arrays) == 0:
             output = numpy.array([], dtype=self.numpy_dtype)
 
