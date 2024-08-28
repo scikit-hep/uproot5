@@ -6,7 +6,7 @@ from utils import run_test_in_pyodide
 
 
 # Taken from test_0088_read_with_http.py
-@pytest.mark.network()
+@pytest.mark.network
 @run_test_in_pyodide(packages=["requests"])
 def test_ttree(selenium):
     import uproot
@@ -21,7 +21,7 @@ def test_ttree(selenium):
 
 
 # Taken from test_1191_rntuple_fixes.py
-@pytest.mark.network()
+@pytest.mark.network
 @run_test_in_pyodide(packages=["requests"])
 def test_rntuple(selenium):
     import uproot
