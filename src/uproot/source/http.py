@@ -239,6 +239,23 @@ for URL {self._file_path}"""
         Returns a :doc:`uproot.source.futures.ResourceFuture` that calls
         :ref:`uproot.source.http.HTTPResource.get` with ``start`` and ``stop``.
         """
+        # The default implementation doesn't work in Pyodide
+        if sys.platform == "emscripten":
+
+            def task(resource):
+                import requests
+
+                r = requests.get(
+                    source._file_path,
+                    headers=dict(
+                        {"Range": f"bytes={start}-{stop - 1}"}, **source.auth_headers
+                    ),
+                    timeout=source.timeout,
+                )
+                return r.content
+
+            return uproot.source.futures.ResourceFuture(task)
+
         connection = make_connection(source.parsed_url, source.timeout)
         connection.request(
             "GET",
@@ -281,6 +298,14 @@ for URL {self._file_path}"""
         ``results`` and ``futures``. Subsequent attempts would immediately
         use the :ref:`uproot.source.http.HTTPSource.fallback`.
         """
+        # The default implementation doesn't work in Pyodide
+        if sys.platform == "emscripten":
+
+            def task(resource):
+                resource.handle_no_multipart(source, ranges, futures, results)
+
+            return uproot.source.futures.ResourceFuture(task)
+
         connection = make_connection(source.parsed_url, source.timeout)
 
         connection.request(
