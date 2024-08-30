@@ -40,6 +40,8 @@ def test_consistent_library_np_vector_vector_elementlink():
             arrays_ak[key] = tree[key].array()
     for key in arrays_np:
         array_ak = arrays_ak[key]
-        array_np = uproot.interpretation.library._object_to_awkward_array(awkward, array_ak.layout.form.to_dict(), arrays_np[key])
+        array_np = uproot.interpretation.library._object_to_awkward_array(
+            awkward, array_ak.layout.form.to_dict(), arrays_np[key]
+        )
         for field in array_ak.fields:
             assert awkward.all(array_np[field] == array_ak[field])
