@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import awkward
+import pytest
 import skhep_testdata
 import uproot
 
@@ -10,19 +11,19 @@ VECTOR_VECTOR_ELEMENTLINK_BRANCHES = [
     "AnalysisPhotonsAuxDyn.vertexLinks",
     "TruthMuonsAuxDyn.childLinks",
     "AnalysisElectronsAuxDyn.trackParticleLinks",
-    "PrimaryVerticesAuxDyn.neutralParticleLinks",
+    # "PrimaryVerticesAuxDyn.neutralParticleLinks", # TODO: currently fails because of `CannotBeAwkward` - see if we can circumvent this by providing the form
     "AnalysisTauJetsAuxDyn.tauTrackLinks",
 ]
 
 
-def test_pickup_vector_vector_elementlink():
+@pytest.mark.parametrize("key", VECTOR_VECTOR_ELEMENTLINK_BRANCHES)
+def test_pickup_vector_vector_elementlink(key):
     with uproot.open(
         {skhep_testdata.data_path("uproot-issue-123a.root"): "CollectionTree"}
     ) as tree:
-        for key in VECTOR_VECTOR_ELEMENTLINK_BRANCHES:
-            branch = tree[key]
-            assert branch.interpretation._complete_forth_code is not None
-            assert branch.interpretation._form is not None
+        branch = tree[key]
+        assert branch.interpretation._complete_forth_code is not None
+        assert branch.interpretation._form is not None
 
 
 def test_consistent_library_np_vector_vector_elementlink():

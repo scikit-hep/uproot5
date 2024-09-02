@@ -21,14 +21,33 @@ by the :doc:`uproot.interpretation.library.Library`.
 from __future__ import annotations
 
 import contextlib
+import copy
 import json
 import threading
 
+import awkward  # TODO: delay
 import numpy
 
 import uproot
 import uproot._awkwardforth
 from uproot.interpretation.known_forth import known_forth_of
+
+
+def _updated_form(form, update_dict):
+    form = copy.deepcopy(form)
+
+    def update(form, update_dict):
+        for key, value in update_dict.items():
+            if isinstance(value, dict):
+                update(form[key], update_dict[key])
+            elif isinstance(value, list):
+                for subform, subupdate in zip(form[key], update_dict[key]):
+                    update(subform, subupdate)
+            else:
+                form[key] = value
+
+    update(form, update_dict)
+    return form
 
 
 class AsObjects(uproot.interpretation.Interpretation):
@@ -54,12 +73,15 @@ class AsObjects(uproot.interpretation.Interpretation):
         self._model = model
         self._branch = branch
         self._forth = True
+        self._form = None
         known_forth = known_forth_of(branch)
         if known_forth is not None:
-            self._complete_forth_code, self._form = known_forth
+            self._complete_forth_code, update_dict = known_forth
+            self._form = awkward.forms.from_dict(
+                _updated_form(self.awkward_form(branch.file).to_dict(), update_dict)
+            )
         else:
             self._complete_forth_code = None
-            self._form = None
         self._forth_lock = threading.Lock()
 
     @property
@@ -130,6 +152,10 @@ class AsObjects(uproot.interpretation.Interpretation):
         breadcrumbs=(),
     ):
         if self._form is not None:  # TODO: is this really fine?
+            if isinstance(self._form, dict):
+                # TODO don't know when and why the form sometimes is a dict
+                # (and if it causes problems to convert it here)
+                self._form = awkward.forms.from_dict(self._form)
             return self._form
         context = self._make_context(
             context, index_format, header, tobject_header, breadcrumbs

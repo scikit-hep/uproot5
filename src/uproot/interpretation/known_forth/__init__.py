@@ -11,11 +11,7 @@ def known_forth_of(branch):
         vector_vector_element_link,
     )
 
-    if (
-        # len(branch.branches) == 0 # don't understand why this goes nuts
-        # and branch.has_member("fClassName")
-        branch.has_member("fClassName")
-    ):
+    if branch.has_member("fClassName"):
         typename = branch.member("fClassName").replace(" ", "")
         if typename.startswith("vector<vector<ElementLink<DataVector<xAOD::"):
             return vector_vector_element_link
