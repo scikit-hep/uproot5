@@ -11,6 +11,9 @@ def known_forth_of(branch):
         vector_vector_element_link,
     )
 
+    if branch is None:
+        return
+
     if branch.has_member("fClassName"):
         typename = branch.member("fClassName").replace(" ", "")
         if typename.startswith("vector<vector<ElementLink<DataVector<xAOD::"):
