@@ -7,8 +7,6 @@ This module defines known forth code for some ElementLink data types in ATLAS (D
 # TODO: delay import?
 from __future__ import annotations
 
-from awkward.forms import ListOffsetForm, NumpyForm, RecordForm
-
 vector_vector_element_link = (
     """
 input stream
@@ -39,19 +37,13 @@ output node4-data uint32
     loop
 loop
 """,
-    ListOffsetForm(
-        "i64",
-        ListOffsetForm(
-            "i64",
-            RecordForm(
-                [
-                    NumpyForm("uint32", form_key="node3"),
-                    NumpyForm("uint32", form_key="node4"),
-                ],
-                ["m_persKey", "m_persIndex"],
-            ),
-            form_key="node2",
-        ),
-        form_key="node1",
-    ),
+    {
+        "form_key": "node1",
+        "content": {
+            "form_key": "node2",
+            "content": {
+                "contents": [{"form_key": "node3"}, {"form_key": "node4"}],
+            },
+        },
+    },
 )
