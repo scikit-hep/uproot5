@@ -831,7 +831,7 @@ class ExtraTypeInfoReader:
     def read(self, chunk, cursor, context):
         out = MetaData("ExtraTypeInfoReader")
 
-        out.type_ver_from, out.type_ver_to, out.content_id = cursor.fields(
+        out.content_id, out.type_ver_from, out.type_ver_to = cursor.fields(
             chunk, _rntuple_extra_type_info_format, context
         )
         out.type_name = cursor.rntuple_string(chunk, context)
