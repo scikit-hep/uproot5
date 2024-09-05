@@ -234,3 +234,5 @@ rntuple_user_metadata_type_int = 0x01
 rntuple_user_metadata_type_bool = 0x02
 rntuple_user_metadata_type_double = 0x03
 rntuple_user_metadata_type_string = 0x04
+
+rntuple_cluster_flag_sharded = 0x01
