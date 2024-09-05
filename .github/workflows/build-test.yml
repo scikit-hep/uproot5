@@ -16,36 +16,27 @@ jobs:
       fail-fast: false
       matrix:
         platform: [windows-latest, macos-latest, ubuntu-latest]
-        python-version: ['3.8', '3.9', '3.10', '3.11', '3.12']
+        env: [py38, py310, py312]
+        include:
+          - platform: ubuntu-latest
+            env: root310
 
     runs-on: ${{ matrix.platform }}
     timeout-minutes: 30
 
-    # Required for miniconda to activate conda
-    defaults:
-      run:
-        shell: bash -l {0}
-
     steps:
       - uses: actions/checkout@v4
 
-      - name: Get conda
-        uses: conda-incubator/setup-miniconda@v3
+      - name: Get Pixi
+        uses: prefix-dev/setup-pixi@v0.5.1
         with:
-          auto-update-conda: true
-          python-version: ${{ matrix.python-version }}
-          miniforge-variant: Mambaforge
-          use-mamba: true
-
-      - name: Install ROOT
-        if: matrix.python-version == 3.8  &&  runner.os != 'macOS'  &&  runner.os != 'Windows'
-        run: |
-          conda env list
-          mamba install root
-          conda list
+          pixi-version: v0.18.0
+          manifest-path: pyproject.toml
+          cache: false
+          environments: ${{ matrix.env }}
 
       - name: Install sshd for fsspec ssh tests
-        if: runner.os != 'macOS'  &&  runner.os != 'Windows'
+        if: runner.os == 'Linux'
         run: |
           sudo apt-get install -y openssh-server
           sudo service ssh restart
@@ -55,19 +46,9 @@ jobs:
           ssh-keyscan -H localhost >> ~/.ssh/known_hosts
           ssh -o StrictHostKeyChecking=no localhost echo "ssh connection successful"
 
-      - name: Install XRootD
-        if: runner.os != 'macOS'  &&  runner.os != 'Windows'
-        run: |
-          conda env list
-          mamba install xrootd
-          conda list
+      - name: Run tests
+        run: pixi run -e ${{ matrix.env }} test
 
-      - name: Pip install the package
-        run: python -m pip install .[test,dev]
-
-      - name: Run pytest
-        run: |
-          python -m pytest -vv tests --reruns 10 --reruns-delay 30 --only-rerun "(?i)http|ssl|timeout|expired|connection|socket"
 
   vanilla-build:
     strategy:
