@@ -5,8 +5,6 @@ This module defines integer constants used by serialization and deserialization 
 """
 from __future__ import annotations
 
-import struct
-
 import numpy
 
 # determines when a file is "big"
@@ -118,8 +116,6 @@ kGenerateOffsetMap = numpy.uint8(1)
 kStreamedMemberWise = numpy.uint16(1 << 14)
 
 ############ RNTuple https://github.com/root-project/root/blob/master/tree/ntuple/v7/doc/specifications.md
-_rntuple_frame_format = struct.Struct("<Q")
-rntuple_env_header = _rntuple_frame_format.pack(0)  # TODO: need to check this
 rntuple_col_num_to_dtype_dict = {
     1: "uint64",
     2: "uint32",
@@ -212,7 +208,29 @@ rntuple_col_type_to_num_dict = {
     "splitzigzagint16": 28,
 }
 
-rntuple_role_leaf = 0
-rntuple_role_vector = 1
-rntuple_role_struct = 2
-rntuple_role_union = 3
+rntuple_locator_type_uri = 0x01
+rntuple_locator_type_daos = 0x02
+
+rntuple_env_type_header = 0x01
+rntuple_env_type_footer = 0x02
+rntuple_env_type_pagelist = 0x03
+rntuple_env_type_metadata = 0x04
+
+rntuple_field_role_leaf = 0x00
+rntuple_field_role_vector = 0x01
+rntuple_field_role_struct = 0x02
+rntuple_field_role_union = 0x03
+rntuple_field_role_unsplit = 0x04
+
+rntuple_field_flag_repetitive = 0x01
+rntuple_field_flag_projected = 0x02
+rntuple_field_flag_checksum = 0x04
+
+rntuple_col_flag_deferred = 0x08
+
+rntuple_extra_type_identifier_root = 0x00
+
+rntuple_user_metadata_type_int = 0x01
+rntuple_user_metadata_type_bool = 0x02
+rntuple_user_metadata_type_double = 0x03
+rntuple_user_metadata_type_string = 0x04

@@ -12,30 +12,41 @@ import numpy
 
 import uproot
 
-# https://github.com/root-project/root/blob/aa513463b0b512517370cb91cca025e53a8b13a2/tree/ntuple/v7/inc/ROOT/RNTupleAnchor.hxx#L69
+# https://github.com/root-project/root/blob/8635b1bc0da59623777c9fda3661a19363964915/tree/ntuple/v7/doc/specifications.md#anchor-schema
 _rntuple_anchor_format = struct.Struct(">HHHHQQQQQQQ")
-
-# https://github.com/root-project/root/blob/aa513463b0b512517370cb91cca025e53a8b13a2/tree/ntuple/v7/doc/specifications.md#envelopes
+# https://github.com/root-project/root/blob/8635b1bc0da59623777c9fda3661a19363964915/tree/ntuple/v7/doc/specifications.md#feature-flags
 _rntuple_feature_flag_format = struct.Struct("<Q")
+# https://github.com/root-project/root/blob/8635b1bc0da59623777c9fda3661a19363964915/tree/ntuple/v7/doc/specifications.md#frames
+_rntuple_frame_size_format = struct.Struct("<q")
+_rntuple_frame_num_items_format = struct.Struct("<i")
+# https://github.com/root-project/root/blob/8635b1bc0da59623777c9fda3661a19363964915/tree/ntuple/v7/doc/specifications.md#locators-and-envelope-links
+_rntuple_locator_format = struct.Struct("<iQ")
+_rntuple_envlink_size_format = struct.Struct("<Q")
+# https://github.com/root-project/root/blob/8635b1bc0da59623777c9fda3661a19363964915/tree/ntuple/v7/doc/specifications.md#envelopes
 _rntuple_env_header_format = struct.Struct("<Q")
+_rntuple_checksum_format = struct.Struct("<Q")
+# https://github.com/root-project/root/blob/8635b1bc0da59623777c9fda3661a19363964915/tree/ntuple/v7/doc/specifications.md#field-description
 _rntuple_field_description_format = struct.Struct("<IIIHH")
 _rntuple_repetition_format = struct.Struct("<Q")
-_rntuple_column_record_format = struct.Struct("<HHII")
+_rntuple_source_field_id_format = struct.Struct("<I")
+_rntuple_root_streamer_checksum_format = struct.Struct("<I")
+# https://github.com/root-project/root/blob/8635b1bc0da59623777c9fda3661a19363964915/tree/ntuple/v7/doc/specifications.md#column-description
+_rntuple_column_record_format = struct.Struct("<HHIHH")
+_rntuple_first_element_index_format = struct.Struct("<I")
+# https://github.com/root-project/root/blob/8635b1bc0da59623777c9fda3661a19363964915/tree/ntuple/v7/doc/specifications.md#alias-columns
 _rntuple_alias_column_format = struct.Struct("<II")
+# https://github.com/root-project/root/blob/8635b1bc0da59623777c9fda3661a19363964915/tree/ntuple/v7/doc/specifications.md#extra-type-information
 _rntuple_extra_type_info_format = struct.Struct("<III")
-_rntuple_record_size_format = struct.Struct("<q")
-_rntuple_frame_header_format = struct.Struct("<qi")
+# https://github.com/root-project/root/blob/8635b1bc0da59623777c9fda3661a19363964915/tree/ntuple/v7/doc/specifications.md#cluster-group-record-frame
 _rntuple_cluster_group_format = struct.Struct("<qqi")
-_rntuple_locator_format = struct.Struct("<iQ")
-_rntuple_cluster_summary_format = struct.Struct("<QQ")
-_rntuple_checksum_format = struct.Struct("<Q")
-_rntuple_envlink_size_format = struct.Struct("<Q")
-_rntuple_page_num_elements_format = struct.Struct("<i")
 _rntuple_column_group_id_format = struct.Struct("<I")
-_rntuple_first_ele_index_format = struct.Struct("<I")
+# https://github.com/root-project/root/blob/8635b1bc0da59623777c9fda3661a19363964915/tree/ntuple/v7/doc/specifications.md#cluster-summary-record-frame
+_rntuple_cluster_summary_format = struct.Struct("<QQ")
+# https://github.com/root-project/root/blob/8635b1bc0da59623777c9fda3661a19363964915/tree/ntuple/v7/doc/specifications.md#page-locations
+_rntuple_page_num_elements_format = struct.Struct("<i")
 
 
-def from_zigzag(n):
+def _from_zigzag(n):
     return n >> 1 ^ -(n & 1)
 
 
@@ -246,7 +257,7 @@ in file {self.file.file_path}"""
 
     def __len__(self):
         if self._length is None:
-            self._length = len(self.to_akform().fields)
+            self._length = len(self.keys())
         return self._length
 
     def __repr__(self):
@@ -311,9 +322,9 @@ in file {self.file.file_path}"""
 
         form_key = f"column-{col_id}" + ("-cardinality" if cardinality else "")
         dtype_byte = cr.type
-        if dtype_byte == uproot.const.rntuple_role_union:
+        if dtype_byte == uproot.const.rntuple_col_type_to_num_dict["switch"]:
             return form_key
-        elif dtype_byte > uproot.const.rntuple_role_struct:
+        elif dtype_byte > uproot.const.rntuple_col_type_to_num_dict["switch"]:
             dt_str = uproot.const.rntuple_col_num_to_dtype_dict[dtype_byte]
             if dt_str == "bit":
                 dt_str = "bool"
@@ -368,7 +379,7 @@ in file {self.file.file_path}"""
         seen.add(this_id)
         structural_role = this_record.struct_role
         if (
-            structural_role == uproot.const.rntuple_role_leaf
+            structural_role == uproot.const.rntuple_field_role_leaf
             and this_record.repetition == 0
         ):
             # deal with std::atomic
@@ -383,7 +394,7 @@ in file {self.file.file_path}"""
             # base case of recursion
             # n.b. the split may happen in column
             return self.col_form(this_id)
-        elif structural_role == uproot.const.rntuple_role_leaf:
+        elif structural_role == uproot.const.rntuple_field_role_leaf:
             if this_id in self._related_ids:
                 # std::array has only one subfield
                 child_id = self._related_ids[this_id][0]
@@ -393,7 +404,7 @@ in file {self.file.file_path}"""
                 inner = self.col_form(this_id)
             keyname = f"RegularForm-{this_id}"
             return ak.forms.RegularForm(inner, this_record.repetition, form_key=keyname)
-        elif structural_role == uproot.const.rntuple_role_vector:
+        elif structural_role == uproot.const.rntuple_field_role_vector:
             if this_id not in self._related_ids or len(self._related_ids[this_id]) != 1:
                 keyname = f"vector-{this_id}"
                 newids = self._related_ids.get(this_id, [])
@@ -417,7 +428,7 @@ in file {self.file.file_path}"""
                 child_id = self._related_ids[this_id][0]
             inner = self.field_form(child_id, seen)
             return ak.forms.ListOffsetForm("i64", inner, form_key=keyname)
-        elif structural_role == uproot.const.rntuple_role_struct:
+        elif structural_role == uproot.const.rntuple_field_role_struct:
             newids = []
             if this_id in self._related_ids:
                 newids = self._related_ids[this_id]
@@ -425,7 +436,7 @@ in file {self.file.file_path}"""
             recordlist = [self.field_form(i, seen) for i in newids]
             namelist = [field_records[i].field_name for i in newids]
             return ak.forms.RecordForm(recordlist, namelist, form_key="whatever")
-        elif structural_role == uproot.const.rntuple_role_union:
+        elif structural_role == uproot.const.rntuple_field_role_union:
             keyname = self.col_form(this_id)
             newids = []
             if this_id in self._related_ids:
@@ -435,6 +446,10 @@ in file {self.file.file_path}"""
                 "i8", "i64", recordlist, form_key=keyname + "-union"
             )
             return ak.forms.IndexedOptionForm("i64", inner, form_key=keyname)
+        elif structural_role == uproot.const.rntuple_field_role_unsplit:
+            raise NotImplementedError(
+                f"Unsplit fields are not supported. {this_record}"
+            )
         else:
             # everything should recurse above this branch
             raise AssertionError("this should be unreachable")
@@ -513,13 +528,13 @@ in file {self.file.file_path}"""
         # needed to chop off extra bits incase we used `unpackbits`
         destination[:] = content[:num_elements]
 
-    def read_col_pages(self, ncol, cluster_range, pad_missing_ele=False):
+    def read_col_pages(self, ncol, cluster_range, pad_missing_element=False):
         res = numpy.concatenate(
             [self.read_col_page(ncol, i) for i in cluster_range], axis=0
         )
-        if pad_missing_ele:
-            first_ele_index = self.column_records[ncol].first_ele_index
-            res = numpy.pad(res, (first_ele_index, 0))
+        if pad_missing_element:
+            first_element_index = self.column_records[ncol].first_element_index
+            res = numpy.pad(res, (first_element_index, 0))
         return res
 
     def read_col_page(self, ncol, cluster_i):
@@ -556,7 +571,7 @@ in file {self.file.file_path}"""
         if index:
             res = numpy.insert(res, 0, 0)  # for offsets
         if zigzag:
-            res = from_zigzag(res)
+            res = _from_zigzag(res)
         elif delta:
             res = numpy.cumsum(res)
         return res
@@ -599,7 +614,7 @@ in file {self.file.file_path}"""
                 content = self.read_col_pages(
                     key_nr,
                     range(start_cluster_idx, stop_cluster_idx),
-                    pad_missing_ele=True,
+                    pad_missing_element=True,
                 )
                 if "cardinality" in key:
                     content = numpy.diff(content)
@@ -672,6 +687,9 @@ class PageLink:
     def read(self, chunk, cursor, context):
         out = MetaData(type(self).__name__)
         out.env_header = _envelop_header(chunk, cursor, context)
+        assert (
+            out.env_header["env_type_id"] == uproot.const.rntuple_env_type_pagelist
+        ), f"env_type_id={out.env_header['env_type_id']}"
         out.header_checksum = cursor.field(chunk, _rntuple_checksum_format, context)
         out.cluster_summaries = self.list_cluster_summaries.read(chunk, cursor, context)
         out.pagelinklist = self.nested_page_locations.read(chunk, cursor, context)
@@ -685,6 +703,8 @@ class LocatorReader:
         out.num_bytes, out.offset = cursor.fields(
             chunk, _rntuple_locator_format, context
         )
+        if out.num_bytes < 0:
+            raise NotImplementedError("Non-disk locators are not supported.")
         return out
 
 
@@ -725,7 +745,7 @@ class RecordFrameReader:
 
     def read(self, chunk, cursor, context):
         local_cursor = cursor.copy()
-        num_bytes = local_cursor.field(chunk, _rntuple_record_size_format, context)
+        num_bytes = local_cursor.field(chunk, _rntuple_frame_size_format, context)
         assert num_bytes >= 0, f"num_bytes={num_bytes}"
         cursor.skip(num_bytes)
         return self.payload.read(chunk, local_cursor, context)
@@ -737,10 +757,9 @@ class ListFrameReader:
 
     def read(self, chunk, cursor, context):
         local_cursor = cursor.copy()
-        num_bytes, num_items = local_cursor.fields(
-            chunk, _rntuple_frame_header_format, context
-        )
+        num_bytes = local_cursor.field(chunk, _rntuple_frame_size_format, context)
         assert num_bytes < 0, f"num_bytes={num_bytes}"
+        num_items = local_cursor.field(chunk, _rntuple_frame_num_items_format, context)
         cursor.skip(-num_bytes)
         return [
             self.payload.read(chunk, local_cursor, context) for _ in range(num_items)
@@ -758,10 +777,24 @@ class FieldRecordReader:
             out.struct_role,
             out.flags,
         ) = cursor.fields(chunk, _rntuple_field_description_format, context)
-        if out.flags == 0x0001:
+        if out.flags == uproot.const.rntuple_field_flag_repetitive:
             out.repetition = cursor.field(chunk, _rntuple_repetition_format, context)
+            out.source_field_id = None
+            out.checksum = None
+        elif out.flags == uproot.const.rntuple_field_flag_projected:
+            out.repetition = 0
+            out.source_field_id = cursor.field(
+                chunk, _rntuple_source_field_id_format, context
+            )
+            out.checksum = None
+        elif out.flags == uproot.const.rntuple_field_flag_checksum:
+            out.repetition = 0
+            out.source_field_id = None
+            out.checksum = cursor.field(chunk, _rntuple_checksum_format, context)
         else:
             out.repetition = 0
+            out.source_field_id = None
+            out.checksum = None
         out.field_name, out.type_name, out.type_alias, out.field_desc = (
             cursor.rntuple_string(chunk, context) for _ in range(4)
         )
@@ -772,15 +805,15 @@ class FieldRecordReader:
 class ColumnRecordReader:
     def read(self, chunk, cursor, context):
         out = MetaData("ColumnRecordFrame")
-        out.type, out.nbits, out.field_id, out.flags = cursor.fields(
+        out.type, out.nbits, out.field_id, out.flags, out.repr_idx = cursor.fields(
             chunk, _rntuple_column_record_format, context
         )
-        if out.flags & 0x08:
-            out.first_ele_index = cursor.field(
-                chunk, _rntuple_first_ele_index_format, context
+        if out.flags & uproot.const.rntuple_col_flag_deferred:
+            out.first_element_index = cursor.field(
+                chunk, _rntuple_first_element_index_format, context
             )
         else:
-            out.first_ele_index = 0
+            out.first_element_index = 0
         return out
 
 
@@ -823,6 +856,9 @@ class HeaderReader:
     def read(self, chunk, cursor, context):
         out = MetaData(type(self).__name__)
         out.env_header = _envelop_header(chunk, cursor, context)
+        assert (
+            out.env_header["env_type_id"] == uproot.const.rntuple_env_type_header
+        ), f"env_type_id={out.env_header['env_type_id']}"
         out.feature_flag = cursor.field(chunk, _rntuple_feature_flag_format, context)
         out.name, out.ntuple_description, out.writer_identifier = (
             cursor.rntuple_string(chunk, context) for _ in range(3)
@@ -879,7 +915,7 @@ class ClusterGroupRecordReader:
 class RNTupleSchemaExtension:
     def read(self, chunk, cursor, context):
         out = MetaData(type(self).__name__)
-        out.size = cursor.field(chunk, _rntuple_record_size_format, context)
+        out.size = cursor.field(chunk, _rntuple_frame_size_format, context)
         assert out.size >= 0, f"size={out.size}"
         out.field_records = ListFrameReader(
             RecordFrameReader(FieldRecordReader())
@@ -913,6 +949,9 @@ class FooterReader:
     def read(self, chunk, cursor, context):
         out = MetaData("Footer")
         out.env_header = _envelop_header(chunk, cursor, context)
+        assert (
+            out.env_header["env_type_id"] == uproot.const.rntuple_env_type_footer
+        ), f"env_type_id={out.env_header['env_type_id']}"
         out.feature_flag = cursor.field(chunk, _rntuple_feature_flag_format, context)
         out.header_checksum = cursor.field(chunk, _rntuple_checksum_format, context)
         out.extension_links = self.extension_header_links.read(chunk, cursor, context)
