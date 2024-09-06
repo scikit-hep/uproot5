@@ -7,9 +7,9 @@ from __future__ import annotations
 
 import struct
 from collections import defaultdict
+from itertools import accumulate
 
 import numpy
-from itertools import accumulate
 
 import uproot
 
@@ -62,14 +62,14 @@ class Model_ROOT_3a3a_Experimental_3a3a_RNTuple(uproot.model.Model):
         return keys
 
     def keys(
-            self,
-            *,
-            filter_name=None,
-            filter_typename=None,
-            filter_branch=None,
-            recursive=False,
-            full_paths=True,
-            ignore_duplicates=False,
+        self,
+        *,
+        filter_name=None,
+        filter_typename=None,
+        filter_branch=None,
+        recursive=False,
+        full_paths=True,
+        ignore_duplicates=False,
     ):
         if filter_name:
             # Return keys from the filter_name list:
