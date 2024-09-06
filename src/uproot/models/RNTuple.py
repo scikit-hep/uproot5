@@ -502,7 +502,7 @@ in file {self.file.file_path}"""
             # Extract the last offset values:
             last_elements = [arr[-1] for arr in arrays[:-1]]
             # Compute cumulative sum using itertools.accumulate:
-            last_offsets = [0] + list(accumulate(last_elements))
+            last_offsets = [0, *list(accumulate(last_elements))]
             # Add the offsets to each array
             arrays = [arr + offset for arr, offset in zip(arrays, last_offsets)]
             # Remove the first element from every sub-array except for the first one:
