@@ -497,8 +497,10 @@ in file {self.file.file_path}"""
         arrays = [self.read_col_page(ncol, i) for i in cluster_range]
 
         # Check if column stores offset values for jagged arrays (splitindex64) (applies to cardinality cols too):
-        if dtype_byte == uproot.const.rntuple_col_type_to_num_dict["splitindex64"] or\
-           dtype_byte == uproot.const.rntuple_col_type_to_num_dict["splitindex32"]:
+        if (
+            dtype_byte == uproot.const.rntuple_col_type_to_num_dict["splitindex64"]
+            or dtype_byte == uproot.const.rntuple_col_type_to_num_dict["splitindex32"]
+        ):
             # Continue new cluster values from the last value of previous cluster.
 
             # Extract the last offset values:
