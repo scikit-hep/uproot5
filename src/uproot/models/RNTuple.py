@@ -66,10 +66,9 @@ class Model_ROOT_3a3a_Experimental_3a3a_RNTuple(uproot.model.Model):
         *,
         filter_name=None,
         filter_typename=None,
-        filter_branch=None,
         recursive=False,
         full_paths=True,
-        ignore_duplicates=False,
+        # TODO: some arguments might be missing when compared with TTree. Solve when blocker is present in dask/coffea.
     ):
         if filter_name:
             # Return keys from the filter_name list:
@@ -494,11 +493,14 @@ in file {self.file.file_path}"""
         # needed to chop off extra bits incase we used `unpackbits`
         destination[:] = content[:num_elements]
 
-    def read_col_pages(self, ncol, cluster_range, is_offset_col, pad_missing_ele=False):
+    def read_col_pages(self, ncol, cluster_range, dtype_byte, pad_missing_ele=False):
         arrays = [self.read_col_page(ncol, i) for i in cluster_range]
 
-        # If column contains offset values, continue new cluster values from the last value of previous cluster:
-        if is_offset_col:
+        # Check if column stores offset values for jagged arrays (splitindex64) (applies to cardinality cols too):
+        if dtype_byte == uproot.const.rntuple_col_type_to_num_dict["splitindex64"] or\
+           dtype_byte == uproot.const.rntuple_col_type_to_num_dict["splitindex32"]:
+            # Continue new cluster values from the last value of previous cluster.
+
             # Extract the last offset values:
             last_elements = [arr[-1] for arr in arrays[:-1]]
             # Compute cumulative sum using itertools.accumulate:
@@ -590,13 +592,10 @@ in file {self.file.file_path}"""
                 key_nr = int(key.split("-")[1])
                 dtype_byte = self.column_records[key_nr].type
 
-                # Check if column stores offset values for jagged arrays (applies to cardinality cols too):
-                is_offset_col = dtype_byte == 14
-
                 content = self.read_col_pages(
                     key_nr,
                     range(start_cluster_idx, stop_cluster_idx),
-                    is_offset_col=is_offset_col,
+                    dtype_byte=dtype_byte,
                     pad_missing_ele=True,
                 )
                 if "cardinality" in key:
