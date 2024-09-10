@@ -501,14 +501,13 @@ in file {self.file.file_path}"""
             dtype_byte == uproot.const.rntuple_col_type_to_num_dict["splitindex64"]
             or dtype_byte == uproot.const.rntuple_col_type_to_num_dict["splitindex32"]
         ):
-            # Continue new cluster values from the last value of previous cluster.
-
             # Extract the last offset values:
-            last_elements = [arr[-1] for arr in arrays[:-1]]
+            last_elements = [arr[-1] for arr in arrays[:-1]]  # First value always zero, therefore skip first arr.
             # Compute cumulative sum using itertools.accumulate:
-            last_offsets = [0, *list(accumulate(last_elements))]
+            last_offsets = [*list(accumulate(last_elements))]
             # Add the offsets to each array
-            arrays = [arr + offset for arr, offset in zip(arrays, last_offsets)]
+            for arr, offset in zip(arrays[1:], last_offsets):
+                arr += offset
             # Remove the first element from every sub-array except for the first one:
             arrays = [arrays[0]] + [arr[1:] for arr in arrays[1:]]
 
