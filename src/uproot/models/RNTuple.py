@@ -502,7 +502,9 @@ in file {self.file.file_path}"""
             or dtype_byte == uproot.const.rntuple_col_type_to_num_dict["splitindex32"]
         ):
             # Extract the last offset values:
-            last_elements = [arr[-1] for arr in arrays[:-1]]  # First value always zero, therefore skip first arr.
+            last_elements = [
+                arr[-1] for arr in arrays[:-1]
+            ]  # First value always zero, therefore skip first arr.
             # Compute cumulative sum using itertools.accumulate:
             last_offsets = [*list(accumulate(last_elements))]
             # Add the offsets to each array
