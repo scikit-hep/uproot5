@@ -509,7 +509,7 @@ in file {self.file.file_path}"""
             last_offsets = list(accumulate(last_elements))
             # Add the offsets to each array
             for i in range(1, len(arrays)):
-                arrays[i] += last_offsets[i-1]
+                arrays[i] += last_offsets[i - 1]
             # Remove the first element from every sub-array except for the first one:
             arrays = [arrays[0]] + [arr[1:] for arr in arrays[1:]]
 
