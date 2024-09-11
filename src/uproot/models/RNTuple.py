@@ -506,7 +506,7 @@ in file {self.file.file_path}"""
                 arr[-1] for arr in arrays[:-1]
             ]  # First value always zero, therefore skip first arr.
             # Compute cumulative sum using itertools.accumulate:
-            last_offsets = [*list(accumulate(last_elements))]
+            last_offsets = list(accumulate(last_elements))
             # Add the offsets to each array
             for i in range(1, len(arrays)):
                 arrays[i] += last_offsets[i-1]
