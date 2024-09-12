@@ -80,6 +80,12 @@ test = [
   "scikit-hep-testdata",
   "rangehttpserver"
 ]
+test-pyodide = [
+  "pytest>=6",
+  "pytest-pyodide",
+  "pytest-timeout",
+  "scikit-hep-testdata"
+]
 xrootd = ["fsspec-xrootd"]
 
 [project.urls]

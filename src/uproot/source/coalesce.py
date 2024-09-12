@@ -33,6 +33,9 @@ class SliceFuture:
         self._parent.add_done_callback(callback)
 
     def result(self, timeout=None):
+        if uproot._util.wasm:
+            # Pyodide futures don't support timeout
+            return self._parent.result()[self._s]
         return self._parent.result(timeout=timeout)[self._s]
 
 
@@ -126,7 +129,13 @@ def coalesce_requests(
 
     def chunkify(req: RangeRequest):
         chunk = uproot.source.chunk.Chunk(source, req.start, req.stop, req.future)
-        req.future.add_done_callback(uproot.source.chunk.notifier(chunk, notifications))
+        if uproot._util.wasm:
+            # Callbacks don't work in pyodide yet, so we call the notifier directly
+            uproot.source.chunk.notifier(chunk, notifications)()
+        else:
+            req.future.add_done_callback(
+                uproot.source.chunk.notifier(chunk, notifications)
+            )
         return chunk
 
     return list(map(chunkify, all_requests))
