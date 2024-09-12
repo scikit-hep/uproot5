@@ -240,7 +240,7 @@ for URL {self._file_path}"""
         :ref:`uproot.source.http.HTTPResource.get` with ``start`` and ``stop``.
         """
         # The default implementation doesn't work in Pyodide
-        if sys.platform == "emscripten":
+        if uproot._util.wasm:
 
             def task(resource):
                 import requests
@@ -299,7 +299,7 @@ for URL {self._file_path}"""
         use the :ref:`uproot.source.http.HTTPSource.fallback`.
         """
         # The default implementation doesn't work in Pyodide
-        if sys.platform == "emscripten":
+        if uproot._util.wasm:
 
             def task(resource):
                 resource.handle_no_multipart(source, ranges, futures, results)

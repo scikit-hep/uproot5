@@ -6,7 +6,6 @@ Inspired in part by https://github.com/cms-sw/cmssw/blob/master/IOPool/TFileAdap
 from __future__ import annotations
 
 import queue
-import sys
 from concurrent.futures import Future
 from dataclasses import dataclass
 from typing import Callable
@@ -34,7 +33,7 @@ class SliceFuture:
         self._parent.add_done_callback(callback)
 
     def result(self, timeout=None):
-        if sys.platform == "emscripten":
+        if uproot._util.wasm:
             # Pyodide futures don't support timeout
             return self._parent.result()[self._s]
         return self._parent.result(timeout=timeout)[self._s]
@@ -130,9 +129,8 @@ def coalesce_requests(
 
     def chunkify(req: RangeRequest):
         chunk = uproot.source.chunk.Chunk(source, req.start, req.stop, req.future)
-        if sys.platform == "emscripten":
+        if uproot._util.wasm:
             # Callbacks don't work in pyodide yet, so we call the notifier directly
-            # TODO: Remove this once pyodide supports threads
             uproot.source.chunk.notifier(chunk, notifications)()
         else:
             req.future.add_done_callback(

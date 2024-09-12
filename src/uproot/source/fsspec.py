@@ -5,7 +5,6 @@ from __future__ import annotations
 import asyncio
 import concurrent.futures
 import queue
-import sys
 
 import fsspec
 import fsspec.asyn
@@ -165,10 +164,9 @@ class FSSpecSource(uproot.source.chunk.Source):
                     self._fs.cat_ranges, paths=paths, starts=starts, ends=ends
                 )
             )
-            if sys.platform == "emscripten":
+            if uproot._util.wasm:
                 # Threads can't be spawned in pyodide yet, so we run the function directly
                 # and return a future that is already resolved.
-                # TODO: remove this when pyodide supports threads
                 return uproot.source.futures.TrivialFuture(
                     self._fs.cat_ranges(paths=paths, starts=starts, ends=ends)
                 )
