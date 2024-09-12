@@ -164,6 +164,12 @@ class FSSpecSource(uproot.source.chunk.Source):
                     self._fs.cat_ranges, paths=paths, starts=starts, ends=ends
                 )
             )
+            if uproot._util.wasm:
+                # Threads can't be spawned in pyodide yet, so we run the function directly
+                # and return a future that is already resolved.
+                return uproot.source.futures.TrivialFuture(
+                    self._fs.cat_ranges(paths=paths, starts=starts, ends=ends)
+                )
             return self._executor.submit(coroutine)
 
         return coalesce_requests(
