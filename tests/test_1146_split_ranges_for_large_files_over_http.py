@@ -1,8 +1,12 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot5/blob/main/LICENSE
 
+import pytest
 import uproot
 
 
+@pytest.mark.skip(
+    reason="The server started requiring authentication to access the file."
+)
 def test_split_ranges_if_large_file_in_http():
     fname = (
         "https://xrootd-local.unl.edu:1094//store/user/AGC/nanoAOD/TT_TuneCUETP8M1_13TeV"
