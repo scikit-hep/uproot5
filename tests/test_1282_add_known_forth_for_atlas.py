@@ -11,7 +11,7 @@ VECTOR_VECTOR_ELEMENTLINK_BRANCHES = [
     "AnalysisPhotonsAuxDyn.vertexLinks",
     "TruthMuonsAuxDyn.childLinks",
     "AnalysisElectronsAuxDyn.trackParticleLinks",
-    # "PrimaryVerticesAuxDyn.neutralParticleLinks", # TODO: currently fails because of `CannotBeAwkward` - see if we can circumvent this by providing the form
+    "PrimaryVerticesAuxDyn.neutralParticleLinks",
     "AnalysisTauJetsAuxDyn.tauTrackLinks",
 ]
 

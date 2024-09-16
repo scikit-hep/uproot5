@@ -14,6 +14,7 @@ KNOWN_FORTH_DICT = {
     "std::vector<std::vector<ElementLink<DataVector<xAOD::TrackParticle_v1>>>>": VectorVectorElementLink,
     "std::vector<std::vector<ElementLink<DataVector<xAOD::TauTrack_v1>>>>": VectorVectorElementLink,
     "std::vector<std::vector<ElementLink<DataVector<xAOD::IParticle>>>>": VectorVectorElementLink,
+    "std::vector<std::vector<ElementLink<DataVector<xAOD::NeutralParticle_v1>>>>": VectorVectorElementLink,
 }
 
 
