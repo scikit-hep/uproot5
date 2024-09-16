@@ -4,11 +4,14 @@
 This module defines known forth code for some ElementLink data types in ATLAS (D)AODs
 """
 
-# TODO: delay import?
 from __future__ import annotations
 
-vector_vector_element_link = (
-    """
+import re
+
+
+class VectorVectorElementLink:
+
+    forth_code = """
 input stream
 input byteoffsets
 input bytestops
@@ -36,14 +39,44 @@ output node4-data uint32
         loop
     loop
 loop
-""",
-    {
-        "form_key": "node1",
-        "content": {
-            "form_key": "node2",
+"""
+
+    def __init__(self, typename):
+        self.typename = typename
+        self.inner_typename = re.sub(
+            "std::vector<std::vector<(.*)>>", r"\1", self.typename
+        )
+
+    @property
+    def awkward_form(self):
+        return {
+            "class": "ListOffsetArray",
+            "offsets": "i64",
+            "form_key": "node1",
             "content": {
-                "contents": [{"form_key": "node3"}, {"form_key": "node4"}],
+                "class": "ListOffsetArray",
+                "offsets": "i64",
+                "form_key": "node2",
+                "content": {
+                    "class": "RecordArray",
+                    "fields": ["m_persKey", "m_persIndex"],
+                    "contents": [
+                        {
+                            "class": "NumpyArray",
+                            "primitive": "uint32",
+                            "inner_shape": [],
+                            "parameters": {},
+                            "form_key": "node3",
+                        },
+                        {
+                            "class": "NumpyArray",
+                            "primitive": "uint32",
+                            "inner_shape": [],
+                            "parameters": {},
+                            "form_key": "node4",
+                        },
+                    ],
+                    "parameters": {"__record__": f"{self.inner_typename}"},
+                },
             },
-        },
-    },
-)
+        }
