@@ -24,7 +24,6 @@ import contextlib
 import json
 import threading
 
-import awkward  # TODO: delay
 import numpy
 
 import uproot
@@ -131,6 +130,7 @@ class AsObjects(uproot.interpretation.Interpretation):
         tobject_header=False,
         breadcrumbs=(),
     ):
+        awkward = uproot.extras.awkward()
         if self._form is not None:  # TODO: is this really fine?
             if isinstance(self._form, dict):
                 # TODO don't know when and why the form sometimes is a dict
