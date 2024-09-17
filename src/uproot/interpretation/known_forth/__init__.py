@@ -9,12 +9,13 @@ from uproot.interpretation.known_forth.atlas.element_link import VectorVectorEle
 
 KNOWN_FORTH_DICT = {
     "std::vector<std::vector<ElementLink<DataVector<xAOD::CaloCluster_v1>>>>": VectorVectorElementLink,
-    "std::vector<std::vector<ElementLink<DataVector<xAOD::Vertex_v1>>>>": VectorVectorElementLink,
-    "std::vector<std::vector<ElementLink<DataVector<xAOD::TruthParticle_v1>>>>": VectorVectorElementLink,
-    "std::vector<std::vector<ElementLink<DataVector<xAOD::TrackParticle_v1>>>>": VectorVectorElementLink,
-    "std::vector<std::vector<ElementLink<DataVector<xAOD::TauTrack_v1>>>>": VectorVectorElementLink,
     "std::vector<std::vector<ElementLink<DataVector<xAOD::IParticle>>>>": VectorVectorElementLink,
+    "std::vector<std::vector<ElementLink<DataVector<xAOD::MuonSegment_v1>>>>": VectorVectorElementLink,
     "std::vector<std::vector<ElementLink<DataVector<xAOD::NeutralParticle_v1>>>>": VectorVectorElementLink,
+    "std::vector<std::vector<ElementLink<DataVector<xAOD::TauTrack_v1>>>>": VectorVectorElementLink,
+    "std::vector<std::vector<ElementLink<DataVector<xAOD::TrackParticle_v1>>>>": VectorVectorElementLink,
+    "std::vector<std::vector<ElementLink<DataVector<xAOD::TruthParticle_v1>>>>": VectorVectorElementLink,
+    "std::vector<std::vector<ElementLink<DataVector<xAOD::Vertex_v1>>>>": VectorVectorElementLink,
 }
 
 
