@@ -130,13 +130,10 @@ class AsObjects(uproot.interpretation.Interpretation):
         tobject_header=False,
         breadcrumbs=(),
     ):
-        awkward = uproot.extras.awkward()
-        if self._form is not None:  # TODO: is this really fine?
-            if isinstance(self._form, dict):
-                # TODO don't know when and why the form sometimes is a dict
-                # (and if it causes problems to convert it here)
-                self._form = awkward.forms.from_dict(self._form)
-            return self._form
+        if self._form is not None:
+            awkward = uproot.extras.awkward()
+            return awkward.forms.from_dict(self._form)
+
         context = self._make_context(
             context, index_format, header, tobject_header, breadcrumbs
         )
