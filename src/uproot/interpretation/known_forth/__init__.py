@@ -5,6 +5,7 @@ This module defines known forth code for types it is known a priori.
 """
 from __future__ import annotations
 
+import uproot
 from uproot.interpretation.known_forth.atlas.element_link import VectorVectorElementLink
 
 KNOWN_FORTH_DICT = {
@@ -20,10 +21,20 @@ KNOWN_FORTH_DICT = {
 
 
 def known_forth_of(model):
-    if not hasattr(model, "typename"):
-        return
+    """
+    Args:
+        model: The :doc:`uproot.model.Model` to look up known forth for
 
-    typename = model.typename
+    Returns an object with attributes `forth_code` and `awkward_form` if a known
+    special case exists, else None
+    """
+    try:
+        typename = model.typename
+    except AttributeError:
+        try:
+            typename = model.classname
+        except AttributeError:
+            typename = uproot.model.classname_decode(model.__name__)
 
     if typename not in KNOWN_FORTH_DICT:
         return

@@ -47,7 +47,8 @@ class AsObjects(uproot.interpretation.Interpretation):
     replace this interpretation with a faster-to-read equivalent, but not all
     data types can be simplified.
 
-    # TODO: known_forth can define forth code and forms for special cases that will be picked up here as well
+    :doc:`uproot.interpretation.known_forth` defines forth code and forms for
+    special cases that will be picked up here as well
     """
 
     def __init__(self, model, branch=None):
