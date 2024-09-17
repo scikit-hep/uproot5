@@ -54,13 +54,13 @@ class AsObjects(uproot.interpretation.Interpretation):
         self._model = model
         self._branch = branch
         self._forth = True
-        self._form = None
         known_forth = known_forth_of(self._model)
         if known_forth is not None:
             self._complete_forth_code = known_forth.forth_code
             self._form = known_forth.awkward_form
         else:
             self._complete_forth_code = None
+            self._form = None
         self._forth_lock = threading.Lock()
 
     @property
