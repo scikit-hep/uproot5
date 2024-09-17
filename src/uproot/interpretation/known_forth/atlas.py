@@ -1,7 +1,7 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot5/blob/main/LICENSE
 
 """
-This module defines known forth code for some ElementLink data types in ATLAS (D)AODs
+This module defines ATLAS specific known forth code
 """
 
 from __future__ import annotations
@@ -10,6 +10,23 @@ import re
 
 
 class VectorVectorElementLink:
+    """
+    Known forth and awkward form for ``std::vector<std::vector<ElementLink<T>>`` types in ATLAS (D)AODs
+
+    The forth code was adjusted from what was provided in
+    ``branch._complete_forth_code`` after running ``.array()`` once.
+
+    The binary data of one vector<vector<ElementLink<T>> looks as follows:
+
+    * 6 bytes header for the outer vector
+    * 4 bytes big endian uint for the size of the outer vector (node1)
+    * for each outer vector element:
+    * 4 bytes big endian uint for the size of the inner vector (node2)
+    * for each inner vector element:
+    * 20 bytes header for the ElementLink object
+    * 4 bytes big endian uint for the ``m_persKey`` member (node3)
+    * 4 bytes big endian uint for the ``m_persIndex`` member (node4)
+    """
 
     forth_code = """
 input stream
