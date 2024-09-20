@@ -94,19 +94,25 @@ def test_read_rntuple(selenium):
         assert len(jets.pt) == len(pbs)
 
 
-# Taken from test_0088_read_with_http.py
+# Taken from test_0034_generic_objects_in_ttrees.py
 @pytest.mark.network
 @run_test_in_pyodide(packages=["requests"])
 def test_read_ttree_http(selenium):
+    import awkward
+
     import uproot
 
     with uproot.open(
-        "http://starterkit.web.cern.ch/starterkit/data/advanced-python-2019/dalitzdata.root",
+        "https://github.com/scikit-hep/scikit-hep-testdata/raw/main/src/skhep_testdata/data/uproot-stl_containers.root",
         handler=uproot.source.http.HTTPSource,
-    ) as f:
-        data = f["tree"].arrays(["Y1", "Y2"], library="np")
-        assert len(data["Y1"]) == 100000
-        assert len(data["Y2"]) == 100000
+    )["tree"] as tree:
+        assert awkward.to_list(tree["vector_int32"].array(library="ak")) == [
+            [1],
+            [1, 2],
+            [1, 2, 3],
+            [1, 2, 3, 4],
+            [1, 2, 3, 4, 5],
+        ]
 
 
 # Taken from test_1191_rntuple_fixes.py
