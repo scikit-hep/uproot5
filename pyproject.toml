@@ -39,6 +39,7 @@ classifiers = [
 dependencies = [
   "awkward>=2.4.6",
   "cramjam>=2.5.0",
+  "xxhash",
   "numpy",
   "fsspec",
   "packaging",
@@ -67,7 +68,6 @@ s3 = ["s3fs"]
 test = [
   "isal",
   "deflate",
-  "xxhash",
   "minio",
   "aiohttp",
   "fsspec-xrootd",
