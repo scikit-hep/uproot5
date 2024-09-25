@@ -21,11 +21,6 @@ jobs:
     runs-on: ${{ matrix.platform }}
     timeout-minutes: 30
 
-    # Required for miniconda to activate conda
-    defaults:
-      run:
-        shell: bash -l {0}
-
     steps:
       - uses: actions/checkout@v4
 
@@ -34,14 +29,13 @@ jobs:
         with:
           auto-update-conda: true
           python-version: ${{ matrix.python-version }}
-          miniforge-variant: Mambaforge
-          use-mamba: true
+          miniforge-version: latest
 
       - name: Install ROOT
         if: matrix.python-version == 3.8  &&  runner.os != 'macOS'  &&  runner.os != 'Windows'
         run: |
           conda env list
-          mamba install root
+          conda install root
           conda list
 
       - name: Install sshd for fsspec ssh tests
@@ -59,7 +53,7 @@ jobs:
         if: runner.os != 'macOS'  &&  runner.os != 'Windows'
         run: |
           conda env list
-          mamba install xrootd
+          conda install xrootd
           conda list
 
       - name: Pip install the package
