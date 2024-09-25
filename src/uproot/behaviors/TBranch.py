@@ -210,14 +210,10 @@ def iterate(
                             arrays, report = item
                             arrays = library.global_index(arrays, global_offset)
                             report = report.to_global(global_offset)
-                            popper = [arrays]
-                            del arrays
-                            yield popper.pop(), report
-
+                            yield arrays, report
                         else:
-                            popper = [library.global_index(item, global_offset)]
-                            yield popper.pop()
-
+                            arrays = library.global_index(item, global_offset)
+                            yield arrays
                 except uproot.exceptions.KeyInFileError:
                     if allow_missing:
                         continue
@@ -1115,9 +1111,6 @@ class HasBranches(Mapping):
                     ak_add_doc,
                 )
 
-                # no longer needed; save memory
-                del output
-
                 next_baskets = {}
                 for branch, basket_num, basket in ranges_or_baskets:
                     basket_entry_start, basket_entry_stop = basket.entry_start_stop
@@ -1126,14 +1119,10 @@ class HasBranches(Mapping):
 
                 previous_baskets = next_baskets
 
-                # no longer needed; save memory
-                popper = [out]
-                del out
-
                 if report:
-                    yield popper.pop(), Report(self, sub_entry_start, sub_entry_stop)
+                    yield out, Report(self, sub_entry_start, sub_entry_stop)
                 else:
-                    yield popper.pop()
+                    yield out
 
     def keys(
         self,
