@@ -41,7 +41,7 @@ def test_rntuple_cardinality():
 def test_skip_recursively_empty_structs():
     filename = skhep_testdata.data_path("DAOD_TRUTH3_RC2.root")
     with uproot.open(filename) as f:
-        obj = uproot.open(filename)["RNT:CollectionTree"]
+        obj = f["RNT:CollectionTree"]
         arrays = obj.arrays()
         jets = arrays["AntiKt4TruthDressedWZJetsAux:"]
         assert len(jets[0].pt) == 5
