@@ -35,6 +35,7 @@ jobs:
           auto-update-conda: true
           python-version: ${{ matrix.python-version }}
           miniforge-version: latest
+          use-mamba: true
 
       - name: Check active Python version
         run: python -c "import sys; assert '.'.join(str(s) for s in sys.version_info[:2]) == '${{ matrix.python-version }}', f'{version} incorrect!'"
@@ -43,7 +44,7 @@ jobs:
         if: matrix.python-version == 3.8  &&  runner.os != 'macOS'  &&  runner.os != 'Windows'
         run: |
           conda env list
-          conda install root
+          mamba install root
           conda list
 
       - name: Install sshd for fsspec ssh tests
