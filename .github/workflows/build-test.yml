@@ -36,6 +36,13 @@ jobs:
           python-version: ${{ matrix.python-version }}
           miniforge-version: latest
 
+      - name: Check active Python version
+        shell: python
+        run: |
+          import sys
+          version = '.'.join(str(s) for s in sys.version_info[:2])
+          assert version == '${{ matrix.python-version }}', f'{version} incorrect!'
+
       - name: Install ROOT
         if: matrix.python-version == 3.8  &&  runner.os != 'macOS'  &&  runner.os != 'Windows'
         run: |
