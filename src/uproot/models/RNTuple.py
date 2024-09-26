@@ -542,7 +542,9 @@ in file {self.file.file_path}"""
         # needed to chop off extra bits incase we used `unpackbits`
         destination[:] = content[:num_elements]
 
-    def read_col_pages(self, ncol, cluster_range, dtype_byte, pad_missing_element=False):
+    def read_col_pages(
+        self, ncol, cluster_range, dtype_byte, pad_missing_element=False
+    ):
         arrays = [self.read_col_page(ncol, i) for i in cluster_range]
 
         # Check if column stores offset values for jagged arrays (splitindex64) (applies to cardinality cols too):
