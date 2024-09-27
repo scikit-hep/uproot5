@@ -567,7 +567,7 @@ in file {self.file.file_path}"""
         res = numpy.concatenate(arrays, axis=0)
 
         if pad_missing_element:
-            first_element_index = self.column_records[ncol].first_ele_index
+            first_element_index = self.column_records[ncol].first_element_index
             res = numpy.pad(res, (first_element_index, 0))
         return res
 
