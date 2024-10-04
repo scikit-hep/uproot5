@@ -393,7 +393,7 @@ in file {self.file.file_path}"""
         seen.add(this_id)
         structural_role = this_record.struct_role
         if (
-            structural_role == uproot.const.rntuple_field_role_leaf
+            structural_role == uproot.const.RNTupleFieldRole.LEAF
             and this_record.repetition == 0
         ):
             # deal with std::atomic
@@ -408,7 +408,7 @@ in file {self.file.file_path}"""
             # base case of recursion
             # n.b. the split may happen in column
             return self.col_form(this_id)
-        elif structural_role == uproot.const.rntuple_field_role_leaf:
+        elif structural_role == uproot.const.RNTupleFieldRole.LEAF:
             if this_id in self._related_ids:
                 # std::array has only one subfield
                 child_id = self._related_ids[this_id][0]
@@ -418,7 +418,7 @@ in file {self.file.file_path}"""
                 inner = self.col_form(this_id)
             keyname = f"RegularForm-{this_id}"
             return ak.forms.RegularForm(inner, this_record.repetition, form_key=keyname)
-        elif structural_role == uproot.const.rntuple_field_role_vector:
+        elif structural_role == uproot.const.RNTupleFieldRole.VECTOR:
             if this_id not in self._related_ids or len(self._related_ids[this_id]) != 1:
                 keyname = f"vector-{this_id}"
                 newids = self._related_ids.get(this_id, [])
@@ -442,7 +442,7 @@ in file {self.file.file_path}"""
                 child_id = self._related_ids[this_id][0]
             inner = self.field_form(child_id, seen)
             return ak.forms.ListOffsetForm("i64", inner, form_key=keyname)
-        elif structural_role == uproot.const.rntuple_field_role_struct:
+        elif structural_role == uproot.const.RNTupleFieldRole.STRUCT:
             newids = []
             if this_id in self._related_ids:
                 newids = self._related_ids[this_id]
@@ -450,7 +450,7 @@ in file {self.file.file_path}"""
             recordlist = [self.field_form(i, seen) for i in newids]
             namelist = [field_records[i].field_name for i in newids]
             return ak.forms.RecordForm(recordlist, namelist, form_key="whatever")
-        elif structural_role == uproot.const.rntuple_field_role_union:
+        elif structural_role == uproot.const.RNTupleFieldRole.UNION:
             keyname = self.col_form(this_id)
             newids = []
             if this_id in self._related_ids:
@@ -460,7 +460,7 @@ in file {self.file.file_path}"""
                 "i8", "i64", recordlist, form_key=keyname + "-union"
             )
             return ak.forms.IndexedOptionForm("i64", inner, form_key=keyname)
-        elif structural_role == uproot.const.rntuple_field_role_unsplit:
+        elif structural_role == uproot.const.RNTupleFieldRole.UNSPLIT:
             raise NotImplementedError(
                 f"Unsplit fields are not supported. {this_record}"
             )
@@ -724,7 +724,7 @@ class PageLink:
         out = MetaData(type(self).__name__)
         out.env_header = _envelop_header(chunk, cursor, context)
         assert (
-            out.env_header["env_type_id"] == uproot.const.rntuple_env_type_pagelist
+            out.env_header["env_type_id"] == uproot.const.RNTupleEnvelopeType.PAGELIST
         ), f"env_type_id={out.env_header['env_type_id']}"
         out.header_checksum = cursor.field(chunk, _rntuple_checksum_format, context)
         out.cluster_summaries = self.list_cluster_summaries.read(chunk, cursor, context)
@@ -813,17 +813,17 @@ class FieldRecordReader:
             out.struct_role,
             out.flags,
         ) = cursor.fields(chunk, _rntuple_field_description_format, context)
-        if out.flags == uproot.const.rntuple_field_flag_repetitive:
+        if out.flags == uproot.const.RNTupleFieldFlag.REPETITIVE:
             out.repetition = cursor.field(chunk, _rntuple_repetition_format, context)
             out.source_field_id = None
             out.checksum = None
-        elif out.flags == uproot.const.rntuple_field_flag_projected:
+        elif out.flags == uproot.const.RNTupleFieldFlag.PROJECTED:
             out.repetition = 0
             out.source_field_id = cursor.field(
                 chunk, _rntuple_source_field_id_format, context
             )
             out.checksum = None
-        elif out.flags == uproot.const.rntuple_field_flag_checksum:
+        elif out.flags == uproot.const.RNTupleFieldFlag.CHECKSUM:
             out.repetition = 0
             out.source_field_id = None
             out.checksum = cursor.field(chunk, _rntuple_checksum_format, context)
@@ -844,7 +844,7 @@ class ColumnRecordReader:
         out.type, out.nbits, out.field_id, out.flags, out.repr_idx = cursor.fields(
             chunk, _rntuple_column_record_format, context
         )
-        if out.flags & uproot.const.rntuple_col_flag_deferred:
+        if out.flags & uproot.const.RNTupleColumnFlag.DEFERRED:
             out.first_element_index = cursor.field(
                 chunk, _rntuple_first_element_index_format, context
             )
@@ -893,7 +893,7 @@ class HeaderReader:
         out = MetaData(type(self).__name__)
         out.env_header = _envelop_header(chunk, cursor, context)
         assert (
-            out.env_header["env_type_id"] == uproot.const.rntuple_env_type_header
+            out.env_header["env_type_id"] == uproot.const.RNTupleEnvelopeType.HEADER
         ), f"env_type_id={out.env_header['env_type_id']}"
         out.feature_flag = cursor.field(chunk, _rntuple_feature_flag_format, context)
         out.name, out.ntuple_description, out.writer_identifier = (
@@ -937,7 +937,7 @@ class ClusterSummaryReader:
         )
         out.flags = out.num_entries >> 28
         out.num_entries &= 0x0FFFFFFF
-        if out.flags == uproot.const.rntuple_cluster_flag_sharded:
+        if out.flags == uproot.const.RNTupleClusterFlag.SHARDED:
             out.col_group_id = cursor.field(
                 chunk, _rntuple_col_group_id_format, context
             )
@@ -994,7 +994,7 @@ class FooterReader:
         out = MetaData("Footer")
         out.env_header = _envelop_header(chunk, cursor, context)
         assert (
-            out.env_header["env_type_id"] == uproot.const.rntuple_env_type_footer
+            out.env_header["env_type_id"] == uproot.const.RNTupleEnvelopeType.FOOTER
         ), f"env_type_id={out.env_header['env_type_id']}"
         out.feature_flag = cursor.field(chunk, _rntuple_feature_flag_format, context)
         out.header_checksum = cursor.field(chunk, _rntuple_checksum_format, context)

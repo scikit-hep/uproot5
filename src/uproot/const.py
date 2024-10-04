@@ -5,6 +5,8 @@ This module defines integer constants used by serialization and deserialization 
 """
 from __future__ import annotations
 
+from enum import IntEnum
+
 import numpy
 
 # determines when a file is "big"
@@ -208,31 +210,47 @@ rntuple_col_type_to_num_dict = {
     "splitzigzagint16": 28,
 }
 
-rntuple_locator_type_uri = 0x01
-rntuple_locator_type_daos = 0x02
 
-rntuple_env_type_header = 0x01
-rntuple_env_type_footer = 0x02
-rntuple_env_type_pagelist = 0x03
-rntuple_env_type_metadata = 0x04
+class RNTupleLocatorType(IntEnum):
+    URI = 0x01
+    DAOS = 0x02
 
-rntuple_field_role_leaf = 0x00
-rntuple_field_role_vector = 0x01
-rntuple_field_role_struct = 0x02
-rntuple_field_role_union = 0x03
-rntuple_field_role_unsplit = 0x04
 
-rntuple_field_flag_repetitive = 0x01
-rntuple_field_flag_projected = 0x02
-rntuple_field_flag_checksum = 0x04
+class RNTupleEnvelopeType(IntEnum):
+    HEADER = 0x01
+    FOOTER = 0x02
+    PAGELIST = 0x03
+    METADATA = 0x04
 
-rntuple_col_flag_deferred = 0x08
 
-rntuple_extra_type_identifier_root = 0x00
+class RNTupleFieldRole(IntEnum):
+    LEAF = 0x00
+    VECTOR = 0x01
+    STRUCT = 0x02
+    UNION = 0x03
+    UNSPLIT = 0x04
 
-rntuple_user_metadata_type_int = 0x01
-rntuple_user_metadata_type_bool = 0x02
-rntuple_user_metadata_type_double = 0x03
-rntuple_user_metadata_type_string = 0x04
 
-rntuple_cluster_flag_sharded = 0x01
+class RNTupleFieldFlag(IntEnum):
+    REPETITIVE = 0x01
+    PROJECTED = 0x02
+    CHECKSUM = 0x04
+
+
+class RNTupleColumnFlag(IntEnum):
+    DEFERRED = 0x08
+
+
+class RNTupleExtraTypeIdentifier(IntEnum):
+    ROOT = 0x00
+
+
+class RNTupleUserMetadataType(IntEnum):
+    INT = 0x01
+    BOOL = 0x02
+    DOUBLE = 0x03
+    STRING = 0x04
+
+
+class RNTupleClusterFlag(IntEnum):
+    SHARDED = 0x01
