@@ -33,9 +33,10 @@ _rntuple_field_description_format = struct.Struct("<IIIHH")
 _rntuple_repetition_format = struct.Struct("<Q")
 _rntuple_source_field_id_format = struct.Struct("<I")
 _rntuple_root_streamer_checksum_format = struct.Struct("<I")
-# https://github.com/root-project/root/blob/8635b1bc0da59623777c9fda3661a19363964915/tree/ntuple/v7/doc/specifications.md#column-description
+# https://github.com/root-project/root/blob/554375616bdc338ad072efd6f65c6bf082cc84c3/tree/ntuple/v7/doc/specifications.md#column-description
 _rntuple_column_record_format = struct.Struct("<HHIHH")
 _rntuple_first_element_index_format = struct.Struct("<I")
+_rntuple_column_range_format = struct.Struct("<dd")
 # https://github.com/root-project/root/blob/8635b1bc0da59623777c9fda3661a19363964915/tree/ntuple/v7/doc/specifications.md#alias-columns
 _rntuple_alias_column_format = struct.Struct("<II")
 # https://github.com/root-project/root/blob/8635b1bc0da59623777c9fda3661a19363964915/tree/ntuple/v7/doc/specifications.md#extra-type-information
@@ -866,6 +867,12 @@ class ColumnRecordReader:
             )
         else:
             out.first_element_index = 0
+        if out.flags & uproot.const.RNTupleColumnFlag.RANGE:
+            out.min_value, out.max_value = cursor.fields(
+                chunk, _rntuple_column_range_format, context
+            )
+        else:
+            out.min_value, out.max_value = None, None
         return out
 
 

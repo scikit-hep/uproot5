@@ -147,6 +147,8 @@ rntuple_col_num_to_dtype_dict = {
     26: "int64",  # split + zigzag encoding
     27: "int32",  # split + zigzag encoding
     28: "int16",  # split + zigzag encoding
+    29: "float32trunc",
+    30: "float32quant",
 }
 rntuple_col_num_to_size_dict = {
     1: 64,
@@ -177,6 +179,8 @@ rntuple_col_num_to_size_dict = {
     26: 64,  # split + zigzag encoding
     27: 32,  # split + zigzag encoding
     28: 16,  # split + zigzag encoding
+    29: 32,  # TODO: variable size
+    30: 32,  # TODO: variable size
 }
 
 rntuple_col_type_to_num_dict = {
@@ -240,6 +244,7 @@ class RNTupleFieldFlag(IntEnum):
 
 class RNTupleColumnFlag(IntEnum):
     DEFERRED = 0x08
+    RANGE = 0x10
 
 
 class RNTupleExtraTypeIdentifier(IntEnum):
