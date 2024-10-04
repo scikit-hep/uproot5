@@ -957,8 +957,8 @@ class ClusterSummaryReader:
         out.num_first_entry, out.num_entries = cursor.fields(
             chunk, _rntuple_cluster_summary_format, context
         )
-        out.flags = out.num_entries >> 24
-        out.num_entries &= 0x0FFFFFF
+        out.flags = out.num_entries >> 56
+        out.num_entries &= 0xFFFFFFFFFFFFFF
         if out.flags == uproot.const.RNTupleClusterFlag.SHARDED:
             raise NotImplementedError("Sharded clusters are not supported.")
         return out
