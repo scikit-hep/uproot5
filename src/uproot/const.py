@@ -218,10 +218,10 @@ class RNTupleLocatorType(IntEnum):
 
 
 class RNTupleEnvelopeType(IntEnum):
+    RESERVED = 0x00
     HEADER = 0x01
     FOOTER = 0x02
     PAGELIST = 0x03
-    METADATA = 0x04
 
 
 class RNTupleFieldRole(IntEnum):
