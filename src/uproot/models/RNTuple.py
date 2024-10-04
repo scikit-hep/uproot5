@@ -108,8 +108,10 @@ in file {self.file.file_path}"""
             self._members["fSeekFooter"],
             self._members["fNBytesFooter"],
             self._members["fLenFooter"],
-            self._members["fChecksum"],
+            self._members["fMaxKeySize"],
         ) = cursor.fields(chunk, _rntuple_anchor_format, context)
+
+        # TODO: There is a checksum afterwards that we can use to verify the integrity of the members.
 
         self._header_chunk_ready = False
         self._footer_chunk_ready = False
