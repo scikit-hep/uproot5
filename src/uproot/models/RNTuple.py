@@ -46,7 +46,6 @@ _rntuple_cluster_group_format = struct.Struct("<qqi")
 _rntuple_column_group_id_format = struct.Struct("<I")
 # https://github.com/root-project/root/blob/8635b1bc0da59623777c9fda3661a19363964915/tree/ntuple/v7/doc/specifications.md#cluster-summary-record-frame
 _rntuple_cluster_summary_format = struct.Struct("<QQ")
-_rntuple_col_group_id_format = struct.Struct("<I")
 # https://github.com/root-project/root/blob/8635b1bc0da59623777c9fda3661a19363964915/tree/ntuple/v7/doc/specifications.md#page-locations
 _rntuple_page_num_elements_format = struct.Struct("<i")
 
@@ -958,14 +957,10 @@ class ClusterSummaryReader:
         out.num_first_entry, out.num_entries = cursor.fields(
             chunk, _rntuple_cluster_summary_format, context
         )
-        out.flags = out.num_entries >> 28
-        out.num_entries &= 0x0FFFFFFF
+        out.flags = out.num_entries >> 24
+        out.num_entries &= 0x0FFFFFF
         if out.flags == uproot.const.RNTupleClusterFlag.SHARDED:
-            out.col_group_id = cursor.field(
-                chunk, _rntuple_col_group_id_format, context
-            )
-        else:
-            out.col_group_id = None
+            raise NotImplementedError("Sharded clusters are not supported.")
         return out
 
 
