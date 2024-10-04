@@ -34,8 +34,11 @@ jobs:
         with:
           auto-update-conda: true
           python-version: ${{ matrix.python-version }}
-          miniforge-variant: Mambaforge
+          miniforge-version: latest
           use-mamba: true
+
+      - name: Check active Python version
+        run: python -c "import sys; assert '.'.join(str(s) for s in sys.version_info[:2]) == '${{ matrix.python-version }}', f'{version} incorrect!'"
 
       - name: Install ROOT
         if: matrix.python-version == 3.8  &&  runner.os != 'macOS'  &&  runner.os != 'Windows'
@@ -179,3 +182,14 @@ jobs:
       - name: Run pytest
         run: |
           pytest -vv --dist-dir=./pyodide-dist/ --runner=selenium --runtime=chrome tests-wasm
+
+  pass:
+    if: always()
+    needs: [build, vanilla-build, numpy1-build, pyodide-build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Decide whether the needed jobs succeeded or failed
+        uses: re-actors/alls-green@release/v1
+        with:
+          jobs: ${{ toJSON(needs) }}
