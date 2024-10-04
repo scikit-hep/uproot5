@@ -212,7 +212,8 @@ rntuple_col_type_to_num_dict = {
 
 
 class RNTupleLocatorType(IntEnum):
-    URI = 0x01
+    STANDARD = 0x00
+    LARGE = 0x01
     DAOS = 0x02
 
 

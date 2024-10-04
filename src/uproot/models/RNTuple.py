@@ -20,8 +20,10 @@ _rntuple_feature_flag_format = struct.Struct("<Q")
 # https://github.com/root-project/root/blob/8635b1bc0da59623777c9fda3661a19363964915/tree/ntuple/v7/doc/specifications.md#frames
 _rntuple_frame_size_format = struct.Struct("<q")
 _rntuple_frame_num_items_format = struct.Struct("<i")
-# https://github.com/root-project/root/blob/8635b1bc0da59623777c9fda3661a19363964915/tree/ntuple/v7/doc/specifications.md#locators-and-envelope-links
-_rntuple_locator_format = struct.Struct("<iQ")
+# https://github.com/root-project/root/blob/554375616bdc338ad072efd6f65c6bf082cc84c3/tree/ntuple/v7/doc/specifications.md#locators-and-envelope-links
+_rntuple_locator_size_format = struct.Struct("<i")
+_rntuple_large_locator_size_format = struct.Struct("<Q")
+_rntuple_locator_offset_format = struct.Struct("<Q")
 _rntuple_envlink_size_format = struct.Struct("<Q")
 # https://github.com/root-project/root/blob/8635b1bc0da59623777c9fda3661a19363964915/tree/ntuple/v7/doc/specifications.md#envelopes
 _rntuple_env_header_format = struct.Struct("<Q")
@@ -738,11 +740,23 @@ class PageLink:
 class LocatorReader:
     def read(self, chunk, cursor, context):
         out = MetaData("Locator")
-        out.num_bytes, out.offset = cursor.fields(
-            chunk, _rntuple_locator_format, context
-        )
+        out.num_bytes = cursor.field(chunk, _rntuple_locator_size_format, context)
         if out.num_bytes < 0:
-            raise NotImplementedError("Non-disk locators are not supported.")
+            out.type = -out.num_bytes >> 24
+            if out.type == uproot.const.RNTupleLocatorType.LARGE:
+                out.num_bytes = cursor.field(
+                    chunk, _rntuple_large_locator_size_format, context
+                )
+                out.offset = cursor.field(
+                    chunk, _rntuple_locator_offset_format, context
+                )
+            elif out.type == uproot.const.RNTupleLocatorType.DAOS:
+                raise NotImplementedError("DAOS locators are not supported.")
+            else:
+                raise NotImplementedError(f"Unknown locator type: {out.type}")
+        else:
+            out.type = uproot.const.RNTupleLocatorType.STANDARD
+            out.offset = cursor.field(chunk, _rntuple_locator_offset_format, context)
         return out
 
 
