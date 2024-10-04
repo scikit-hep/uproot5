@@ -1006,7 +1006,6 @@ class FooterReader:
         self.cluster_group_record_frames = ListFrameReader(
             RecordFrameReader(ClusterGroupRecordReader())
         )
-        self.meta_data_links = ListFrameReader(RecordFrameReader(EnvLinkReader()))
 
     def read(self, chunk, cursor, context):
         out = MetaData("Footer")
@@ -1023,7 +1022,6 @@ class FooterReader:
         out.cluster_group_records = self.cluster_group_record_frames.read(
             chunk, cursor, context
         )
-        out.meta_block_links = self.meta_data_links.read(chunk, cursor, context)
         out.checksum = cursor.field(chunk, _rntuple_checksum_format, context)
         return out
 
