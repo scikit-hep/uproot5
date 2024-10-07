@@ -2959,6 +2959,9 @@ def _regularize_expressions(
     return arrays, expression_context, branchid_interpretation
 
 
+_basket_arrays_lock = threading.Lock()
+
+
 def _ranges_or_baskets_to_arrays(
     hasbranches,
     ranges_or_baskets,
@@ -3057,7 +3060,7 @@ def _ranges_or_baskets_to_arrays(
             context = dict(branch.context)
             context["forth"] = forth_context[branch.cache_key]
 
-            basket_arrays[basket.basket_num] = interpretation.basket_array(
+            basket_array = interpretation.basket_array(
                 basket.data,
                 basket.byte_offsets,
                 basket,
@@ -3067,16 +3070,21 @@ def _ranges_or_baskets_to_arrays(
                 library,
                 interp_options,
             )
-            if basket.num_entries != len(basket_arrays[basket.basket_num]):
+            if basket.num_entries != len(basket_array):
                 raise ValueError(
                     f"""basket {basket.basket_num} in tree/branch {branch.object_path} has the wrong number of entries """
-                    f"""(expected {basket.num_entries}, obtained {len(basket_arrays[basket.basket_num])}) when interpreted as {interpretation}
+                    f"""(expected {basket.num_entries}, obtained {len(basket_array)}) when interpreted as {interpretation}
     in file {branch.file.file_path}"""
                 )
 
+            basket_num = basket.basket_num
             basket = None
 
-            if len(basket_arrays) == branchid_num_baskets[branch.cache_key]:
+            with _basket_arrays_lock:
+                basket_arrays[basket_num] = basket_array
+                len_basket_arrays = len(basket_arrays)
+
+            if len_basket_arrays == branchid_num_baskets[branch.cache_key]:
                 arrays[branch.cache_key] = interpretation.final_array(
                     basket_arrays,
                     entry_start,
@@ -3086,8 +3094,9 @@ def _ranges_or_baskets_to_arrays(
                     branch,
                     interp_options,
                 )
-                # no longer needed, save memory
-                basket_arrays.clear()
+                with _basket_arrays_lock:
+                    # no longer needed, save memory
+                    basket_arrays.clear()
 
         except Exception:
             notifications.put(sys.exc_info())
