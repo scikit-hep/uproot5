@@ -14,10 +14,7 @@ def test_schema_extension():
         arrays = obj.arrays()
         int_vec_array = arrays["int_vector"]
 
-        true_array = np.zeros((200, 2), dtype=np.int16)
-        true_array[:100, 0] = np.arange(100, dtype=np.int16)
-        true_array[:100, 1] = np.arange(100, dtype=np.int16)
-        true_array[100:, 0] = np.arange(100, dtype=np.int16)
-        true_array[100:, 1] = np.arange(100, dtype=np.int16) + 1
-
-        assert np.array_equal(int_vec_array, true_array)
+        for j in range(2):
+            for i in range(100):
+                assert int_vec_array[i + j * 100, 0] == i
+                assert int_vec_array[i + j * 100, 1] == i + j
