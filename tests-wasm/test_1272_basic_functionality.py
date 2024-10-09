@@ -79,7 +79,7 @@ def test_read_rntuple(selenium):
 
         assert len(obj.column_records) > len(obj.header.column_records)
         assert len(obj.column_records) == 936
-        assert obj.column_records[903].first_ele_index == 36
+        assert obj.column_records[903].first_element_index == 36
 
         arrays = obj.arrays()
 
