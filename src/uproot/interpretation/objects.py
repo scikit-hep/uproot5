@@ -28,6 +28,7 @@ import numpy
 
 import uproot
 import uproot._awkwardforth
+from uproot.interpretation.known_forth import known_forth_of
 
 
 class AsObjects(uproot.interpretation.Interpretation):
@@ -45,14 +46,22 @@ class AsObjects(uproot.interpretation.Interpretation):
     :ref:`uproot.interpretation.objects.AsObjects.simplify` attempts to
     replace this interpretation with a faster-to-read equivalent, but not all
     data types can be simplified.
+
+    :doc:`uproot.interpretation.known_forth` defines forth code and forms for
+    special cases that will be picked up here as well
     """
 
     def __init__(self, model, branch=None):
         self._model = model
         self._branch = branch
-        self._form = None
         self._forth = True
-        self._complete_forth_code = None
+        known_forth = known_forth_of(self._model)
+        if known_forth is not None:
+            self._complete_forth_code = known_forth.forth_code
+            self._form = known_forth.awkward_form
+        else:
+            self._complete_forth_code = None
+            self._form = None
         self._forth_lock = threading.Lock()
 
     @property
@@ -122,6 +131,10 @@ class AsObjects(uproot.interpretation.Interpretation):
         tobject_header=False,
         breadcrumbs=(),
     ):
+        if self._form is not None:
+            awkward = uproot.extras.awkward()
+            return awkward.forms.from_dict(self._form)
+
         context = self._make_context(
             context, index_format, header, tobject_header, breadcrumbs
         )
