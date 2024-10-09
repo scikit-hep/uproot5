@@ -61,6 +61,78 @@ def _envelop_header(chunk, cursor, context):
     return {"env_type_id": env_type_id, "env_length": env_length}
 
 
+def _arrays(
+    in_ntuple,
+    filter_name="*",
+    filter_typename=None,
+    entry_start=0,
+    entry_stop=None,
+    decompression_executor=None,
+    array_cache=None,
+):
+    ak = uproot.extras.awkward()
+
+    entry_stop = entry_stop or in_ntuple.ntuple.num_entries
+
+    clusters = in_ntuple.ntuple.cluster_summaries
+    cluster_starts = numpy.array([c.num_first_entry for c in clusters])
+
+    start_cluster_idx = (
+        numpy.searchsorted(cluster_starts, entry_start, side="right") - 1
+    )
+    stop_cluster_idx = numpy.searchsorted(cluster_starts, entry_stop, side="right")
+    cluster_num_entries = numpy.sum(
+        [c.num_entries for c in clusters[start_cluster_idx:stop_cluster_idx]]
+    )
+
+    form = in_ntuple.to_akform().select_columns(
+        filter_name, prune_unions_and_records=False
+    )
+    # only read columns mentioned in the awkward form
+    target_cols = []
+    container_dict = {}
+    _recursive_find(form, target_cols)
+    for key in target_cols:
+        if "column" in key and "union" not in key:
+            key_nr = int(key.split("-")[1])
+            dtype_byte = in_ntuple.ntuple.column_records[key_nr].type
+
+            content = in_ntuple.ntuple.read_col_pages(
+                key_nr,
+                range(start_cluster_idx, stop_cluster_idx),
+                dtype_byte=dtype_byte,
+                pad_missing_element=True,
+            )
+            if "cardinality" in key:
+                content = numpy.diff(content)
+            if dtype_byte == uproot.const.rntuple_col_type_to_num_dict["switch"]:
+                kindex, tags = _split_switch_bits(content)
+                # Find invalid variants and adjust buffers accordingly
+                invalid = numpy.flatnonzero(tags == -1)
+                if len(invalid) > 0:
+                    kindex = numpy.delete(kindex, invalid)
+                    tags = numpy.delete(tags, invalid)
+                    invalid -= numpy.arange(len(invalid))
+                    optional_index = numpy.insert(
+                        numpy.arange(len(kindex), dtype=numpy.int64), invalid, -1
+                    )
+                else:
+                    optional_index = numpy.arange(len(kindex), dtype=numpy.int64)
+                container_dict[f"{key}-index"] = optional_index
+                container_dict[f"{key}-union-index"] = kindex
+                container_dict[f"{key}-union-tags"] = tags
+            else:
+                # don't distinguish data and offsets
+                container_dict[f"{key}-data"] = content
+                container_dict[f"{key}-offsets"] = content
+    cluster_offset = cluster_starts[start_cluster_idx]
+    entry_start -= cluster_offset
+    entry_stop -= cluster_offset
+    return ak.from_buffers(
+        form, cluster_num_entries, container_dict, allow_noncanonical_form=True
+    )[entry_start:entry_stop]
+
+
 class Model_ROOT_3a3a_Experimental_3a3a_RNTuple(uproot.model.Model):
     """
     A versionless :doc:`uproot.model.Model` for ``ROOT::Experimental::RNTuple``.
@@ -89,6 +161,24 @@ class Model_ROOT_3a3a_Experimental_3a3a_RNTuple(uproot.model.Model):
             return [key for key in self._keys if key in filter_name]
         else:
             return self._keys
+
+    @property
+    def _key_indices(self):
+        indices = []
+        field_records = self.field_records
+        for i, fr in enumerate(field_records):
+            if fr.parent_field_id == i and fr.type_name != "":
+                indices.append(i)
+        return indices
+
+    @property
+    def _key_to_index(self):
+        d = {}
+        field_records = self.field_records
+        for i, fr in enumerate(field_records):
+            if fr.parent_field_id == i and fr.type_name != "":
+                d[fr.field_name] = i
+        return d
 
     def read_members(self, chunk, cursor, context, file):
         if uproot._awkwardforth.get_forth_obj(context) is not None:
@@ -130,6 +220,8 @@ in file {self.file.file_path}"""
         self._length = None
 
         self._page_list_envelopes = []
+
+        self.ntuple = self
 
     def _prepare_header_chunk(self):
         context = {}
@@ -282,7 +374,24 @@ in file {self.file.file_path}"""
         if len(self) == 0:
             return f"<RNTuple {self.name!r} at 0x{id(self):012x}>"
         else:
-            return f"<RNTuple {self.name!r} ({len(self)} columns) at 0x{id(self):012x}>"
+            return (
+                f"<RNTuple {self.name!r} ({len(self)} top fields) at 0x{id(self):012x}>"
+            )
+
+    def __getitem__(self, where):
+        # original_where = where
+
+        if uproot._util.isint(where):
+            index = self._key_indices[where]
+        elif isinstance(where, str):
+            where = uproot._util.ensure_str(where)
+            index = self._key_to_index[where]
+        else:
+            raise TypeError(f"where must be an integer or a string, not {where!r}")
+
+        # TODO: Implement path support
+
+        return RNTupleField(index, self)
 
     @property
     def name(self):
@@ -623,67 +732,15 @@ in file {self.file.file_path}"""
         decompression_executor=None,
         array_cache=None,
     ):
-        ak = uproot.extras.awkward()
-
-        entry_stop = entry_stop or self.num_entries
-
-        clusters = self.cluster_summaries
-        cluster_starts = numpy.array([c.num_first_entry for c in clusters])
-
-        start_cluster_idx = (
-            numpy.searchsorted(cluster_starts, entry_start, side="right") - 1
+        return _arrays(
+            self,
+            filter_name=filter_name,
+            filter_typename=filter_typename,
+            entry_start=entry_start,
+            entry_stop=entry_stop,
+            decompression_executor=decompression_executor,
+            array_cache=array_cache,
         )
-        stop_cluster_idx = numpy.searchsorted(cluster_starts, entry_stop, side="right")
-        cluster_num_entries = numpy.sum(
-            [c.num_entries for c in clusters[start_cluster_idx:stop_cluster_idx]]
-        )
-
-        form = self.to_akform().select_columns(
-            filter_name, prune_unions_and_records=False
-        )
-        # only read columns mentioned in the awkward form
-        target_cols = []
-        container_dict = {}
-        _recursive_find(form, target_cols)
-        for key in target_cols:
-            if "column" in key and "union" not in key:
-                key_nr = int(key.split("-")[1])
-                dtype_byte = self.column_records[key_nr].type
-
-                content = self.read_col_pages(
-                    key_nr,
-                    range(start_cluster_idx, stop_cluster_idx),
-                    dtype_byte=dtype_byte,
-                    pad_missing_element=True,
-                )
-                if "cardinality" in key:
-                    content = numpy.diff(content)
-                if dtype_byte == uproot.const.rntuple_col_type_to_num_dict["switch"]:
-                    kindex, tags = _split_switch_bits(content)
-                    # Find invalid variants and adjust buffers accordingly
-                    invalid = numpy.flatnonzero(tags == -1)
-                    if len(invalid) > 0:
-                        kindex = numpy.delete(kindex, invalid)
-                        tags = numpy.delete(tags, invalid)
-                        invalid -= numpy.arange(len(invalid))
-                        optional_index = numpy.insert(
-                            numpy.arange(len(kindex), dtype=numpy.int64), invalid, -1
-                        )
-                    else:
-                        optional_index = numpy.arange(len(kindex), dtype=numpy.int64)
-                    container_dict[f"{key}-index"] = optional_index
-                    container_dict[f"{key}-union-index"] = kindex
-                    container_dict[f"{key}-union-tags"] = tags
-                else:
-                    # don't distinguish data and offsets
-                    container_dict[f"{key}-data"] = content
-                    container_dict[f"{key}-offsets"] = content
-        cluster_offset = cluster_starts[start_cluster_idx]
-        entry_start -= cluster_offset
-        entry_stop -= cluster_offset
-        return ak.from_buffers(
-            form, cluster_num_entries, container_dict, allow_noncanonical_form=True
-        )[entry_start:entry_stop]
 
 
 # Supporting function and classes
@@ -1024,6 +1081,97 @@ class FooterReader:
         )
         out.checksum = cursor.field(chunk, _rntuple_checksum_format, context)
         return out
+
+
+class RNTupleField:
+    def __init__(self, index, ntuple):
+        self.index = index
+        self.ntuple = ntuple
+        self._length = None
+
+    @property
+    def _keys(self):
+        keys = []
+        for i, fr in enumerate(self.ntuple.field_records):
+            if i == self.index:
+                continue
+            if (
+                fr.parent_field_id == self.index
+                and fr.type_name != ""
+                and not fr.field_name.startswith("_")
+            ):
+                keys.append(fr.field_name)
+        return keys
+
+    def keys(self):
+        return self._keys
+
+    @property
+    def name(self):
+        """
+        Name of the ``Field``.
+        """
+        return self.ntuple.field_records[self.index].field_name
+
+    def __len__(self):
+        if self._length is None:
+            self._length = len(self.keys())
+        return self._length
+
+    def __repr__(self):
+        if len(self) == 0:
+            return f"<Field {self.name!r} at 0x{id(self):012x}>"
+        else:
+            return f"<Field {self.name!r} ({len(self)} subfields) at 0x{id(self):012x}>"
+
+    def to_akform(self):
+        ak = uproot.extras.awkward()
+
+        field_records = self.ntuple.field_records
+        recordlist = []
+        topnames = self.keys()
+        if len(topnames) == 0:
+            topnames = [self.name]
+            recordlist.append(self.ntuple.field_form(self.index, set()))
+        else:
+            seen = set()
+            for i in range(len(field_records)):
+                if i not in seen and field_records[i].parent_field_id == self.index:
+                    ff = self.ntuple.field_form(i, seen)
+                    if field_records[i].type_name != "":
+                        recordlist.append(ff)
+
+        form = ak.forms.RecordForm(recordlist, topnames, form_key="toplevel")
+        return form
+
+    def arrays(
+        self,
+        filter_name="*",
+        filter_typename=None,
+        entry_start=0,
+        entry_stop=None,
+        decompression_executor=None,
+        array_cache=None,
+    ):
+        return _arrays(
+            self,
+            filter_name=filter_name,
+            filter_typename=filter_typename,
+            entry_start=entry_start,
+            entry_stop=entry_stop,
+            decompression_executor=decompression_executor,
+            array_cache=array_cache,
+        )
+
+    def array(self, **kwargs):
+        return self.arrays(**kwargs)[self.name]
+
+    def __array__(self, *args, **kwargs):
+        out = self.array()
+        if args == () and kwargs == {}:
+            return out
+        else:
+            return numpy.array(out, *args, **kwargs)
 
 
 uproot.classes["ROOT::Experimental::RNTuple"] = (
