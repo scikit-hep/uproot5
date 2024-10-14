@@ -212,10 +212,12 @@ def iterate(
                             report = report.to_global(global_offset)
                             popper = [arrays]
                             del arrays
+                            del item
                             yield popper.pop(), report
 
                         else:
                             popper = [library.global_index(item, global_offset)]
+                            del item
                             yield popper.pop()
 
                 except uproot.exceptions.KeyInFileError:
