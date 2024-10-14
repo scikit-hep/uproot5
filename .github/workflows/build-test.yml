@@ -34,8 +34,11 @@ jobs:
         with:
           auto-update-conda: true
           python-version: ${{ matrix.python-version }}
-          miniforge-variant: Mambaforge
+          miniforge-version: latest
           use-mamba: true
+
+      - name: Check active Python version
+        run: python -c "import sys; assert '.'.join(str(s) for s in sys.version_info[:2]) == '${{ matrix.python-version }}', f'{version} incorrect!'"
 
       - name: Install ROOT
         if: matrix.python-version == 3.8  &&  runner.os != 'macOS'  &&  runner.os != 'Windows'
@@ -45,7 +48,7 @@ jobs:
           conda list
 
       - name: Install sshd for fsspec ssh tests
-        if: runner.os != 'macOS'  &&  runner.os != 'Windows'
+        if: runner.os != 'macOS' && runner.os != 'Windows'
         run: |
           sudo apt-get install -y openssh-server
           sudo service ssh restart
@@ -56,7 +59,7 @@ jobs:
           ssh -o StrictHostKeyChecking=no localhost echo "ssh connection successful"
 
       - name: Install XRootD
-        if: runner.os != 'macOS'  &&  runner.os != 'Windows'
+        if: runner.os != 'macOS' && runner.os != 'Windows'
         run: |
           conda env list
           mamba install xrootd
@@ -74,7 +77,7 @@ jobs:
       fail-fast: false
       matrix:
         platform: [windows-latest, ubuntu-latest, macos-latest]
-        python-version: ['3.11']
+        python-version: ['3.13']
 
     runs-on: ${{ matrix.platform }}
     timeout-minutes: 30
@@ -85,9 +88,12 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
+          allow-prereleases: true
+
+      - uses: astral-sh/setup-uv@v3
 
       - name: Pip install the package
-        run: python -m pip install .[test,dev]
+        run: uv pip install --system .[test,dev]
 
       - name: Run pytest
         run: |
@@ -179,3 +185,14 @@ jobs:
       - name: Run pytest
         run: |
           pytest -vv --dist-dir=./pyodide-dist/ --runner=selenium --runtime=chrome tests-wasm
+
+  pass:
+    if: always()
+    needs: [build, vanilla-build, numpy1-build, pyodide-build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Decide whether the needed jobs succeeded or failed
+        uses: re-actors/alls-green@release/v1
+        with:
+          jobs: ${{ toJSON(needs) }}
