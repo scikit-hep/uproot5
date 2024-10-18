@@ -641,9 +641,7 @@ def _parse_node(tokens, i, typename, file, quote, header, inner_header):
         has2 and tokens[i].group(0) == "unsigned" and tokens[i + 1].group(0) == "short"
     ):
         return i + 2, _parse_maybe_quote('numpy.dtype(">u2")', quote)
-    elif (
-        has2 and tokens[i].group(0) == "signed" and tokens[i + 1].group(0) == "short"
-    ):
+    elif has2 and tokens[i].group(0) == "signed" and tokens[i + 1].group(0) == "short":
         return i + 2, _parse_maybe_quote('numpy.dtype(">i2")', quote)
 
     elif _simplify_token(tokens[i]) == "Short_t*":
@@ -754,7 +752,6 @@ def _parse_node(tokens, i, typename, file, quote, header, inner_header):
         return i + 2, _parse_maybe_quote('numpy.dtype(">u8")', quote)
     elif has2 and tokens[i].group(0) == "signed" and tokens[i + 1].group(0) == "long":
         return i + 2, _parse_maybe_quote('numpy.dtype(">i8")', quote)
-
 
     elif (
         has2
