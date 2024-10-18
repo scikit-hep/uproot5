@@ -607,6 +607,8 @@ def _parse_node(tokens, i, typename, file, quote, header, inner_header):
         return i + 1, _parse_maybe_quote('numpy.dtype("u1")', quote)
     elif has2 and tokens[i].group(0) == "unsigned" and tokens[i + 1].group(0) == "char":
         return i + 2, _parse_maybe_quote('numpy.dtype("u1")', quote)
+    elif has2 and tokens[i].group(0) == "signed" and tokens[i + 1].group(0) == "char":
+        return i + 2, _parse_maybe_quote('numpy.dtype(">i1")', quote)
 
     elif _simplify_token(tokens[i]) == "UChar_t*":
         return (
@@ -639,6 +641,8 @@ def _parse_node(tokens, i, typename, file, quote, header, inner_header):
         has2 and tokens[i].group(0) == "unsigned" and tokens[i + 1].group(0) == "short"
     ):
         return i + 2, _parse_maybe_quote('numpy.dtype(">u2")', quote)
+    elif has2 and tokens[i].group(0) == "signed" and tokens[i + 1].group(0) == "short":
+        return i + 2, _parse_maybe_quote('numpy.dtype(">i2")', quote)
 
     elif _simplify_token(tokens[i]) == "Short_t*":
         return (
@@ -685,6 +689,8 @@ def _parse_node(tokens, i, typename, file, quote, header, inner_header):
         return i + 1, _parse_maybe_quote('numpy.dtype(">u4")', quote)
     elif has2 and tokens[i].group(0) == "unsigned" and tokens[i + 1].group(0) == "int":
         return i + 2, _parse_maybe_quote('numpy.dtype(">u4")', quote)
+    elif has2 and tokens[i].group(0) == "signed" and tokens[i + 1].group(0) == "int":
+        return i + 2, _parse_maybe_quote('numpy.dtype(">i4")', quote)
 
     elif _simplify_token(tokens[i]) == "Int_t*":
         return (
@@ -744,6 +750,8 @@ def _parse_node(tokens, i, typename, file, quote, header, inner_header):
         return i + 1, _parse_maybe_quote('numpy.dtype(">u8")', quote)
     elif has2 and tokens[i].group(0) == "unsigned" and tokens[i + 1].group(0) == "long":
         return i + 2, _parse_maybe_quote('numpy.dtype(">u8")', quote)
+    elif has2 and tokens[i].group(0) == "signed" and tokens[i + 1].group(0) == "long":
+        return i + 2, _parse_maybe_quote('numpy.dtype(">i8")', quote)
 
     elif (
         has2
