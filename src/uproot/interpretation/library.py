@@ -919,7 +919,12 @@ class Pandas(Library):
             )
 
         else:
-            index = arrays.index.arrays
+            # arrays.index.values before Pandas 0.24 and again now;
+            # arrays.index.arrays from Pandas 0.24 through some time ago.
+            if hasattr(arrays.index, "values"):
+                index = arrays.index.values
+            else:
+                index = arrays.index.arrays
             numpy.add(index, global_offset, out=index)
 
         return arrays
