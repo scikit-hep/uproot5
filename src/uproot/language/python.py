@@ -516,6 +516,7 @@ class PythonLanguage(uproot.language.Language):
                 else:
                     output[name] = output[name][cut]
 
+        values.clear()
         return output
 
 
