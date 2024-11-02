@@ -516,7 +516,10 @@ class PythonLanguage(uproot.language.Language):
                 else:
                     output[name] = output[name][cut]
 
+        # clear dicts to get rid of big arrays.
+        # note: without this these arrays are not properly released from memory!
         values.clear()
+        scope.clear()
         return output
 
 
