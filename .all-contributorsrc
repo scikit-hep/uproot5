@@ -587,6 +587,24 @@
       "contributions": [
         "code"
       ]
+    },
+    {
+      "login": "MatousVozak",
+      "name": "MatousVozak",
+      "avatar_url": "https://avatars.githubusercontent.com/u/33348191?v=4",
+      "profile": "https://github.com/MatousVozak",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "rossodisera",
+      "name": "Andrea Serafini",
+      "avatar_url": "https://avatars.githubusercontent.com/u/46961664?v=4",
+      "profile": "https://github.com/rossodisera",
+      "contributions": [
+        "code"
+      ]
     }
   ],
   "contributorsPerLine": 7,
