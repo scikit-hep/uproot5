@@ -1099,6 +1099,7 @@ class RNTupleField:
                 fr.parent_field_id == self.index
                 and fr.type_name != ""
                 and not fr.field_name.startswith("_")
+                and not fr.field_name.startswith(":_")
             ):
                 keys.append(fr.field_name)
         return keys
@@ -1120,9 +1121,42 @@ class RNTupleField:
 
     def __repr__(self):
         if len(self) == 0:
-            return f"<Field {self.name!r} at 0x{id(self):012x}>"
+            return f"<Field {self.name!r} in RNTuple {self.ntuple.name!r} at 0x{id(self):012x}>"
         else:
-            return f"<Field {self.name!r} ({len(self)} subfields) at 0x{id(self):012x}>"
+            return f"<Field {self.name!r} ({len(self)} subfields) in RNTuple {self.ntuple.name!r} at 0x{id(self):012x}>"
+
+    @property
+    def _key_indices(self):
+        indices = []
+        field_records = self.ntuple.field_records
+        for i, fr in enumerate(field_records):
+            if fr.parent_field_id == self.index and fr.type_name != "":
+                indices.append(i)
+        return indices
+
+    @property
+    def _key_to_index(self):
+        d = {}
+        field_records = self.ntuple.field_records
+        for i, fr in enumerate(field_records):
+            if fr.parent_field_id == self.index and fr.type_name != "":
+                d[fr.field_name] = i
+        return d
+
+    def __getitem__(self, where):
+        # original_where = where
+
+        if uproot._util.isint(where):
+            index = self._key_indices[where]
+        elif isinstance(where, str):
+            where = uproot._util.ensure_str(where)
+            index = self._key_to_index[where]
+        else:
+            raise TypeError(f"where must be an integer or a string, not {where!r}")
+
+        # TODO: Implement path support
+
+        return RNTupleField(index, self.ntuple)
 
     def to_akform(self):
         ak = uproot.extras.awkward()
@@ -1136,7 +1170,13 @@ class RNTupleField:
         else:
             seen = set()
             for i in range(len(field_records)):
-                if i not in seen and field_records[i].parent_field_id == self.index:
+                if (
+                    i not in seen
+                    and field_records[i].parent_field_id == self.index
+                    and i != self.index
+                    and not field_records[i].field_name.startswith("_")
+                    and not field_records[i].field_name.startswith(":_")
+                ):
                     ff = self.ntuple.field_form(i, seen)
                     if field_records[i].type_name != "":
                         recordlist.append(ff)
@@ -1164,7 +1204,9 @@ class RNTupleField:
         )
 
     def array(self, **kwargs):
-        return self.arrays(**kwargs)[self.name]
+        if len(self.keys()) == 0:
+            return self.arrays(**kwargs)[self.name]
+        return self.arrays(**kwargs)
 
     def __array__(self, *args, **kwargs):
         out = self.array()
