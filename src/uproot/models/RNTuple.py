@@ -133,6 +133,55 @@ def _arrays(
     )[entry_start:entry_stop]
 
 
+def _num_entries_for(in_ntuple, target_num_bytes, filter_name):
+    # TODO: part of this is also done in _arrays, so we should refactor this
+    # TODO: there might be a better way to estimate the number of entries
+    entry_stop = in_ntuple.ntuple.num_entries
+
+    clusters = in_ntuple.ntuple.cluster_summaries
+    cluster_starts = numpy.array([c.num_first_entry for c in clusters])
+
+    start_cluster_idx = numpy.searchsorted(cluster_starts, 0, side="right") - 1
+    stop_cluster_idx = numpy.searchsorted(cluster_starts, entry_stop, side="right")
+
+    form = in_ntuple.to_akform().select_columns(
+        filter_name, prune_unions_and_records=False
+    )
+    target_cols = []
+    _recursive_find(form, target_cols)
+
+    total_bytes = 0
+    for key in target_cols:
+        if "column" in key and "union" not in key:
+            key_nr = int(key.split("-")[1])
+            for cluster in range(start_cluster_idx, stop_cluster_idx):
+                pages = in_ntuple.ntuple.page_list_envelopes.pagelinklist[cluster][
+                    key_nr
+                ]
+                total_bytes += sum(page.locator.num_bytes for page in pages)
+
+    total_entries = entry_stop
+    if total_bytes == 0:
+        num_entries = 0
+    else:
+        num_entries = int(round(target_num_bytes * total_entries / total_bytes))
+    if num_entries <= 0:
+        return 1
+    else:
+        return num_entries
+
+
+def _regularize_step_size(in_ntuple, step_size, filter_name):
+    if uproot._util.isint(step_size):
+        return step_size
+    target_num_bytes = uproot._util.memory_size(
+        step_size,
+        "number of entries or memory size string with units "
+        f"(such as '100 MB') required, not {step_size!r}",
+    )
+    return _num_entries_for(in_ntuple, target_num_bytes, filter_name)
+
+
 class Model_ROOT_3a3a_Experimental_3a3a_RNTuple(uproot.model.Model):
     """
     A versionless :doc:`uproot.model.Model` for ``ROOT::Experimental::RNTuple``.
@@ -742,6 +791,13 @@ in file {self.file.file_path}"""
             array_cache=array_cache,
         )
 
+    def iterate(self, filter_name="*", *args, step_size="100 MB", **kwargs):
+        step_size = _regularize_step_size(self, step_size, filter_name)
+        for start in range(0, self.num_entries, step_size):
+            yield self.arrays(
+                *args, entry_start=start, entry_stop=start + step_size, **kwargs
+            )
+
 
 # Supporting function and classes
 def _split_switch_bits(content):
@@ -1214,6 +1270,13 @@ class RNTupleField:
             return out
         else:
             return numpy.array(out, *args, **kwargs)
+
+    def iterate(self, filter_name="*", *args, step_size="100 MB", **kwargs):
+        step_size = _regularize_step_size(self, step_size, filter_name)
+        for start in range(0, self.ntuple.num_entries, step_size):
+            yield self.array(
+                *args, entry_start=start, entry_stop=start + step_size, **kwargs
+            )
 
 
 uproot.classes["ROOT::Experimental::RNTuple"] = (
