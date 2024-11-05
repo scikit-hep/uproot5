@@ -5,7 +5,7 @@ This module defines integer constants used by serialization and deserialization 
 """
 from __future__ import annotations
 
-import struct
+from enum import IntEnum
 
 import numpy
 
@@ -118,8 +118,6 @@ kGenerateOffsetMap = numpy.uint8(1)
 kStreamedMemberWise = numpy.uint16(1 << 14)
 
 ############ RNTuple https://github.com/root-project/root/blob/master/tree/ntuple/v7/doc/specifications.md
-_rntuple_frame_format = struct.Struct("<Q")
-rntuple_env_header = _rntuple_frame_format.pack(0)  # TODO: need to check this
 rntuple_col_num_to_dtype_dict = {
     1: "uint64",
     2: "uint32",
@@ -149,6 +147,8 @@ rntuple_col_num_to_dtype_dict = {
     26: "int64",  # split + zigzag encoding
     27: "int32",  # split + zigzag encoding
     28: "int16",  # split + zigzag encoding
+    29: "float32trunc",
+    30: "float32quant",
 }
 rntuple_col_num_to_size_dict = {
     1: 64,
@@ -179,6 +179,8 @@ rntuple_col_num_to_size_dict = {
     26: 64,  # split + zigzag encoding
     27: 32,  # split + zigzag encoding
     28: 16,  # split + zigzag encoding
+    29: 32,  # TODO: variable size
+    30: 32,  # TODO: variable size
 }
 
 rntuple_col_type_to_num_dict = {
@@ -212,7 +214,49 @@ rntuple_col_type_to_num_dict = {
     "splitzigzagint16": 28,
 }
 
-rntuple_role_leaf = 0
-rntuple_role_vector = 1
-rntuple_role_struct = 2
-rntuple_role_union = 3
+
+class RNTupleLocatorType(IntEnum):
+    STANDARD = 0x00
+    LARGE = 0x01
+    DAOS = 0x02
+
+
+class RNTupleEnvelopeType(IntEnum):
+    RESERVED = 0x00
+    HEADER = 0x01
+    FOOTER = 0x02
+    PAGELIST = 0x03
+
+
+class RNTupleFieldRole(IntEnum):
+    LEAF = 0x00
+    VECTOR = 0x01
+    STRUCT = 0x02
+    UNION = 0x03
+    UNSPLIT = 0x04
+
+
+class RNTupleFieldFlag(IntEnum):
+    REPETITIVE = 0x01
+    PROJECTED = 0x02
+    CHECKSUM = 0x04
+
+
+class RNTupleColumnFlag(IntEnum):
+    DEFERRED = 0x08
+    RANGE = 0x10
+
+
+class RNTupleExtraTypeIdentifier(IntEnum):
+    ROOT = 0x00
+
+
+class RNTupleUserMetadataType(IntEnum):
+    INT = 0x01
+    BOOL = 0x02
+    DOUBLE = 0x03
+    STRING = 0x04
+
+
+class RNTupleClusterFlag(IntEnum):
+    SHARDED = 0x01
