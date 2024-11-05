@@ -49,6 +49,7 @@ class RangeRequest:
 @dataclass
 class Cluster:
     ranges: list[RangeRequest]
+    _stop: int | None = None
 
     @property
     def start(self):
@@ -57,7 +58,13 @@ class Cluster:
 
     @property
     def stop(self):
-        return max(range.stop for range in self.ranges)
+        # Note: in order for this to work one has to use `append` for adding new ranges
+        return self._stop
+
+    def append(self, range):
+        if self._stop is None or range.stop > self._stop:
+            self._stop = range.stop
+        self.ranges.append(range)
 
     def __len__(self):
         return self.stop - self.start
@@ -88,7 +95,7 @@ def _merge_adjacent(ranges: list[RangeRequest], config: CoalesceConfig):
         if cluster.ranges and current_range.start - cluster.stop > config.max_range_gap:
             yield cluster
             cluster = Cluster([])
-        cluster.ranges.append(current_range)
+        cluster.append(current_range)
     if cluster.ranges:
         yield cluster
 

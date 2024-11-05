@@ -1541,7 +1541,7 @@ class ROOTRVec(Container, Sequence):
             return False
 
     def __array__(self, *args, **kwargs):
-        return numpy.asarray(self._vector, *args, **kwargs)
+        return numpy.asarray(self._values, *args, **kwargs)
 
     def tolist(self):
         return [
@@ -1656,7 +1656,7 @@ class STLVector(Container, Sequence):
             return False
 
     def __array__(self, *args, **kwargs):
-        return numpy.asarray(self._vector, *args, **kwargs)
+        return numpy.asarray(self._values, *args, **kwargs)
 
     def tolist(self):
         return [
