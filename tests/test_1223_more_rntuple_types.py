@@ -5,6 +5,10 @@ import skhep_testdata
 
 import uproot
 
+pytest.skip(
+    "Skipping until test files are available with RNTuple v1.0", allow_module_level=True
+)
+
 
 def test_atomic():
     filename = skhep_testdata.data_path("test_ntuple_atomic_bitset.root")

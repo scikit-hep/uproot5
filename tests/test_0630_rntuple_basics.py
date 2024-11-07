@@ -12,6 +12,10 @@ import uproot
 
 pytest.importorskip("awkward")
 
+pytest.skip(
+    "Skipping until test files are available with RNTuple v1.0", allow_module_level=True
+)
+
 
 def test_flat():
     filename = skhep_testdata.data_path("test_ntuple_int_float.root")

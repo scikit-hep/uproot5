@@ -12,6 +12,10 @@ import uproot
 
 ak = pytest.importorskip("awkward")
 
+pytest.skip(
+    "Skipping until test files are available with RNTuple v1.0", allow_module_level=True
+)
+
 
 def test_rntuple_stl_containers():
     filename = skhep_testdata.data_path("test_ntuple_stl_containers.root")

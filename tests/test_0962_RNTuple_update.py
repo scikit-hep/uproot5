@@ -6,6 +6,10 @@ import awkward as ak
 import skhep_testdata
 import numpy as np
 
+pytest.skip(
+    "Skipping until test files are available with RNTuple v1.0", allow_module_level=True
+)
+
 
 def test_new_support_RNTuple_split_int32_reading():
     with uproot.open(skhep_testdata.data_path("test_ntuple_int_5e4.root")) as f:
