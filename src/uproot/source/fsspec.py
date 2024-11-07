@@ -133,24 +133,10 @@ class FSSpecSource(uproot.source.chunk.Source):
         self._num_requested_chunks += len(ranges)
         self._num_requested_bytes += sum(stop - start for start, stop in ranges)
 
-        try:
-            # not available in python 3.8
-            to_thread = asyncio.to_thread
-        except AttributeError:
-            import contextvars
-            import functools
-
-            async def to_thread(func, /, *args, **kwargs):
-                loop = asyncio.get_running_loop()
-                ctx = contextvars.copy_context()
-                func_call = functools.partial(ctx.run, func, *args, **kwargs)
-                return await loop.run_in_executor(None, func_call)
-
         async def async_wrapper_thread(blocking_func, *args, **kwargs):
             if not callable(blocking_func):
                 raise TypeError("blocking_func must be callable")
-            # TODO: when python 3.8 is dropped, use `asyncio.to_thread` instead (also remove the try/except block above)
-            return await to_thread(blocking_func, *args, **kwargs)
+            return await asyncio.to_thread(blocking_func, *args, **kwargs)
 
         def submit(request_ranges: list[tuple[int, int]]):
             paths = [self._file_path] * len(request_ranges)

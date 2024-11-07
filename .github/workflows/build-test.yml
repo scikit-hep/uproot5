@@ -16,7 +16,7 @@ jobs:
       fail-fast: false
       matrix:
         platform: [windows-latest, macos-latest, ubuntu-latest]
-        python-version: ['3.8', '3.9', '3.10', '3.11', '3.12']
+        python-version: ['3.9', '3.10', '3.11', '3.12', '3.13']
 
     runs-on: ${{ matrix.platform }}
     timeout-minutes: 30
@@ -41,7 +41,7 @@ jobs:
         run: python -c "import sys; assert '.'.join(str(s) for s in sys.version_info[:2]) == '${{ matrix.python-version }}', f'{version} incorrect!'"
 
       - name: Install ROOT
-        if: matrix.python-version == 3.8  &&  runner.os != 'macOS'  &&  runner.os != 'Windows'
+        if: matrix.python-version == 3.9  &&  runner.os != 'macOS'  &&  runner.os != 'Windows'
         run: |
           conda env list
           mamba install root
