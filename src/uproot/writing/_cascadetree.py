@@ -585,7 +585,9 @@ class Tree:
                     ):
                         kk = self._counter_name(k)
                         vv = numpy.asarray(awkward.num(v, axis=1), dtype=">u4")
-                        if kk in provided and not numpy.array_equal(vv, provided[kk]):
+                        if kk in provided and not numpy.array_equal(
+                            vv, awkward.to_numpy(provided[kk])
+                        ):
                             raise ValueError(
                                 f"branch {kk!r} provided both as an explicit array and generated as a counter, and they disagree"
                             )
