@@ -548,12 +548,20 @@ class Tree:
                         try:
                             with warnings.catch_warnings():
                                 warnings.simplefilter(
-                                    "error", category=numpy.VisibleDeprecationWarning
+                                    "error",
+                                    category=getattr(
+                                        numpy, "exceptions", numpy
+                                    ).VisibleDeprecationWarning,
                                 )
                                 v = numpy.array(v)  # noqa: PLW2901 (overwriting v)
                             if v.dtype == numpy.dtype("O"):
                                 raise Exception
-                        except (numpy.VisibleDeprecationWarning, Exception):
+                        except (
+                            getattr(
+                                numpy, "exceptions", numpy
+                            ).VisibleDeprecationWarning,
+                            Exception,
+                        ):
                             try:
                                 awkward = uproot.extras.awkward()
                             except ModuleNotFoundError as err:
