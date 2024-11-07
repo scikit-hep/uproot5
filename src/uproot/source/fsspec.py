@@ -184,7 +184,7 @@ class FSSpecSource(uproot.source.chunk.Source):
         True if the associated file/connection/thread pool is closed; False
         otherwise.
         """
-        return False
+        return self._file.closed
 
 
 class FSSpecLoopExecutor(uproot.source.futures.Executor):
