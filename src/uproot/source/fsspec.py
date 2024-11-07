@@ -92,6 +92,9 @@ class FSSpecSource(uproot.source.chunk.Source):
         Request a byte range of data from the file as a
         :doc:`uproot.source.chunk.Chunk`.
         """
+        if self.closed:
+            raise OSError(f"memmap is closed for file {self._file_path}")
+
         self._num_requests += 1
         self._num_requested_chunks += 1
         self._num_requested_bytes += stop - start
@@ -129,6 +132,9 @@ class FSSpecSource(uproot.source.chunk.Source):
         it is triggered by already-filled chunks, rather than waiting for
         chunks to be filled.
         """
+        if self.closed:
+            raise OSError(f"memmap is closed for file {self._file_path}")
+
         self._num_requests += 1
         self._num_requested_chunks += len(ranges)
         self._num_requested_bytes += sum(stop - start for start, stop in ranges)
