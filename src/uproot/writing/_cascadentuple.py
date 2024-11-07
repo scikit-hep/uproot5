@@ -29,8 +29,8 @@ from uproot.models.RNTuple import (
     _rntuple_column_record_format,
     _rntuple_feature_flag_format,
     _rntuple_field_description_format,
-    _rntuple_locator_format,
-    _rntuple_record_size_format,
+    _rntuple_frame_size_format,
+    _rntuple_locator_size_format,
 )
 from uproot.writing._cascade import CascadeLeaf, CascadeNode, Key, String
 
@@ -114,7 +114,7 @@ def _record_frame_wrap(payload, includeself=True):
     aloc = len(payload)
     if includeself:
         aloc += 4
-    raw_bytes = _rntuple_record_size_format.pack(aloc) + payload
+    raw_bytes = _rntuple_frame_size_format.pack(aloc) + payload
     return raw_bytes
 
 
@@ -377,7 +377,7 @@ class NTuple_Locator:
         self.offset = offset
 
     def serialize(self):
-        outbytes = _rntuple_locator_format.pack(self.num_bytes, self.offset)
+        outbytes = _rntuple_locator_size_format.pack(self.num_bytes, self.offset)
         return outbytes
 
     def __repr__(self):
@@ -532,7 +532,7 @@ class Ntuple_PageLink:
         self.offset = offset
 
     def serialize(self):
-        outbytes = _rntuple_locator_format.pack(self.num_bytes, self.offset)
+        outbytes = _rntuple_locator_size_format.pack(self.num_bytes, self.offset)
         return outbytes
 
     def __repr__(self):

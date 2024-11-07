@@ -25,7 +25,7 @@ def test():
         assert obj.member("fSeekFooter") == 36420
         assert obj.member("fNBytesFooter") == 89
         assert obj.member("fLenFooter") == 172
-        assert obj.member("fChecksum") == 12065027575882477574
+        assert obj.member("fMaxKeySize") == 12065027575882477574
 
         header_start = obj.member("fSeekHeader")
         header_stop = header_start + obj.member("fNBytesHeader")
