@@ -93,7 +93,7 @@ class FSSpecSource(uproot.source.chunk.Source):
         :doc:`uproot.source.chunk.Chunk`.
         """
         if self.closed:
-            raise OSError(f"memmap is closed for file {self._file_path}")
+            raise OSError(f"file {self._file_path!r} is closed")
 
         self._num_requests += 1
         self._num_requested_chunks += 1
@@ -133,7 +133,7 @@ class FSSpecSource(uproot.source.chunk.Source):
         chunks to be filled.
         """
         if self.closed:
-            raise OSError(f"memmap is closed for file {self._file_path}")
+            raise OSError(f"file {self._file_path!r} is closed")
 
         self._num_requests += 1
         self._num_requested_chunks += len(ranges)
