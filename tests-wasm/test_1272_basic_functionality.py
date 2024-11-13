@@ -70,6 +70,7 @@ def test_write_ttree(selenium):
 
 
 # Taken from test_1191_rntuple_fixes.py
+@pytest.mark.skip(reason="Skipping until test files are available with RNTuple v1.0")
 @run_test_in_pyodide(test_file="test_ntuple_extension_columns.root")
 def test_read_rntuple(selenium):
     import uproot
@@ -95,6 +96,7 @@ def test_read_rntuple(selenium):
 
 
 # Taken from test_0034_generic_objects_in_ttrees.py
+@pytest.mark.skip(reason="Skipping until test files are available with RNTuple v1.0")
 @pytest.mark.network
 @run_test_in_pyodide(packages=["requests"])
 def test_read_ttree_http(selenium):
@@ -116,6 +118,7 @@ def test_read_ttree_http(selenium):
 
 
 # Taken from test_1191_rntuple_fixes.py
+@pytest.mark.skip(reason="Skipping until test files are available with RNTuple v1.0")
 @pytest.mark.network
 @run_test_in_pyodide(packages=["requests"])
 def test_read_rntuple_http(selenium):

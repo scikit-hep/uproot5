@@ -82,7 +82,6 @@ test = [
 ]
 test-pyodide = [
   "pytest>=6",
-  "selenium<=4.25.0",  # unpin once >4.26.0 is available
   "pytest-pyodide",
   "pytest-timeout",
   "scikit-hep-testdata"
