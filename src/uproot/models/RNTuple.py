@@ -258,9 +258,12 @@ in file {self.file.file_path}"""
             chunk, _rntuple_anchor_checksum_format, context
         )
         assert self._anchor_checksum == xxhash.xxh3_64_intdigest(
-            chunk.raw_data[-64 - 8 : -8]
+            chunk.raw_data[
+                -_rntuple_anchor_format.size
+                - _rntuple_anchor_checksum_format.size : -_rntuple_anchor_checksum_format.size
+            ]
         )
-        cursor.skip(-8)
+        cursor.skip(-_rntuple_anchor_checksum_format.size)
 
         self._header_chunk_ready = False
         self._footer_chunk_ready = False
@@ -335,7 +338,7 @@ in file {self.file.file_path}"""
             h = HeaderReader().read(self._header_chunk, cursor, context)
             self._header = h
             assert h.checksum == xxhash.xxh3_64_intdigest(
-                self._header_chunk.raw_data[:-8]
+                self._header_chunk.raw_data[: -_rntuple_checksum_format.size]
             )
 
         return self._header
@@ -413,7 +416,7 @@ in file {self.file.file_path}"""
             ), f"checksum={self.header.checksum}, header_checksum={f.header_checksum}"
             self._footer = f
             assert f.checksum == xxhash.xxh3_64_intdigest(
-                self._footer_chunk.raw_data[:-8]
+                self._footer_chunk.raw_data[: -_rntuple_checksum_format.size]
             )
 
         return self._footer
