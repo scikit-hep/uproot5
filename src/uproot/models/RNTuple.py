@@ -50,6 +50,8 @@ _rntuple_cluster_group_format = struct.Struct("<QQI")
 _rntuple_cluster_summary_format = struct.Struct("<QQ")
 # https://github.com/root-project/root/blob/8cd9eed6f3a32e55ef1f0f1df8e5462e753c735d/tree/ntuple/v7/doc/BinaryFormatSpecification.md#page-locations
 _rntuple_page_num_elements_format = struct.Struct("<i")
+_rntuple_column_element_offset_format = struct.Struct("<q")
+_rntuple_column_compression_settings_format = struct.Struct("<I")
 
 
 def _from_zigzag(n):
@@ -159,7 +161,7 @@ def _num_entries_for(in_ntuple, target_num_bytes, filter_name):
             for cluster in range(start_cluster_idx, stop_cluster_idx):
                 pages = in_ntuple.ntuple.page_list_envelopes.pagelinklist[cluster][
                     key_nr
-                ]
+                ].pages
                 total_bytes += sum(page.locator.num_bytes for page in pages)
 
     total_entries = entry_stop
@@ -755,7 +757,7 @@ in file {self.file.file_path}"""
         pagelist = linklist[ncol]
         dtype_byte = self.column_records[ncol].type
         dtype_str = uproot.const.rntuple_col_num_to_dtype_dict[dtype_byte]
-        total_len = numpy.sum([desc.num_elements for desc in pagelist], dtype=int)
+        total_len = numpy.sum([desc.num_elements for desc in pagelist.pages], dtype=int)
         if dtype_str == "switch":
             dtype = numpy.dtype([("index", "int64"), ("tag", "int32")])
         elif dtype_str == "bit":
@@ -770,7 +772,7 @@ in file {self.file.file_path}"""
         nbits = uproot.const.rntuple_col_num_to_size_dict[dtype_byte]
         tracker = 0
         cumsum = 0
-        for page_desc in pagelist:
+        for page_desc in pagelist.pages:
             n_elements = page_desc.num_elements
             tracker_end = tracker + n_elements
             self.read_pagedesc(
@@ -846,6 +848,32 @@ class PageDescription:
         return out
 
 
+# https://github.com/root-project/root/blob/8cd9eed6f3a32e55ef1f0f1df8e5462e753c735d/tree/ntuple/v7/doc/BinaryFormatSpecification.md#page-locations
+class ColumnPageListFrameReader:
+    def read(self, chunk, cursor, context):
+        local_cursor = cursor.copy()
+        num_bytes = local_cursor.field(chunk, _rntuple_frame_size_format, context)
+        assert num_bytes < 0, f"num_bytes={num_bytes}"
+        num_items = local_cursor.field(chunk, _rntuple_frame_num_items_format, context)
+        cursor.skip(-num_bytes)
+        out = MetaData("ColumnPages")
+        out.pages = [
+            PageDescription().read(chunk, local_cursor, context)
+            for _ in range(num_items)
+        ]
+        out.element_offset = local_cursor.field(
+            chunk, _rntuple_column_element_offset_format, context
+        )
+        out.suppressed = out.element_offset < 0
+        if not out.suppressed:
+            out.compression_settings = local_cursor.field(
+                chunk, _rntuple_column_compression_settings_format, context
+            )
+        else:
+            out.compression_settings = None
+        return out
+
+
 # https://github.com/root-project/root/blob/8cd9eed6f3a32e55ef1f0f1df8e5462e753c735d/tree/ntuple/v7/doc/BinaryFormatSpecification.md#page-list-envelope
 class PageLink:
     def __init__(self):
@@ -853,7 +881,7 @@ class PageLink:
             RecordFrameReader(ClusterSummaryReader())
         )
         self.nested_page_locations = ListFrameReader(
-            ListFrameReader(ListFrameReader(PageDescription()))
+            ListFrameReader(ColumnPageListFrameReader())
         )
 
     def read(self, chunk, cursor, context):
