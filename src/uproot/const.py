@@ -247,7 +247,6 @@ rntuple_delta_types = (
 class RNTupleLocatorType(IntEnum):
     STANDARD = 0x00
     LARGE = 0x01
-    DAOS = 0x02
 
 
 class RNTupleEnvelopeType(IntEnum):
@@ -259,10 +258,10 @@ class RNTupleEnvelopeType(IntEnum):
 
 class RNTupleFieldRole(IntEnum):
     LEAF = 0x00
-    VECTOR = 0x01
-    STRUCT = 0x02
-    UNION = 0x03
-    UNSPLIT = 0x04
+    COLLECTION = 0x01
+    RECORD = 0x02
+    VARIANT = 0x03
+    STREAMER = 0x04
 
 
 class RNTupleFieldFlag(IntEnum):
