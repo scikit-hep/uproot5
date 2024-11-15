@@ -5,11 +5,8 @@ import skhep_testdata
 
 import uproot
 
-pytest.skip(
-    "Skipping until test files are available with RNTuple v1.0", allow_module_level=True
-)
 
-
+@pytest.mark.skip(reason="Need to find a similar file in RNTuple v1 format")
 def test_field_class():
     filename = skhep_testdata.data_path("DAOD_TRUTH3_RC2.root")
     with uproot.open(filename) as f:
@@ -23,7 +20,7 @@ def test_field_class():
 
 def test_array_methods():
     filename = skhep_testdata.data_path(
-        "Run2012BC_DoubleMuParked_Muons_rntuple_1000evts.root"
+        "Run2012BC_DoubleMuParked_Muons_1000evts_rntuple_v1.root"
     )
     with uproot.open(filename) as f:
         obj = f["Events"]
@@ -36,16 +33,17 @@ def test_array_methods():
         assert len(nMuon_arrays) == 1000
         assert nMuon_arrays["nMuon"].tolist() == nMuon_array.tolist()
 
-    filename = skhep_testdata.data_path("DAOD_TRUTH3_RC2.root")
-    with uproot.open(filename) as f:
-        obj = f["RNT:CollectionTree"]
-        jets = obj["AntiKt4TruthDressedWZJetsAux:"].arrays()
-        assert len(jets[0].pt) == 5
+    # Need to find a similar file in RNTuple v1 format
+    # filename = skhep_testdata.data_path("DAOD_TRUTH3_RC2.root")
+    # with uproot.open(filename) as f:
+    #     obj = f["RNT:CollectionTree"]
+    #     jets = obj["AntiKt4TruthDressedWZJetsAux:"].arrays()
+    #     assert len(jets[0].pt) == 5
 
 
 def test_iterate():
     filename = skhep_testdata.data_path(
-        "Run2012BC_DoubleMuParked_Muons_rntuple_1000evts.root"
+        "Run2012BC_DoubleMuParked_Muons_1000evts_rntuple_v1.root"
     )
     with uproot.open(filename) as f:
         obj = f["Events"]

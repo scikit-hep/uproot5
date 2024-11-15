@@ -5,13 +5,10 @@ import skhep_testdata
 
 import uproot
 
-pytest.skip(
-    "Skipping until test files are available with RNTuple v1.0", allow_module_level=True
-)
 
-
+@pytest.mark.skip(reason="Need to find a similar file in RNTuple v1 format")
 def test_schema_extension():
-    filename = skhep_testdata.data_path("test_ntuple_extension_columns.root")
+    filename = skhep_testdata.data_path("test_extension_columns_rntuple_v1.root")
     with uproot.open(filename) as f:
         obj = f["EventData"]
 
@@ -34,7 +31,7 @@ def test_schema_extension():
 
 def test_rntuple_cardinality():
     filename = skhep_testdata.data_path(
-        "Run2012BC_DoubleMuParked_Muons_rntuple_1000evts.root"
+        "Run2012BC_DoubleMuParked_Muons_1000evts_rntuple_v1.root"
     )
     with uproot.open(filename) as f:
         obj = f["Events"]
@@ -42,6 +39,7 @@ def test_rntuple_cardinality():
         assert arrays["nMuon"].tolist() == [len(l) for l in arrays["Muon_pt"]]
 
 
+@pytest.mark.skip(reason="Need to find a similar file in RNTuple v1 format")
 def test_skip_recursively_empty_structs():
     filename = skhep_testdata.data_path("DAOD_TRUTH3_RC2.root")
     with uproot.open(filename) as f:
@@ -51,8 +49,9 @@ def test_skip_recursively_empty_structs():
         assert len(jets[0].pt) == 5
 
 
+@pytest.mark.skip(reason="Need to find a similar file in RNTuple v1 format")
 def test_empty_page_list():
-    filename = skhep_testdata.data_path("test_ntuple_extension_columns.root")
+    filename = skhep_testdata.data_path("test_extension_columns_rntuple_v1.root")
     with uproot.open(filename) as f:
         obj = f["EventData"]
         col_id = 12
@@ -66,7 +65,7 @@ def test_empty_page_list():
     reason="The file takes too long to download (about 5 seconds). Need to find a smaller test file."
 )
 def test_multiple_page_lists():
-    url = "http://root.cern/files/tutorials/ntpl004_dimuon_v1rc2.root"
+    url = "http://root.cern/files/tutorials/ntpl004_dimuon_v1.root"
     with uproot.open(f"simplecache::{url}") as f:
         obj = f["Events"]
         data = obj.read_col_page(0, 0)
@@ -79,7 +78,7 @@ def test_multiple_page_lists():
 
 def test_split_encoding():
     filename = skhep_testdata.data_path(
-        "Run2012BC_DoubleMuParked_Muons_rntuple_1000evts.root"
+        "Run2012BC_DoubleMuParked_Muons_1000evts_rntuple_v1.root"
     )
     with uproot.open(filename) as f:
         obj = f["Events"]

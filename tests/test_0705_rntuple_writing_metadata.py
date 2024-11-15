@@ -13,10 +13,6 @@ import uproot
 
 ak = pytest.importorskip("awkward")
 
-pytest.skip(
-    "Skipping until test files are available with RNTuple v1.0", allow_module_level=True
-)
-
 
 @pytest.mark.skip(
     reason="RNTuple writing is pending until specification 1.0.0 is released."
