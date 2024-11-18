@@ -6,27 +6,30 @@ import skhep_testdata
 import uproot
 
 
-@pytest.mark.skip(reason="Need to find a similar file in RNTuple v1 format")
 def test_schema_extension():
     filename = skhep_testdata.data_path("test_extension_columns_rntuple_v1.root")
     with uproot.open(filename) as f:
-        obj = f["EventData"]
+        obj = f["ntuple"]
+
+        assert len(obj.page_list_envelopes.pagelinklist[0]) < len(
+            obj.page_list_envelopes.pagelinklist[1]
+        )
 
         assert len(obj.column_records) > len(obj.header.column_records)
-        assert len(obj.column_records) == 936
-        assert obj.column_records[903].first_element_index == 36
+        assert len(obj.column_records) == 4
+        assert obj.column_records[1].first_element_index == 200
+        assert obj.column_records[2].first_element_index == 400
 
         arrays = obj.arrays()
 
-        pbs = arrays[
-            "HLT_AntiKt4EMPFlowJets_subresjesgscIS_ftf_TLAAux::fastDIPS20211215_pb"
-        ]
-        assert len(pbs) == 40
-        assert all(len(l) == 0 for l in pbs[:36])
-        assert next(i for i, l in enumerate(pbs) if len(l) != 0) == 36
+        assert len(arrays.float_field) == 600
+        assert len(arrays.intvec_field) == 600
 
-        jets = arrays["HLT_AntiKt4EMPFlowJets_subresjesgscIS_ftf_TLAAux:"]
-        assert len(jets.pt) == len(pbs)
+        assert all(arrays.float_field[:200] == 0)
+        assert all(len(l) == 0 for l in arrays.intvec_field[:400])
+
+        assert next(i for i, l in enumerate(arrays.float_field) if l != 0) == 200
+        assert next(i for i, l in enumerate(arrays.intvec_field) if len(l) != 0) == 400
 
 
 def test_rntuple_cardinality():
@@ -39,41 +42,13 @@ def test_rntuple_cardinality():
         assert arrays["nMuon"].tolist() == [len(l) for l in arrays["Muon_pt"]]
 
 
-@pytest.mark.skip(reason="Need to find a similar file in RNTuple v1 format")
-def test_skip_recursively_empty_structs():
-    filename = skhep_testdata.data_path("DAOD_TRUTH3_RC2.root")
+def test_multiple_page_delta_encoding():
+    filename = skhep_testdata.data_path("test_index_multicluster_rntuple_v1.root")
     with uproot.open(filename) as f:
-        obj = f["RNT:CollectionTree"]
-        arrays = obj.arrays()
-        jets = arrays["AntiKt4TruthDressedWZJetsAux:"]
-        assert len(jets[0].pt) == 5
-
-
-@pytest.mark.skip(reason="Need to find a similar file in RNTuple v1 format")
-def test_empty_page_list():
-    filename = skhep_testdata.data_path("test_extension_columns_rntuple_v1.root")
-    with uproot.open(filename) as f:
-        obj = f["EventData"]
-        col_id = 12
-        assert obj.column_records[col_id].type == 14
-        data = obj.read_col_page(col_id, 0)
-        assert len(data) == 1
-        assert data[0] == 0
-
-
-@pytest.mark.skip(
-    reason="The file takes too long to download (about 5 seconds). Need to find a smaller test file."
-)
-def test_multiple_page_lists():
-    url = "http://root.cern/files/tutorials/ntpl004_dimuon_v1.root"
-    with uproot.open(f"simplecache::{url}") as f:
-        obj = f["Events"]
+        obj = f["ntuple"]
         data = obj.read_col_page(0, 0)
-        # each page of column 0 has 8192 elements
-        # so this checks that data was stitched together correctly
-        assert data[8192] - data[8191] == 2
-        arrays = obj.arrays()
-        assert len(arrays.nMuon) == 4_000_000
+        # first page has 64 elements, so this checks that data was stitched together correctly
+        assert data[64] - data[63] == 2
 
 
 def test_split_encoding():
