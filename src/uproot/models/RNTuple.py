@@ -754,10 +754,10 @@ in file {self.file.file_path}"""
 
     def read_col_page(self, ncol, cluster_i):
         linklist = self.page_list_envelopes.pagelinklist[cluster_i]
-        pagelist = linklist[ncol]
+        pagelist = linklist[ncol].pages if ncol < len(linklist) else []
         dtype_byte = self.column_records[ncol].type
         dtype_str = uproot.const.rntuple_col_num_to_dtype_dict[dtype_byte]
-        total_len = numpy.sum([desc.num_elements for desc in pagelist.pages], dtype=int)
+        total_len = numpy.sum([desc.num_elements for desc in pagelist], dtype=int)
         if dtype_str == "switch":
             dtype = numpy.dtype([("index", "int64"), ("tag", "int32")])
         elif dtype_str == "bit":
@@ -772,7 +772,7 @@ in file {self.file.file_path}"""
         nbits = uproot.const.rntuple_col_num_to_size_dict[dtype_byte]
         tracker = 0
         cumsum = 0
-        for page_desc in pagelist.pages:
+        for page_desc in pagelist:
             n_elements = page_desc.num_elements
             tracker_end = tracker + n_elements
             self.read_pagedesc(
