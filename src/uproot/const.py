@@ -117,108 +117,136 @@ kGenerateOffsetMap = numpy.uint8(1)
 
 kStreamedMemberWise = numpy.uint16(1 << 14)
 
-############ RNTuple https://github.com/root-project/root/blob/master/tree/ntuple/v7/doc/specifications.md
+############ RNTuple https://github.com/root-project/root/blob/0b9cdbcfd326ba50ee6c2f202675656129eafbe7/tree/ntuple/v7/doc/BinaryFormatSpecification.md
 rntuple_col_num_to_dtype_dict = {
-    1: "uint64",
-    2: "uint32",
-    3: "switch",  # Switch
-    4: "uint8",
-    5: "uint8",  # char
-    6: "bit",
-    7: "float64",
-    8: "float32",
-    9: "float16",
-    10: "uint64",
-    11: "uint32",
-    12: "uint16",
-    13: "uint8",
-    14: "uint64",  # SplitIndex64 delta encoding
-    15: "uint32",  # SplitIndex32 delta encoding
-    16: "float64",  # split
-    17: "float32",  # split
-    18: "float16",  # split
-    19: "uint64",  # split
-    20: "uint32",  # split
-    21: "uint16",  # split
-    22: "int64",
-    23: "int32",
-    24: "int16",
-    25: "int8",
-    26: "int64",  # split + zigzag encoding
-    27: "int32",  # split + zigzag encoding
-    28: "int16",  # split + zigzag encoding
-    29: "float32trunc",
-    30: "float32quant",
+    0x00: "bit",
+    0x01: "uint8",  # uninterpreted byte
+    0x02: "uint8",  # char
+    0x03: "int8",
+    0x04: "uint8",
+    0x05: "int16",
+    0x06: "uint16",
+    0x07: "int32",
+    0x08: "uint32",
+    0x09: "int64",
+    0x0A: "uint64",
+    0x0B: "float16",
+    0x0C: "float32",
+    0x0D: "float64",
+    0x0E: "uint32",  # Index32
+    0x0F: "uint64",  # Index64
+    0x10: "switch",  # Switch: (uint64, uint32)
+    0x11: "int16",  # SplitInt16: split + zigzag encoding
+    0x12: "uint16",  # SplitUInt16: split encoding
+    0x13: "int32",  # SplitInt32: split + zigzag encoding
+    0x14: "uint32",  # SplitUInt32: split encoding
+    0x15: "int64",  # SplitInt64: split + zigzag encoding
+    0x16: "uint64",  # SplitUInt64: split encoding
+    0x17: "float16",  # SplitReal16: split encoding
+    0x18: "float32",  # SplitReal32: split encoding
+    0x19: "float64",  # SplitReal64: split encoding
+    0x1A: "uint32",  # SplitIndex32: split + delta encoding
+    0x1B: "uint64",  # SplitIndex64: split + delta encoding
+    0x1C: "real32trunc",  # Real32Trunc: float32 with truncated mantissa
+    0x1D: "real32quant",  # Real32Quant: float32 with quantized integer representation
 }
 rntuple_col_num_to_size_dict = {
-    1: 64,
-    2: 32,
-    3: 96,  # Switch
-    4: 8,
-    5: 8,  # char
-    6: 1,
-    7: 64,
-    8: 32,
-    9: 16,
-    10: 64,
-    11: 32,
-    12: 16,
-    13: 8,
-    14: 64,  # SplitIndex64 delta encoding
-    15: 32,  # SplitIndex32 delta encoding
-    16: 64,  # split
-    17: 32,  # split
-    18: 16,  # split
-    19: 64,  # split
-    20: 32,  # split
-    21: 16,  # split
-    22: 64,
-    23: 32,
-    24: 16,
-    25: 8,
-    26: 64,  # split + zigzag encoding
-    27: 32,  # split + zigzag encoding
-    28: 16,  # split + zigzag encoding
-    29: 32,  # TODO: variable size
-    30: 32,  # TODO: variable size
+    0x00: 1,
+    0x01: 8,
+    0x02: 8,
+    0x03: 8,
+    0x04: 8,
+    0x05: 16,
+    0x06: 16,
+    0x07: 32,
+    0x08: 32,
+    0x09: 64,
+    0x0A: 64,
+    0x0B: 16,
+    0x0C: 32,
+    0x0D: 64,
+    0x0E: 32,
+    0x0F: 64,
+    0x10: 96,
+    0x11: 16,
+    0x12: 16,
+    0x13: 32,
+    0x14: 32,
+    0x15: 64,
+    0x16: 64,
+    0x17: 16,
+    0x18: 32,
+    0x19: 64,
+    0x1A: 32,
+    0x1B: 64,
+    0x1C: 31,  # variable from 10 to 31
+    0x1D: 32,  # variable from 1 to 32
 }
-
 rntuple_col_type_to_num_dict = {
-    "index64": 1,
-    "index32": 2,
-    "switch": 3,
-    "byte": 4,
-    "char": 5,
-    "bit": 6,
-    "real64": 7,
-    "real32": 8,
-    "real16": 9,
-    "uint64": 10,
-    "uint32": 11,
-    "uint16": 12,
-    "uint8": 13,
-    "splitindex64": 14,
-    "splitindex32": 15,
-    "splitreal64": 16,
-    "splitreal32": 17,
-    "splitreal16": 18,
-    "splitin64": 19,
-    "splitint32": 20,
-    "splitint16": 21,
-    "int64": 22,
-    "int32": 23,
-    "int16": 24,
-    "int8": 25,
-    "splitzigzagint64": 26,
-    "splitzigzagint32": 27,
-    "splitzigzagint16": 28,
+    "bit": 0x00,
+    "byte": 0x01,
+    "char": 0x02,
+    "int8": 0x03,
+    "uint8": 0x04,
+    "int16": 0x05,
+    "uint16": 0x06,
+    "int32": 0x07,
+    "uint32": 0x08,
+    "int64": 0x09,
+    "uint64": 0x0A,
+    "real16": 0x0B,
+    "real32": 0x0C,
+    "real64": 0x0D,
+    "index32": 0x0E,
+    "index64": 0x0F,
+    "switch": 0x10,
+    "splitint16": 0x11,
+    "splituint16": 0x12,
+    "splitint32": 0x13,
+    "splituint32": 0x14,
+    "splitint64": 0x15,
+    "splituint64": 0x16,
+    "splitreal16": 0x17,
+    "splitreal32": 0x18,
+    "splitreal64": 0x19,
+    "splitindex32": 0x1A,
+    "splitindex64": 0x1B,
+    "real32trunc": 0x1C,
+    "real32quant": 0x1D,
 }
+rntuple_index_types = (
+    rntuple_col_type_to_num_dict["index32"],
+    rntuple_col_type_to_num_dict["index64"],
+    rntuple_col_type_to_num_dict["splitindex32"],
+    rntuple_col_type_to_num_dict["splitindex64"],
+)
+rntuple_split_types = (
+    rntuple_col_type_to_num_dict["splitint16"],
+    rntuple_col_type_to_num_dict["splituint16"],
+    rntuple_col_type_to_num_dict["splitint32"],
+    rntuple_col_type_to_num_dict["splituint32"],
+    rntuple_col_type_to_num_dict["splitint64"],
+    rntuple_col_type_to_num_dict["splituint64"],
+    rntuple_col_type_to_num_dict["splitreal16"],
+    rntuple_col_type_to_num_dict["splitreal32"],
+    rntuple_col_type_to_num_dict["splitreal64"],
+    rntuple_col_type_to_num_dict["splitindex32"],
+    rntuple_col_type_to_num_dict["splitindex64"],
+)
+rntuple_zigzag_types = (
+    rntuple_col_type_to_num_dict["splitint16"],
+    rntuple_col_type_to_num_dict["splitint32"],
+    rntuple_col_type_to_num_dict["splitint64"],
+)
+rntuple_delta_types = (
+    rntuple_col_type_to_num_dict["splitindex32"],
+    rntuple_col_type_to_num_dict["splitindex64"],
+)
 
 
 class RNTupleLocatorType(IntEnum):
     STANDARD = 0x00
     LARGE = 0x01
-    DAOS = 0x02
 
 
 class RNTupleEnvelopeType(IntEnum):
@@ -230,10 +258,10 @@ class RNTupleEnvelopeType(IntEnum):
 
 class RNTupleFieldRole(IntEnum):
     LEAF = 0x00
-    VECTOR = 0x01
-    STRUCT = 0x02
-    UNION = 0x03
-    UNSPLIT = 0x04
+    COLLECTION = 0x01
+    RECORD = 0x02
+    VARIANT = 0x03
+    STREAMER = 0x04
 
 
 class RNTupleFieldFlag(IntEnum):
@@ -243,19 +271,12 @@ class RNTupleFieldFlag(IntEnum):
 
 
 class RNTupleColumnFlag(IntEnum):
-    DEFERRED = 0x08
-    RANGE = 0x10
+    DEFERRED = 0x01
+    RANGE = 0x02
 
 
 class RNTupleExtraTypeIdentifier(IntEnum):
     ROOT = 0x00
-
-
-class RNTupleUserMetadataType(IntEnum):
-    INT = 0x01
-    BOOL = 0x02
-    DOUBLE = 0x03
-    STRING = 0x04
 
 
 class RNTupleClusterFlag(IntEnum):

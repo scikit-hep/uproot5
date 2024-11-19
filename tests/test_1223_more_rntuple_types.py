@@ -1,17 +1,12 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot5/blob/main/LICENSE
 
-import pytest
 import skhep_testdata
 
 import uproot
 
-pytest.skip(
-    "Skipping until test files are available with RNTuple v1.0", allow_module_level=True
-)
-
 
 def test_atomic():
-    filename = skhep_testdata.data_path("test_ntuple_atomic_bitset.root")
+    filename = skhep_testdata.data_path("test_atomic_bitset_rntuple_v1-0-0-0.root")
     with uproot.open(filename) as f:
         obj = f["ntuple"]
 
@@ -21,7 +16,7 @@ def test_atomic():
 
 
 def test_bitset():
-    filename = skhep_testdata.data_path("test_ntuple_atomic_bitset.root")
+    filename = skhep_testdata.data_path("test_atomic_bitset_rntuple_v1-0-0-0.root")
     with uproot.open(filename) as f:
         obj = f["ntuple"]
 
@@ -72,7 +67,9 @@ def test_bitset():
 
 
 def test_empty_struct():
-    filename = skhep_testdata.data_path("test_ntuple_emptystruct_invalidvar.root")
+    filename = skhep_testdata.data_path(
+        "test_emptystruct_invalidvar_rntuple_v1-0-0-0.root"
+    )
     with uproot.open(filename) as f:
         obj = f["ntuple"]
 
@@ -82,10 +79,12 @@ def test_empty_struct():
 
 
 def test_invalid_variant():
-    filename = skhep_testdata.data_path("test_ntuple_emptystruct_invalidvar.root")
+    filename = skhep_testdata.data_path(
+        "test_emptystruct_invalidvar_rntuple_v1-0-0-0.root"
+    )
     with uproot.open(filename) as f:
         obj = f["ntuple"]
 
         a = obj.arrays("variant")
 
-        assert a.variant.tolist() == [1, 1, None]
+        assert a.variant.tolist() == [1, None, {"i": 2}]

@@ -1,7 +1,7 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot5/blob/main/LICENSE
 
 """
-This module defines a versionless model for ``ROOT::Experimental::RNTuple``.
+This module defines a versionless model for ``ROOT::RNTuple``.
 """
 from __future__ import annotations
 
@@ -10,44 +10,48 @@ from collections import defaultdict
 from itertools import accumulate
 
 import numpy
+import xxhash
 
 import uproot
+import uproot.const
 
-# https://github.com/root-project/root/blob/8635b1bc0da59623777c9fda3661a19363964915/tree/ntuple/v7/doc/specifications.md#anchor-schema
+# https://github.com/root-project/root/blob/8cd9eed6f3a32e55ef1f0f1df8e5462e753c735d/tree/ntuple/v7/doc/BinaryFormatSpecification.md#anchor-schema
 _rntuple_anchor_format = struct.Struct(">HHHHQQQQQQQ")
-# https://github.com/root-project/root/blob/8635b1bc0da59623777c9fda3661a19363964915/tree/ntuple/v7/doc/specifications.md#feature-flags
+_rntuple_anchor_checksum_format = struct.Struct(">Q")
+# https://github.com/root-project/root/blob/8cd9eed6f3a32e55ef1f0f1df8e5462e753c735d/tree/ntuple/v7/doc/BinaryFormatSpecification.md#feature-flags
 _rntuple_feature_flag_format = struct.Struct("<Q")
-# https://github.com/root-project/root/blob/8635b1bc0da59623777c9fda3661a19363964915/tree/ntuple/v7/doc/specifications.md#frames
+# https://github.com/root-project/root/blob/8cd9eed6f3a32e55ef1f0f1df8e5462e753c735d/tree/ntuple/v7/doc/BinaryFormatSpecification.md#frames
 _rntuple_frame_size_format = struct.Struct("<q")
-_rntuple_frame_num_items_format = struct.Struct("<i")
-# https://github.com/root-project/root/blob/554375616bdc338ad072efd6f65c6bf082cc84c3/tree/ntuple/v7/doc/specifications.md#locators-and-envelope-links
+_rntuple_frame_num_items_format = struct.Struct("<I")
+# https://github.com/root-project/root/blob/8cd9eed6f3a32e55ef1f0f1df8e5462e753c735d/tree/ntuple/v7/doc/BinaryFormatSpecification.md#locators-and-envelope-links
 _rntuple_locator_size_format = struct.Struct("<i")
 _rntuple_large_locator_size_format = struct.Struct("<Q")
 _rntuple_locator_offset_format = struct.Struct("<Q")
 _rntuple_envlink_size_format = struct.Struct("<Q")
-# https://github.com/root-project/root/blob/8635b1bc0da59623777c9fda3661a19363964915/tree/ntuple/v7/doc/specifications.md#envelopes
+# https://github.com/root-project/root/blob/8cd9eed6f3a32e55ef1f0f1df8e5462e753c735d/tree/ntuple/v7/doc/BinaryFormatSpecification.md#envelopes
 _rntuple_env_header_format = struct.Struct("<Q")
 _rntuple_checksum_format = struct.Struct("<Q")
-# https://github.com/root-project/root/blob/8635b1bc0da59623777c9fda3661a19363964915/tree/ntuple/v7/doc/specifications.md#field-description
+# https://github.com/root-project/root/blob/8cd9eed6f3a32e55ef1f0f1df8e5462e753c735d/tree/ntuple/v7/doc/BinaryFormatSpecification.md#field-description
 _rntuple_field_description_format = struct.Struct("<IIIHH")
 _rntuple_repetition_format = struct.Struct("<Q")
 _rntuple_source_field_id_format = struct.Struct("<I")
 _rntuple_root_streamer_checksum_format = struct.Struct("<I")
-# https://github.com/root-project/root/blob/554375616bdc338ad072efd6f65c6bf082cc84c3/tree/ntuple/v7/doc/specifications.md#column-description
+# https://github.com/root-project/root/blob/8cd9eed6f3a32e55ef1f0f1df8e5462e753c735d/tree/ntuple/v7/doc/BinaryFormatSpecification.md#column-description
 _rntuple_column_record_format = struct.Struct("<HHIHH")
-_rntuple_first_element_index_format = struct.Struct("<I")
+_rntuple_first_element_index_format = struct.Struct("<Q")
 _rntuple_column_range_format = struct.Struct("<dd")
-# https://github.com/root-project/root/blob/8635b1bc0da59623777c9fda3661a19363964915/tree/ntuple/v7/doc/specifications.md#alias-columns
+# https://github.com/root-project/root/blob/8cd9eed6f3a32e55ef1f0f1df8e5462e753c735d/tree/ntuple/v7/doc/BinaryFormatSpecification.md#alias-columns
 _rntuple_alias_column_format = struct.Struct("<II")
-# https://github.com/root-project/root/blob/8635b1bc0da59623777c9fda3661a19363964915/tree/ntuple/v7/doc/specifications.md#extra-type-information
-_rntuple_extra_type_info_format = struct.Struct("<III")
-# https://github.com/root-project/root/blob/8635b1bc0da59623777c9fda3661a19363964915/tree/ntuple/v7/doc/specifications.md#cluster-group-record-frame
-_rntuple_cluster_group_format = struct.Struct("<qqi")
-_rntuple_column_group_id_format = struct.Struct("<I")
-# https://github.com/root-project/root/blob/8635b1bc0da59623777c9fda3661a19363964915/tree/ntuple/v7/doc/specifications.md#cluster-summary-record-frame
+# https://github.com/root-project/root/blob/8cd9eed6f3a32e55ef1f0f1df8e5462e753c735d/tree/ntuple/v7/doc/BinaryFormatSpecification.md#extra-type-information
+_rntuple_extra_type_info_format = struct.Struct("<II")
+# https://github.com/root-project/root/blob/8cd9eed6f3a32e55ef1f0f1df8e5462e753c735d/tree/ntuple/v7/doc/BinaryFormatSpecification.md#cluster-group-record-frame
+_rntuple_cluster_group_format = struct.Struct("<QQI")
+# https://github.com/root-project/root/blob/8cd9eed6f3a32e55ef1f0f1df8e5462e753c735d/tree/ntuple/v7/doc/BinaryFormatSpecification.md#cluster-summary-record-frame
 _rntuple_cluster_summary_format = struct.Struct("<QQ")
-# https://github.com/root-project/root/blob/8635b1bc0da59623777c9fda3661a19363964915/tree/ntuple/v7/doc/specifications.md#page-locations
+# https://github.com/root-project/root/blob/8cd9eed6f3a32e55ef1f0f1df8e5462e753c735d/tree/ntuple/v7/doc/BinaryFormatSpecification.md#page-locations
 _rntuple_page_num_elements_format = struct.Struct("<i")
+_rntuple_column_element_offset_format = struct.Struct("<q")
+_rntuple_column_compression_settings_format = struct.Struct("<I")
 
 
 def _from_zigzag(n):
@@ -157,7 +161,7 @@ def _num_entries_for(in_ntuple, target_num_bytes, filter_name):
             for cluster in range(start_cluster_idx, stop_cluster_idx):
                 pages = in_ntuple.ntuple.page_list_envelopes.pagelinklist[cluster][
                     key_nr
-                ]
+                ].pages
                 total_bytes += sum(page.locator.num_bytes for page in pages)
 
     total_entries = entry_stop
@@ -182,9 +186,9 @@ def _regularize_step_size(in_ntuple, step_size, filter_name):
     return _num_entries_for(in_ntuple, target_num_bytes, filter_name)
 
 
-class Model_ROOT_3a3a_Experimental_3a3a_RNTuple(uproot.model.Model):
+class Model_ROOT_3a3a_RNTuple(uproot.model.Model):
     """
-    A versionless :doc:`uproot.model.Model` for ``ROOT::Experimental::RNTuple``.
+    A versionless :doc:`uproot.model.Model` for ``ROOT::RNTuple``.
     """
 
     @property
@@ -239,10 +243,10 @@ in file {self.file.file_path}"""
             )
 
         (
-            self.members["fVersionEpoch"],
-            self.members["fVersionMajor"],
-            self.members["fVersionMinor"],
-            self.members["fVersionPatch"],
+            self._members["fVersionEpoch"],
+            self._members["fVersionMajor"],
+            self._members["fVersionMinor"],
+            self._members["fVersionPatch"],
             self._members["fSeekHeader"],
             self._members["fNBytesHeader"],
             self._members["fLenHeader"],
@@ -252,7 +256,16 @@ in file {self.file.file_path}"""
             self._members["fMaxKeySize"],
         ) = cursor.fields(chunk, _rntuple_anchor_format, context)
 
-        # TODO: There is a checksum afterwards that we can use to verify the integrity of the members.
+        self._anchor_checksum = cursor.field(
+            chunk, _rntuple_anchor_checksum_format, context
+        )
+        assert self._anchor_checksum == xxhash.xxh3_64_intdigest(
+            chunk.raw_data[
+                -_rntuple_anchor_format.size
+                - _rntuple_anchor_checksum_format.size : -_rntuple_anchor_checksum_format.size
+            ]
+        )
+        cursor.skip(-_rntuple_anchor_checksum_format.size)
 
         self._header_chunk_ready = False
         self._footer_chunk_ready = False
@@ -326,6 +339,9 @@ in file {self.file.file_path}"""
 
             h = HeaderReader().read(self._header_chunk, cursor, context)
             self._header = h
+            assert h.checksum == xxhash.xxh3_64_intdigest(
+                self._header_chunk.raw_data[: -_rntuple_checksum_format.size]
+            )
 
         return self._header
 
@@ -401,6 +417,9 @@ in file {self.file.file_path}"""
                 f.header_checksum == self.header.checksum
             ), f"checksum={self.header.checksum}, header_checksum={f.header_checksum}"
             self._footer = f
+            assert f.checksum == xxhash.xxh3_64_intdigest(
+                self._footer_chunk.raw_data[: -_rntuple_checksum_format.size]
+            )
 
         return self._footer
 
@@ -500,22 +519,23 @@ in file {self.file.file_path}"""
         dtype_byte = cr.type
         if dtype_byte == uproot.const.rntuple_col_type_to_num_dict["switch"]:
             return form_key
-        elif dtype_byte > uproot.const.rntuple_col_type_to_num_dict["switch"]:
-            dt_str = uproot.const.rntuple_col_num_to_dtype_dict[dtype_byte]
-            if dt_str == "bit":
-                dt_str = "bool"
-            return ak.forms.NumpyForm(
-                dt_str,
-                form_key=form_key,
-                parameters=parameters,
-            )
-        else:  # offset index column
+        elif dtype_byte in uproot.const.rntuple_index_types and not cardinality:
             return form_key
+        dt_str = uproot.const.rntuple_col_num_to_dtype_dict[dtype_byte]
+        if dt_str == "bit":
+            dt_str = "bool"
+        return ak.forms.NumpyForm(
+            dt_str,
+            form_key=form_key,
+            parameters=parameters,
+        )
 
     def col_form(self, field_id):
         ak = uproot.extras.awkward()
 
         cfid = field_id
+        if self.field_records[cfid].source_field_id is not None:
+            cfid = self.field_records[cfid].source_field_id
         if cfid in self._alias_columns_dict:
             cfid = self._alias_columns_dict[cfid]
         if cfid not in self._column_records_dict:
@@ -580,7 +600,7 @@ in file {self.file.file_path}"""
                 inner = self.col_form(this_id)
             keyname = f"RegularForm-{this_id}"
             return ak.forms.RegularForm(inner, this_record.repetition, form_key=keyname)
-        elif structural_role == uproot.const.RNTupleFieldRole.VECTOR:
+        elif structural_role == uproot.const.RNTupleFieldRole.COLLECTION:
             if this_id not in self._related_ids or len(self._related_ids[this_id]) != 1:
                 keyname = f"vector-{this_id}"
                 newids = self._related_ids.get(this_id, [])
@@ -589,6 +609,8 @@ in file {self.file.file_path}"""
                 namelist = [field_records[i].field_name for i in newids]
                 return ak.forms.RecordForm(recordlist, namelist, form_key="whatever")
             cfid = this_id
+            if self.field_records[cfid].source_field_id is not None:
+                cfid = self.field_records[cfid].source_field_id
             if cfid in self._alias_columns_dict:
                 cfid = self._alias_columns_dict[cfid]
             if cfid not in self._column_records_dict:
@@ -604,7 +626,7 @@ in file {self.file.file_path}"""
                 child_id = self._related_ids[this_id][0]
             inner = self.field_form(child_id, seen)
             return ak.forms.ListOffsetForm("i64", inner, form_key=keyname)
-        elif structural_role == uproot.const.RNTupleFieldRole.STRUCT:
+        elif structural_role == uproot.const.RNTupleFieldRole.RECORD:
             newids = []
             if this_id in self._related_ids:
                 newids = self._related_ids[this_id]
@@ -612,7 +634,7 @@ in file {self.file.file_path}"""
             recordlist = [self.field_form(i, seen) for i in newids]
             namelist = [field_records[i].field_name for i in newids]
             return ak.forms.RecordForm(recordlist, namelist, form_key="whatever")
-        elif structural_role == uproot.const.RNTupleFieldRole.UNION:
+        elif structural_role == uproot.const.RNTupleFieldRole.VARIANT:
             keyname = self.col_form(this_id)
             newids = []
             if this_id in self._related_ids:
@@ -622,7 +644,7 @@ in file {self.file.file_path}"""
                 "i8", "i64", recordlist, form_key=keyname + "-union"
             )
             return ak.forms.IndexedOptionForm("i64", inner, form_key=keyname)
-        elif structural_role == uproot.const.RNTupleFieldRole.UNSPLIT:
+        elif structural_role == uproot.const.RNTupleFieldRole.STREAMER:
             raise NotImplementedError(
                 f"Unsplit fields are not supported. {this_record}"
             )
@@ -710,10 +732,7 @@ in file {self.file.file_path}"""
         arrays = [self.read_col_page(ncol, i) for i in cluster_range]
 
         # Check if column stores offset values for jagged arrays (splitindex64) (applies to cardinality cols too):
-        if (
-            dtype_byte == uproot.const.rntuple_col_type_to_num_dict["splitindex64"]
-            or dtype_byte == uproot.const.rntuple_col_type_to_num_dict["splitindex32"]
-        ):
+        if dtype_byte in uproot.const.rntuple_delta_types:
             # Extract the last offset values:
             last_elements = [
                 arr[-1] for arr in arrays[:-1]
@@ -735,7 +754,7 @@ in file {self.file.file_path}"""
 
     def read_col_page(self, ncol, cluster_i):
         linklist = self.page_list_envelopes.pagelinklist[cluster_i]
-        pagelist = linklist[ncol]
+        pagelist = linklist[ncol].pages if ncol < len(linklist) else []
         dtype_byte = self.column_records[ncol].type
         dtype_str = uproot.const.rntuple_col_num_to_dtype_dict[dtype_byte]
         total_len = numpy.sum([desc.num_elements for desc in pagelist], dtype=int)
@@ -746,10 +765,10 @@ in file {self.file.file_path}"""
         else:
             dtype = numpy.dtype(dtype_str)
         res = numpy.empty(total_len, dtype)
-        split = 14 <= dtype_byte <= 21 or 26 <= dtype_byte <= 28
-        zigzag = 26 <= dtype_byte <= 28
-        delta = dtype_byte in (14, 15)
-        index = dtype_byte in (0, 1, 14, 15)
+        split = dtype_byte in uproot.const.rntuple_split_types
+        zigzag = dtype_byte in uproot.const.rntuple_zigzag_types
+        delta = dtype_byte in uproot.const.rntuple_delta_types
+        index = dtype_byte in uproot.const.rntuple_index_types
         nbits = uproot.const.rntuple_col_num_to_size_dict[dtype_byte]
         tracker = 0
         cumsum = 0
@@ -818,6 +837,7 @@ def _recursive_find(form, res):
         _recursive_find(form.content, res)
 
 
+# https://github.com/root-project/root/blob/8cd9eed6f3a32e55ef1f0f1df8e5462e753c735d/tree/ntuple/v7/doc/BinaryFormatSpecification.md#page-locations
 class PageDescription:
     def read(self, chunk, cursor, context):
         out = MetaData(type(self).__name__)
@@ -828,13 +848,40 @@ class PageDescription:
         return out
 
 
+# https://github.com/root-project/root/blob/8cd9eed6f3a32e55ef1f0f1df8e5462e753c735d/tree/ntuple/v7/doc/BinaryFormatSpecification.md#page-locations
+class ColumnPageListFrameReader:
+    def read(self, chunk, cursor, context):
+        local_cursor = cursor.copy()
+        num_bytes = local_cursor.field(chunk, _rntuple_frame_size_format, context)
+        assert num_bytes < 0, f"num_bytes={num_bytes}"
+        num_items = local_cursor.field(chunk, _rntuple_frame_num_items_format, context)
+        cursor.skip(-num_bytes)
+        out = MetaData("ColumnPages")
+        out.pages = [
+            PageDescription().read(chunk, local_cursor, context)
+            for _ in range(num_items)
+        ]
+        out.element_offset = local_cursor.field(
+            chunk, _rntuple_column_element_offset_format, context
+        )
+        out.suppressed = out.element_offset < 0
+        if not out.suppressed:
+            out.compression_settings = local_cursor.field(
+                chunk, _rntuple_column_compression_settings_format, context
+            )
+        else:
+            out.compression_settings = None
+        return out
+
+
+# https://github.com/root-project/root/blob/8cd9eed6f3a32e55ef1f0f1df8e5462e753c735d/tree/ntuple/v7/doc/BinaryFormatSpecification.md#page-list-envelope
 class PageLink:
     def __init__(self):
         self.list_cluster_summaries = ListFrameReader(
             RecordFrameReader(ClusterSummaryReader())
         )
         self.nested_page_locations = ListFrameReader(
-            ListFrameReader(ListFrameReader(PageDescription()))
+            ListFrameReader(ColumnPageListFrameReader())
         )
 
     def read(self, chunk, cursor, context):
@@ -850,6 +897,7 @@ class PageLink:
         return out
 
 
+# https://github.com/root-project/root/blob/8cd9eed6f3a32e55ef1f0f1df8e5462e753c735d/tree/ntuple/v7/doc/BinaryFormatSpecification.md#locators-and-envelope-links
 class LocatorReader:
     def read(self, chunk, cursor, context):
         out = MetaData("Locator")
@@ -863,8 +911,6 @@ class LocatorReader:
                 out.offset = cursor.field(
                     chunk, _rntuple_locator_offset_format, context
                 )
-            elif out.type == uproot.const.RNTupleLocatorType.DAOS:
-                raise NotImplementedError("DAOS locators are not supported.")
             else:
                 raise NotImplementedError(f"Unknown locator type: {out.type}")
         else:
@@ -873,6 +919,7 @@ class LocatorReader:
         return out
 
 
+# https://github.com/root-project/root/blob/8cd9eed6f3a32e55ef1f0f1df8e5462e753c735d/tree/ntuple/v7/doc/BinaryFormatSpecification.md#locators-and-envelope-links
 class EnvLinkReader:
     def read(self, chunk, cursor, context):
         out = MetaData("EnvLink")
@@ -904,6 +951,7 @@ class MetaData:
         self.__dict__["_fields"][name] = val
 
 
+# https://github.com/root-project/root/blob/8cd9eed6f3a32e55ef1f0f1df8e5462e753c735d/tree/ntuple/v7/doc/BinaryFormatSpecification.md#frames
 class RecordFrameReader:
     def __init__(self, payload):
         self.payload = payload
@@ -916,6 +964,7 @@ class RecordFrameReader:
         return self.payload.read(chunk, local_cursor, context)
 
 
+# https://github.com/root-project/root/blob/8cd9eed6f3a32e55ef1f0f1df8e5462e753c735d/tree/ntuple/v7/doc/BinaryFormatSpecification.md#frames
 class ListFrameReader:
     def __init__(self, payload):
         self.payload = payload
@@ -942,27 +991,29 @@ class FieldRecordReader:
             out.struct_role,
             out.flags,
         ) = cursor.fields(chunk, _rntuple_field_description_format, context)
-        if out.flags == uproot.const.RNTupleFieldFlag.REPETITIVE:
-            out.repetition = cursor.field(chunk, _rntuple_repetition_format, context)
-            out.source_field_id = None
-            out.checksum = None
-        elif out.flags == uproot.const.RNTupleFieldFlag.PROJECTED:
-            out.repetition = 0
-            out.source_field_id = cursor.field(
-                chunk, _rntuple_source_field_id_format, context
-            )
-            out.checksum = None
-        elif out.flags == uproot.const.RNTupleFieldFlag.CHECKSUM:
-            out.repetition = 0
-            out.source_field_id = None
-            out.checksum = cursor.field(chunk, _rntuple_checksum_format, context)
-        else:
-            out.repetition = 0
-            out.source_field_id = None
-            out.checksum = None
         out.field_name, out.type_name, out.type_alias, out.field_desc = (
             cursor.rntuple_string(chunk, context) for _ in range(4)
         )
+
+        if out.flags & uproot.const.RNTupleFieldFlag.REPETITIVE:
+            out.repetition = cursor.field(chunk, _rntuple_repetition_format, context)
+        else:
+            out.repetition = 0
+
+        if out.flags & uproot.const.RNTupleFieldFlag.PROJECTED:
+            out.source_field_id = cursor.field(
+                chunk, _rntuple_source_field_id_format, context
+            )
+        else:
+            out.source_field_id = None
+
+        if out.flags & uproot.const.RNTupleFieldFlag.CHECKSUM:
+            out.checksum = cursor.field(
+                chunk, _rntuple_root_streamer_checksum_format, context
+            )
+        else:
+            out.checksum = None
+
         return out
 
 
@@ -988,6 +1039,7 @@ class ColumnRecordReader:
         return out
 
 
+# https://github.com/root-project/root/blob/8cd9eed6f3a32e55ef1f0f1df8e5462e753c735d/tree/ntuple/v7/doc/BinaryFormatSpecification.md#alias-columns
 class AliasColumnReader:
     def read(self, chunk, cursor, context):
         out = MetaData("AliasColumn")
@@ -998,17 +1050,19 @@ class AliasColumnReader:
         return out
 
 
+# https://github.com/root-project/root/blob/8cd9eed6f3a32e55ef1f0f1df8e5462e753c735d/tree/ntuple/v7/doc/BinaryFormatSpecification.md#extra-type-information
 class ExtraTypeInfoReader:
     def read(self, chunk, cursor, context):
         out = MetaData("ExtraTypeInfoReader")
 
-        out.content_id, out.type_ver_from, out.type_ver_to = cursor.fields(
+        out.content_id, out.type_ver = cursor.fields(
             chunk, _rntuple_extra_type_info_format, context
         )
         out.type_name = cursor.rntuple_string(chunk, context)
         return out
 
 
+# https://github.com/root-project/root/blob/8cd9eed6f3a32e55ef1f0f1df8e5462e753c735d/tree/ntuple/v7/doc/BinaryFormatSpecification.md#header-envelope
 class HeaderReader:
     def __init__(self):
         self.list_field_record_frames = ListFrameReader(
@@ -1048,22 +1102,7 @@ class HeaderReader:
         return out
 
 
-class ColumnGroupIDReader:
-    def read(self, chunk, cursor, context):
-        out = MetaData("ColumnGroupID")
-        out.col_id = cursor.field(chunk, _rntuple_column_group_id_format, context)
-        return out
-
-
-class ColumnGroupRecordReader:
-    def read(self, chunk, cursor, context):
-        out = MetaData("ColumnGroupRecord")
-        out.column_ids = ListFrameReader(RecordFrameReader(ColumnGroupIDReader())).read(
-            chunk, cursor, context
-        )
-        return out
-
-
+# https://github.com/root-project/root/blob/8cd9eed6f3a32e55ef1f0f1df8e5462e753c735d/tree/ntuple/v7/doc/BinaryFormatSpecification.md#cluster-summary-record-frame
 class ClusterSummaryReader:
     def read(self, chunk, cursor, context):
         out = MetaData("ClusterSummaryRecord")
@@ -1072,11 +1111,12 @@ class ClusterSummaryReader:
         )
         out.flags = out.num_entries >> 56
         out.num_entries &= 0xFFFFFFFFFFFFFF
-        if out.flags == uproot.const.RNTupleClusterFlag.SHARDED:
+        if out.flags & uproot.const.RNTupleClusterFlag.SHARDED:
             raise NotImplementedError("Sharded clusters are not supported.")
         return out
 
 
+# https://github.com/root-project/root/blob/8cd9eed6f3a32e55ef1f0f1df8e5462e753c735d/tree/ntuple/v7/doc/BinaryFormatSpecification.md#page-locations
 class ClusterGroupRecordReader:
     def read(self, chunk, cursor, context):
         out = MetaData("ClusterGroupRecord")
@@ -1087,6 +1127,7 @@ class ClusterGroupRecordReader:
         return out
 
 
+# https://github.com/root-project/root/blob/8cd9eed6f3a32e55ef1f0f1df8e5462e753c735d/tree/ntuple/v7/doc/BinaryFormatSpecification.md#schema-extension-record-frame
 class RNTupleSchemaExtension:
     def read(self, chunk, cursor, context):
         out = MetaData(type(self).__name__)
@@ -1107,12 +1148,10 @@ class RNTupleSchemaExtension:
         return out
 
 
+# https://github.com/root-project/root/blob/8cd9eed6f3a32e55ef1f0f1df8e5462e753c735d/tree/ntuple/v7/doc/BinaryFormatSpecification.md#footer-envelope
 class FooterReader:
     def __init__(self):
         self.extension_header_links = RNTupleSchemaExtension()
-        self.column_group_record_frames = ListFrameReader(
-            RecordFrameReader(ColumnGroupRecordReader())
-        )
         self.cluster_summary_frames = ListFrameReader(
             RecordFrameReader(ClusterSummaryReader())
         )
@@ -1129,9 +1168,6 @@ class FooterReader:
         out.feature_flag = cursor.field(chunk, _rntuple_feature_flag_format, context)
         out.header_checksum = cursor.field(chunk, _rntuple_checksum_format, context)
         out.extension_links = self.extension_header_links.read(chunk, cursor, context)
-        out.col_group_records = self.column_group_record_frames.read(
-            chunk, cursor, context
-        )
         out.cluster_group_records = self.cluster_group_record_frames.read(
             chunk, cursor, context
         )
@@ -1279,6 +1315,4 @@ class RNTupleField:
             )
 
 
-uproot.classes["ROOT::Experimental::RNTuple"] = (
-    Model_ROOT_3a3a_Experimental_3a3a_RNTuple
-)
+uproot.classes["ROOT::RNTuple"] = Model_ROOT_3a3a_RNTuple

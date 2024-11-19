@@ -5,15 +5,9 @@ import numpy as np
 
 import uproot
 
-import pytest
-
-pytest.skip(
-    "Skipping until test files are available with RNTuple v1.0", allow_module_level=True
-)
-
 
 def test_schema_extension():
-    filename = skhep_testdata.data_path("test_ntuple_index_multicluster.root")
+    filename = skhep_testdata.data_path("test_index_multicluster_rntuple_v1-0-0-0.root")
     with uproot.open(filename) as f:
         obj = f["ntuple"]
 

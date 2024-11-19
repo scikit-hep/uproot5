@@ -5,25 +5,27 @@ import skhep_testdata
 
 import uproot
 
-pytest.skip(
-    "Skipping until test files are available with RNTuple v1.0", allow_module_level=True
-)
-
 
 def test_field_class():
-    filename = skhep_testdata.data_path("DAOD_TRUTH3_RC2.root")
+    filename = skhep_testdata.data_path("test_nested_structs_rntuple_v1-0-0-0.root")
     with uproot.open(filename) as f:
-        obj = f["RNT:CollectionTree"]
-        jets = obj["AntiKt4TruthDressedWZJetsAux:"]
-        assert len(jets) == 6
+        obj = f["ntuple"]
+        my_struct = obj["my_struct"]
+        assert len(my_struct) == 2
 
-        pt = jets["pt"]
-        assert len(pt) == 0
+        sub_struct = my_struct["sub_struct"]
+        assert len(my_struct) == 2
+
+        sub_sub_struct = sub_struct["sub_sub_struct"]
+        assert len(sub_sub_struct) == 2
+
+        v = sub_sub_struct["v"]
+        assert len(v) == 0
 
 
 def test_array_methods():
     filename = skhep_testdata.data_path(
-        "Run2012BC_DoubleMuParked_Muons_rntuple_1000evts.root"
+        "Run2012BC_DoubleMuParked_Muons_1000evts_rntuple_v1-0-0-0.root"
     )
     with uproot.open(filename) as f:
         obj = f["Events"]
@@ -36,16 +38,10 @@ def test_array_methods():
         assert len(nMuon_arrays) == 1000
         assert nMuon_arrays["nMuon"].tolist() == nMuon_array.tolist()
 
-    filename = skhep_testdata.data_path("DAOD_TRUTH3_RC2.root")
-    with uproot.open(filename) as f:
-        obj = f["RNT:CollectionTree"]
-        jets = obj["AntiKt4TruthDressedWZJetsAux:"].arrays()
-        assert len(jets[0].pt) == 5
-
 
 def test_iterate():
     filename = skhep_testdata.data_path(
-        "Run2012BC_DoubleMuParked_Muons_rntuple_1000evts.root"
+        "Run2012BC_DoubleMuParked_Muons_1000evts_rntuple_v1-0-0-0.root"
     )
     with uproot.open(filename) as f:
         obj = f["Events"]
