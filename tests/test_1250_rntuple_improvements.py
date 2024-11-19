@@ -7,7 +7,7 @@ import uproot
 
 
 def test_field_class():
-    filename = skhep_testdata.data_path("test_nested_structs_rntuple_v1.root")
+    filename = skhep_testdata.data_path("test_nested_structs_rntuple_v1-0-0-0.root")
     with uproot.open(filename) as f:
         obj = f["ntuple"]
         my_struct = obj["my_struct"]
@@ -25,7 +25,7 @@ def test_field_class():
 
 def test_array_methods():
     filename = skhep_testdata.data_path(
-        "Run2012BC_DoubleMuParked_Muons_1000evts_rntuple_v1.root"
+        "Run2012BC_DoubleMuParked_Muons_1000evts_rntuple_v1-0-0-0.root"
     )
     with uproot.open(filename) as f:
         obj = f["Events"]
@@ -41,7 +41,7 @@ def test_array_methods():
 
 def test_iterate():
     filename = skhep_testdata.data_path(
-        "Run2012BC_DoubleMuParked_Muons_1000evts_rntuple_v1.root"
+        "Run2012BC_DoubleMuParked_Muons_1000evts_rntuple_v1-0-0-0.root"
     )
     with uproot.open(filename) as f:
         obj = f["Events"]

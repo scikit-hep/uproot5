@@ -6,7 +6,7 @@ import uproot
 
 
 def test_atomic():
-    filename = skhep_testdata.data_path("test_atomic_bitset_rntuple_v1.root")
+    filename = skhep_testdata.data_path("test_atomic_bitset_rntuple_v1-0-0-0.root")
     with uproot.open(filename) as f:
         obj = f["ntuple"]
 
@@ -16,7 +16,7 @@ def test_atomic():
 
 
 def test_bitset():
-    filename = skhep_testdata.data_path("test_atomic_bitset_rntuple_v1.root")
+    filename = skhep_testdata.data_path("test_atomic_bitset_rntuple_v1-0-0-0.root")
     with uproot.open(filename) as f:
         obj = f["ntuple"]
 
@@ -67,7 +67,9 @@ def test_bitset():
 
 
 def test_empty_struct():
-    filename = skhep_testdata.data_path("test_emptystruct_invalidvar_rntuple_v1.root")
+    filename = skhep_testdata.data_path(
+        "test_emptystruct_invalidvar_rntuple_v1-0-0-0.root"
+    )
     with uproot.open(filename) as f:
         obj = f["ntuple"]
 
@@ -77,7 +79,9 @@ def test_empty_struct():
 
 
 def test_invalid_variant():
-    filename = skhep_testdata.data_path("test_emptystruct_invalidvar_rntuple_v1.root")
+    filename = skhep_testdata.data_path(
+        "test_emptystruct_invalidvar_rntuple_v1-0-0-0.root"
+    )
     with uproot.open(filename) as f:
         obj = f["ntuple"]
 

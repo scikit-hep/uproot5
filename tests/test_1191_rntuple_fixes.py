@@ -7,7 +7,7 @@ import uproot
 
 
 def test_schema_extension():
-    filename = skhep_testdata.data_path("test_extension_columns_rntuple_v1.root")
+    filename = skhep_testdata.data_path("test_extension_columns_rntuple_v1-0-0-0.root")
     with uproot.open(filename) as f:
         obj = f["ntuple"]
 
@@ -34,7 +34,7 @@ def test_schema_extension():
 
 def test_rntuple_cardinality():
     filename = skhep_testdata.data_path(
-        "Run2012BC_DoubleMuParked_Muons_1000evts_rntuple_v1.root"
+        "Run2012BC_DoubleMuParked_Muons_1000evts_rntuple_v1-0-0-0.root"
     )
     with uproot.open(filename) as f:
         obj = f["Events"]
@@ -43,7 +43,7 @@ def test_rntuple_cardinality():
 
 
 def test_multiple_page_delta_encoding():
-    filename = skhep_testdata.data_path("test_index_multicluster_rntuple_v1.root")
+    filename = skhep_testdata.data_path("test_index_multicluster_rntuple_v1-0-0-0.root")
     with uproot.open(filename) as f:
         obj = f["ntuple"]
         data = obj.read_col_page(0, 0)
@@ -53,7 +53,7 @@ def test_multiple_page_delta_encoding():
 
 def test_split_encoding():
     filename = skhep_testdata.data_path(
-        "Run2012BC_DoubleMuParked_Muons_1000evts_rntuple_v1.root"
+        "Run2012BC_DoubleMuParked_Muons_1000evts_rntuple_v1-0-0-0.root"
     )
     with uproot.open(filename) as f:
         obj = f["Events"]

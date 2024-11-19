@@ -7,7 +7,7 @@ import uproot
 
 
 def test_schema_extension():
-    filename = skhep_testdata.data_path("test_index_multicluster_rntuple_v1.root")
+    filename = skhep_testdata.data_path("test_index_multicluster_rntuple_v1-0-0-0.root")
     with uproot.open(filename) as f:
         obj = f["ntuple"]
 

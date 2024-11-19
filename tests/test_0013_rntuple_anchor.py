@@ -11,7 +11,7 @@ import uproot
 
 
 def test():
-    filename = skhep_testdata.data_path("ntpl001_staff_rntuple_v1.root")
+    filename = skhep_testdata.data_path("ntpl001_staff_rntuple_v1-0-0-0.root")
     with uproot.open(filename) as f:
         obj = f["Staff"]
         assert obj.member("fVersionEpoch") == 1

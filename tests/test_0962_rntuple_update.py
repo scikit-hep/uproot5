@@ -8,7 +8,9 @@ import numpy as np
 
 
 def test_new_support_RNTuple_split_int32_reading():
-    with uproot.open(skhep_testdata.data_path("test_int_5e4_rntuple_v1.root")) as f:
+    with uproot.open(
+        skhep_testdata.data_path("test_int_5e4_rntuple_v1-0-0-0.root")
+    ) as f:
         obj = f["ntuple"]
         df = obj.arrays()
         assert len(df) == 5e4
@@ -17,7 +19,7 @@ def test_new_support_RNTuple_split_int32_reading():
 
 
 def test_new_support_RNTuple_bit_bool_reading():
-    with uproot.open(skhep_testdata.data_path("test_bit_rntuple_v1.root")) as f:
+    with uproot.open(skhep_testdata.data_path("test_bit_rntuple_v1-0-0-0.root")) as f:
         obj = f["ntuple"]
         df = obj.arrays()
         assert np.all(df.one_bit == np.asarray([1, 0, 0, 1, 0, 0, 1, 0, 0, 1]))
@@ -25,7 +27,7 @@ def test_new_support_RNTuple_bit_bool_reading():
 
 def test_new_support_RNTuple_split_int16_reading():
     with uproot.open(
-        skhep_testdata.data_path("test_int_multicluster_rntuple_v1.root")
+        skhep_testdata.data_path("test_int_multicluster_rntuple_v1-0-0-0.root")
     ) as f:
         obj = f["ntuple"]
         df = obj.arrays()
