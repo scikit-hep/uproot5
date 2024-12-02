@@ -35,6 +35,13 @@ from uproot.writing.writable import (
 )
 
 __all__ = [
+    "WritableBranch",
+    "WritableDirectory",
+    "WritableFile",
+    "WritableTree",
+    "create",
+    "dask_write",
+    "recreate",
     "to_TArray",
     "to_TH1x",
     "to_TH2x",
@@ -45,12 +52,5 @@ __all__ = [
     "to_TProfile2D",
     "to_TProfile3D",
     "to_writable",
-    "WritableDirectory",
-    "WritableFile",
-    "WritableTree",
-    "WritableBranch",
-    "create",
-    "recreate",
     "update",
-    "dask_write",
 ]
