@@ -524,6 +524,8 @@ in file {self.file.file_path}"""
         dt_str = uproot.const.rntuple_col_num_to_dtype_dict[dtype_byte]
         if dt_str == "bit":
             dt_str = "bool"
+        elif dtype_byte in uproot.const.rntuple_custom_float_types:
+            dt_str = "float32"
         return ak.forms.NumpyForm(
             dt_str,
             form_key=form_key,
@@ -673,9 +675,14 @@ in file {self.file.file_path}"""
         context = {}
         # bool in RNTuple is always stored as bits
         isbit = dtype_str == "bit"
-        len_divider = 8 if isbit else 1
         num_elements = len(destination)
-        num_elements_toread = int(numpy.ceil(num_elements / len_divider))
+        if isbit:
+            num_elements_toread = int(numpy.ceil(num_elements / 8))
+        elif dtype_str in ("real32trunc", "real32quant"):
+            num_elements_toread = int(numpy.ceil((num_elements * 4 * nbits) / 32))
+            dtype = numpy.dtype("uint8")
+        else:
+            num_elements_toread = num_elements
         uncomp_size = num_elements_toread * dtype.itemsize
         decomp_chunk, cursor = self.read_locator(loc, uncomp_size, context)
         content = cursor.array(
@@ -722,6 +729,28 @@ in file {self.file.file_path}"""
                 .reshape(-1, 8)[:, ::-1]
                 .reshape(-1)
             )
+        elif dtype_str in ("real32trunc", "real32quant"):
+            if nbits == 32:
+                content = content.view(numpy.uint32)
+            elif nbits % 8 == 0:
+                new_content = numpy.empty(num_elements, numpy.uint32)
+                nbytes = nbits // 8
+                new_content[:] = content[nbytes - 1 : num_elements * nbytes : nbytes]
+                for i in range(1, nbytes):
+                    new_content <<= 8
+                    new_content += content[
+                        nbytes - 1 - i : num_elements * nbytes : nbytes
+                    ]
+                content = new_content
+            else:
+                ak = uproot.extras.awkward()
+                vm = ak.forth.ForthMachine32(
+                    f"""input x output y uint32 {num_elements} x #{nbits}bit-> y"""
+                )
+                vm.run({"x": content})
+                content = vm["y"]
+            if dtype_str == "real32trunc":
+                content <<= 32 - nbits
 
         # needed to chop off extra bits incase we used `unpackbits`
         destination[:] = content[:num_elements]
@@ -762,6 +791,8 @@ in file {self.file.file_path}"""
             dtype = numpy.dtype([("index", "int64"), ("tag", "int32")])
         elif dtype_str == "bit":
             dtype = numpy.dtype("bool")
+        elif dtype_byte in uproot.const.rntuple_custom_float_types:
+            dtype = numpy.dtype("uint32")  # for easier bit manipulation
         else:
             dtype = numpy.dtype(dtype_str)
         res = numpy.empty(total_len, dtype)
@@ -769,7 +800,11 @@ in file {self.file.file_path}"""
         zigzag = dtype_byte in uproot.const.rntuple_zigzag_types
         delta = dtype_byte in uproot.const.rntuple_delta_types
         index = dtype_byte in uproot.const.rntuple_index_types
-        nbits = uproot.const.rntuple_col_num_to_size_dict[dtype_byte]
+        nbits = (
+            self.column_records[ncol].nbits
+            if ncol < len(self.column_records)
+            else uproot.const.rntuple_col_num_to_size_dict[dtype_byte]
+        )
         tracker = 0
         cumsum = 0
         for page_desc in pagelist:
@@ -789,6 +824,14 @@ in file {self.file.file_path}"""
             res = _from_zigzag(res)
         elif delta:
             res = numpy.cumsum(res)
+        elif dtype_str == "real32trunc":
+            res = res.view(numpy.float32)
+        elif dtype_str == "real32quant" and ncol < len(self.column_records):
+            min_value = self.column_records[ncol].min_value
+            max_value = self.column_records[ncol].max_value
+            res = min_value + res.astype(numpy.float32) * (max_value - min_value) / (
+                (1 << nbits) - 1
+            )
         return res
 
     def arrays(
