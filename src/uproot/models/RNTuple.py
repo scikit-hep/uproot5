@@ -548,6 +548,8 @@ in file {self.file.file_path}"""
             )
 
         rel_crs = self._column_records_dict[cfid]
+        # for this part we can use the default (zeroth) representation
+        rel_crs = [c for c in rel_crs if c.repr_idx == 0]
 
         if len(rel_crs) == 1:  # base case
             cardinality = "RNTupleCardinality" in self.field_records[field_id].type_name
@@ -783,6 +785,10 @@ in file {self.file.file_path}"""
 
     def read_col_page(self, ncol, cluster_i):
         linklist = self.page_list_envelopes.pagelinklist[cluster_i]
+        # Check if the column is suppressed and pick the non-suppressed one if so
+        if ncol < len(linklist) and linklist[ncol].suppressed:
+            rel_crs = self._column_records_dict[self.column_records[ncol].field_id]
+            ncol = next(cr.idx for cr in rel_crs if not linklist[cr.idx].suppressed)
         pagelist = linklist[ncol].pages if ncol < len(linklist) else []
         dtype_byte = self.column_records[ncol].type
         dtype_str = uproot.const.rntuple_col_num_to_dtype_dict[dtype_byte]
