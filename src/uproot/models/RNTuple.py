@@ -735,15 +735,10 @@ in file {self.file.file_path}"""
             if nbits == 32:
                 content = content.view(numpy.uint32)
             elif nbits % 8 == 0:
-                new_content = numpy.empty(num_elements, numpy.uint32)
+                new_content = numpy.zeros((num_elements, 4), numpy.uint8)
                 nbytes = nbits // 8
-                new_content[:] = content[nbytes - 1 : num_elements * nbytes : nbytes]
-                for i in range(1, nbytes):
-                    new_content <<= 8
-                    new_content += content[
-                        nbytes - 1 - i : num_elements * nbytes : nbytes
-                    ]
-                content = new_content
+                new_content[:, :nbytes] = content.reshape(-1, nbytes)
+                content = new_content.view(numpy.uint32).reshape(-1)
             else:
                 ak = uproot.extras.awkward()
                 vm = ak.forth.ForthMachine32(
