@@ -6,6 +6,7 @@ This module defines a versionless model for ``ROOT::RNTuple``.
 from __future__ import annotations
 
 import struct
+import sys
 from collections import defaultdict
 from itertools import accumulate
 
@@ -240,6 +241,11 @@ class Model_ROOT_3a3a_RNTuple(uproot.model.Model):
             raise NotImplementedError(
                 f"""memberwise serialization of {type(self).__name__}
 in file {self.file.file_path}"""
+            )
+        # Probably no one will encounter this, but just in case something doesn't work correctly
+        if sys.byteorder != "little":
+            raise NotImplementedError(
+                "RNTuple reading is only supported on little-endian systems"
             )
 
         (
