@@ -383,6 +383,8 @@ def _dask_array_from_map(
     **kwargs,
 ):
     dask = uproot.extras.dask()
+    _dask_uses_tasks = hasattr(dask, "_task_spec")
+    
     da = uproot.extras.dask_array()
     if not callable(func):
         raise ValueError("`func` argument must be `callable`")
@@ -446,14 +448,20 @@ def _dask_array_from_map(
         produces_tasks=produces_tasks,
     )
 
-    dsk = dask.blockwise.Blockwise(
-        output=name,
-        output_indices="i",
-        dsk={name: (io_func, dask.blockwise.blockwise_token(0))},
-        indices=[(io_arg_map, "i")],
-        numblocks={},
-        annotations=None,
-    )
+    blockwise_kwargs = {
+        "output": name,
+        "output_indices": "i",
+        "indices": [(io_arg_map, "i")],
+        "numblocks": {},
+        "annotations": None,
+    }
+
+    if _dask_uses_tasks:
+        blockwise_kwargs["task"] = dask._task_spec.Task(name, io_func, dask._task_spec.TaskRef(dask.blockwise.blockwise_token(0)))
+    else:
+        blockwise_kwargs["dsk"] = {name: (io_func, dask.blockwise.blockwise_token(0))}
+    
+    dsk = dask.blockwise.Blockwise(**blockwise_kwargs)
 
     hlg = dask.highlevelgraph.HighLevelGraph.from_collections(name, dsk)
     return da.core.Array(hlg, name, chunks, dtype=dtype)
