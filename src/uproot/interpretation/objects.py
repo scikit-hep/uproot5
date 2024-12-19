@@ -758,7 +758,7 @@ class AsStridedObjects(uproot.interpretation.numerical.AsDtype):
             member, value = members[i]
             if member is not None and not all_headers_prepended:
                 all_headers_prepended = True
-            if member is None and all_headers_prepended or len(members) == 1:
+            if (member is None and all_headers_prepended) or len(members) == 1:
                 all_headers_prepended = False
                 del members[i]
 
