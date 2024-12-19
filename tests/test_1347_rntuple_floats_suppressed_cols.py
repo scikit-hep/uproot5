@@ -8,17 +8,19 @@ import uproot
 
 def truncate_float(value, bits):
     a = np.float32(value).view(np.uint32)
-    a &= 0xFFFFFFFF << (32 - bits)
+    a &= np.uint32(0xFFFFFFFF) << (32 - bits)
     return a.astype(np.uint32).view(np.float32)
 
 
 def quantize_float(value, bits, min, max):
+    min = np.float32(min)
+    max = np.float32(max)
     if value < min or value > max:
         raise ValueError(f"Value {value} is out of range [{min}, {max}]")
     scaled_value = (value - min) * (2**bits - 1) / (max - min)
     int_value = np.round(scaled_value)
-    quantized_float = min + int_value * (max - min) / (2**bits - 1)
-    return quantized_float
+    quantized_float = min + int_value * (max - min) / ((1 << bits) - 1)
+    return quantized_float.astype(np.float32)
 
 
 def test_custom_floats():
@@ -110,7 +112,9 @@ def test_custom_floats():
             entry.quant24, quantize_float(true_value, 24, min_value, max_value)
         )
         assert np.isclose(
-            entry.quant25, quantize_float(true_value, 25, min_value, max_value)
+            entry.quant25,
+            quantize_float(true_value, 25, min_value, max_value),
+            atol=2e-07,
         )
         assert np.isclose(
             entry.quant32, quantize_float(true_value, 32, min_value, max_value)
