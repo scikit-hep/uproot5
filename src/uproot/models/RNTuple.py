@@ -6,6 +6,7 @@ This module defines a versionless model for ``ROOT::RNTuple``.
 from __future__ import annotations
 
 import struct
+import sys
 from collections import defaultdict
 from itertools import accumulate
 
@@ -240,6 +241,11 @@ class Model_ROOT_3a3a_RNTuple(uproot.model.Model):
             raise NotImplementedError(
                 f"""memberwise serialization of {type(self).__name__}
 in file {self.file.file_path}"""
+            )
+        # Probably no one will encounter this, but just in case something doesn't work correctly
+        if sys.byteorder != "little":
+            raise NotImplementedError(
+                "RNTuple reading is only supported on little-endian systems"
             )
 
         (
@@ -524,6 +530,8 @@ in file {self.file.file_path}"""
         dt_str = uproot.const.rntuple_col_num_to_dtype_dict[dtype_byte]
         if dt_str == "bit":
             dt_str = "bool"
+        elif dtype_byte in uproot.const.rntuple_custom_float_types:
+            dt_str = "float32"
         return ak.forms.NumpyForm(
             dt_str,
             form_key=form_key,
@@ -546,6 +554,8 @@ in file {self.file.file_path}"""
             )
 
         rel_crs = self._column_records_dict[cfid]
+        # for this part we can use the default (zeroth) representation
+        rel_crs = [c for c in rel_crs if c.repr_idx == 0]
 
         if len(rel_crs) == 1:  # base case
             cardinality = "RNTupleCardinality" in self.field_records[field_id].type_name
@@ -673,9 +683,14 @@ in file {self.file.file_path}"""
         context = {}
         # bool in RNTuple is always stored as bits
         isbit = dtype_str == "bit"
-        len_divider = 8 if isbit else 1
         num_elements = len(destination)
-        num_elements_toread = int(numpy.ceil(num_elements / len_divider))
+        if isbit:
+            num_elements_toread = int(numpy.ceil(num_elements / 8))
+        elif dtype_str in ("real32trunc", "real32quant"):
+            num_elements_toread = int(numpy.ceil((num_elements * 4 * nbits) / 32))
+            dtype = numpy.dtype("uint8")
+        else:
+            num_elements_toread = num_elements
         uncomp_size = num_elements_toread * dtype.itemsize
         decomp_chunk, cursor = self.read_locator(loc, uncomp_size, context)
         content = cursor.array(
@@ -722,6 +737,23 @@ in file {self.file.file_path}"""
                 .reshape(-1, 8)[:, ::-1]
                 .reshape(-1)
             )
+        elif dtype_str in ("real32trunc", "real32quant"):
+            if nbits == 32:
+                content = content.view(numpy.uint32)
+            elif nbits % 8 == 0:
+                new_content = numpy.zeros((num_elements, 4), numpy.uint8)
+                nbytes = nbits // 8
+                new_content[:, :nbytes] = content.reshape(-1, nbytes)
+                content = new_content.view(numpy.uint32).reshape(-1)
+            else:
+                ak = uproot.extras.awkward()
+                vm = ak.forth.ForthMachine32(
+                    f"""input x output y uint32 {num_elements} x #{nbits}bit-> y"""
+                )
+                vm.run({"x": content})
+                content = vm["y"]
+            if dtype_str == "real32trunc":
+                content <<= 32 - nbits
 
         # needed to chop off extra bits incase we used `unpackbits`
         destination[:] = content[:num_elements]
@@ -754,6 +786,10 @@ in file {self.file.file_path}"""
 
     def read_col_page(self, ncol, cluster_i):
         linklist = self.page_list_envelopes.pagelinklist[cluster_i]
+        # Check if the column is suppressed and pick the non-suppressed one if so
+        if ncol < len(linklist) and linklist[ncol].suppressed:
+            rel_crs = self._column_records_dict[self.column_records[ncol].field_id]
+            ncol = next(cr.idx for cr in rel_crs if not linklist[cr.idx].suppressed)
         pagelist = linklist[ncol].pages if ncol < len(linklist) else []
         dtype_byte = self.column_records[ncol].type
         dtype_str = uproot.const.rntuple_col_num_to_dtype_dict[dtype_byte]
@@ -762,6 +798,8 @@ in file {self.file.file_path}"""
             dtype = numpy.dtype([("index", "int64"), ("tag", "int32")])
         elif dtype_str == "bit":
             dtype = numpy.dtype("bool")
+        elif dtype_byte in uproot.const.rntuple_custom_float_types:
+            dtype = numpy.dtype("uint32")  # for easier bit manipulation
         else:
             dtype = numpy.dtype(dtype_str)
         res = numpy.empty(total_len, dtype)
@@ -769,7 +807,11 @@ in file {self.file.file_path}"""
         zigzag = dtype_byte in uproot.const.rntuple_zigzag_types
         delta = dtype_byte in uproot.const.rntuple_delta_types
         index = dtype_byte in uproot.const.rntuple_index_types
-        nbits = uproot.const.rntuple_col_num_to_size_dict[dtype_byte]
+        nbits = (
+            self.column_records[ncol].nbits
+            if ncol < len(self.column_records)
+            else uproot.const.rntuple_col_num_to_size_dict[dtype_byte]
+        )
         tracker = 0
         cumsum = 0
         for page_desc in pagelist:
@@ -789,6 +831,15 @@ in file {self.file.file_path}"""
             res = _from_zigzag(res)
         elif delta:
             res = numpy.cumsum(res)
+        elif dtype_str == "real32trunc":
+            res = res.view(numpy.float32)
+        elif dtype_str == "real32quant" and ncol < len(self.column_records):
+            min_value = self.column_records[ncol].min_value
+            max_value = self.column_records[ncol].max_value
+            res = min_value + res.astype(numpy.float32) * (max_value - min_value) / (
+                (1 << nbits) - 1
+            )
+            res = res.astype(numpy.float32)
         return res
 
     def arrays(
