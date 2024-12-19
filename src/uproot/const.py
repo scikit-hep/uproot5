@@ -242,6 +242,10 @@ rntuple_delta_types = (
     rntuple_col_type_to_num_dict["splitindex32"],
     rntuple_col_type_to_num_dict["splitindex64"],
 )
+rntuple_custom_float_types = (
+    rntuple_col_type_to_num_dict["real32trunc"],
+    rntuple_col_type_to_num_dict["real32quant"],
+)
 
 
 class RNTupleLocatorType(IntEnum):
