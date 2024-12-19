@@ -839,6 +839,7 @@ in file {self.file.file_path}"""
             res = min_value + res.astype(numpy.float32) * (max_value - min_value) / (
                 (1 << nbits) - 1
             )
+            res = res.astype(numpy.float32)
         return res
 
     def arrays(
