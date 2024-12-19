@@ -497,13 +497,13 @@ class PythonLanguage(uproot.language.Language):
             if is_pandas:
                 pandas = uproot.extras.pandas()
 
-            for name in output:
+            for name, data in output.items():
                 if (
                     is_pandas
                     and isinstance(cut.index, pandas.MultiIndex)
-                    and not isinstance(output[name].index, pandas.MultiIndex)
+                    and not isinstance(data.index, pandas.MultiIndex)
                 ):
-                    original = output[name]
+                    original = data
                     modified = pandas.DataFrame(
                         {original.name: original.values},
                         index=pandas.MultiIndex.from_arrays(
@@ -514,7 +514,7 @@ class PythonLanguage(uproot.language.Language):
                     output[name] = selected[original.name]
 
                 else:
-                    output[name] = output[name][cut]
+                    output[name] = data[cut]
 
         # clear dicts to get rid of big arrays.
         # note: without this these arrays are not properly released from memory!
