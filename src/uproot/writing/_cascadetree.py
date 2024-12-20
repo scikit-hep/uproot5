@@ -1098,22 +1098,20 @@ class Tree:
             out.append(uproot._util.tobytes(leaf_header))
             if len(leaf_name) < 255:
                 out.append(
-                    struct.pack(">B%ds" % len(leaf_name), len(leaf_name), leaf_name)
+                    struct.pack(f">B{len(leaf_name)}s", len(leaf_name), leaf_name)
                 )
             else:
                 out.append(
-                    struct.pack(
-                        ">BI%ds" % len(leaf_name), 255, len(leaf_name), leaf_name
-                    )
+                    struct.pack(f">BI{len(leaf_name)}s", 255, len(leaf_name), leaf_name)
                 )
             if len(leaf_title) < 255:
                 out.append(
-                    struct.pack(">B%ds" % len(leaf_title), len(leaf_title), leaf_title)
+                    struct.pack(f">B{len(leaf_title)}s", len(leaf_title), leaf_title)
                 )
             else:
                 out.append(
                     struct.pack(
-                        ">BI%ds" % len(leaf_title), 255, len(leaf_title), leaf_title
+                        f">BI{len(leaf_title)}s", 255, len(leaf_title), leaf_title
                     )
                 )
 
