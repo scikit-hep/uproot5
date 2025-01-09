@@ -11,9 +11,7 @@ def test_schema_extension():
     with uproot.open(filename) as f:
         obj = f["ntuple"]
 
-        assert len(obj.page_list_envelopes.pagelinklist[0]) < len(
-            obj.page_list_envelopes.pagelinklist[1]
-        )
+        assert len(obj.page_link_list[0]) < len(obj.page_link_list[1])
 
         assert len(obj.column_records) > len(obj.header.column_records)
         assert len(obj.column_records) == 4
