@@ -27,6 +27,7 @@ import struct
 import uuid
 
 import numpy
+import xxhash
 
 import uproot.compression
 import uproot.const
@@ -1730,58 +1731,62 @@ class Directory(CascadeNode):
     def add_rntuple(self, sink, name, title, akform):
         import uproot.writing._cascadentuple
 
+        rntuple_spec_version_epoch = 1
+        rntuple_spec_version_major = 0
+        rntuple_spec_version_minor = 0
+        rntuple_spec_version_patch = 0
+
         anchor = uproot.writing._cascadentuple.NTuple_Anchor(
-            None, 0, 0, 48, None, None, None, None, None, None, 0
+            None,
+            rntuple_spec_version_epoch,
+            rntuple_spec_version_major,
+            rntuple_spec_version_minor,
+            rntuple_spec_version_patch,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            0,  # TODO: Fix this
         )
 
         header = uproot.writing._cascadentuple.NTuple_Header(None, name, "", akform)
 
         footer = uproot.writing._cascadentuple.NTuple_Footer(
-            None, 0, header._crc32, akform
+            None, 0, header._checksum, akform
         )
 
-        # the empty page list is hard-coded bytes which represents:
-        # 0                   1                   2                   3
-        # 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
-        # +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-        # |        Envelope Version       |        Minimum Version        |
-        # +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-        # |                             Size                            |T|
-        # +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-        # |           Number of Items (for list frames)           |Reserv.|
-        # +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-        # |                         FRAME PAYLOAD                         |
-        # +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-        # |                             CRC32                             |
-        # +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-        #
-        # - Envelope Version = 1 (0x0100)
-        # - Minimum Version = 1  (0x0100)
-        # - Size = -8 (0xf8ffffff) [value is negative because this is a list]
-        # - Number of Items = 0 (0x00000000) [empty list]
-        # - FRAME PAYLOAD = empty [because number of items is 0]
-        # - CRC32 = 2678769841
-        # manually calculate CRC32:
-
-        # In [1]: zlib.crc32(b'\x01\x00\x01\x00\xf8\xff\xff\xff\00\00\00\00')
-        # Out[1]: 2678769841
-        # In [2]: np.array([177, 200, 170, 159], dtype=np.uint8).view("uint32")
-        # Out[2]: array([2678769841], dtype=uint32)
-
-        empty_page_list_bytes = numpy.array(
-            [1, 0, 1, 0, 248, 255, 255, 255, 0, 0, 0, 0, 177, 200, 170, 159],
-            dtype=numpy.uint8,
+        empty_page_list_headerbytes = (
+            uproot.writing._cascadentuple._serialize_envelope_header(
+                uproot.const.RNTupleEnvelopeType.PAGELIST, 48
+            )
         )
-        offset = self._freesegments.allocate(16)
-        footer.cluster_group_record_frames[0].page_list_envlink.locator = (
-            uproot.writing._cascadentuple.NTuple_Locator(16, offset)
+        header.serialize()  # so that checksum is computed
+        empty_page_list_payloadbytes = (
+            uproot.models.RNTuple._rntuple_checksum_format.pack(header._checksum)
         )
+        empty_page_list_payloadbytes += (
+            uproot.writing._cascadentuple._serialize_rntuple_list_frame([])
+        )  # cluster summaries
+        empty_page_list_payloadbytes += (
+            uproot.writing._cascadentuple._serialize_rntuple_list_frame([])
+        )  # page locations
+        empty_page_list_bytes = (
+            empty_page_list_headerbytes + empty_page_list_payloadbytes
+        )
+
+        empty_page_checksum = xxhash.xxh3_64_intdigest(empty_page_list_bytes)
+        checksum_bytes = uproot.models.RNTuple._rntuple_checksum_format.pack(
+            empty_page_checksum
+        )
+        empty_page_list_bytes += checksum_bytes
 
         ntuple = uproot.writing._cascadentuple.NTuple(
             self, name, title, akform, self._freesegments, header, footer, [], anchor
         )
 
-        sink.write(offset, empty_page_list_bytes)
+        # sink.write(offset, empty_page_list_bytes)
         ntuple.write(sink)
         sink.flush()
         return ntuple
