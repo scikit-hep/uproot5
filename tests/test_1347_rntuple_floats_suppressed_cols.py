@@ -156,11 +156,11 @@ def test_multiple_representations():
     with uproot.open(filename) as f:
         obj = f["ntuple"]
 
-        assert len(obj.page_list_envelopes.pagelinklist) == 3
+        assert len(obj.page_link_list) == 3
         # The zeroth representation is active in clusters 0 and 2, but not in cluster 1
-        assert not obj.page_list_envelopes.pagelinklist[0][0].suppressed
-        assert obj.page_list_envelopes.pagelinklist[1][0].suppressed
-        assert not obj.page_list_envelopes.pagelinklist[2][0].suppressed
+        assert not obj.page_link_list[0][0].suppressed
+        assert obj.page_link_list[1][0].suppressed
+        assert not obj.page_link_list[2][0].suppressed
 
         arrays = obj.arrays()
 

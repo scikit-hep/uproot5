@@ -160,9 +160,7 @@ def _num_entries_for(in_ntuple, target_num_bytes, filter_name):
         if "column" in key and "union" not in key:
             key_nr = int(key.split("-")[1])
             for cluster in range(start_cluster_idx, stop_cluster_idx):
-                pages = in_ntuple.ntuple.page_list_envelopes.pagelinklist[cluster][
-                    key_nr
-                ].pages
+                pages = in_ntuple.ntuple.page_link_list[cluster][key_nr].pages
                 total_bytes += sum(page.locator.num_bytes for page in pages)
 
     total_entries = entry_stop
@@ -288,6 +286,8 @@ in file {self.file.file_path}"""
         self._length = None
 
         self._page_list_envelopes = []
+        self._cluster_summaries = None
+        self._page_link_list = None
 
         self.ntuple = self
 
@@ -431,7 +431,19 @@ in file {self.file.file_path}"""
 
     @property
     def cluster_summaries(self):
-        return self.page_list_envelopes.cluster_summaries
+        if self._cluster_summaries is None:
+            self._cluster_summaries = []
+            for pl in self.page_list_envelopes:
+                self._cluster_summaries.extend(pl.cluster_summaries)
+        return self._cluster_summaries
+
+    @property
+    def page_link_list(self):
+        if self._page_link_list is None:
+            self._page_link_list = []
+            for pl in self.page_list_envelopes:
+                self._page_link_list.extend(pl.pagelinklist)
+        return self._page_link_list
 
     @property
     def num_entries(self):
@@ -512,8 +524,8 @@ in file {self.file.file_path}"""
                 decomp_chunk, cursor = self.read_locator(
                     loc, link.env_uncomp_size, context
                 )
-                self._page_list_envelopes = PageLink().read(
-                    decomp_chunk, cursor, context
+                self._page_list_envelopes.append(
+                    PageLink().read(decomp_chunk, cursor, context)
                 )
 
         return self._page_list_envelopes
@@ -785,7 +797,7 @@ in file {self.file.file_path}"""
         return res
 
     def read_col_page(self, ncol, cluster_i):
-        linklist = self.page_list_envelopes.pagelinklist[cluster_i]
+        linklist = self.ntuple.page_link_list[cluster_i]
         # Check if the column is suppressed and pick the non-suppressed one if so
         if ncol < len(linklist) and linklist[ncol].suppressed:
             rel_crs = self._column_records_dict[self.column_records[ncol].field_id]
@@ -1203,9 +1215,6 @@ class RNTupleSchemaExtension:
 class FooterReader:
     def __init__(self):
         self.extension_header_links = RNTupleSchemaExtension()
-        self.cluster_summary_frames = ListFrameReader(
-            RecordFrameReader(ClusterSummaryReader())
-        )
         self.cluster_group_record_frames = ListFrameReader(
             RecordFrameReader(ClusterGroupRecordReader())
         )
