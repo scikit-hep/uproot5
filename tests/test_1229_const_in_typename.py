@@ -19,8 +19,8 @@ def tree(datafile):
 
 
 def test_const_in_typename(tree):
-    assert tree["branch/pointer"].typename == 'TFooMember*'
-    assert tree["branch/const_pointer"].typename == 'TFooMember*'
+    assert tree["branch/pointer"].typename == "TFooMember*"
+    assert tree["branch/const_pointer"].typename == "TFooMember*"
 
 
 def test_const_parse_typename():
