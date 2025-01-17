@@ -85,6 +85,8 @@ class Tree:
         field_name,
         initial_basket_capacity,
         resize_factor,
+        existing_branches=None,
+        existing_ttree=None,
     ):
         self._directory = directory
         self._name = name
@@ -94,6 +96,8 @@ class Tree:
         self._field_name = field_name
         self._basket_capacity = initial_basket_capacity
         self._resize_factor = resize_factor
+        self._existing_branches = existing_branches
+        self._existing_ttree = existing_ttree
 
         if isinstance(branch_types, dict):
             branch_types_items = branch_types.items()
@@ -850,7 +854,6 @@ class Tree:
         self._num_baskets += 1
         self._metadata["fTotBytes"] += uncompressed_bytes
         self._metadata["fZipBytes"] += compressed_bytes
-
         self.write_updates(sink)
 
     def write_anew(self, sink):
@@ -1194,7 +1197,6 @@ class Tree:
                     uproot.const.kNewClassTag,
                 )
             )
-
         out[tobjarray_of_branches_index] = uproot.serialization.numbytes_version(
             sum(len(x) for x in out[tobjarray_of_branches_index + 1 :]), 3  # TObjArray
         )
@@ -1599,6 +1601,528 @@ class Tree:
         sink.flush()
 
         return fKeylen + fObjlen, fNbytes, location
+
+    def add_branches(self, sink, directory, new_branches):
+        # Get readonlykey for old tree
+        if ";" in self._name:
+            at = self._name.rindex(";")
+            item, cycle = self._name[:at], self._name[at + 1 :]
+            key = self._directory.data.get_key(item, cycle)
+        else:
+            key = self._directory.data.get_key(self._name, None)
+
+        streamers = self._write_with_new_branches(sink, key)
+        self.extend(directory.file, sink, new_branches)
+        return streamers
+
+    def _write_with_new_branches(self, sink, old_key):
+        models_for_streamers = []
+        key_num_bytes = uproot.reading._key_format_big.size + 6
+        name_asbytes = self._name.encode(errors="surrogateescape")
+        title_asbytes = self._title.encode(errors="surrogateescape")
+        key_num_bytes += (1 if len(name_asbytes) < 255 else 5) + len(name_asbytes)
+        key_num_bytes += (1 if len(title_asbytes) < 255 else 5) + len(title_asbytes)
+
+        out = [None]
+        ttree_header_index = 0
+
+        tobject = uproot.models.TObject.Model_TObject.empty()
+        tnamed = uproot.models.TNamed.Model_TNamed.empty()
+        tnamed._bases.append(tobject)
+        tnamed._members["fTitle"] = self._title
+        tnamed._serialize(out, True, self._name, uproot.const.kMustCleanup)
+
+        # TAttLine v2, fLineColor: 602 fLineStyle: 1 fLineWidth: 1
+        # TAttFill v2, fFillColor: 0, fFillStyle: 1001
+        # TAttMarker v2, fMarkerColor: 1, fMarkerStyle: 1, fMarkerSize: 1.0
+        out.append(
+            b"@\x00\x00\x08\x00\x02\x02Z\x00\x01\x00\x01"
+            b"@\x00\x00\x06\x00\x02\x00\x00\x03\xe9"
+            b"@\x00\x00\n\x00\x02\x00\x01\x00\x01?\x80\x00\x00"
+        )
+
+        metadata_out_index = len(out)
+        out.append(
+            uproot.models.TTree._ttree20_format1.pack(
+                self._num_entries,
+                self._metadata["fTotBytes"],
+                self._metadata["fZipBytes"],
+                self._metadata["fSavedBytes"],
+                self._metadata["fFlushedBytes"],
+                self._metadata["fWeight"],
+                self._metadata["fTimerInterval"],
+                self._metadata["fScanField"],
+                self._metadata["fUpdate"],
+                self._metadata["fDefaultEntryOffsetLen"],
+                self._metadata["fNClusterRange"],
+                self._metadata["fMaxEntries"],
+                self._metadata["fMaxEntryLoop"],
+                self._metadata["fMaxVirtualSize"],
+                self._metadata["fAutoSave"],
+                self._metadata["fAutoFlush"],
+                self._metadata["fEstimate"],
+            )
+        )
+        # speedbump (0), fClusterRangeEnd (empty array),
+        # speedbump (0), fClusterSize (empty array)
+        # fIOFeatures (TIOFeatures)
+        out.append(b"\x00\x00@\x00\x00\x07\x00\x00\x1a\xa1/\x10\x00")
+
+        tleaf_reference_numbers = []
+
+        tobjarray_of_branches_index = len(out)
+        out.append(None)
+
+        num_branches = sum(
+            0 if datum["kind"] == "record" else 1 for datum in self._branch_data
+        )
+
+        # Include original branches in num_branches
+        num_branches += len(self._existing_branches)
+
+        # TObjArray header with fName: ""
+        out.append(b"\x00\x01\x00\x00\x00\x00\x03\x00@\x00\x00")
+        out.append(
+            uproot.models.TObjArray._tobjarray_format1.pack(
+                num_branches,  # TObjArray fSize
+                0,  # TObjArray fLowerBound
+            )
+        )
+        # Write old branches
+        if self._existing_branches:
+            for branch in self._existing_branches:
+                cursor = branch.cursor.copy()
+
+                # cursor before TObjArray of TBranches
+                first_indx = cursor.index
+                cursor.skip_after(branch)
+                second_indx = cursor.index
+
+                f_indx = branch.member("fLeaves").cursor.index
+
+                branch_start = (
+                    len(
+                        uproot.writing.identify.to_TString(branch.classname).serialize()
+                    )
+                    + 2
+                )
+
+                if len(branch.branches) == 0:
+                    # No subbranches
+                    # Write remainder of branch
+                    out.append(
+                        self._existing_ttree.chunk.raw_data.tobytes()[
+                            first_indx - branch_start : f_indx + 25
+                        ]
+                    )
+                    absolute_location = key_num_bytes + sum(
+                        len(x) for x in out if x is not None
+                    )
+
+                    absolute_location += 8 + 6 * (
+                        sum(1 if x is None else 0 for x in out) - 1
+                    )
+
+                    tleaf_reference_numbers.append(absolute_location)
+                    out.append(
+                        self._existing_ttree.chunk.raw_data.tobytes()[
+                            f_indx + 25 : second_indx
+                        ]
+                    )
+                else:
+                    # With subbranches
+                    subbranch = branch.branches[0]
+                    cursor = subbranch.cursor.copy()
+                    # cursor before TObjArray of TBranches
+                    first_indx1 = cursor.index
+                    cursor.skip_after(subbranch)
+                    second_indx1 = cursor.index
+
+                    f_indx1 = subbranch.member("fLeaves").cursor.index
+
+                    out.append(
+                        self._existing_ttree.chunk.raw_data.tobytes()[
+                            first_indx - branch_start : first_indx1 - 8
+                        ]
+                    )
+                    for (
+                        subbranch
+                    ) in branch.branches:  # how to get it to not copy all subbranches?
+                        cursor = subbranch.cursor.copy()
+                        # cursor before TObjArray of TBranches
+                        first_indx1 = cursor.index
+                        cursor.skip_after(subbranch)
+                        second_indx1 = cursor.index
+
+                        f_indx1 = subbranch.member("fLeaves").cursor.index
+
+                        branch_start = (
+                            len(
+                                uproot.writing.identify.to_TString(
+                                    subbranch.classname
+                                ).serialize()
+                            )
+                            + 2
+                        )
+                        out.append(
+                            self._existing_ttree.chunk.raw_data.tobytes()[
+                                first_indx1 - 8 : f_indx1 + 25
+                            ]
+                        )
+                        # Write TLeaf Reference
+                        absolute_location = key_num_bytes + sum(
+                            len(x) for x in out if x is not None
+                        )
+                        absolute_location += 8 + 6 * (
+                            sum(1 if x is None else 0 for x in out) - 1
+                        )
+
+                        tleaf_reference_numbers.append(absolute_location)
+
+                        # Write remainder of branch
+                        out.append(
+                            self._existing_ttree.chunk.raw_data.tobytes()[
+                                f_indx1 + 25 : second_indx1
+                            ]
+                        )
+                    # Write TLeaf Reference
+                    absolute_location = key_num_bytes + sum(
+                        len(x) for x in out if x is not None
+                    )
+                    absolute_location += 8 + 6 * (
+                        sum(1 if x is None else 0 for x in out) - 1
+                    )
+
+                    tleaf_reference_numbers.append(absolute_location)
+                    out.append(
+                        self._existing_ttree.chunk.raw_data.tobytes()[
+                            second_indx1:second_indx
+                        ]
+                    )
+        for datum in self._branch_data:
+            if datum["kind"] == "record":
+                continue
+
+            any_tbranch_index = len(out)
+            out.append(None)
+            out.append(b"TBranch\x00")
+
+            tbranch_index = len(out)
+            out.append(None)
+
+            tbranch_tobject = uproot.models.TObject.Model_TObject.empty()
+            tbranch_tnamed = uproot.models.TNamed.Model_TNamed.empty()
+            tbranch_tnamed._bases.append(tbranch_tobject)
+            tbranch_tnamed._members["fTitle"] = datum["fTitle"]
+            tbranch_tnamed._serialize(
+                out, True, datum["fName"], numpy.uint32(0x00400000)
+            )
+
+            # TAttFill v2, fFillColor: 0, fFillStyle: 1001
+            out.append(b"@\x00\x00\x06\x00\x02\x00\x00\x03\xe9")
+
+            assert sum(1 if x is None else 0 for x in out) == 4
+            datum["metadata_start"] = (6 + 6 + 8 + 6) + sum(
+                len(x) for x in out if x is not None
+            )
+
+            # Lie about the compression level so that ROOT checks and does the right thing.
+            # https://github.com/root-project/root/blob/87a998d48803bc207288d90038e60ff148827664/tree/tree/src/TBasket.cxx#L560-L578
+            # Without this, when small buffers are left uncompressed, ROOT complains about them not being compressed.
+            # (I don't know where the "no, really, this is uncompressed" bit is.)
+            fCompress = 0
+
+            out.append(
+                uproot.models.TBranch._tbranch13_format1.pack(
+                    fCompress,
+                    datum["fBasketSize"],
+                    datum["fEntryOffsetLen"],
+                    self._num_baskets,  # fWriteBasket
+                    self._num_entries,  # fEntryNumber
+                )
+            )
+            # fIOFeatures (TIOFeatures)
+            out.append(b"@\x00\x00\x07\x00\x00\x1a\xa1/\x10\x00")
+
+            out.append(
+                uproot.models.TBranch._tbranch13_format2.pack(
+                    datum["fOffset"],
+                    self._basket_capacity,  # fMaxBaskets
+                    datum["fSplitLevel"],
+                    self._num_entries,  # fEntries
+                    datum["fFirstEntry"],
+                    datum["fTotBytes"],
+                    datum["fZipBytes"],
+                )
+            )
+            if uproot.models.TBranch.Model_TBranch_v13 not in models_for_streamers:
+                models_for_streamers.append(uproot.models.TBranch.Model_TBranch_v13)
+            # empty TObjArray of TBranches
+            out.append(
+                b"@\x00\x00\x15\x00\x03\x00\x01\x00\x00\x00\x00\x03\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+            )
+
+            subtobjarray_of_leaves_index = len(out)
+            out.append(None)
+
+            # TObjArray header with fName: "", fSize: 1, fLowerBound: 0
+            out.append(
+                b"\x00\x01\x00\x00\x00\x00\x03\x00\x00\x00\x00\x00\x00\x00\x01\x00\x00\x00\x00"
+            )
+
+            absolute_location = key_num_bytes + sum(
+                len(x) for x in out if x is not None
+            )
+            absolute_location += 8 + 6 * (sum(1 if x is None else 0 for x in out) - 1)
+            datum["tleaf_reference_number"] = absolute_location + 2
+            tleaf_reference_numbers.append(datum["tleaf_reference_number"])
+            subany_tleaf_index = len(out)
+            out.append(None)
+
+            letter = _dtype_to_char[datum["dtype"]]
+            letter_upper = letter.upper()
+            out.append(("TLeaf" + letter_upper).encode() + b"\x00")
+            if letter_upper == "O":
+                special_struct = uproot.models.TLeaf._tleafO1_format1
+                model = uproot.models.TLeaf.Model_TLeafO_v1
+            elif letter_upper == "B":
+                special_struct = uproot.models.TLeaf._tleafb1_format1
+                model = uproot.models.TLeaf.Model_TLeafB_v1
+            elif letter_upper == "S":
+                special_struct = uproot.models.TLeaf._tleafs1_format1
+                model = uproot.models.TLeaf.Model_TLeafS_v1
+            elif letter_upper == "I":
+                special_struct = uproot.models.TLeaf._tleafi1_format1
+                model = uproot.models.TLeaf.Model_TLeafI_v1
+            elif letter_upper == "G":
+                special_struct = uproot.models.TLeaf._tleafl1_format0
+            elif letter_upper == "L":
+                special_struct = uproot.models.TLeaf._tleafl1_format0
+                model = uproot.models.TLeaf.Model_TLeafL_v1
+            elif letter_upper == "F":
+                special_struct = uproot.models.TLeaf._tleaff1_format1
+                model = uproot.models.TLeaf.Model_TLeafF_v1
+            elif letter_upper == "D":
+                special_struct = uproot.models.TLeaf._tleafd1_format1
+                model = uproot.models.TLeaf.Model_TLeafD_v1
+            elif letter_upper == "C":
+                special_struct = uproot.models.TLeaf._tleafc1_format1
+                model = uproot.models.TLeaf.Model_TLeafC_v1
+            if model not in models_for_streamers:
+                models_for_streamers.append(model)
+            fLenType = datum["dtype"].itemsize
+            fIsUnsigned = letter != letter_upper
+
+            if datum["shape"] == ():
+                dims = ""
+            else:
+                dims = "".join("[" + str(x) + "]" for x in datum["shape"])
+
+            if datum["counter"] is not None:
+                dims = "[" + datum["counter"]["fName"] + "]" + dims
+            # single TLeaf
+            leaf_name = datum["fName"].encode(errors="surrogateescape")
+            leaf_title = (datum["fName"] + dims).encode(errors="surrogateescape")
+            leaf_name_length = (1 if len(leaf_name) < 255 else 5) + len(leaf_name)
+            leaf_title_length = (1 if len(leaf_title) < 255 else 5) + len(leaf_title)
+
+            leaf_header = numpy.array(
+                [
+                    64,
+                    0,
+                    0,
+                    76,
+                    0,
+                    1,
+                    64,
+                    0,
+                    0,
+                    54,
+                    0,
+                    2,
+                    64,
+                    0,
+                    0,
+                    30,
+                    0,
+                    1,
+                    0,
+                    1,
+                    0,
+                    0,
+                    0,
+                    0,
+                    3,
+                    0,
+                    0,
+                    0,
+                ],
+                numpy.uint8,
+            )
+            tmp = leaf_header[0:4].view(">u4")
+            tmp[:] = (
+                numpy.uint32(
+                    42 + leaf_name_length + leaf_title_length + special_struct.size
+                )
+                | uproot.const.kByteCountMask
+            )
+            tmp = leaf_header[6:10].view(">u4")
+            tmp[:] = (
+                numpy.uint32(36 + leaf_name_length + leaf_title_length)
+                | uproot.const.kByteCountMask
+            )
+            tmp = leaf_header[12:16].view(">u4")
+            tmp[:] = (
+                numpy.uint32(12 + leaf_name_length + leaf_title_length)
+                | uproot.const.kByteCountMask
+            )
+
+            out.append(uproot._util.tobytes(leaf_header))
+            if len(leaf_name) < 255:
+                out.append(
+                    struct.pack(">B%ds" % len(leaf_name), len(leaf_name), leaf_name)
+                )
+            else:
+                out.append(
+                    struct.pack(
+                        ">BI%ds" % len(leaf_name), 255, len(leaf_name), leaf_name
+                    )
+                )
+            if len(leaf_title) < 255:
+                out.append(
+                    struct.pack(">B%ds" % len(leaf_title), len(leaf_title), leaf_title)
+                )
+            else:
+                out.append(
+                    struct.pack(
+                        ">BI%ds" % len(leaf_title), 255, len(leaf_title), leaf_title
+                    )
+                )
+
+            fLen = 1
+            for item in datum["shape"]:
+                fLen *= item
+
+            # generic TLeaf members
+            out.append(
+                uproot.models.TLeaf._tleaf2_format0.pack(
+                    fLen,
+                    fLenType,
+                    0,  # fOffset
+                    datum["kind"] == "counter",  # fIsRange
+                    fIsUnsigned,
+                )
+            )
+            if datum["counter"] is None:
+                # null fLeafCount
+                out.append(b"\x00\x00\x00\x00")
+            else:
+                # reference to fLeafCount
+                out.append(
+                    uproot.deserialization._read_object_any_format1.pack(
+                        datum["counter"]["tleaf_reference_number"]
+                    )
+                )
+            # specialized TLeaf* members (fMinimum, fMaximum)
+            out.append(special_struct.pack(0, 0))
+
+            datum["tleaf_special_struct"] = special_struct
+
+            out[subany_tleaf_index] = (
+                uproot.serialization._serialize_object_any_format1.pack(
+                    numpy.uint32(sum(len(x) for x in out[subany_tleaf_index + 1 :]) + 4)
+                    | uproot.const.kByteCountMask,
+                    uproot.const.kNewClassTag,
+                )
+            )
+            out[subtobjarray_of_leaves_index] = uproot.serialization.numbytes_version(
+                sum(len(x) for x in out[subtobjarray_of_leaves_index + 1 :]),
+                3,  # TObjArray
+            )
+
+            # empty TObjArray of fBaskets (embedded)
+            out.append(
+                b"@\x00\x00\x15\x00\x03\x00\x01\x00\x00\x00\x00\x03\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+            )
+
+            assert sum(1 if x is None else 0 for x in out) == 4
+            datum["basket_metadata_start"] = (6 + 6 + 8 + 6) + sum(
+                len(x) for x in out if x is not None
+            )
+
+            # speedbump and fBasketBytes
+            out.append(b"\x01")
+            out.append(uproot._util.tobytes(datum["fBasketBytes"]))
+            # speedbump and fBasketEntry
+            out.append(b"\x01")
+            out.append(uproot._util.tobytes(datum["fBasketEntry"]))
+            # speedbump and fBasketSeek
+            out.append(b"\x01")
+            out.append(uproot._util.tobytes(datum["fBasketSeek"]))
+            # empty fFileName
+            out.append(b"\x00")
+
+            out[tbranch_index] = uproot.serialization.numbytes_version(
+                sum(len(x) for x in out[tbranch_index + 1 :]), 13  # TBranch
+            )
+
+            out[any_tbranch_index] = (
+                uproot.serialization._serialize_object_any_format1.pack(
+                    numpy.uint32(sum(len(x) for x in out[any_tbranch_index + 1 :]) + 4)
+                    | uproot.const.kByteCountMask,
+                    uproot.const.kNewClassTag,
+                )
+            )
+
+        out[tobjarray_of_branches_index] = uproot.serialization.numbytes_version(
+            sum(len(x) for x in out[tobjarray_of_branches_index + 1 :]), 3  # TObjArray
+        )
+        # TODO find tleaf reference numbers and append them ?? or update and then append
+
+        # TObjArray of TLeaf references
+        tleaf_reference_bytes = uproot._util.tobytes(
+            numpy.array(tleaf_reference_numbers, ">u4")
+        )
+
+        out.append(  # This is still fine
+            struct.pack(
+                ">I13sI4s",
+                (21 + len(tleaf_reference_bytes)) | uproot.const.kByteCountMask,
+                b"\x00\x03\x00\x01\x00\x00\x00\x00\x03\x00\x00\x00\x00",
+                len(tleaf_reference_numbers),
+                b"\x00\x00\x00\x00",
+            )
+        )
+
+        out.append(tleaf_reference_bytes)
+        # null fAliases (b"\x00\x00\x00\x00")
+        # empty fIndexValues array (4-byte length is zero)
+        # empty fIndex array (4-byte length is zero)
+        # null fTreeIndex (b"\x00\x00\x00\x00")
+        # null fFriends (b"\x00\x00\x00\x00")
+        # null fUserInfo (b"\x00\x00\x00\x00")
+        # null fBranchRef (b"\x00\x00\x00\x00")
+        out.append(b"\x00" * 28)
+
+        out[ttree_header_index] = uproot.serialization.numbytes_version(
+            sum(len(x) for x in out[ttree_header_index + 1 :]), 20  # TTree
+        )
+
+        self._metadata_start = sum(len(x) for x in out[:metadata_out_index])
+
+        raw_data = b"".join(out)
+
+        self._key = self._directory.add_object(
+            sink,
+            "TTree",
+            self._name,
+            self._title,
+            raw_data,
+            len(raw_data),
+            replaces=old_key,
+            big=True,
+        )
+        return models_for_streamers
 
 
 _tbasket_offsets_length = struct.Struct(">I")
