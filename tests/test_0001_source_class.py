@@ -117,6 +117,7 @@ def test_memmap_fail(use_threads, tmp_path):
             ...
 
 
+@pytest.mark.skip(reason="example.com is responding with 200, rather than 206, now")
 @pytest.mark.parametrize("use_threads", [True, False])
 @pytest.mark.network
 def test_http(use_threads):
@@ -157,6 +158,7 @@ def test_colons_and_ports():
     ) == ("https://example.com:443/file.root", "object")
 
 
+@pytest.mark.skip(reason="example.com is responding with 200, rather than 206, now")
 @pytest.mark.parametrize("use_threads", [True, False], indirect=True)
 @pytest.mark.network
 def test_http_port(use_threads):
