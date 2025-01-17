@@ -921,19 +921,6 @@ def _parse_node(tokens, i, typename, file, quote, header, inner_header):
             _parse_maybe_quote(f"uproot.containers.AsString({header})", quote),
         )
 
-    elif (
-        has2
-        and tokens[i].group(0) == "const"
-        and (
-            tokens[i + 1].group(0) == "string"
-            or _simplify_token(tokens[i + 1]) == "std::string"
-        )
-    ):
-        return (
-            i + 2,
-            _parse_maybe_quote(f"uproot.containers.AsString({header})", quote),
-        )
-
     elif tokens[i].group(0) == "TString":
         return (
             i + 1,
@@ -944,18 +931,6 @@ def _parse_node(tokens, i, typename, file, quote, header, inner_header):
     elif _simplify_token(tokens[i]) == "char*":
         return (
             i + 1,
-            _parse_maybe_quote(
-                "uproot.containers.AsString(False, length_bytes='4', typename='char*')",
-                quote,
-            ),
-        )
-    elif (
-        has2
-        and tokens[i].group(0) == "const"
-        and _simplify_token(tokens[i + 1]) == "char*"
-    ):
-        return (
-            i + 2,
             _parse_maybe_quote(
                 "uproot.containers.AsString(False, length_bytes='4', typename='char*')",
                 quote,
