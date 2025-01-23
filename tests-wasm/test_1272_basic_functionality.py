@@ -75,7 +75,7 @@ def test_read_rntuple(selenium):
     import uproot
 
     with uproot.open("test_extension_columns_rntuple_v1-0-0-0.root") as f:
-        obj = f["EventData"]
+        obj = f["ntuple"]
 
         assert len(obj.column_records) > len(obj.header.column_records)
         assert len(obj.column_records) == 936
