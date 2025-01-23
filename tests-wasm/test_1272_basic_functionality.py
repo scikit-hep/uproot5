@@ -70,12 +70,11 @@ def test_write_ttree(selenium):
 
 
 # Taken from test_1191_rntuple_fixes.py
-@pytest.mark.skip(reason="Skipping until test files are available with RNTuple v1.0")
-@run_test_in_pyodide(test_file="test_ntuple_extension_columns.root")
+@run_test_in_pyodide(test_file="test_extension_columns_rntuple_v1-0-0-0.root")
 def test_read_rntuple(selenium):
     import uproot
 
-    with uproot.open("test_ntuple_extension_columns.root") as f:
+    with uproot.open("test_extension_columns_rntuple_v1-0-0-0.root") as f:
         obj = f["EventData"]
 
         assert len(obj.column_records) > len(obj.header.column_records)
@@ -96,7 +95,6 @@ def test_read_rntuple(selenium):
 
 
 # Taken from test_0034_generic_objects_in_ttrees.py
-@pytest.mark.skip(reason="Skipping until test files are available with RNTuple v1.0")
 @pytest.mark.network
 @run_test_in_pyodide(packages=["requests"])
 def test_read_ttree_http(selenium):
@@ -118,14 +116,13 @@ def test_read_ttree_http(selenium):
 
 
 # Taken from test_1191_rntuple_fixes.py
-@pytest.mark.skip(reason="Skipping until test files are available with RNTuple v1.0")
 @pytest.mark.network
 @run_test_in_pyodide(packages=["requests"])
 def test_read_rntuple_http(selenium):
     import uproot
 
     with uproot.open(
-        "https://github.com/scikit-hep/scikit-hep-testdata/raw/main/src/skhep_testdata/data/Run2012BC_DoubleMuParked_Muons_rntuple_1000evts.root",
+        "https://github.com/scikit-hep/scikit-hep-testdata/raw/main/src/skhep_testdata/data/Run2012BC_DoubleMuParked_Muons_1000evts_rntuple_v1-0-0-0.root",
         handler=uproot.source.http.HTTPSource,
     ) as f:
         obj = f["Events"]
