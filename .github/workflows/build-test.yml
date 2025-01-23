@@ -127,9 +127,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
-      PYODIDE_VERSION: 0.26.2
-      PYODIDE_BUILD_VERSION: 0.28.0
-      AWKWARD_VERSION: v2.6.4
+      PYODIDE_VERSION: 0.27.1
+      PYODIDE_BUILD_VERSION: 0.29.2
+      AWKWARD_VERSION: v2.7.2
 
     steps:
       - name: Checkout
