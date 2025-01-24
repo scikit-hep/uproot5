@@ -10,7 +10,7 @@ max-complexity = 100
 
 [project]
 authors = [
-  {name = "Jim Pivarski", email = "pivarski@princeton.edu"}
+  {name = "Jim Pivarski", email = "jpivarski@gmail.com"}
 ]
 classifiers = [
   "Development Status :: 5 - Production/Stable",
