@@ -1009,7 +1009,7 @@ class WritableDirectory(MutableMapping):
                 raise TypeError(
                     "WritableDirectory cannot view preexisting TTrees; open the file with uproot.open instead of uproot.recreate or uproot.update"
                 )
-        elif key.classname.string == "ROOT::Experimental::RNTuple":
+        elif key.classname.string == "ROOT::RNTuple":
             if self._file._has_ntuple(key.seek_location):
                 return self._file._get_ntuple(key.seek_location)
             else:
