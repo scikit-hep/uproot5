@@ -10,7 +10,7 @@ max-complexity = 100
 
 [project]
 authors = [
-  {name = "Jim Pivarski", email = "pivarski@princeton.edu"}
+  {name = "Jim Pivarski", email = "jpivarski@gmail.com"}
 ]
 classifiers = [
   "Development Status :: 5 - Production/Stable",
@@ -58,6 +58,7 @@ requires-python = ">=3.9"
 dev = [
   "boost_histogram>=0.13",
   "dask-awkward>=2024.12.1",
+  "dask[dataframe] >=2022,<2025",
   "dask[array,distributed]",
   "hist>=1.2",
   "pandas",
