@@ -58,7 +58,6 @@ requires-python = ">=3.9"
 dev = [
   "boost_histogram>=0.13",
   "dask-awkward>=2024.12.1",
-  "dask[dataframe] >=2022,<2025",
   "dask[array,distributed]",
   "hist>=1.2",
   "pandas",
