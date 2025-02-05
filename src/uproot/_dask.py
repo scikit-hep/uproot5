@@ -1392,8 +1392,10 @@ def _get_ttree_form(
         content_form = branch.interpretation.awkward_form(ttree.file)
         if ak_add_doc or ak_add_typename:
             content_parameters = {}
-            if ak_add_doc : content_parameters["__doc__"] = branch.title
-            if ak_add_typename : content_parameters["typename"] = branch.typename
+            if ak_add_doc:
+                content_parameters["__doc__"] = branch.title
+            if ak_add_typename:
+                content_parameters["typename"] = branch.typename
             content_form = content_form.copy(parameters=content_parameters)
         contents.append(content_form)
 
@@ -1550,7 +1552,11 @@ which has {entry_stop} entries"""
                     partition_args.append((i, start, stop))
 
     base_form = _get_ttree_form(
-        awkward, ttrees[0], common_keys, interp_options.get("ak_add_doc"), interp_options.get("ak_add_typename")
+        awkward,
+        ttrees[0],
+        common_keys,
+        interp_options.get("ak_add_doc"),
+        interp_options.get("ak_add_typename"),
     )
 
     if len(partition_args) == 0:
@@ -1624,7 +1630,11 @@ def _get_dak_array_delay_open(
             ignore_duplicates=True,
         )
         base_form = _get_ttree_form(
-            awkward, obj, common_keys, interp_options.get("ak_add_doc"), interp_options.get("ak_add_typename")
+            awkward,
+            obj,
+            common_keys,
+            interp_options.get("ak_add_doc"),
+            interp_options.get("ak_add_typename"),
         )
 
     divisions = [0]

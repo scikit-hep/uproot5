@@ -556,6 +556,7 @@ def _ak_add_doc_typename(array, hasbranches, ak_add_doc, ak_add_typename):
             array.layout.parameters["typename"] = hasbranches.typename
     return array
 
+
 class HasBranches(Mapping):
     """
     Abstract class of behaviors for anything that "has branches," namely
@@ -898,7 +899,10 @@ class HasBranches(Mapping):
         ]
 
         return _ak_add_doc_typename(
-            library.group(output, expression_context, how), self, ak_add_doc,  ak_add_typename
+            library.group(output, expression_context, how),
+            self,
+            ak_add_doc,
+            ak_add_typename,
         )
 
     def iterate(
@@ -1085,7 +1089,10 @@ class HasBranches(Mapping):
                                     )
 
                 arrays = {}
-                interp_options = {"ak_add_doc": ak_add_doc, "ak_add_typename": ak_add_typename}
+                interp_options = {
+                    "ak_add_doc": ak_add_doc,
+                    "ak_add_typename": ak_add_typename,
+                }
                 _ranges_or_baskets_to_arrays(
                     self,
                     ranges_or_baskets,
@@ -1107,7 +1114,7 @@ class HasBranches(Mapping):
                     library,
                     how,
                     ak_add_doc,
-                    ak_add_typename
+                    ak_add_typename,
                 )
 
                 output = language.compute_expressions(
@@ -3162,7 +3169,13 @@ def _ranges_or_baskets_to_arrays(
 
 
 def _fix_asgrouped(
-    arrays, expression_context, branchid_interpretation, library, how, ak_add_doc, ak_add_typename
+    arrays,
+    expression_context,
+    branchid_interpretation,
+    library,
+    how,
+    ak_add_doc,
+    ak_add_typename,
 ):
     index_start = 0
     for index_stop, (_, context) in enumerate(expression_context):
@@ -3182,7 +3195,10 @@ def _fix_asgrouped(
                     subcontext.append((subname, limited_context[subname]))
 
                 arrays[branch.cache_key] = _ak_add_doc_typename(
-                    library.group(subarrays, subcontext, how), branch, ak_add_doc, ak_add_typename
+                    library.group(subarrays, subcontext, how),
+                    branch,
+                    ak_add_doc,
+                    ak_add_typename,
                 )
 
                 index_start = index_stop
