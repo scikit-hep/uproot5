@@ -61,6 +61,7 @@ def iterate(
     interpretation_executor=None,
     library="ak",
     ak_add_doc=False,
+    ak_add_typename=False,
     how=None,
     report=False,
     custom_classes=None,
@@ -110,6 +111,8 @@ def iterate(
             ``"ak"`` for Awkward Array, and ``"pd"`` for Pandas.
         ak_add_doc (bool): If True and ``library="ak"``, add the TBranch ``title``
             to the Awkward ``__doc__`` parameter of the array.
+        ak_add_typename (bool): If True and ``library="ak"``, add the TBranch ``typename``
+            to the Awkward ``typename`` parameter of the array.
         how (None, str, or container type): Library-dependent instructions
             for grouping. The only recognized container types are ``tuple``,
             ``list``, and ``dict``. Note that the container *type itself*
@@ -203,6 +206,7 @@ def iterate(
                         interpretation_executor=interpretation_executor,
                         library=library,
                         ak_add_doc=ak_add_doc,
+                        ak_add_typename=ak_add_typename,
                         how=how,
                         report=report,
                     ):
@@ -243,6 +247,7 @@ def concatenate(
     interpretation_executor=None,
     library="ak",
     ak_add_doc=False,
+    ak_add_typename=False,
     how=None,
     custom_classes=None,
     allow_missing=False,
@@ -287,6 +292,8 @@ def concatenate(
             ``"ak"`` for Awkward Array, and ``"pd"`` for Pandas.
         ak_add_doc (bool): If True and ``library="ak"``, add the TBranch ``title``
             to the Awkward ``__doc__`` parameter of the array.
+        ak_add_typename (bool): If True and ``library="ak"``, add the TBranch ``typename``
+            to the Awkward ``typename`` parameter of the array.
         how (None, str, or container type): Library-dependent instructions
             for grouping. The only recognized container types are ``tuple``,
             ``list``, and ``dict``. Note that the container *type itself*
@@ -375,6 +382,7 @@ def concatenate(
                         array_cache=None,
                         library=library,
                         ak_add_doc=ak_add_doc,
+                        ak_add_typename=ak_add_typename,
                         how=how,
                     )
                     arrays = library.global_index(arrays, global_start)
@@ -540,11 +548,13 @@ class Report:
         )
 
 
-def _ak_add_doc(array, hasbranches, ak_add_doc):
-    if ak_add_doc and type(array).__module__ == "awkward.highlevel":
-        array.layout.parameters["__doc__"] = hasbranches.title
+def _ak_add_doc_typename(array, hasbranches, ak_add_doc, ak_add_typename):
+    if type(array).__module__ == "awkward.highlevel":
+        if ak_add_doc:
+            array.layout.parameters["__doc__"] = hasbranches.title
+        if ak_add_typename:
+            array.layout.parameters["typename"] = hasbranches.typename
     return array
-
 
 class HasBranches(Mapping):
     """
@@ -690,6 +700,7 @@ class HasBranches(Mapping):
         array_cache="inherit",
         library="ak",
         ak_add_doc=False,
+        ak_add_typename=False,
         how=None,
     ):
         """
@@ -740,6 +751,8 @@ class HasBranches(Mapping):
                 ``"ak"`` for Awkward Array, and ``"pd"`` for Pandas.
             ak_add_doc (bool): If True and ``library="ak"``, add the TBranch ``title``
                 to the Awkward ``__doc__`` parameter of the array.
+            ak_add_typename (bool): If True and ``library="ak"``, add the TBranch ``typename``
+                to the Awkward ``typename`` parameter of the array.
             how (None, str, or container type): Library-dependent instructions
                 for grouping. The only recognized container types are ``tuple``,
                 ``list``, and ``dict``. Note that the container *type itself*
@@ -828,7 +841,7 @@ class HasBranches(Mapping):
                     ) in branch.entries_to_ranges_or_baskets(entry_start, entry_stop):
                         ranges_or_baskets.append((branch, basket_num, range_or_basket))
 
-        interp_options = {"ak_add_doc": ak_add_doc}
+        interp_options = {"ak_add_doc": ak_add_doc, "ak_add_typename": ak_add_typename}
         _ranges_or_baskets_to_arrays(
             self,
             ranges_or_baskets,
@@ -853,6 +866,7 @@ class HasBranches(Mapping):
             library,
             how,
             ak_add_doc,
+            ak_add_typename,
         )
 
         if array_cache is not None:
@@ -883,8 +897,8 @@ class HasBranches(Mapping):
             (e, c) for e, c in expression_context if c["is_primary"] and not c["is_cut"]
         ]
 
-        return _ak_add_doc(
-            library.group(output, expression_context, how), self, ak_add_doc
+        return _ak_add_doc_typename(
+            library.group(output, expression_context, how), self, ak_add_doc,  ak_add_typename
         )
 
     def iterate(
@@ -904,6 +918,7 @@ class HasBranches(Mapping):
         interpretation_executor=None,
         library="ak",
         ak_add_doc=False,
+        ak_add_typename=False,
         how=None,
         report=False,
     ):
@@ -956,6 +971,8 @@ class HasBranches(Mapping):
                 ``"ak"`` for Awkward Array, and ``"pd"`` for Pandas.
             ak_add_doc (bool): If True and ``library="ak"``, add the TBranch ``title``
                 to the Awkward ``__doc__`` parameter of the array.
+            ak_add_typename (bool): If True and ``library="ak"``, add the TBranch ``typename``
+                to the Awkward ``typename`` parameter of the array.
             how (None, str, or container type): Library-dependent instructions
                 for grouping. The only recognized container types are ``tuple``,
                 ``list``, and ``dict``. Note that the container *type itself*
@@ -1068,7 +1085,7 @@ class HasBranches(Mapping):
                                     )
 
                 arrays = {}
-                interp_options = {"ak_add_doc": ak_add_doc}
+                interp_options = {"ak_add_doc": ak_add_doc, "ak_add_typename": ak_add_typename}
                 _ranges_or_baskets_to_arrays(
                     self,
                     ranges_or_baskets,
@@ -1090,6 +1107,7 @@ class HasBranches(Mapping):
                     library,
                     how,
                     ak_add_doc,
+                    ak_add_typename
                 )
 
                 output = language.compute_expressions(
@@ -1111,10 +1129,11 @@ class HasBranches(Mapping):
                     if c["is_primary"] and not c["is_cut"]
                 ]
 
-                out = _ak_add_doc(
+                out = _ak_add_doc_typename(
                     library.group(output, minimized_expression_context, how),
                     self,
                     ak_add_doc,
+                    ak_add_typename,
                 )
 
                 # no longer needed; save memory
@@ -1733,6 +1752,7 @@ class TBranch(HasBranches):
         array_cache="inherit",
         library="ak",
         ak_add_doc=False,
+        ak_add_typename=False,
     ):
         """
         Args:
@@ -1763,6 +1783,8 @@ class TBranch(HasBranches):
                 ``"ak"`` for Awkward Array, and ``"pd"`` for Pandas.
             ak_add_doc (bool): If True and ``library="ak"``, add the TBranch ``title``
                 to the Awkward ``__doc__`` parameter of the array.
+            ak_add_typename (bool): If True and ``library="ak"``, add the TBranch ``typename``
+                to the Awkward ``typename`` parameter of the array.
 
         Returns the ``TBranch`` data as an array.
 
@@ -1834,7 +1856,7 @@ class TBranch(HasBranches):
                     ) in branch.entries_to_ranges_or_baskets(entry_start, entry_stop):
                         ranges_or_baskets.append((branch, basket_num, range_or_basket))
 
-        interp_options = {"ak_add_doc": ak_add_doc}
+        interp_options = {"ak_add_doc": ak_add_doc, "ak_add_typename": ak_add_typename}
         _ranges_or_baskets_to_arrays(
             self,
             ranges_or_baskets,
@@ -1856,6 +1878,7 @@ class TBranch(HasBranches):
             library,
             None,
             ak_add_doc,
+            ak_add_typename,
         )
 
         if array_cache is not None:
@@ -3139,7 +3162,7 @@ def _ranges_or_baskets_to_arrays(
 
 
 def _fix_asgrouped(
-    arrays, expression_context, branchid_interpretation, library, how, ak_add_doc
+    arrays, expression_context, branchid_interpretation, library, how, ak_add_doc, ak_add_typename
 ):
     index_start = 0
     for index_stop, (_, context) in enumerate(expression_context):
@@ -3158,8 +3181,8 @@ def _fix_asgrouped(
                     subarrays[subname] = arrays[subbranch.cache_key]
                     subcontext.append((subname, limited_context[subname]))
 
-                arrays[branch.cache_key] = _ak_add_doc(
-                    library.group(subarrays, subcontext, how), branch, ak_add_doc
+                arrays[branch.cache_key] = _ak_add_doc_typename(
+                    library.group(subarrays, subcontext, how), branch, ak_add_doc, ak_add_typename
                 )
 
                 index_start = index_stop
