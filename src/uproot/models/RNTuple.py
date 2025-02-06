@@ -210,11 +210,8 @@ class Model_ROOT_3a3a_RNTuple(uproot.model.Model):
         full_paths=True,
         **_,  # For compatibility reasons we just ignore other kwargs
     ):
-        if filter_name:
-            # Return keys from the filter_name list:
-            return [key for key in self._keys if key in filter_name]
-        else:
-            return self._keys
+        filter_name = uproot._util.regularize_filter(filter_name)
+        return [key for key in self._keys if filter_name(key)]
 
     @property
     def _key_indices(self):
@@ -1268,11 +1265,8 @@ class RNTupleField:
         full_paths=True,
         **_,  # For compatibility reasons we just ignore other kwargs
     ):
-        if filter_name:
-            # Return keys from the filter_name list:
-            return [key for key in self._keys if key in filter_name]
-        else:
-            return self._keys
+        filter_name = uproot._util.regularize_filter(filter_name)
+        return [key for key in self._keys if filter_name(key)]
 
     @property
     def name(self):
