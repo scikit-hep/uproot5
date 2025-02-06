@@ -195,7 +195,7 @@ class Model_ROOT_3a3a_RNTuple(uproot.model.Model):
         keys = []
         field_records = self.field_records
         for i, fr in enumerate(field_records):
-            if fr.parent_field_id == i and fr.type_name != "":
+            if fr.parent_field_id == i and not fr.field_name.startswith("_"):
                 keys.append(fr.field_name)
         return keys
 
@@ -219,7 +219,7 @@ class Model_ROOT_3a3a_RNTuple(uproot.model.Model):
         indices = []
         field_records = self.field_records
         for i, fr in enumerate(field_records):
-            if fr.parent_field_id == i and fr.type_name != "":
+            if fr.parent_field_id == i and not fr.field_name.startswith("_"):
                 indices.append(i)
         return indices
 
@@ -228,7 +228,7 @@ class Model_ROOT_3a3a_RNTuple(uproot.model.Model):
         d = {}
         field_records = self.field_records
         for i, fr in enumerate(field_records):
-            if fr.parent_field_id == i and fr.type_name != "":
+            if fr.parent_field_id == i and not fr.field_name.startswith("_"):
                 d[fr.field_name] = i
         return d
 
@@ -684,7 +684,7 @@ in file {self.file.file_path}"""
         for i in range(len(field_records)):
             if i not in seen:
                 ff = self.field_form(i, seen)
-                if field_records[i].type_name != "":
+                if not field_records[i].field_name.startswith("_"):
                     recordlist.append(ff)
 
         form = ak.forms.RecordForm(recordlist, topnames, form_key="toplevel")
@@ -1249,7 +1249,6 @@ class RNTupleField:
                 continue
             if (
                 fr.parent_field_id == self.index
-                and fr.type_name != ""
                 and not fr.field_name.startswith("_")
                 and not fr.field_name.startswith(":_")
             ):
@@ -1282,7 +1281,7 @@ class RNTupleField:
         indices = []
         field_records = self.ntuple.field_records
         for i, fr in enumerate(field_records):
-            if fr.parent_field_id == self.index and fr.type_name != "":
+            if fr.parent_field_id == self.index and not fr.field_name.startswith("_"):
                 indices.append(i)
         return indices
 
@@ -1291,7 +1290,7 @@ class RNTupleField:
         d = {}
         field_records = self.ntuple.field_records
         for i, fr in enumerate(field_records):
-            if fr.parent_field_id == self.index and fr.type_name != "":
+            if fr.parent_field_id == self.index and not fr.field_name.startswith("_"):
                 d[fr.field_name] = i
         return d
 
