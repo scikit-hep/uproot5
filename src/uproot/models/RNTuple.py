@@ -195,31 +195,30 @@ class Model_ROOT_3a3a_RNTuple(uproot.model.Model):
         keys = []
         field_records = self.field_records
         for i, fr in enumerate(field_records):
-            if fr.parent_field_id == i and fr.type_name != "":
+            if fr.parent_field_id == i and not fr.field_name.startswith("_"):
                 keys.append(fr.field_name)
         return keys
 
+    # TODO: this is still missing a lot of functionality
     def keys(
         self,
         *,
         filter_name=None,
         filter_typename=None,
+        filter_field=None,
         recursive=False,
         full_paths=True,
-        # TODO: some arguments might be missing when compared with TTree. Solve when blocker is present in dask/coffea.
+        **_,  # For compatibility reasons we just ignore other kwargs
     ):
-        if filter_name:
-            # Return keys from the filter_name list:
-            return [key for key in self._keys if key in filter_name]
-        else:
-            return self._keys
+        filter_name = uproot._util.regularize_filter(filter_name)
+        return [key for key in self._keys if filter_name(key)]
 
     @property
     def _key_indices(self):
         indices = []
         field_records = self.field_records
         for i, fr in enumerate(field_records):
-            if fr.parent_field_id == i and fr.type_name != "":
+            if fr.parent_field_id == i and not fr.field_name.startswith("_"):
                 indices.append(i)
         return indices
 
@@ -228,7 +227,7 @@ class Model_ROOT_3a3a_RNTuple(uproot.model.Model):
         d = {}
         field_records = self.field_records
         for i, fr in enumerate(field_records):
-            if fr.parent_field_id == i and fr.type_name != "":
+            if fr.parent_field_id == i and not fr.field_name.startswith("_"):
                 d[fr.field_name] = i
         return d
 
@@ -684,7 +683,7 @@ in file {self.file.file_path}"""
         for i in range(len(field_records)):
             if i not in seen:
                 ff = self.field_form(i, seen)
-                if field_records[i].type_name != "":
+                if not field_records[i].field_name.startswith("_"):
                     recordlist.append(ff)
 
         form = ak.forms.RecordForm(recordlist, topnames, form_key="toplevel")
@@ -1249,15 +1248,25 @@ class RNTupleField:
                 continue
             if (
                 fr.parent_field_id == self.index
-                and fr.type_name != ""
                 and not fr.field_name.startswith("_")
                 and not fr.field_name.startswith(":_")
             ):
                 keys.append(fr.field_name)
         return keys
 
-    def keys(self):
-        return self._keys
+    # TODO: this is still missing a lot of functionality
+    def keys(
+        self,
+        *,
+        filter_name=None,
+        filter_typename=None,
+        filter_field=None,
+        recursive=False,
+        full_paths=True,
+        **_,  # For compatibility reasons we just ignore other kwargs
+    ):
+        filter_name = uproot._util.regularize_filter(filter_name)
+        return [key for key in self._keys if filter_name(key)]
 
     @property
     def name(self):
@@ -1282,7 +1291,7 @@ class RNTupleField:
         indices = []
         field_records = self.ntuple.field_records
         for i, fr in enumerate(field_records):
-            if fr.parent_field_id == self.index and fr.type_name != "":
+            if fr.parent_field_id == self.index and not fr.field_name.startswith("_"):
                 indices.append(i)
         return indices
 
@@ -1291,7 +1300,7 @@ class RNTupleField:
         d = {}
         field_records = self.ntuple.field_records
         for i, fr in enumerate(field_records):
-            if fr.parent_field_id == self.index and fr.type_name != "":
+            if fr.parent_field_id == self.index and not fr.field_name.startswith("_"):
                 d[fr.field_name] = i
         return d
 
