@@ -160,9 +160,7 @@ def _num_entries_for(in_ntuple, target_num_bytes, filter_name):
         if "column" in key and "union" not in key:
             key_nr = int(key.split("-")[1])
             for cluster in range(start_cluster_idx, stop_cluster_idx):
-                pages = in_ntuple.ntuple.page_list_envelopes.pagelinklist[cluster][
-                    key_nr
-                ].pages
+                pages = in_ntuple.ntuple.page_link_list[cluster][key_nr].pages
                 total_bytes += sum(page.locator.num_bytes for page in pages)
 
     total_entries = entry_stop
@@ -197,31 +195,30 @@ class Model_ROOT_3a3a_RNTuple(uproot.model.Model):
         keys = []
         field_records = self.field_records
         for i, fr in enumerate(field_records):
-            if fr.parent_field_id == i and fr.type_name != "":
+            if fr.parent_field_id == i and not fr.field_name.startswith("_"):
                 keys.append(fr.field_name)
         return keys
 
+    # TODO: this is still missing a lot of functionality
     def keys(
         self,
         *,
         filter_name=None,
         filter_typename=None,
+        filter_field=None,
         recursive=False,
         full_paths=True,
-        # TODO: some arguments might be missing when compared with TTree. Solve when blocker is present in dask/coffea.
+        **_,  # For compatibility reasons we just ignore other kwargs
     ):
-        if filter_name:
-            # Return keys from the filter_name list:
-            return [key for key in self._keys if key in filter_name]
-        else:
-            return self._keys
+        filter_name = uproot._util.regularize_filter(filter_name)
+        return [key for key in self._keys if filter_name(key)]
 
     @property
     def _key_indices(self):
         indices = []
         field_records = self.field_records
         for i, fr in enumerate(field_records):
-            if fr.parent_field_id == i and fr.type_name != "":
+            if fr.parent_field_id == i and not fr.field_name.startswith("_"):
                 indices.append(i)
         return indices
 
@@ -230,7 +227,7 @@ class Model_ROOT_3a3a_RNTuple(uproot.model.Model):
         d = {}
         field_records = self.field_records
         for i, fr in enumerate(field_records):
-            if fr.parent_field_id == i and fr.type_name != "":
+            if fr.parent_field_id == i and not fr.field_name.startswith("_"):
                 d[fr.field_name] = i
         return d
 
@@ -288,6 +285,8 @@ in file {self.file.file_path}"""
         self._length = None
 
         self._page_list_envelopes = []
+        self._cluster_summaries = None
+        self._page_link_list = None
 
         self.ntuple = self
 
@@ -431,7 +430,19 @@ in file {self.file.file_path}"""
 
     @property
     def cluster_summaries(self):
-        return self.page_list_envelopes.cluster_summaries
+        if self._cluster_summaries is None:
+            self._cluster_summaries = []
+            for pl in self.page_list_envelopes:
+                self._cluster_summaries.extend(pl.cluster_summaries)
+        return self._cluster_summaries
+
+    @property
+    def page_link_list(self):
+        if self._page_link_list is None:
+            self._page_link_list = []
+            for pl in self.page_list_envelopes:
+                self._page_link_list.extend(pl.pagelinklist)
+        return self._page_link_list
 
     @property
     def num_entries(self):
@@ -512,8 +523,8 @@ in file {self.file.file_path}"""
                 decomp_chunk, cursor = self.read_locator(
                     loc, link.env_uncomp_size, context
                 )
-                self._page_list_envelopes = PageLink().read(
-                    decomp_chunk, cursor, context
+                self._page_list_envelopes.append(
+                    PageLink().read(decomp_chunk, cursor, context)
                 )
 
         return self._page_list_envelopes
@@ -672,7 +683,7 @@ in file {self.file.file_path}"""
         for i in range(len(field_records)):
             if i not in seen:
                 ff = self.field_form(i, seen)
-                if field_records[i].type_name != "":
+                if not field_records[i].field_name.startswith("_"):
                     recordlist.append(ff)
 
         form = ak.forms.RecordForm(recordlist, topnames, form_key="toplevel")
@@ -785,7 +796,7 @@ in file {self.file.file_path}"""
         return res
 
     def read_col_page(self, ncol, cluster_i):
-        linklist = self.page_list_envelopes.pagelinklist[cluster_i]
+        linklist = self.ntuple.page_link_list[cluster_i]
         # Check if the column is suppressed and pick the non-suppressed one if so
         if ncol < len(linklist) and linklist[ncol].suppressed:
             rel_crs = self._column_records_dict[self.column_records[ncol].field_id]
@@ -1203,9 +1214,6 @@ class RNTupleSchemaExtension:
 class FooterReader:
     def __init__(self):
         self.extension_header_links = RNTupleSchemaExtension()
-        self.cluster_summary_frames = ListFrameReader(
-            RecordFrameReader(ClusterSummaryReader())
-        )
         self.cluster_group_record_frames = ListFrameReader(
             RecordFrameReader(ClusterGroupRecordReader())
         )
@@ -1240,15 +1248,25 @@ class RNTupleField:
                 continue
             if (
                 fr.parent_field_id == self.index
-                and fr.type_name != ""
                 and not fr.field_name.startswith("_")
                 and not fr.field_name.startswith(":_")
             ):
                 keys.append(fr.field_name)
         return keys
 
-    def keys(self):
-        return self._keys
+    # TODO: this is still missing a lot of functionality
+    def keys(
+        self,
+        *,
+        filter_name=None,
+        filter_typename=None,
+        filter_field=None,
+        recursive=False,
+        full_paths=True,
+        **_,  # For compatibility reasons we just ignore other kwargs
+    ):
+        filter_name = uproot._util.regularize_filter(filter_name)
+        return [key for key in self._keys if filter_name(key)]
 
     @property
     def name(self):
@@ -1273,7 +1291,7 @@ class RNTupleField:
         indices = []
         field_records = self.ntuple.field_records
         for i, fr in enumerate(field_records):
-            if fr.parent_field_id == self.index and fr.type_name != "":
+            if fr.parent_field_id == self.index and not fr.field_name.startswith("_"):
                 indices.append(i)
         return indices
 
@@ -1282,7 +1300,7 @@ class RNTupleField:
         d = {}
         field_records = self.ntuple.field_records
         for i, fr in enumerate(field_records):
-            if fr.parent_field_id == self.index and fr.type_name != "":
+            if fr.parent_field_id == self.index and not fr.field_name.startswith("_"):
                 d[fr.field_name] = i
         return d
 
