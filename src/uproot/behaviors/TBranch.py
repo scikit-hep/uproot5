@@ -210,10 +210,16 @@ def iterate(
                             arrays, report = item
                             arrays = library.global_index(arrays, global_offset)
                             report = report.to_global(global_offset)
-                            yield arrays, report
+                            popper = [arrays]
+                            del arrays
+                            del item
+                            yield popper.pop(), report
+
                         else:
-                            arrays = library.global_index(item, global_offset)
-                            yield arrays
+                            popper = [library.global_index(item, global_offset)]
+                            del item
+                            yield popper.pop()
+
                 except uproot.exceptions.KeyInFileError:
                     if allow_missing:
                         continue
@@ -811,7 +817,10 @@ class HasBranches(Mapping):
         checked = set()
         for _, context in expression_context:
             for branch in context["branches"]:
-                if branch.cache_key not in checked:
+                if branch.cache_key not in checked and not isinstance(
+                    branchid_interpretation[branch.cache_key],
+                    uproot.interpretation.grouped.AsGrouped,
+                ):
                     checked.add(branch.cache_key)
                     for (
                         basket_num,
@@ -1035,7 +1044,10 @@ class HasBranches(Mapping):
                 checked = set()
                 for _, context in expression_context:
                     for branch in context["branches"]:
-                        if branch.cache_key not in checked:
+                        if branch.cache_key not in checked and not isinstance(
+                            branchid_interpretation[branch.cache_key],
+                            uproot.interpretation.grouped.AsGrouped,
+                        ):
                             checked.add(branch.cache_key)
                             for (
                                 basket_num,
@@ -1105,6 +1117,9 @@ class HasBranches(Mapping):
                     ak_add_doc,
                 )
 
+                # no longer needed; save memory
+                del output
+
                 next_baskets = {}
                 for branch, basket_num, basket in ranges_or_baskets:
                     basket_entry_start, basket_entry_stop = basket.entry_start_stop
@@ -1113,10 +1128,14 @@ class HasBranches(Mapping):
 
                 previous_baskets = next_baskets
 
+                # no longer needed; save memory
+                popper = [out]
+                del out
+
                 if report:
-                    yield out, Report(self, sub_entry_start, sub_entry_stop)
+                    yield popper.pop(), Report(self, sub_entry_start, sub_entry_stop)
                 else:
-                    yield out
+                    yield popper.pop()
 
     def keys(
         self,
@@ -2953,6 +2972,9 @@ def _regularize_expressions(
     return arrays, expression_context, branchid_interpretation
 
 
+_basket_arrays_lock = threading.Lock()
+
+
 def _ranges_or_baskets_to_arrays(
     hasbranches,
     ranges_or_baskets,
@@ -3051,7 +3073,7 @@ def _ranges_or_baskets_to_arrays(
             context = dict(branch.context)
             context["forth"] = forth_context[branch.cache_key]
 
-            basket_arrays[basket.basket_num] = interpretation.basket_array(
+            basket_array = interpretation.basket_array(
                 basket.data,
                 basket.byte_offsets,
                 basket,
@@ -3061,16 +3083,21 @@ def _ranges_or_baskets_to_arrays(
                 library,
                 interp_options,
             )
-            if basket.num_entries != len(basket_arrays[basket.basket_num]):
+            if basket.num_entries != len(basket_array):
                 raise ValueError(
                     f"""basket {basket.basket_num} in tree/branch {branch.object_path} has the wrong number of entries """
-                    f"""(expected {basket.num_entries}, obtained {len(basket_arrays[basket.basket_num])}) when interpreted as {interpretation}
+                    f"""(expected {basket.num_entries}, obtained {len(basket_array)}) when interpreted as {interpretation}
     in file {branch.file.file_path}"""
                 )
 
+            basket_num = basket.basket_num
             basket = None
 
-            if len(basket_arrays) == branchid_num_baskets[branch.cache_key]:
+            with _basket_arrays_lock:
+                basket_arrays[basket_num] = basket_array
+                len_basket_arrays = len(basket_arrays)
+
+            if len_basket_arrays == branchid_num_baskets[branch.cache_key]:
                 arrays[branch.cache_key] = interpretation.final_array(
                     basket_arrays,
                     entry_start,
@@ -3080,8 +3107,9 @@ def _ranges_or_baskets_to_arrays(
                     branch,
                     interp_options,
                 )
-                # no longer needed, save memory
-                basket_arrays.clear()
+                with _basket_arrays_lock:
+                    # no longer needed, save memory
+                    basket_arrays.clear()
 
         except Exception:
             notifications.put(sys.exc_info())

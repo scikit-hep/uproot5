@@ -16,7 +16,7 @@ jobs:
       fail-fast: false
       matrix:
         platform: [windows-latest, macos-latest, ubuntu-latest]
-        python-version: ['3.8', '3.9', '3.10', '3.11', '3.12']
+        python-version: ['3.9', '3.10', '3.11', '3.12', '3.13']
 
     runs-on: ${{ matrix.platform }}
     timeout-minutes: 30
@@ -34,18 +34,21 @@ jobs:
         with:
           auto-update-conda: true
           python-version: ${{ matrix.python-version }}
-          miniforge-variant: Mambaforge
+          miniforge-version: latest
           use-mamba: true
 
+      - name: Check active Python version
+        run: python -c "import sys; assert '.'.join(str(s) for s in sys.version_info[:2]) == '${{ matrix.python-version }}', f'{version} incorrect!'"
+
       - name: Install ROOT
-        if: matrix.python-version == 3.8  &&  runner.os != 'macOS'  &&  runner.os != 'Windows'
+        if: matrix.python-version == 3.9  &&  runner.os != 'macOS'  &&  runner.os != 'Windows'
         run: |
           conda env list
           mamba install root
           conda list
 
       - name: Install sshd for fsspec ssh tests
-        if: runner.os != 'macOS'  &&  runner.os != 'Windows'
+        if: runner.os != 'macOS' && runner.os != 'Windows'
         run: |
           sudo apt-get install -y openssh-server
           sudo service ssh restart
@@ -56,7 +59,7 @@ jobs:
           ssh -o StrictHostKeyChecking=no localhost echo "ssh connection successful"
 
       - name: Install XRootD
-        if: runner.os != 'macOS'  &&  runner.os != 'Windows'
+        if: runner.os != 'macOS' && runner.os != 'Windows'
         run: |
           conda env list
           mamba install xrootd
@@ -74,7 +77,7 @@ jobs:
       fail-fast: false
       matrix:
         platform: [windows-latest, ubuntu-latest, macos-latest]
-        python-version: ['3.11']
+        python-version: ['3.13']
 
     runs-on: ${{ matrix.platform }}
     timeout-minutes: 30
@@ -85,9 +88,12 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
+          allow-prereleases: true
+
+      - uses: astral-sh/setup-uv@v5
 
       - name: Pip install the package
-        run: python -m pip install .[test,dev]
+        run: uv pip install --system .[test,dev]
 
       - name: Run pytest
         run: |
@@ -116,3 +122,77 @@ jobs:
       - name: Run pytest
         run: |
           python -m pytest -vv tests --reruns 10 --reruns-delay 30 --only-rerun "(?i)http|ssl|timeout|expired|connection|socket"
+
+  pyodide-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      PYODIDE_VERSION: 0.26.2
+      PYODIDE_BUILD_VERSION: 0.28.0
+      AWKWARD_VERSION: v2.6.4
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install pyodide-build
+        run: python3 -m pip install pyodide-build==$PYODIDE_BUILD_VERSION
+
+      - name: Determine EMSDK version
+        id: compute-emsdk-version
+        run: |
+          pyodide config list
+          # Save EMSDK version
+          EMSCRIPTEN_VERSION=$(pyodide config get emscripten_version)
+          echo "emsdk-version=$EMSCRIPTEN_VERSION" >> $GITHUB_OUTPUT
+
+      - name: Install EMSDK
+        uses: mymindstorm/setup-emsdk@v14
+        with:
+          version: ${{ steps.compute-emsdk-version.outputs.emsdk-version }}
+
+      - name: Build the package
+        run: pyodide build
+
+      - name: Build an awkward wheel compatible with the awkward-cpp version in pyodide
+        run: |
+          git clone --depth 1 --branch $AWKWARD_VERSION https://github.com/scikit-hep/awkward.git dependencies/awkward
+          pyodide build dependencies/awkward
+          rm -rf dependencies/
+
+      - name: Download Pyodide
+        uses: pyodide/pyodide-actions/download-pyodide@v2
+        with:
+          version: ${{ env.PYODIDE_VERSION }}
+          to: pyodide-dist
+
+      - name: Install browser
+        uses: pyodide/pyodide-actions/install-browser@v2
+        with:
+          runner: selenium
+          browser: chrome
+          browser-version: latest
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install dependencies
+        run: pip install .[test-pyodide] pyodide-py==$PYODIDE_VERSION
+
+      - name: Run pytest
+        run: |
+          pytest -vv --dist-dir=./pyodide-dist/ --runner=selenium --runtime=chrome tests-wasm
+
+  pass:
+    if: always()
+    needs: [build, vanilla-build, numpy1-build, pyodide-build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Decide whether the needed jobs succeeded or failed
+        uses: re-actors/alls-green@release/v1
+        with:
+          jobs: ${{ toJSON(needs) }}

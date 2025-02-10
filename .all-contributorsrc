@@ -578,6 +578,42 @@
       "contributions": [
         "code"
       ]
+    },
+    {
+      "login": "giedrius2020",
+      "name": "Giedrius Juškevičius",
+      "avatar_url": "https://avatars.githubusercontent.com/u/71819123?v=4",
+      "profile": "https://github.com/giedrius2020",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "MatousVozak",
+      "name": "MatousVozak",
+      "avatar_url": "https://avatars.githubusercontent.com/u/33348191?v=4",
+      "profile": "https://github.com/MatousVozak",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "rossodisera",
+      "name": "Andrea Serafini",
+      "avatar_url": "https://avatars.githubusercontent.com/u/46961664?v=4",
+      "profile": "https://github.com/rossodisera",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "ariostas",
+      "name": "Andres Rios Tascon",
+      "avatar_url": "https://avatars.githubusercontent.com/u/7596837?v=4",
+      "profile": "http://www.ariostas.com",
+      "contributions": [
+        "code"
+      ]
     }
   ],
   "contributorsPerLine": 7,

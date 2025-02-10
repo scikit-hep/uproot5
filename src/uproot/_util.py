@@ -13,6 +13,7 @@ import itertools
 import numbers
 import os
 import re
+import sys
 import warnings
 from collections.abc import Iterable
 from pathlib import Path
@@ -26,6 +27,8 @@ import packaging.version
 import uproot.source.chunk
 import uproot.source.fsspec
 import uproot.source.object
+
+wasm = sys.platform in ("emscripten", "wasi")
 
 
 def tobytes(array):
@@ -88,7 +91,10 @@ def ensure_numpy(array, types=(numpy.bool_, numpy.integer, numpy.floating)):
         else:
             try:
                 out = numpy.asarray(array)
-            except (ValueError, numpy.VisibleDeprecationWarning) as err:
+            except (
+                ValueError,
+                getattr(numpy, "exceptions", numpy).VisibleDeprecationWarning,
+            ) as err:
                 raise TypeError("cannot be converted to a NumPy array") from err
         if not issubclass(out.dtype.type, types):
             raise TypeError(f"cannot be converted to a NumPy array of type {types}")

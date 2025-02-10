@@ -10,7 +10,7 @@ max-complexity = 100
 
 [project]
 authors = [
-  {name = "Jim Pivarski", email = "pivarski@princeton.edu"}
+  {name = "Jim Pivarski", email = "jpivarski@gmail.com"}
 ]
 classifiers = [
   "Development Status :: 5 - Production/Stable",
@@ -24,11 +24,11 @@ classifiers = [
   "Programming Language :: Python",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3 :: Only",
-  "Programming Language :: Python :: 3.8",
   "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
   "Topic :: Scientific/Engineering",
   "Topic :: Scientific/Engineering :: Information Analysis",
   "Topic :: Scientific/Engineering :: Mathematics",
@@ -39,6 +39,7 @@ classifiers = [
 dependencies = [
   "awkward>=2.4.6",
   "cramjam>=2.5.0",
+  "xxhash",
   "numpy",
   "fsspec",
   "packaging",
@@ -51,12 +52,12 @@ dynamic = [
 license = "BSD-3-Clause"
 name = "uproot"
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 
 [project.optional-dependencies]
 dev = [
   "boost_histogram>=0.13",
-  "dask-awkward>=2023.12.1",
+  "dask-awkward>=2025.2.0",
   "dask[array,distributed]",
   "hist>=1.2",
   "pandas",
@@ -67,7 +68,6 @@ s3 = ["s3fs"]
 test = [
   "isal",
   "deflate",
-  "xxhash",
   "minio",
   "aiohttp",
   "fsspec-xrootd",
@@ -79,6 +79,12 @@ test = [
   "requests",
   "scikit-hep-testdata",
   "rangehttpserver"
+]
+test-pyodide = [
+  "pytest>=6",
+  "pytest-pyodide",
+  "pytest-timeout",
+  "scikit-hep-testdata"
 ]
 xrootd = ["fsspec-xrootd"]
 

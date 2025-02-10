@@ -548,12 +548,20 @@ class Tree:
                         try:
                             with warnings.catch_warnings():
                                 warnings.simplefilter(
-                                    "error", category=numpy.VisibleDeprecationWarning
+                                    "error",
+                                    category=getattr(
+                                        numpy, "exceptions", numpy
+                                    ).VisibleDeprecationWarning,
                                 )
                                 v = numpy.array(v)  # noqa: PLW2901 (overwriting v)
                             if v.dtype == numpy.dtype("O"):
                                 raise Exception
-                        except (numpy.VisibleDeprecationWarning, Exception):
+                        except (
+                            getattr(
+                                numpy, "exceptions", numpy
+                            ).VisibleDeprecationWarning,
+                            Exception,
+                        ):
                             try:
                                 awkward = uproot.extras.awkward()
                             except ModuleNotFoundError as err:
@@ -585,7 +593,9 @@ class Tree:
                     ):
                         kk = self._counter_name(k)
                         vv = numpy.asarray(awkward.num(v, axis=1), dtype=">u4")
-                        if kk in provided and not numpy.array_equal(vv, provided[kk]):
+                        if kk in provided and not numpy.array_equal(
+                            vv, awkward.to_numpy(provided[kk])
+                        ):
                             raise ValueError(
                                 f"branch {kk!r} provided both as an explicit array and generated as a counter, and they disagree"
                             )
@@ -663,11 +673,20 @@ class Tree:
 
             if datum["counter"] is None:
                 if datum["dtype"] == ">U0":
-                    lengths = numpy.asarray(awkward.num(branch_array.layout))
+                    awkward = uproot.extras.awkward()
+
+                    layout = awkward.to_layout(branch_array)
+                    if isinstance(
+                        layout,
+                        (awkward.contents.ListArray, awkward.contents.RegularArray),
+                    ):
+                        layout = layout.to_ListOffsetArray64()
+
+                    lengths = numpy.asarray(awkward.num(layout))
                     which_big = lengths >= 255
 
                     lengths_extension_offsets = numpy.empty(
-                        len(branch_array.layout) + 1, numpy.int64
+                        len(layout) + 1, numpy.int64
                     )
                     lengths_extension_offsets[0] = 0
                     numpy.cumsum(which_big * 4, out=lengths_extension_offsets[1:])
@@ -685,7 +704,7 @@ class Tree:
                         [
                             lengths.reshape(-1, 1).astype("u1"),
                             lengths_extension,
-                            awkward.without_parameters(branch_array.layout),
+                            awkward.without_parameters(layout),
                         ],
                         axis=1,
                     )
@@ -693,8 +712,8 @@ class Tree:
                     big_endian = numpy.asarray(awkward.flatten(leafc_data_awkward))
                     big_endian_offsets = (
                         lengths_extension_offsets
-                        + numpy.asarray(branch_array.layout.offsets)
-                        + numpy.arange(len(branch_array.layout.offsets))
+                        + numpy.asarray(layout.offsets)
+                        + numpy.arange(len(layout.offsets))
                     ).astype(">i4", copy=True)
                     tofill.append(
                         (
@@ -1079,22 +1098,20 @@ class Tree:
             out.append(uproot._util.tobytes(leaf_header))
             if len(leaf_name) < 255:
                 out.append(
-                    struct.pack(">B%ds" % len(leaf_name), len(leaf_name), leaf_name)
+                    struct.pack(f">B{len(leaf_name)}s", len(leaf_name), leaf_name)
                 )
             else:
                 out.append(
-                    struct.pack(
-                        ">BI%ds" % len(leaf_name), 255, len(leaf_name), leaf_name
-                    )
+                    struct.pack(f">BI{len(leaf_name)}s", 255, len(leaf_name), leaf_name)
                 )
             if len(leaf_title) < 255:
                 out.append(
-                    struct.pack(">B%ds" % len(leaf_title), len(leaf_title), leaf_title)
+                    struct.pack(f">B{len(leaf_title)}s", len(leaf_title), leaf_title)
                 )
             else:
                 out.append(
                     struct.pack(
-                        ">BI%ds" % len(leaf_title), 255, len(leaf_title), leaf_title
+                        f">BI{len(leaf_title)}s", 255, len(leaf_title), leaf_title
                     )
                 )
 

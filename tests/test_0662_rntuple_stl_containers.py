@@ -14,7 +14,7 @@ ak = pytest.importorskip("awkward")
 
 
 def test_rntuple_stl_containers():
-    filename = skhep_testdata.data_path("test_ntuple_stl_containers.root")
+    filename = skhep_testdata.data_path("test_stl_containers_rntuple_v1-0-0-0.root")
     with uproot.open(filename) as f:
         R = f["ntuple"]
         assert R.keys() == [

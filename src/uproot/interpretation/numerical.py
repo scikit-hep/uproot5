@@ -518,7 +518,7 @@ class TruncatedNumerical(Numerical):
 
     def __eq__(self, other):
         return (
-            type(self) == type(other)
+            type(self) is type(other)
             and self._low == other._low
             and self._high == other._high
             and self._num_bits == other._num_bits

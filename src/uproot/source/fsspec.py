@@ -92,6 +92,9 @@ class FSSpecSource(uproot.source.chunk.Source):
         Request a byte range of data from the file as a
         :doc:`uproot.source.chunk.Chunk`.
         """
+        if self.closed:
+            raise OSError(f"file {self._file_path!r} is closed")
+
         self._num_requests += 1
         self._num_requested_chunks += 1
         self._num_requested_bytes += stop - start
@@ -129,28 +132,17 @@ class FSSpecSource(uproot.source.chunk.Source):
         it is triggered by already-filled chunks, rather than waiting for
         chunks to be filled.
         """
+        if self.closed:
+            raise OSError(f"file {self._file_path!r} is closed")
+
         self._num_requests += 1
         self._num_requested_chunks += len(ranges)
         self._num_requested_bytes += sum(stop - start for start, stop in ranges)
 
-        try:
-            # not available in python 3.8
-            to_thread = asyncio.to_thread
-        except AttributeError:
-            import contextvars
-            import functools
-
-            async def to_thread(func, /, *args, **kwargs):
-                loop = asyncio.get_running_loop()
-                ctx = contextvars.copy_context()
-                func_call = functools.partial(ctx.run, func, *args, **kwargs)
-                return await loop.run_in_executor(None, func_call)
-
         async def async_wrapper_thread(blocking_func, *args, **kwargs):
             if not callable(blocking_func):
                 raise TypeError("blocking_func must be callable")
-            # TODO: when python 3.8 is dropped, use `asyncio.to_thread` instead (also remove the try/except block above)
-            return await to_thread(blocking_func, *args, **kwargs)
+            return await asyncio.to_thread(blocking_func, *args, **kwargs)
 
         def submit(request_ranges: list[tuple[int, int]]):
             paths = [self._file_path] * len(request_ranges)
@@ -164,6 +156,12 @@ class FSSpecSource(uproot.source.chunk.Source):
                     self._fs.cat_ranges, paths=paths, starts=starts, ends=ends
                 )
             )
+            if uproot._util.wasm:
+                # Threads can't be spawned in pyodide yet, so we run the function directly
+                # and return a future that is already resolved.
+                return uproot.source.futures.TrivialFuture(
+                    self._fs.cat_ranges(paths=paths, starts=starts, ends=ends)
+                )
             return self._executor.submit(coroutine)
 
         return coalesce_requests(
@@ -192,7 +190,7 @@ class FSSpecSource(uproot.source.chunk.Source):
         True if the associated file/connection/thread pool is closed; False
         otherwise.
         """
-        return False
+        return self._file.closed
 
 
 class FSSpecLoopExecutor(uproot.source.futures.Executor):

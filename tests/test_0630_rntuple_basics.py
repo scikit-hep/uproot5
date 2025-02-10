@@ -14,7 +14,7 @@ pytest.importorskip("awkward")
 
 
 def test_flat():
-    filename = skhep_testdata.data_path("test_ntuple_int_float.root")
+    filename = skhep_testdata.data_path("test_int_float_rntuple_v1-0-0-0.root")
     with uproot.open(filename) as f:
         R = f["ntuple"]
         assert R.keys() == ["one_integers", "two_floats"]
@@ -32,7 +32,7 @@ def test_flat():
             R.arrays(entry_start=1, entry_stop=3)["one_integers"] == numpy.array([8, 7])
         )
 
-    filename = skhep_testdata.data_path("test_ntuple_int_5e4.root")
+    filename = skhep_testdata.data_path("test_int_5e4_rntuple_v1-0-0-0.root")
     with uproot.open(filename) as f:
         R = f["ntuple"]
         assert all(
@@ -42,7 +42,9 @@ def test_flat():
 
 
 def test_jagged():
-    filename = skhep_testdata.data_path("test_ntuple_int_vfloat_tlv_vtlv.root")
+    filename = skhep_testdata.data_path(
+        "test_int_vfloat_tlv_vtlv_rntuple_v1-0-0-0.root"
+    )
     with uproot.open(filename) as f:
         R = f["ntuple"]
         assert R.keys() == ["one_integers", "two_v_floats", "three_LV", "four_v_LVs"]
