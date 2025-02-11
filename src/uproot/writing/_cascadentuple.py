@@ -12,10 +12,8 @@ from __future__ import annotations
 
 import datetime
 import struct
-import zlib
 
 import awkward
-import numpy
 import xxhash
 
 import uproot
@@ -29,6 +27,8 @@ from uproot.models.RNTuple import (
     _rntuple_checksum_format,
     _rntuple_cluster_group_format,
     _rntuple_cluster_summary_format,
+    _rntuple_column_compression_settings_format,
+    _rntuple_column_element_offset_format,
     _rntuple_column_record_format,
     _rntuple_env_header_format,
     _rntuple_envlink_size_format,
@@ -38,6 +38,7 @@ from uproot.models.RNTuple import (
     _rntuple_frame_size_format,
     _rntuple_locator_offset_format,
     _rntuple_locator_size_format,
+    _rntuple_page_num_elements_format,
 )
 from uproot.writing._cascade import CascadeLeaf, CascadeNode, Key, String
 
@@ -120,13 +121,19 @@ def _record_frame_wrap(payload, includeself=True):
     return raw_bytes
 
 
-def _serialize_rntuple_list_frame(items, wrap=True):
+def _serialize_rntuple_list_frame(items, wrap=True, rawinput=False, extra_payload=None):
     # when items is [], b'\xf4\xff\xff\xff\xff\xff\xff\xff\x00\x00\x00\x00'
     n_items = len(items)
-    if wrap:
+    if wrap and rawinput:
+        payload_bytes = b"".join([_record_frame_wrap(x) for x in items])
+    elif rawinput:
+        payload_bytes = b"".join(items)
+    elif wrap:
         payload_bytes = b"".join([_record_frame_wrap(x.serialize()) for x in items])
     else:
         payload_bytes = b"".join([x.serialize() for x in items])
+    if extra_payload is not None:
+        payload_bytes += extra_payload
     size = (
         _rntuple_frame_size_format.size
         + _rntuple_frame_num_items_format.size
@@ -350,9 +357,7 @@ class NTuple_Footer(CascadeLeaf):
         )
         out.append(_record_frame_wrap(schema_extension_payload))
 
-        out.append(
-            _serialize_rntuple_list_frame(self.cluster_group_record_frames)
-        )  # never empty
+        out.append(_serialize_rntuple_list_frame(self.cluster_group_record_frames))
         payload = b"".join(out)
 
         env_header = _serialize_envelope_header(
@@ -402,13 +407,81 @@ class NTuple_EnvLink:
         return f"{type(self).__name__}({self.uncomp_size}, {self.locator})"
 
 
+class NTuple_PageListEnvelope:
+    def __init__(
+        self, header_checksum, cluster_summaries, page_data, compression_settings=0
+    ):
+        self.header_checksum = header_checksum
+        self.cluster_summaries = cluster_summaries
+        self.page_data = page_data
+        self.compression_settings = compression_settings
+        self._checksum = None
+        assert len(cluster_summaries) == len(page_data)
+
+    def serialize(self):
+        # For now we, only support one cluster per page list envelope
+        nested_pagelist_rawbytes = _serialize_rntuple_list_frame(
+            [  # list of clusters
+                _serialize_rntuple_list_frame(
+                    [  # list of columns
+                        _serialize_rntuple_list_frame(
+                            [  # list of pages
+                                NTuple_PageDescription(page[1], page[0]) for page in col
+                            ],
+                            wrap=False,
+                            extra_payload=b"".join(
+                                [
+                                    _rntuple_column_element_offset_format.pack(
+                                        col[0][2]
+                                    ),
+                                    _rntuple_column_compression_settings_format.pack(
+                                        self.compression_settings
+                                    ),
+                                ]
+                            ),
+                        )
+                        for col in cluster_page_locations
+                    ],
+                    rawinput=True,
+                    wrap=False,
+                )
+                for cluster_page_locations in self.page_data
+            ],
+            rawinput=True,
+            wrap=False,
+        )
+        out = [
+            _rntuple_checksum_format.pack(self.header_checksum),
+            _serialize_rntuple_list_frame(self.cluster_summaries),
+            nested_pagelist_rawbytes,
+        ]
+        payload = b"".join(out)
+
+        env_header = _serialize_envelope_header(
+            uproot.const.RNTupleEnvelopeType.PAGELIST,
+            len(payload)
+            + _rntuple_env_header_format.size
+            + _rntuple_checksum_format.size,
+        )
+        header_and_payload = b"".join([env_header, payload])
+        self._checksum = xxhash.xxh3_64_intdigest(header_and_payload)
+        checksum_bytes = _rntuple_checksum_format.pack(self._checksum)
+
+        final_bytes = b"".join([header_and_payload, checksum_bytes])
+        return final_bytes
+
+
 class NTuple_ClusterGroupRecord:
-    def __init__(self, num_clusters, page_list_envlink):
+    def __init__(self, min_entry, entry_span, num_clusters, page_list_envlink):
+        self.min_entry = min_entry
+        self.entry_span = entry_span
         self.num_clusters = num_clusters
         self.page_list_envlink = page_list_envlink
 
     def serialize(self):
-        header_bytes = _rntuple_cluster_group_format.pack(0, 1, self.num_clusters)
+        header_bytes = _rntuple_cluster_group_format.pack(
+            self.min_entry, self.entry_span, self.num_clusters
+        )
         page_list_link_bytes = self.page_list_envlink.serialize()
         return header_bytes + page_list_link_bytes
 
@@ -417,20 +490,23 @@ class NTuple_ClusterGroupRecord:
 
 
 class NTuple_ClusterSummary:
-    def __init__(self, num_first_entry, num_entries):
+    def __init__(self, num_first_entry, num_entries, flags=0):
         self.num_first_entry = num_first_entry
         self.num_entries = num_entries
+        self.flags = flags
 
     def serialize(self):
-        # from spec:
-        # to save space, the page descriptions (inner items) are not in a record frame.
+        # Highest 8 bits are flags reserved for future use
+        assert 0 <= self.num_first_entry < 2**56
+        assert 0 <= self.flags < 2**8
+        num_entries = (self.flags << 56) | self.num_entries
         payload_bytes = _rntuple_cluster_summary_format.pack(
-            self.num_first_entry, self.num_entries
+            self.num_first_entry, num_entries
         )
         return payload_bytes
 
     def __repr__(self):
-        return f"{type(self).__name__}({self.num_first_entry}, {self.num_entries})"
+        return f"{type(self).__name__}({self.num_first_entry}, {self.num_entries}, {self.flags})"
 
 
 class NTuple_InnerListLocator:
@@ -448,16 +524,20 @@ class NTuple_InnerListLocator:
 
 
 class NTuple_PageDescription:
-    def __init__(self, num_elements, locator):
-        assert num_elements <= 65536
-        self.num_elements = num_elements
+    def __init__(self, num_entries, locator):
+        assert num_entries <= 65536
+        self.num_entries = num_entries
         self.locator = locator
 
     def serialize(self):
-        return struct.Struct("<I").pack(self.num_elements) + self.locator.serialize()
+        out = [
+            _rntuple_page_num_elements_format.pack(self.num_entries),
+            self.locator.serialize(),
+        ]
+        return b"".join(out)
 
     def __repr__(self):
-        return f"{type(self).__name__}({self.num_elements}, {self.locator})"
+        return f"{type(self).__name__}({self.num_entries}, {self.locator})"
 
 
 class NTuple_Anchor(CascadeLeaf):
@@ -736,56 +816,61 @@ class NTuple(CascadeNode):
 
     def extend(self, file, sink, data):
         """
-        1. pages(data)
-        2. page inner list locator
+        1. Write pages
+        2. Write page list for new cluster group
         3. page list envelopes
         4. relocate footer
         5. update anchor's foot metadata values in-place
         """
 
-        # DUMMY, replace with real `data` later
-        data = numpy.array([5, 4, 3, 2, 1], dtype="int32")
-        #######################################
+        if data.layout.form != self._header._akform:
+            raise ValueError("data is not compatible with this RNTuple")
 
-        cluster_summary = NTuple_ClusterSummary(self._num_entries, len(data))
+        # 1. Write pages
+        # We write a single page for each column for now
+
+        cluster_page_data = []  # list of list of (locator, len, offset)
+        for field in data.fields:
+            raw_data = data[field].to_numpy().view("uint8")
+            page_key = self.add_rblob(sink, raw_data, len(raw_data), big=False)
+            page_locator = NTuple_Locator(
+                len(raw_data), page_key.location + page_key.allocation  # probably wrong
+            )
+            cluster_page_data.append([(page_locator, len(data), self._num_entries)])
+        page_data = [
+            cluster_page_data
+        ]  # list of list of list of (locator, len, offset)
+
+        # 2. Write page list envelope for new cluster group
+
+        # only a single cluster for now
+        cluster_summaries = [NTuple_ClusterSummary(self._num_entries, len(data))]
         self._num_entries += len(data)
-        self._footer.cluster_summary_record_frames.append(cluster_summary)
-        data_bytes = data.view("uint8")
-        page_key = self.add_rblob(sink, data_bytes, len(data_bytes), big=False)
-        page_locator = NTuple_Locator(
-            len(data_bytes), page_key.location + page_key.allocation
-        )
-        # FIXME use this
-        # self.array_to_type(data.layout, data.type)
 
-        # we always add one more `list of list` into the `footer.cluster_group_records`, because we always make a new
-        # cluster
-        page_desc = NTuple_PageDescription(len(data), page_locator)
-        inner_page_list = NTuple_InnerListLocator([page_desc])
-        inner_page_list_bytes = _serialize_rntuple_list_frame([inner_page_list], False)
-        inner_size_bytes = struct.Struct("<i").pack(
-            -len(inner_page_list_bytes) - 8
-        )  # negative size means list
-        # we always extend one cluster at a time
-        outer_page_list_bytes = b"".join(
-            [inner_size_bytes, struct.Struct("<i").pack(1), inner_page_list_bytes]
+        pagelistenv = NTuple_PageListEnvelope(
+            self._header._checksum,
+            cluster_summaries,
+            page_data,
+        )
+        pagelistenv_rawdata = pagelistenv.serialize()
+        pagelistenv_key = self.add_rblob(
+            sink, pagelistenv_rawdata, len(pagelistenv_rawdata), big=False
+        )
+        pagelistenv_locator = NTuple_Locator(
+            len(pagelistenv_rawdata),
+            pagelistenv_key.location + pagelistenv_key.allocation,
+        )  # check
+        pagelistenv_envlink = NTuple_EnvLink(
+            len(pagelistenv_rawdata), pagelistenv_locator
         )
 
-        pagelist_bytes = uproot.const.rntuple_env_header + outer_page_list_bytes
-        _crc32 = zlib.crc32(pagelist_bytes)
-
-        pagelist_bytes += struct.Struct("<I").pack(_crc32)
-
-        pagelist_key = self.add_rblob(
-            sink, pagelist_bytes, len(pagelist_bytes), big=False
+        cluster_group = NTuple_ClusterGroupRecord(
+            self._num_entries - len(data), len(data), 1, pagelistenv_envlink
         )
-        pagelist_locator = NTuple_Locator(
-            len(pagelist_bytes), pagelist_key.location + pagelist_key.allocation
-        )
-        new_page_list_envlink = NTuple_EnvLink(len(pagelist_bytes), pagelist_locator)
 
-        new_cluster_group_record = NTuple_ClusterGroupRecord(1, new_page_list_envlink)
-        self._footer.cluster_group_record_frames[0] = new_cluster_group_record
+        self._footer.cluster_group_record_frames.append(cluster_group)
+
+        # self.array_to_type(data.layout, data.type)  # TODO: what does this do?
 
         #### relocate Footer ##############################
         old_footer_key = self._footer_key
