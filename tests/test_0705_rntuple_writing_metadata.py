@@ -71,12 +71,11 @@ def test_writable(tmp_path):
         assert type(file["ntuple"]).__name__ == "WritableNTuple"
 
 
-ROOT = pytest.importorskip("ROOT")
-if ROOT.gROOT.GetVersionInt() < 63500:
-    pytest.skip("ROOT version does not support RNTuple v1.0.0.0")
-
-
 def test_ROOT(tmp_path, capfd):
+    ROOT = pytest.importorskip("ROOT")
+    if ROOT.gROOT.GetVersionInt() < 63500:
+        pytest.skip("ROOT version does not support RNTuple v1.0.0.0")
+
     filepath = os.path.join(tmp_path, "test.root")
 
     with uproot.recreate(filepath) as file:
