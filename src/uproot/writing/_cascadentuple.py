@@ -319,10 +319,8 @@ class NTuple_Header(CascadeLeaf):
 
 # https://github.com/root-project/root/blob/8cd9eed6f3a32e55ef1f0f1df8e5462e753c735d/tree/ntuple/v7/doc/BinaryFormatSpecification.md#footer-envelope
 class NTuple_Footer(CascadeLeaf):
-    def __init__(self, location, feature_flags, header_checksum, akform):
-        self._feature_flags = feature_flags
+    def __init__(self, location, header_checksum):
         self._header_checksum = header_checksum
-        self._akform = akform
 
         self.extension_field_record_frames = []
         self.extension_column_record_frames = []
@@ -343,7 +341,7 @@ class NTuple_Footer(CascadeLeaf):
         out = []
         out.extend(
             [
-                _rntuple_feature_flag_format.pack(self._feature_flags),
+                _rntuple_feature_flag_format.pack(0),
                 _rntuple_checksum_format.pack(self._header_checksum),
             ]
         )
@@ -640,8 +638,6 @@ class NTuple(CascadeNode):
     def __init__(
         self,
         directory,
-        name,
-        title,
         ak_form,
         freesegments,
         header,
@@ -651,8 +647,6 @@ class NTuple(CascadeNode):
     ):
         super().__init__(footer, anchor, freesegments)
         self._directory = directory
-        self._name = name
-        self._title = title
         self._header = header
         self._footer = footer
         self._cluster_metadata = cluster_metadata
@@ -664,7 +658,7 @@ class NTuple(CascadeNode):
         self._num_entries = 0
 
     def __repr__(self):
-        return f"{type(self).__name__}({self._directory}, {self._name}, {self._title}, {self._header}, {self._footer}, {self._cluster_metadata}, {self._anchor}, {self._freesegments})"
+        return f"{type(self).__name__}({self._directory}, {self._header}, {self._footer}, {self._cluster_metadata}, {self._anchor}, {self._freesegments})"
 
     @property
     def directory(self):
@@ -702,125 +696,12 @@ class NTuple(CascadeNode):
     def num_entries(self):
         return self._num_entries
 
-    def actually_use(self, array):
-        pass
-        # print(type(array))
-        # print(f"using {array!r}")
-
-    def array_to_type(self, array, type):
-        if isinstance(type, awkward.types.ArrayType):
-            type = type.content
-        # type is unknown
-        if isinstance(type, awkward.types.UnknownType):
-            raise TypeError("cannot write data of unknown type to RNTuple")
-
-        # type is primitive (e.g. "float32")
-        elif isinstance(type, awkward.types.NumpyType):
-            if isinstance(array, awkward.contents.IndexedArray):
-                self.array_to_type(array.project(), type)  # always project IndexedArray
-                return
-            elif isinstance(array, awkward.contents.EmptyArray):
-                self.array_to_type(
-                    array.to_NumpyArray(
-                        awkward.types.numpytype.primitive_to_dtype(type.primitive)
-                    ),
-                    type,
-                )
-                return
-            elif isinstance(array, awkward.contents.NumpyArray):
-                if array.form.type != type:
-                    raise TypeError(f"expected {type!s}, found {array.form.type!s}")
-                else:
-                    self.actually_use(array.data)
-                    return
-            else:
-                raise TypeError(f"expected {type!s}, found {array.form.type!s}")
-
-        # type is regular-length lists (e.g. "3 * float32")
-        elif isinstance(type, awkward.types.RegularType):
-            if isinstance(array, awkward.contents.IndexedArray):
-                self.array_to_type(array.project(), type)  # always project IndexedArray
-                return
-            elif isinstance(array, awkward.contents.RegularArray):
-                if array.size != type.size:
-                    raise TypeError(f"expected {type!s}, found {array.form.type!s}")
-                else:
-                    if type.parameter("__array__") == "string":
-                        # maybe the fact that this is a string changes how it's used
-                        self.actually_use(f"regular strings of length {type.size}")
-                    else:
-                        self.actually_use(f"regular lists of length {type.size}")
-                    self.array_to_type(array.content, type.content)
-                    return
-            else:
-                raise TypeError(f"expected {type!s}, found {array.form.type!s}")
-
-        # type is variable-length lists (e.g. "var * float32")
-        elif isinstance(type, awkward.types.ListType):
-            if isinstance(array, awkward.contents.IndexedArray):
-                self.array_to_type(array.project(), type)  # always project IndexedArray
-                return
-            elif isinstance(array, awkward.contents.ListArray):
-                self.array_to_type(array.toListOffsetArray64(True), type)
-                return
-            elif isinstance(array, awkward.contents.ListOffsetArray):
-                if type.parameter("__array__") == "string":
-                    # maybe the fact that this is a string changes how it's used
-                    self.actually_use("variable-length strings")
-                else:
-                    self.actually_use("variable-length lists")
-                self.actually_use(array.offsets.data)
-                self.array_to_type(array.content, type.content)
-                return
-            else:
-                raise TypeError(f"expected {type!s}, found {array.form.type!s}")
-
-        # type is potentially missing data (e.g. "?float32")
-        elif isinstance(type, awkward.types.OptionType):
-            raise NotImplementedError("RNTuple does not yet have an option-type")
-
-        # type is struct-like records (e.g. "{x: float32, y: var * int64}")
-        elif isinstance(type, awkward.types.RecordType):
-            if isinstance(array, awkward.contents.IndexedArray):
-                self.array_to_type(array.project(), type)  # always project IndexedArray
-                return
-            elif isinstance(array, awkward.contents.RecordArray):
-                self.actually_use("begin record")
-                for field, subtype in zip(type.fields, type.contents):
-                    self.actually_use(f"field {field}")
-                    self.array_to_type(array[field], subtype)
-                self.actually_use("end record")
-                return
-            else:
-                raise TypeError(f"expected {type!s}, found {array.form.type!s}")
-
-        # type is heterogeneous unions/variants (e.g. "union[float32, var * int64]")
-        elif isinstance(type, awkward.types.UnionType):
-            if isinstance(array, awkward.contents.IndexedArray):
-                self.array_to_type(array.project(), type)  # always project IndexedArray
-                return
-            elif isinstance(array, awkward.contents.UnionArray):
-                self.actually_use("begin union")
-                self.actually_use(array.tags.data)
-                self.actually_use(array.index.data)
-                for index, subtype in enumerate(type.contents):
-                    self.actually_use(f"index {index}")
-                    self.array_to_type(array.project(index), subtype)
-                self.actually_use("end union")
-                return
-            else:
-                raise TypeError(f"expected {type!s}, found {array.form.type!s}")
-
-        else:
-            raise AssertionError(f"type must be an Awkward Type, not {type!r}")
-
     def extend(self, file, sink, data):
         """
         1. Write pages
         2. Write page list for new cluster group
-        3. page list envelopes
-        4. relocate footer
-        5. update anchor's foot metadata values in-place
+        3. Relocate footer
+        4. Update anchor's foot metadata values in-place
         """
 
         if data.layout.form != self._header._akform:
@@ -870,9 +751,8 @@ class NTuple(CascadeNode):
 
         self._footer.cluster_group_record_frames.append(cluster_group)
 
-        # self.array_to_type(data.layout, data.type)  # TODO: what does this do?
+        # 3. Relocate footer
 
-        #### relocate Footer ##############################
         old_footer_key = self._footer_key
         self._freesegments.release(
             old_footer_key.location, old_footer_key.location + old_footer_key.allocation
@@ -885,7 +765,8 @@ class NTuple(CascadeNode):
             big=False,
         )
 
-        ### update anchor
+        # 4. Update anchor's foot metadata values in-place
+
         self._anchor.seek_footer = (
             self._footer_key.location + self._footer_key.allocation
         )
@@ -974,8 +855,8 @@ class NTuple(CascadeNode):
         self._key = self._directory.add_object(
             sink,
             "ROOT::RNTuple",
-            self._name,
-            self._title,
+            self._header._name,
+            self._header._name,
             anchor_raw_data,
             len(anchor_raw_data),
             replaces=self._key,
