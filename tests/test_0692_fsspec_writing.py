@@ -9,6 +9,7 @@ import os
 import pathlib
 import fsspec
 import numpy as np
+import awkward as ak
 
 is_windows = sys.platform.startswith("win")
 
@@ -218,3 +219,16 @@ def test_fsspec_writing_memory(tmp_path, scheme):
 
     with uproot.open(uri) as f:
         assert f["tree"]["x"].array().tolist() == [1, 2, 3]
+
+
+def test_write_fsspec_xrootd(xrootd_server):
+    remote_path, _ = xrootd_server
+    filename = "file.root"
+    remote_file_path = os.path.join(remote_path, filename)
+    array = ak.Array({"x":[1,2,3], "y":[4,5,6]})
+    file = uproot.recreate(remote_file_path)
+    file["tree"] = array
+    file.close()
+    with uproot.open(remote_file_path) as f:
+        assert f["tree"]["x"].array().tolist() == [1, 2, 3]
+        assert f["tree"]["y"].array().tolist() == [4, 5, 6]
