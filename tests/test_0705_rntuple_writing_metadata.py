@@ -14,9 +14,6 @@ import uproot
 ak = pytest.importorskip("awkward")
 
 
-@pytest.mark.skip(
-    reason="RNTuple writing is pending until specification 1.0.0 is released."
-)
 def test_header(tmp_path):
     filepath = os.path.join(tmp_path, "test.root")
 
@@ -34,7 +31,7 @@ def test_header(tmp_path):
     file = uproot.open(filepath)["ntuple"]
 
     header = file.header
-    assert header.crc32 == file.footer.header_crc32
+    assert header.checksum == file.footer.header_checksum
 
     frs = header.field_records
     assert frs[0].parent_field_id == 0
@@ -45,23 +42,20 @@ def test_header(tmp_path):
     assert frs[2].field_name == "three"
     assert frs[0].type_name == "double"
     assert frs[1].type_name == "std::int32_t"
-    assert frs[2].type_name == "bit"
+    assert frs[2].type_name == "bool"
 
     crs = header.column_records
-    assert crs[0].type == 7
-    assert crs[1].type == 11
-    assert crs[2].type == 6
+    assert crs[0].type == uproot.const.rntuple_col_type_to_num_dict["real64"]
+    assert crs[1].type == uproot.const.rntuple_col_type_to_num_dict["int32"]
+    assert crs[2].type == uproot.const.rntuple_col_type_to_num_dict["bit"]
     assert crs[0].field_id == 0
     assert crs[1].field_id == 1
     assert crs[2].field_id == 2
-    assert crs[0].nbits == 64
-    assert crs[1].nbits == 32
-    assert crs[2].nbits == 1
+    assert crs[0].nbits == uproot.const.rntuple_col_num_to_size_dict[crs[0].type]
+    assert crs[1].nbits == uproot.const.rntuple_col_num_to_size_dict[crs[1].type]
+    assert crs[2].nbits == uproot.const.rntuple_col_num_to_size_dict[crs[2].type]
 
 
-@pytest.mark.skip(
-    reason="RNTuple writing is pending until specification 1.0.0 is released."
-)
 def test_writable(tmp_path):
     filepath = os.path.join(tmp_path, "test.root")
 
@@ -72,28 +66,29 @@ def test_writable(tmp_path):
             ],
             ["one"],
         )
-        file.mkrntuple("ntuple", akform)
+        rn = file.mkrntuple("ntuple", akform)
+        print(rn)
         assert type(file["ntuple"]).__name__ == "WritableNTuple"
 
 
-# FIXME get ROOT to recognize it
-# ROOT = pytest.importorskip("ROOT")
+def test_ROOT(tmp_path, capfd):
+    ROOT = pytest.importorskip("ROOT")
+    if ROOT.gROOT.GetVersionInt() < 63500:
+        pytest.skip("ROOT version does not support RNTuple v1.0.0.0")
 
+    filepath = os.path.join(tmp_path, "test.root")
 
-# def test_ROOT(tmp_path, capfd):
-#     filepath = os.path.join(tmp_path, "test.root")
-
-#     with uproot.recreate(filepath) as file:
-#         akform = ak.forms.RecordForm(
-#             [
-#                 ak.forms.NumpyForm("float64"),
-#                 ak.forms.NumpyForm("int32"),
-#             ],
-#             ["one", "two"],
-#         )
-#         file.mkrntuple("ntuple", akform)
-#     RT = ROOT.Experimental.RNTupleReader.Open("ntuple", filepath)
-#     RT.PrintInfo()
-#     out = capfd.readouterr().out
-#     assert "* Field 1   : one (double)" in out
-#     assert "* Field 2   : two (std::int32_t)" in out
+    with uproot.recreate(filepath) as file:
+        akform = ak.forms.RecordForm(
+            [
+                ak.forms.NumpyForm("float64"),
+                ak.forms.NumpyForm("int32"),
+            ],
+            ["one", "two"],
+        )
+        file.mkrntuple("ntuple", akform)
+    RT = ROOT.Experimental.RNTupleReader.Open("ntuple", filepath)
+    RT.PrintInfo()
+    out = capfd.readouterr().out
+    assert "* Field 1   : one (double)" in out
+    assert "* Field 2   : two (std::int32_t)" in out
