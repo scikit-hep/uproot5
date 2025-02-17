@@ -29,7 +29,7 @@ def test_flat_arrays(tmp_path):
     assert arrays.two.tolist() == data.two.tolist()
 
 
-def test_flat_arrayst_ROOT(tmp_path, capfd):
+def test_flat_arrays_ROOT(tmp_path, capfd):
     ROOT = pytest.importorskip("ROOT")
     if ROOT.gROOT.GetVersionInt() < 63500:
         pytest.skip("ROOT version does not support RNTuple v1.0.0.0")
