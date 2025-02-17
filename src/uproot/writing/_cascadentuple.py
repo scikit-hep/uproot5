@@ -110,7 +110,8 @@ class RBlob_Key(Key):
 
 
 def _serialize_string(content):
-    return _rntuple_string_length_format.pack(len(content)) + str.encode(content)
+    content_bytes = str.encode(content, encoding="utf-8")
+    return _rntuple_string_length_format.pack(len(content_bytes)) + content_bytes
 
 
 def _record_frame_wrap(payload, includeself=True):

@@ -119,7 +119,7 @@ kStreamedMemberWise = numpy.uint16(1 << 14)
 
 ############ RNTuple https://github.com/root-project/root/blob/0b9cdbcfd326ba50ee6c2f202675656129eafbe7/tree/ntuple/v7/doc/BinaryFormatSpecification.md
 
-rntuple_version_for_writing = (1, 0, 0, 0)
+rntuple_version_for_writing = (1, 0, 0, 1)
 
 rntuple_col_num_to_dtype_dict = {
     0x00: "bit",
