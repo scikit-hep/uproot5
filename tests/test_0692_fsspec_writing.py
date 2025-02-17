@@ -221,7 +221,7 @@ def test_fsspec_writing_memory(tmp_path, scheme):
         assert f["tree"]["x"].array().tolist() == [1, 2, 3]
 
 
-def test_write_fsspec_xrootd(xrootd_server):
+def test_write_append_fsspec_xrootd(xrootd_server):
     remote_path, _ = xrootd_server
     filename = "file.root"
     remote_file_path = os.path.join(remote_path, filename)
@@ -229,6 +229,12 @@ def test_write_fsspec_xrootd(xrootd_server):
     file = uproot.recreate(remote_file_path)
     file["tree"] = array
     file.close()
+    array2 = ak.Array({"x":[1,2,3,4], "y":[4,5,6,7]})
+    file = uproot.update(remote_file_path)
+    file["other_tree"] = array2
+    file.close()
     with uproot.open(remote_file_path) as f:
         assert f["tree"]["x"].array().tolist() == [1, 2, 3]
         assert f["tree"]["y"].array().tolist() == [4, 5, 6]
+        assert f["other_tree"]["x"].array().tolist() == [1, 2, 3, 4]
+        assert f["other_tree"]["y"].array().tolist() == [4, 5, 6, 7]
