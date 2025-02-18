@@ -267,7 +267,7 @@ in file {self.file.file_path}"""
                 -_rntuple_anchor_format.size
                 - _rntuple_anchor_checksum_format.size : -_rntuple_anchor_checksum_format.size
             ]
-        )
+        ), "Anchor checksum does not match! File is corrupted or incompatible."
         cursor.skip(-_rntuple_anchor_checksum_format.size)
 
         self._header_chunk_ready = False
