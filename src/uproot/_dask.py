@@ -1396,8 +1396,8 @@ def _get_ttree_form(
                     for key, value in ak_add_doc.items()
                 }
             )
-
-        content_form = content_form.copy(parameters=content_parameters)
+        if len(content_parameters.keys()) != 0:
+            content_form = content_form.copy(parameters=content_parameters)
         contents.append(content_form)
 
     if isinstance(ak_add_doc, bool):
