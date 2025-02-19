@@ -550,7 +550,12 @@ def _ak_add_doc(array, hasbranches, ak_add_doc):
             if ak_add_doc:
                 array.layout.parameters["__doc__"] = hasbranches.title
         elif isinstance(ak_add_doc, dict):
-            array.layout.parameters.update({ key:hasbranches.__getattribute__(value) for key,value in ak_add_doc.items() })
+            array.layout.parameters.update(
+                {
+                    key: hasbranches.__getattribute__(value)
+                    for key, value in ak_add_doc.items()
+                }
+            )
     return array
 
 
@@ -894,9 +899,7 @@ class HasBranches(Mapping):
         ]
 
         return _ak_add_doc(
-            library.group(output, expression_context, how),
-            self,
-            ak_add_doc
+            library.group(output, expression_context, how), self, ak_add_doc
         )
 
     def iterate(
@@ -3155,12 +3158,7 @@ def _ranges_or_baskets_to_arrays(
 
 
 def _fix_asgrouped(
-    arrays,
-    expression_context,
-    branchid_interpretation,
-    library,
-    how,
-    ak_add_doc
+    arrays, expression_context, branchid_interpretation, library, how, ak_add_doc
 ):
     index_start = 0
     for index_stop, (_, context) in enumerate(expression_context):
@@ -3180,9 +3178,7 @@ def _fix_asgrouped(
                     subcontext.append((subname, limited_context[subname]))
 
                 arrays[branch.cache_key] = _ak_add_doc(
-                    library.group(subarrays, subcontext, how),
-                    branch,
-                    ak_add_doc
+                    library.group(subarrays, subcontext, how), branch, ak_add_doc
                 )
 
                 index_start = index_stop

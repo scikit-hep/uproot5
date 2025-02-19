@@ -1390,7 +1390,12 @@ def _get_ttree_form(
             if ak_add_doc:
                 content_parameters["__doc__"] = branch.title
         elif isinstance(ak_add_doc, dict):
-            content_parameters.update({ key:branch.__getattribute__(value) for key,value in ak_add_doc.items() })
+            content_parameters.update(
+                {
+                    key: branch.__getattribute__(value)
+                    for key, value in ak_add_doc.items()
+                }
+            )
 
         content_form = content_form.copy(parameters=content_parameters)
         contents.append(content_form)
@@ -1398,9 +1403,11 @@ def _get_ttree_form(
     if isinstance(ak_add_doc, bool):
         parameters = {"__doc__": ttree.title} if ak_add_doc else None
     elif isinstance(ak_add_doc, dict):
-        parameters = {"__doc__": ttree.title} if "__doc__" in ak_add_doc.keys() else None
+        parameters = (
+            {"__doc__": ttree.title} if "__doc__" in ak_add_doc.keys() else None
+        )
     else:
-        parameters=None
+        parameters = None
 
     return awkward.forms.RecordForm(contents, common_keys, parameters=parameters)
 
@@ -1553,10 +1560,7 @@ which has {entry_stop} entries"""
                     partition_args.append((i, start, stop))
 
     base_form = _get_ttree_form(
-        awkward,
-        ttrees[0],
-        common_keys,
-        interp_options.get("ak_add_doc")
+        awkward, ttrees[0], common_keys, interp_options.get("ak_add_doc")
     )
 
     if len(partition_args) == 0:
@@ -1630,10 +1634,7 @@ def _get_dak_array_delay_open(
             ignore_duplicates=True,
         )
         base_form = _get_ttree_form(
-            awkward,
-            obj,
-            common_keys,
-            interp_options.get("ak_add_doc")
+            awkward, obj, common_keys, interp_options.get("ak_add_doc")
         )
 
     divisions = [0]
