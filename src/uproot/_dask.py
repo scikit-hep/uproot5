@@ -40,7 +40,6 @@ def dask(
     steps_per_file=unset,
     library="ak",
     ak_add_doc=False,
-    ak_add_typename=False,
     custom_classes=None,
     allow_missing=False,
     open_files=True,
@@ -88,10 +87,10 @@ def dask(
             of dask arrays and if ``library='ak'`` it returns a single dask-awkward
             array. ``library='pd'`` has not been implemented yet and will raise a
             ``NotImplementedError``.
-        ak_add_doc (bool): If True and ``library="ak"``, add the TBranch ``title``
+        ak_add_doc (bool | dict ): If True and ``library="ak"``, add the TBranch ``title``
             to the Awkward ``__doc__`` parameter of the array.
-        ak_add_typename (bool): If True and ``library="ak"``, add the TBranch ``typename``
-            to the Awkward ``typename`` parameter of the array.
+            if dict = {key:value} and ``library="ak"``, add the TBranch ``value`` to the
+            Awkward ``key`` parameter of the array.
         custom_classes (None or dict): If a dict, override the classes from
             the :doc:`uproot.reading.ReadOnlyFile` or ``uproot.classes``.
         allow_missing (bool): If True, skip over any files that do not contain
@@ -239,7 +238,7 @@ def dask(
 
     filter_branch = uproot._util.regularize_filter(filter_branch)
 
-    interp_options = {"ak_add_doc": ak_add_doc, "ak_add_typename": ak_add_typename}
+    interp_options = {"ak_add_doc": ak_add_doc}
 
     if library.name == "np":
         if open_files:
@@ -494,7 +493,6 @@ class _UprootReadNumpy:
             entry_stop=stop,
             library="np",
             ak_add_doc=self.interp_options["ak_add_doc"],
-            ak_add_typename=self.interp_options["ak_add_typename"],
             decompression_executor=self.decompression_executor,
             interpretation_executor=self.interpretation_executor,
         )
@@ -559,7 +557,6 @@ which has {num_entries} entries"""
             entry_start=start,
             entry_stop=stop,
             ak_add_doc=self.interp_options["ak_add_doc"],
-            ak_add_typename=self.interp_options["ak_add_typename"],
             decompression_executor=self.decompression_executor,
             interpretation_executor=self.interpretation_executor,
         )
@@ -925,7 +922,6 @@ class TrivialFormMappingInfo(ImplementsFormMappingInfo):
             entry_start=start,
             entry_stop=stop,
             ak_add_doc=options["ak_add_doc"],
-            ak_add_typename=options["ak_add_typename"],
             decompression_executor=decompression_executor,
             interpretation_executor=interpretation_executor,
             how=tuple,
@@ -1384,22 +1380,27 @@ def _get_ttree_form(
     ttree,
     common_keys,
     ak_add_doc,
-    ak_add_typename,
 ):
     contents = []
     for key in common_keys:
         branch = ttree[key]
         content_form = branch.interpretation.awkward_form(ttree.file)
-        if ak_add_doc or ak_add_typename:
-            content_parameters = {}
+        content_parameters = {}
+        if isinstance(ak_add_doc, bool):
             if ak_add_doc:
                 content_parameters["__doc__"] = branch.title
-            if ak_add_typename:
-                content_parameters["typename"] = branch.typename
-            content_form = content_form.copy(parameters=content_parameters)
+        elif isinstance(ak_add_doc, dict):
+            content_parameters.update({ key:branch.__getattribute__(value) for key,value in ak_add_doc.items() })
+
+        content_form = content_form.copy(parameters=content_parameters)
         contents.append(content_form)
 
-    parameters = {"__doc__": ttree.title} if ak_add_doc else None
+    if isinstance(ak_add_doc, bool):
+        parameters = {"__doc__": ttree.title} if ak_add_doc else None
+    elif isinstance(ak_add_doc, dict):
+        parameters = {"__doc__": ttree.title} if "__doc__" in ak_add_doc.keys() else None
+    else:
+        parameters=None
 
     return awkward.forms.RecordForm(contents, common_keys, parameters=parameters)
 
@@ -1555,8 +1556,7 @@ which has {entry_stop} entries"""
         awkward,
         ttrees[0],
         common_keys,
-        interp_options.get("ak_add_doc"),
-        interp_options.get("ak_add_typename"),
+        interp_options.get("ak_add_doc")
     )
 
     if len(partition_args) == 0:
@@ -1633,8 +1633,7 @@ def _get_dak_array_delay_open(
             awkward,
             obj,
             common_keys,
-            interp_options.get("ak_add_doc"),
-            interp_options.get("ak_add_typename"),
+            interp_options.get("ak_add_doc")
         )
 
     divisions = [0]
