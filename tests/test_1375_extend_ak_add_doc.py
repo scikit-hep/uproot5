@@ -5,6 +5,9 @@ import skhep_testdata
 
 import uproot
 
+dask = pytest.importorskip("dask")
+dask_awkward = pytest.importorskip("dask_awkward")
+
 file = skhep_testdata.data_path("nanoAOD_2015_CMS_Open_Data_ttbar.root")
 tree = "Events"
 
