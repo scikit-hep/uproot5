@@ -225,11 +225,11 @@ def test_write_append_fsspec_xrootd(xrootd_server):
     remote_path, _ = xrootd_server
     filename = "file.root"
     remote_file_path = os.path.join(remote_path, filename)
-    array = ak.Array({"x":[1,2,3], "y":[4,5,6]})
+    array = ak.Array({"x": [1, 2, 3], "y": [4, 5, 6]})
     file = uproot.recreate(remote_file_path)
     file["tree"] = array
     file.close()
-    array2 = ak.Array({"x":[1,2,3,4], "y":[4,5,6,7]})
+    array2 = ak.Array({"x": [1, 2, 3, 4], "y": [4, 5, 6, 7]})
     file = uproot.update(remote_file_path)
     file["other_tree"] = array2
     file.close()
