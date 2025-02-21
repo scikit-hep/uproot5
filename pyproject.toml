@@ -70,7 +70,7 @@ test = [
   "deflate",
   "minio",
   "aiohttp",
-  "fsspec-xrootd",
+  "fsspec-xrootd>=0.5.0",
   "s3fs",
   "paramiko",
   "pytest>=6",
@@ -86,7 +86,7 @@ test-pyodide = [
   "pytest-timeout",
   "scikit-hep-testdata"
 ]
-xrootd = ["fsspec-xrootd"]
+xrootd = ["fsspec-xrootd>=0.5.0"]
 
 [project.urls]
 Download = "https://github.com/scikit-hep/uproot5/releases"
