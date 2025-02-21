@@ -108,8 +108,10 @@ def iterate(
         library (str or :doc:`uproot.interpretation.library.Library`): The library
             that is used to represent arrays. Options are ``"np"`` for NumPy,
             ``"ak"`` for Awkward Array, and ``"pd"`` for Pandas.
-        ak_add_doc (bool): If True and ``library="ak"``, add the TBranch ``title``
+        ak_add_doc (bool | dict ): If True and ``library="ak"``, add the TBranch ``title``
             to the Awkward ``__doc__`` parameter of the array.
+            if dict = {key:value} and ``library="ak"``, add the TBranch ``value`` to the
+            Awkward ``key`` parameter of the array.
         how (None, str, or container type): Library-dependent instructions
             for grouping. The only recognized container types are ``tuple``,
             ``list``, and ``dict``. Note that the container *type itself*
@@ -285,8 +287,10 @@ def concatenate(
         library (str or :doc:`uproot.interpretation.library.Library`): The library
             that is used to represent arrays. Options are ``"np"`` for NumPy,
             ``"ak"`` for Awkward Array, and ``"pd"`` for Pandas.
-        ak_add_doc (bool): If True and ``library="ak"``, add the TBranch ``title``
+        ak_add_doc (bool | dict ): If True and ``library="ak"``, add the TBranch ``title``
             to the Awkward ``__doc__`` parameter of the array.
+            if dict = {key:value} and ``library="ak"``, add the TBranch ``value`` to the
+            Awkward ``key`` parameter of the array.
         how (None, str, or container type): Library-dependent instructions
             for grouping. The only recognized container types are ``tuple``,
             ``list``, and ``dict``. Note that the container *type itself*
@@ -541,8 +545,17 @@ class Report:
 
 
 def _ak_add_doc(array, hasbranches, ak_add_doc):
-    if ak_add_doc and type(array).__module__ == "awkward.highlevel":
-        array.layout.parameters["__doc__"] = hasbranches.title
+    if type(array).__module__ == "awkward.highlevel":
+        if isinstance(ak_add_doc, bool):
+            if ak_add_doc:
+                array.layout.parameters["__doc__"] = hasbranches.title
+        elif isinstance(ak_add_doc, dict):
+            array.layout.parameters.update(
+                {
+                    key: hasbranches.__getattribute__(value)
+                    for key, value in ak_add_doc.items()
+                }
+            )
     return array
 
 
@@ -738,8 +751,10 @@ class HasBranches(Mapping):
             library (str or :doc:`uproot.interpretation.library.Library`): The library
                 that is used to represent arrays. Options are ``"np"`` for NumPy,
                 ``"ak"`` for Awkward Array, and ``"pd"`` for Pandas.
-            ak_add_doc (bool): If True and ``library="ak"``, add the TBranch ``title``
+            ak_add_doc (bool | dict ): If True and ``library="ak"``, add the TBranch ``title``
                 to the Awkward ``__doc__`` parameter of the array.
+                if dict = {key:value} and ``library="ak"``, add the TBranch ``value`` to the
+                Awkward ``key`` parameter of the array.
             how (None, str, or container type): Library-dependent instructions
                 for grouping. The only recognized container types are ``tuple``,
                 ``list``, and ``dict``. Note that the container *type itself*
@@ -954,8 +969,10 @@ class HasBranches(Mapping):
             library (str or :doc:`uproot.interpretation.library.Library`): The library
                 that is used to represent arrays. Options are ``"np"`` for NumPy,
                 ``"ak"`` for Awkward Array, and ``"pd"`` for Pandas.
-            ak_add_doc (bool): If True and ``library="ak"``, add the TBranch ``title``
+            ak_add_doc (bool | dict ): If True and ``library="ak"``, add the TBranch ``title``
                 to the Awkward ``__doc__`` parameter of the array.
+                if dict = {key:value} and ``library="ak"``, add the TBranch ``value`` to the
+                Awkward ``key`` parameter of the array.
             how (None, str, or container type): Library-dependent instructions
                 for grouping. The only recognized container types are ``tuple``,
                 ``list``, and ``dict``. Note that the container *type itself*
@@ -1761,8 +1778,10 @@ class TBranch(HasBranches):
             library (str or :doc:`uproot.interpretation.library.Library`): The library
                 that is used to represent arrays. Options are ``"np"`` for NumPy,
                 ``"ak"`` for Awkward Array, and ``"pd"`` for Pandas.
-            ak_add_doc (bool): If True and ``library="ak"``, add the TBranch ``title``
+            ak_add_doc (bool | dict ): If True and ``library="ak"``, add the TBranch ``title``
                 to the Awkward ``__doc__`` parameter of the array.
+                if dict = {key:value} and ``library="ak"``, add the TBranch ``value`` to the
+                Awkward ``key`` parameter of the array.
 
         Returns the ``TBranch`` data as an array.
 
