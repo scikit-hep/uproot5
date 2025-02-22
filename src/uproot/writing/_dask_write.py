@@ -93,7 +93,7 @@ def dask_write(
     from dask.base import tokenize
     from dask.blockwise import BlockIndex
     from dask.highlevelgraph import HighLevelGraph
-    from dask_awkward.layers.layers import AwkwardMaterializedLayer
+    from dask_awkward.layers.layers import AwkwardTreeReductionLayer
     from dask_awkward.lib.core import map_partitions, new_scalar_object
 
     fs, path = url_to_fs(destination, **(storage_options or {}))
@@ -120,13 +120,19 @@ def dask_write(
         meta=array._meta,
     )
     map_res.dask.layers[map_res.name].annotations = {"ak_output": True}
-    dsk = {}
     final_name = name + "-finalize"
-    dsk[(final_name, 0)] = (lambda *_: None, map_res.__dask_keys__())
 
+    layer = AwkwardTreeReductionLayer(
+        name=final_name,
+        concat_func=none_to_none,
+        tree_node_func=none_to_none,
+        name_input=map_res.name,
+        npartitions_input=map_res.npartitions,
+        finalize_func=none_to_none,
+    )
     graph = HighLevelGraph.from_collections(
         final_name,
-        AwkwardMaterializedLayer(dsk, previous_layer_names=[map_res.name]),
+        layer,
         dependencies=[map_res],
     )
     out = new_scalar_object(graph, final_name, dtype="f8")
@@ -183,3 +189,8 @@ def ak_to_root(
     )
 
     out_file[tree_name].extend({name: array[name] for name in array.fields})
+
+
+def none_to_none(*_):
+    """Dummy reduction function where write tasks produce no metadata"""
+    return None
