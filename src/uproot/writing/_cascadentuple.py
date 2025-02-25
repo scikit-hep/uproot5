@@ -14,6 +14,7 @@ import datetime
 import struct
 
 import awkward
+import numpy
 import xxhash
 
 import uproot
@@ -237,6 +238,68 @@ class NTuple_Column_Description:
         return header_bytes
 
 
+def _build_field_col_records(
+    field_records, column_records, column_keys, akform, field_name=None, parent_fid=None
+):
+    field_id = len(field_records)
+    if parent_fid is None:
+        parent_fid = field_id
+    if field_name is None:
+        field_name = f"_{field_id}"
+    if isinstance(akform, awkward.forms.NumpyForm):
+        ak_primitive = akform.primitive
+        type_name = _ak_primitive_to_typename_dict[ak_primitive]
+        field = NTuple_Field_Description(
+            0,
+            0,
+            parent_fid,
+            uproot.const.RNTupleFieldRole.LEAF,
+            0,
+            field_name,
+            type_name,
+            "",
+            "",
+        )
+        field_records.append(field)
+        type_num = _ak_primitive_to_num_dict[ak_primitive]
+        type_size = uproot.const.rntuple_col_num_to_size_dict[type_num]
+        col = NTuple_Column_Description(type_num, type_size, field_id, 0, 0)
+        column_records.append(col)
+        column_keys.append(f"node{len(column_records)}-data")
+    elif isinstance(akform, awkward.forms.ListOffsetForm):
+        # TODO: this doesn't work for nested lists
+        ak_primitive = akform.content.primitive
+        type_name = f"std::vector<{_ak_primitive_to_typename_dict[ak_primitive]}>"
+        field = NTuple_Field_Description(
+            0,
+            0,
+            parent_fid,
+            uproot.const.RNTupleFieldRole.COLLECTION,
+            0,
+            field_name,
+            type_name,
+            "",
+            "",
+        )
+        field_records.append(field)
+        ak_offset = akform.offsets
+        type_num = _ak_primitive_to_num_dict[ak_offset]
+        type_size = uproot.const.rntuple_col_num_to_size_dict[type_num]
+        col = NTuple_Column_Description(type_num, type_size, field_id, 0, 0)
+        column_records.append(col)
+        column_keys.append(f"node{len(column_records)}-offsets")
+        # content data
+        _build_field_col_records(
+            field_records,
+            column_records,
+            column_keys,
+            akform.content,
+            parent_fid=field_id,
+        )
+    else:
+        raise NotImplementedError
+
+
 # https://github.com/root-project/root/blob/8cd9eed6f3a32e55ef1f0f1df8e5462e753c735d/tree/ntuple/v7/doc/BinaryFormatSpecification.md#header-envelope
 class NTuple_Header(CascadeLeaf):
     def __init__(self, location, name, ntuple_description, akform):
@@ -246,6 +309,9 @@ class NTuple_Header(CascadeLeaf):
 
         self._serialize = None
         self._checksum = None
+        self._field_records = None
+        self._column_records = None
+        self._column_keys = None
         aloc = len(self.serialize())
         super().__init__(location, aloc)
 
@@ -260,26 +326,18 @@ class NTuple_Header(CascadeLeaf):
         akform = self._akform
         field_names = akform.fields
         contents = akform.contents
-        field_records = []
-        column_records = []
+        self._field_records = []
+        self._column_records = []
+        self._column_keys = []
 
-        for field_id, (field_name, ak_col) in enumerate(zip(field_names, contents)):
-            if not isinstance(ak_col, awkward.forms.NumpyForm):
-                raise NotImplementedError("only flat column is supported")
-            ak_primitive = ak_col.primitive
-            type_name = _ak_primitive_to_typename_dict[ak_primitive]
-            parent_field_id = field_id
-            field = NTuple_Field_Description(
-                0, 0, parent_field_id, 0, 0, field_name, type_name, "", ""
+        for field_name, topakform in zip(field_names, contents):
+            _build_field_col_records(
+                self._field_records,
+                self._column_records,
+                self._column_keys,
+                topakform,
+                field_name=field_name,
             )
-            type_num = _ak_primitive_to_num_dict[ak_primitive]
-            type_size = uproot.const.rntuple_col_num_to_size_dict[type_num]
-            col = NTuple_Column_Description(type_num, type_size, field_id, 0, 0)
-
-            field_records.append(field)
-            column_records.append(col)
-
-        return field_records, column_records
 
     def serialize(self):
         if self._serialize:
@@ -293,12 +351,12 @@ class NTuple_Header(CascadeLeaf):
         out = []
         out.extend([feature_flag, name, description, writer])
 
-        field_records, column_records = self.generate_field_col_records()
+        self.generate_field_col_records()
         alias_records = []
         extra_type_info = []
 
-        out.append(_serialize_rntuple_list_frame(field_records))
-        out.append(_serialize_rntuple_list_frame(column_records))
+        out.append(_serialize_rntuple_list_frame(self._field_records))
+        out.append(_serialize_rntuple_list_frame(self._column_records))
         out.append(_serialize_rntuple_list_frame(alias_records))
         out.append(_serialize_rntuple_list_frame(extra_type_info))
         payload = b"".join(out)
@@ -658,6 +716,9 @@ class NTuple(CascadeNode):
         self._header_key = None
         self._num_entries = 0
 
+        self._column_counts = numpy.zeros(len(self._header._column_keys), dtype=int)
+        self._column_offsets = numpy.zeros(len(self._header._column_keys), dtype=int)
+
     def __repr__(self):
         return f"{type(self).__name__}({self._directory}, {self._header}, {self._footer}, {self._cluster_metadata}, {self._anchor}, {self._freesegments})"
 
@@ -712,13 +773,23 @@ class NTuple(CascadeNode):
         # We write a single page for each column for now
 
         cluster_page_data = []  # list of list of (locator, len, offset)
-        for field in data.fields:
-            raw_data = data[field].to_numpy().view("uint8")
+        data_buffers = awkward.to_buffers(data)[2]
+        for idx, key in enumerate(self._header._column_keys):
+            col_data = data_buffers[key]
+            if "offsets" in key:
+                col_data = (
+                    col_data[1:] + self._column_offsets[idx]
+                )  # TODO: check if there is a better way to do this
+                self._column_offsets[idx] = col_data[-1]
+            raw_data = col_data.view("uint8")
             page_key = self.add_rblob(sink, raw_data, len(raw_data), big=False)
             page_locator = NTuple_Locator(
                 len(raw_data), page_key.location + page_key.allocation  # probably wrong
             )
-            cluster_page_data.append([(page_locator, len(data), self._num_entries)])
+            cluster_page_data.append(
+                [(page_locator, len(col_data), self._column_counts[idx])]
+            )
+            self._column_counts[idx] += len(col_data)
         page_data = [
             cluster_page_data
         ]  # list of list of list of (locator, len, offset)
