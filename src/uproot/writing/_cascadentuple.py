@@ -50,7 +50,7 @@ _ak_primitive_to_typename_dict = {
     "i32": "std::int32_t",
     # "switch": 3,
     # "byte": 4,
-    # "char": 5,
+    "char": "char",
     "bool": "bool",  # check
     "float64": "double",
     "float32": "float",
@@ -59,6 +59,7 @@ _ak_primitive_to_typename_dict = {
     "int32": "std::int32_t",
     "int16": "std::int16_t",
     "int8": "std::int8_t",
+    "uint8": "std::uint8_t",
     # "splitindex64": 14,
     # "splitindex32": 15,
     # "splitreal64": 16,
@@ -70,6 +71,7 @@ _ak_primitive_to_typename_dict = {
 }
 _ak_primitive_to_num_dict = {
     "bool": 0x00,
+    "char": 0x02,
     "int8": 0x03,
     "uint8": 0x04,
     "int16": 0x05,
@@ -93,6 +95,11 @@ def _cpp_typename(akform, subcall=False):
     elif isinstance(akform, awkward.forms.ListOffsetForm):
         content_typename = _cpp_typename(akform.content, subcall=True)
         typename = f"std::vector<{content_typename}>"
+        override_typename = akform.parameters.get("__array__", "")
+        if override_typename != "":
+            typename = (
+                f"std::{override_typename}"  # TODO: check if this could cause issues
+            )
     elif isinstance(akform, awkward.forms.RecordForm):
         typename = "UntypedRecord"
     else:
@@ -277,7 +284,9 @@ class NTuple_Header(CascadeLeaf):
             ", ".join([repr(x) for x in self._akform]),
         )
 
-    def _build_field_col_records(self, akform, field_name=None, parent_fid=None):
+    def _build_field_col_records(
+        self, akform, field_name=None, parent_fid=None, add_field=True
+    ):
         field_id = len(self._field_records)
         if parent_fid is None:
             parent_fid = field_id
@@ -297,19 +306,27 @@ class NTuple_Header(CascadeLeaf):
                 "",
                 "",
             )
-            self._field_records.append(field)
-            type_num = _ak_primitive_to_num_dict[akform.primitive]
+            if add_field:
+                self._field_records.append(field)
+            else:
+                field_id = parent_fid
+            ak_primitive = akform.parameters.get("__array__", akform.primitive)
+            type_num = _ak_primitive_to_num_dict[ak_primitive]
             type_size = uproot.const.rntuple_col_num_to_size_dict[type_num]
             col = NTuple_Column_Description(type_num, type_size, field_id, 0, 0)
             self._column_records.append(col)
             self._column_keys.append(f"node{self._ak_node_count}-data")
         elif isinstance(akform, awkward.forms.ListOffsetForm):
             type_name = _cpp_typename(akform)
+            field_role = uproot.const.RNTupleFieldRole.COLLECTION
+            if akform.parameters.get("__array__", "") == "string":
+                type_name = "std::string"
+                field_role = uproot.const.RNTupleFieldRole.LEAF
             field = NTuple_Field_Description(
                 0,
                 0,
                 parent_fid,
-                uproot.const.RNTupleFieldRole.COLLECTION,
+                field_role,
                 0,
                 field_name,
                 type_name,
@@ -327,6 +344,7 @@ class NTuple_Header(CascadeLeaf):
             self._build_field_col_records(
                 akform.content,
                 parent_fid=field_id,
+                add_field=field_role == uproot.const.RNTupleFieldRole.COLLECTION,
             )
         elif isinstance(akform, awkward.forms.RecordForm):
             field = NTuple_Field_Description(
