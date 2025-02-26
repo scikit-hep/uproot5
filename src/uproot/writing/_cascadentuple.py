@@ -46,28 +46,20 @@ from uproot.writing._cascade import CascadeLeaf, CascadeNode, Key, String
 _rntuple_string_length_format = struct.Struct("<I")
 
 _ak_primitive_to_typename_dict = {
-    "i64": "std::int64_t",
-    "i32": "std::int32_t",
-    # "switch": 3,
-    # "byte": 4,
+    "bool": "bool",
     "char": "char",
-    "bool": "bool",  # check
-    "float64": "double",
-    "float32": "float",
-    # "float16": 9,
-    "int64": "std::int64_t",
-    "int32": "std::int32_t",
-    "int16": "std::int16_t",
     "int8": "std::int8_t",
     "uint8": "std::uint8_t",
-    # "splitindex64": 14,
-    # "splitindex32": 15,
-    # "splitreal64": 16,
-    # "splitreal32": 17,
-    # "splitreal16": 18,
-    # "splitin64": 19,
-    # "splitint32": 20,
-    # "splitint16": 21,
+    "int16": "std::int16_t",
+    "uint16": "std::uint16_t",
+    "int32": "std::int32_t",
+    "uint32": "std::uint32_t",
+    "int64": "std::int64_t",
+    "uint64": "std::uint64_t",
+    "float32": "float",
+    "float64": "double",
+    "i32": "std::int32_t",  # index type
+    "i64": "std::int64_t",  # index type
 }
 _ak_primitive_to_num_dict = {
     "bool": 0x00,
@@ -80,7 +72,6 @@ _ak_primitive_to_num_dict = {
     "uint32": 0x08,
     "int64": 0x09,
     "uint64": 0x0A,
-    "float16": 0x0B,
     "float32": 0x0C,
     "float64": 0x0D,
     "i32": 0x0E,
@@ -819,9 +810,11 @@ class NTuple(CascadeNode):
                 )  # TODO: check if there is a better way to do this
                 self._column_offsets[idx] = col_data[-1]
             raw_data = col_data.view("uint8")
+            if col_data.dtype == numpy.dtype("bool"):
+                raw_data = numpy.packbits(raw_data, bitorder="little")
             page_key = self.add_rblob(sink, raw_data, len(raw_data), big=False)
             page_locator = NTuple_Locator(
-                len(raw_data), page_key.location + page_key.allocation  # probably wrong
+                len(raw_data), page_key.location + page_key.allocation
             )
             cluster_page_data.append(
                 [(page_locator, len(col_data), self._column_counts[idx])]

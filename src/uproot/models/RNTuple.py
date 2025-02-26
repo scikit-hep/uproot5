@@ -743,10 +743,8 @@ in file {self.file.file_path}"""
             content = res.view(dtype)
 
         if isbit:
-            content = (
-                numpy.unpackbits(content.view(dtype=numpy.uint8))
-                .reshape(-1, 8)[:, ::-1]
-                .reshape(-1)
+            content = numpy.unpackbits(
+                content.view(dtype=numpy.uint8), bitorder="little"
             )
         elif dtype_str in ("real32trunc", "real32quant"):
             if nbits == 32:
