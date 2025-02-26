@@ -87,8 +87,10 @@ def dask(
             of dask arrays and if ``library='ak'`` it returns a single dask-awkward
             array. ``library='pd'`` has not been implemented yet and will raise a
             ``NotImplementedError``.
-        ak_add_doc (bool): If True and ``library="ak"``, add the TBranch ``title``
+        ak_add_doc (bool | dict ): If True and ``library="ak"``, add the TBranch ``title``
             to the Awkward ``__doc__`` parameter of the array.
+            if dict = {key:value} and ``library="ak"``, add the TBranch ``value`` to the
+            Awkward ``key`` parameter of the array.
         custom_classes (None or dict): If a dict, override the classes from
             the :doc:`uproot.reading.ReadOnlyFile` or ``uproot.classes``.
         allow_missing (bool): If True, skip over any files that do not contain
@@ -1383,11 +1385,29 @@ def _get_ttree_form(
     for key in common_keys:
         branch = ttree[key]
         content_form = branch.interpretation.awkward_form(ttree.file)
-        if ak_add_doc:
-            content_form = content_form.copy(parameters={"__doc__": branch.title})
+        content_parameters = {}
+        if isinstance(ak_add_doc, bool):
+            if ak_add_doc:
+                content_parameters["__doc__"] = branch.title
+        elif isinstance(ak_add_doc, dict):
+            content_parameters.update(
+                {
+                    key: branch.__getattribute__(value)
+                    for key, value in ak_add_doc.items()
+                }
+            )
+        if len(content_parameters.keys()) != 0:
+            content_form = content_form.copy(parameters=content_parameters)
         contents.append(content_form)
 
-    parameters = {"__doc__": ttree.title} if ak_add_doc else None
+    if isinstance(ak_add_doc, bool):
+        parameters = {"__doc__": ttree.title} if ak_add_doc else None
+    elif isinstance(ak_add_doc, dict):
+        parameters = (
+            {"__doc__": ttree.title} if "__doc__" in ak_add_doc.keys() else None
+        )
+    else:
+        parameters = None
 
     return awkward.forms.RecordForm(contents, common_keys, parameters=parameters)
 
