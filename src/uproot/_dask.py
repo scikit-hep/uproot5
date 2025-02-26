@@ -950,11 +950,93 @@ class TrivialFormMappingInfo(ImplementsFormMappingInfo):
 
         return container
 
+    def load_virtual_arrays(
+        self,
+        tree: HasBranches,
+        keys: frozenset[str],
+        start: int,
+        stop: int,
+        decompression_executor,
+        interpretation_executor,
+        options: Any,
+    ) -> Mapping[str, AwkArray]:
+        awkward = uproot.extras.awkward()
+
+        class Generator:
+            def __init__(self, branch, attribute):
+                self.branch = branch
+                self.attribute = attribute
+
+            def __repr__(self):
+                return f"Generator({self.branch}, {self.attribute})"
+
+            def __call__(self):
+                layout = self.branch.array(
+                    entry_start=start,
+                    entry_stop=stop,
+                    interpretation_executor=interpretation_executor,
+                    decompression_executor=decompression_executor,
+                    library="ak",
+                    ak_add_doc=options.get("ak_add_doc"),
+                ).layout
+                # this is a bit of a hack, but it works for now
+                if isinstance(layout, awkward.contents.NumpyArray):
+                    return layout.data
+                elif isinstance(layout, awkward.contents.ListOffsetArray):
+                    if self.attribute == "data":
+                        return layout.content.data
+                    elif self.attribute == "offsets":
+                        return layout.offsets.data
+                    else:
+                        raise NotImplementedError()
+                else:
+                    raise NotImplementedError()
+
+        container = {}
+        for buffer_key, _ in self._form.expected_from_buffers().items():
+            form_key, attribute = self.parse_buffer_key(buffer_key)
+            branch_name = self._form_key_to_key[form_key]
+            branch = tree[branch_name]
+            container[buffer_key] = Generator(branch, attribute)
+
+        return container
+
+
+def form_with_unique_keys(form: Form, key: str) -> Form:
+    awkward = uproot.extras.awkward()
+
+    def impl(form: Form, key: str) -> None:
+        # Set form key
+        form.form_key = key
+
+        # If the form is a record we need to loop over all fields in the
+        # record and set form that include the field name; this will keep
+        # recursing as well.
+        if form.is_record:
+            for field in form.fields:
+                impl(form.content(field), f"{key}.{field}")
+
+        elif form.is_union:
+            for i, entry in enumerate(form.contents):
+                impl(entry, f"{key}#{i}")
+
+        # NumPy like array is easy
+        elif form.is_numpy or form.is_unknown:
+            pass
+
+        # Anything else grab the content and keep recursing
+        else:
+            impl(form.content, f"{key}.content")
+
+    # Perform a "deep" copy without preserving references
+    form = awkward.forms.from_dict(form.to_dict())
+    impl(form, key)
+    return form
+
 
 class TrivialFormMapping(ImplementsFormMapping):
     def __call__(self, form: Form) -> tuple[Form, TrivialFormMappingInfo]:
-        dask_awkward = uproot.extras.dask_awkward()
-        new_form = dask_awkward.lib.utils.form_with_unique_keys(form, "<root>")
+        new_form = form_with_unique_keys(form, "<root>")
         return new_form, TrivialFormMappingInfo(new_form)
 
 
@@ -1548,9 +1630,7 @@ which has {entry_stop} entries"""
         partition_args.append((0, 0, 0))
 
     if form_mapping is None:
-        expected_form = dask_awkward.lib.utils.form_with_unique_keys(
-            base_form, "<root>"
-        )
+        expected_form = form_with_unique_keys(base_form, "<root>")
         form_mapping_info = TrivialFormMappingInfo(expected_form)
     else:
         expected_form, form_mapping_info = form_mapping(base_form)
@@ -1651,9 +1731,7 @@ def _get_dak_array_delay_open(
                 )
 
     if form_mapping is None:
-        expected_form = dask_awkward.lib.utils.form_with_unique_keys(
-            base_form, "<root>"
-        )
+        expected_form = form_with_unique_keys(base_form, "<root>")
         form_mapping_info = TrivialFormMappingInfo(expected_form)
     else:
         expected_form, form_mapping_info = form_mapping(base_form)

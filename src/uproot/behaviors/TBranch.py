@@ -673,6 +673,80 @@ class HasBranches(Mapping):
 
             stream.write(formatter.format(name, typename, interp).rstrip(" ") + "\n")
 
+    def virtual_arrays(
+        self,
+        *,
+        filter_name=no_filter,
+        filter_typename=no_filter,
+        filter_branch=no_filter,
+        aliases=None,
+        recursive=True,
+        full_paths=True,
+        ignore_duplicates=False,
+        language=uproot.language.python.python_language,
+        form_mapping=None,
+        entry_start=None,
+        entry_stop=None,
+        decompression_executor=None,
+        interpretation_executor=None,
+        array_cache="inherit",
+        ak_add_doc=False,
+    ):
+        from uproot._dask import (
+            TrivialFormMappingInfo,
+            _get_ttree_form,
+            form_with_unique_keys,
+        )
+
+        awkward = uproot.extras.awkward()
+
+        entry_start, entry_stop = _regularize_entries_start_stop(
+            self.num_entries, entry_start, entry_stop
+        )
+        decompression_executor, interpretation_executor = _regularize_executors(
+            decompression_executor, interpretation_executor, self._file
+        )
+        array_cache = _regularize_array_cache(array_cache, self._file)
+
+        keys = self.keys(
+            filter_name=filter_name,
+            filter_typename=filter_typename,
+            filter_branch=filter_branch,
+            recursive=recursive,
+            full_paths=full_paths,
+            ignore_duplicates=ignore_duplicates,
+        )
+
+        base_form = _get_ttree_form(
+            awkward,
+            self,
+            keys,
+            ak_add_doc,
+        )
+
+        if form_mapping is None:
+            expected_form = form_with_unique_keys(base_form, "<root>")
+            form_mapping_info = TrivialFormMappingInfo(expected_form)
+        else:
+            expected_form, form_mapping_info = form_mapping(base_form)
+
+        container = form_mapping_info.load_virtual_arrays(
+            self,
+            keys,
+            entry_start,
+            entry_stop,
+            decompression_executor,
+            interpretation_executor,
+            {"ak_add_doc": ak_add_doc},
+        )
+        return awkward.from_buffers(
+            expected_form,
+            entry_stop - entry_start,
+            container,
+            behavior=form_mapping_info.behavior,
+            buffer_key=form_mapping_info.buffer_key,
+        )
+
     def arrays(
         self,
         expressions=None,
