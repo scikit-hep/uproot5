@@ -86,6 +86,22 @@ _ak_primitive_to_num_dict = {
 }
 
 
+def _cpp_typename(akform, subcall=False):
+    if isinstance(akform, awkward.forms.NumpyForm):
+        ak_primitive = akform.primitive
+        typename = _ak_primitive_to_typename_dict[ak_primitive]
+    elif isinstance(akform, awkward.forms.ListOffsetForm):
+        content_typename = _cpp_typename(akform.content, subcall=True)
+        typename = f"std::vector<{content_typename}>"
+    elif isinstance(akform, awkward.forms.RecordForm):
+        typename = "UntypedRecord"
+    else:
+        raise NotImplementedError(f"Form type {type(akform)} cannot be written yet")
+    if not subcall and "UntypedRecord" in typename:
+        typename = ""  # empty types for anything that contains UntypedRecord
+    return typename
+
+
 class RBlob_Key(Key):
     def __init__(
         self,
@@ -238,68 +254,6 @@ class NTuple_Column_Description:
         return header_bytes
 
 
-def _build_field_col_records(
-    field_records, column_records, column_keys, akform, field_name=None, parent_fid=None
-):
-    field_id = len(field_records)
-    if parent_fid is None:
-        parent_fid = field_id
-    if field_name is None:
-        field_name = f"_{field_id}"
-    if isinstance(akform, awkward.forms.NumpyForm):
-        ak_primitive = akform.primitive
-        type_name = _ak_primitive_to_typename_dict[ak_primitive]
-        field = NTuple_Field_Description(
-            0,
-            0,
-            parent_fid,
-            uproot.const.RNTupleFieldRole.LEAF,
-            0,
-            field_name,
-            type_name,
-            "",
-            "",
-        )
-        field_records.append(field)
-        type_num = _ak_primitive_to_num_dict[ak_primitive]
-        type_size = uproot.const.rntuple_col_num_to_size_dict[type_num]
-        col = NTuple_Column_Description(type_num, type_size, field_id, 0, 0)
-        column_records.append(col)
-        column_keys.append(f"node{len(column_records)}-data")
-    elif isinstance(akform, awkward.forms.ListOffsetForm):
-        # TODO: this doesn't work for nested lists
-        ak_primitive = akform.content.primitive
-        type_name = f"std::vector<{_ak_primitive_to_typename_dict[ak_primitive]}>"
-        field = NTuple_Field_Description(
-            0,
-            0,
-            parent_fid,
-            uproot.const.RNTupleFieldRole.COLLECTION,
-            0,
-            field_name,
-            type_name,
-            "",
-            "",
-        )
-        field_records.append(field)
-        ak_offset = akform.offsets
-        type_num = _ak_primitive_to_num_dict[ak_offset]
-        type_size = uproot.const.rntuple_col_num_to_size_dict[type_num]
-        col = NTuple_Column_Description(type_num, type_size, field_id, 0, 0)
-        column_records.append(col)
-        column_keys.append(f"node{len(column_records)}-offsets")
-        # content data
-        _build_field_col_records(
-            field_records,
-            column_records,
-            column_keys,
-            akform.content,
-            parent_fid=field_id,
-        )
-    else:
-        raise NotImplementedError
-
-
 # https://github.com/root-project/root/blob/8cd9eed6f3a32e55ef1f0f1df8e5462e753c735d/tree/ntuple/v7/doc/BinaryFormatSpecification.md#header-envelope
 class NTuple_Header(CascadeLeaf):
     def __init__(self, location, name, ntuple_description, akform):
@@ -309,9 +263,10 @@ class NTuple_Header(CascadeLeaf):
 
         self._serialize = None
         self._checksum = None
-        self._field_records = None
-        self._column_records = None
-        self._column_keys = None
+        self._field_records = []
+        self._column_records = []
+        self._column_keys = []
+        self._ak_node_count = 0
         aloc = len(self.serialize())
         super().__init__(location, aloc)
 
@@ -322,19 +277,83 @@ class NTuple_Header(CascadeLeaf):
             ", ".join([repr(x) for x in self._akform]),
         )
 
+    def _build_field_col_records(self, akform, field_name=None, parent_fid=None):
+        field_id = len(self._field_records)
+        if parent_fid is None:
+            parent_fid = field_id
+        if field_name is None:
+            field_name = f"_{field_id}"
+        self._ak_node_count += 1
+        if isinstance(akform, awkward.forms.NumpyForm):
+            type_name = _cpp_typename(akform)
+            field = NTuple_Field_Description(
+                0,
+                0,
+                parent_fid,
+                uproot.const.RNTupleFieldRole.LEAF,
+                0,
+                field_name,
+                type_name,
+                "",
+                "",
+            )
+            self._field_records.append(field)
+            type_num = _ak_primitive_to_num_dict[akform.primitive]
+            type_size = uproot.const.rntuple_col_num_to_size_dict[type_num]
+            col = NTuple_Column_Description(type_num, type_size, field_id, 0, 0)
+            self._column_records.append(col)
+            self._column_keys.append(f"node{self._ak_node_count}-data")
+        elif isinstance(akform, awkward.forms.ListOffsetForm):
+            type_name = _cpp_typename(akform)
+            field = NTuple_Field_Description(
+                0,
+                0,
+                parent_fid,
+                uproot.const.RNTupleFieldRole.COLLECTION,
+                0,
+                field_name,
+                type_name,
+                "",
+                "",
+            )
+            self._field_records.append(field)
+            ak_offset = akform.offsets
+            type_num = _ak_primitive_to_num_dict[ak_offset]
+            type_size = uproot.const.rntuple_col_num_to_size_dict[type_num]
+            col = NTuple_Column_Description(type_num, type_size, field_id, 0, 0)
+            self._column_records.append(col)
+            self._column_keys.append(f"node{self._ak_node_count}-offsets")
+            # content data
+            self._build_field_col_records(
+                akform.content,
+                parent_fid=field_id,
+            )
+        elif isinstance(akform, awkward.forms.RecordForm):
+            field = NTuple_Field_Description(
+                0,
+                0,
+                parent_fid,
+                uproot.const.RNTupleFieldRole.RECORD,
+                0,
+                field_name,
+                "",
+                "",
+                "",
+            )
+            self._field_records.append(field)
+            for subfield_name, subakform in zip(akform.fields, akform.contents):
+                self._build_field_col_records(
+                    subakform,
+                    field_name=subfield_name,
+                    parent_fid=field_id,
+                )
+        else:
+            raise NotImplementedError(f"Form type {type(akform)} cannot be written yet")
+
     def generate_field_col_records(self):
         akform = self._akform
-        field_names = akform.fields
-        contents = akform.contents
-        self._field_records = []
-        self._column_records = []
-        self._column_keys = []
-
-        for field_name, topakform in zip(field_names, contents):
-            _build_field_col_records(
-                self._field_records,
-                self._column_records,
-                self._column_keys,
+        for field_name, topakform in zip(akform.fields, akform.contents):
+            self._build_field_col_records(
                 topakform,
                 field_name=field_name,
             )
