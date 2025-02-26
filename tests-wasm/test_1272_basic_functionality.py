@@ -90,10 +90,10 @@ def test_read_rntuple(selenium):
         assert len(arrays.intvec_field) == 600
 
         assert all(arrays.float_field[:200] == 0)
-        assert all(len(l) == 0 for l in arrays.intvec_field[:400])
+        assert all(len(a) == 0 for a in arrays.intvec_field[:400])
 
-        assert next(i for i, l in enumerate(arrays.float_field) if l != 0) == 200
-        assert next(i for i, l in enumerate(arrays.intvec_field) if len(l) != 0) == 400
+        assert next(i for i, a in enumerate(arrays.float_field) if a != 0) == 200
+        assert next(i for i, a in enumerate(arrays.intvec_field) if len(a) != 0) == 400
 
 
 # Taken from test_0034_generic_objects_in_ttrees.py
