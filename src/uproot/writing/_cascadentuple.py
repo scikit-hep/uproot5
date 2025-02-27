@@ -40,6 +40,7 @@ from uproot.models.RNTuple import (
     _rntuple_locator_offset_format,
     _rntuple_locator_size_format,
     _rntuple_page_num_elements_format,
+    _rntuple_repetition_format,
 )
 from uproot.writing._cascade import CascadeLeaf, CascadeNode, Key, String
 
@@ -93,6 +94,9 @@ def _cpp_typename(akform, subcall=False):
             )
     elif isinstance(akform, awkward.forms.RecordForm):
         typename = "UntypedRecord"
+    elif isinstance(akform, awkward.forms.RegularForm):
+        content_typename = _cpp_typename(akform.content, subcall=True)
+        typename = f"std::array<{content_typename},{akform.size}>"
     else:
         raise NotImplementedError(f"Form type {type(akform)} cannot be written yet")
     if not subcall and "UntypedRecord" in typename:
@@ -196,6 +200,7 @@ class NTuple_Field_Description:
         type_name,
         type_alias,
         field_description,
+        repetition=None,
     ):
         self.field_version = field_version
         self.type_version = type_version
@@ -206,6 +211,7 @@ class NTuple_Field_Description:
         self.type_name = type_name
         self.type_alias = type_alias
         self.field_description = field_description
+        self.repetition = repetition
 
     def __repr__(self):
         return f"{type(self).__name__}({self.field_version!r}, {self.type_version!r}, {self.parent_field_id!r}, {self.struct_role!r}, {self.flags!r}, {self.field_name!r}, {self.type_name!r}, {self.type_alias!r}, {self.field_description!r})"
@@ -229,7 +235,10 @@ class NTuple_Field_Description:
                 )
             ]
         )
-        return b"".join([header_bytes, string_bytes])
+        additional_bytes = b""
+        if self.flags & uproot.const.RNTupleFieldFlag.REPETITIVE:
+            additional_bytes += _rntuple_repetition_format.pack(self.repetition)
+        return b"".join([header_bytes, string_bytes, additional_bytes])
 
 
 # https://github.com/root-project/root/blob/master/tree/ntuple/v7/doc/specifications.md#column-description
@@ -356,6 +365,26 @@ class NTuple_Header(CascadeLeaf):
                     field_name=subfield_name,
                     parent_fid=field_id,
                 )
+        elif isinstance(akform, awkward.forms.RegularForm):
+            type_name = _cpp_typename(akform)
+            field_role = uproot.const.RNTupleFieldRole.LEAF
+            field = NTuple_Field_Description(
+                0,
+                0,
+                parent_fid,
+                field_role,
+                uproot.const.RNTupleFieldFlag.REPETITIVE,
+                field_name,
+                type_name,
+                "",
+                "",
+                repetition=akform.size,
+            )
+            self._field_records.append(field)
+            self._build_field_col_records(
+                akform.content,
+                parent_fid=field_id,
+            )
         else:
             raise NotImplementedError(f"Form type {type(akform)} cannot be written yet")
 
