@@ -70,33 +70,33 @@ def test_write_ttree(selenium):
 
 
 # Taken from test_1191_rntuple_fixes.py
-@pytest.mark.skip(reason="Skipping until test files are available with RNTuple v1.0")
-@run_test_in_pyodide(test_file="test_ntuple_extension_columns.root")
+@run_test_in_pyodide(test_file="test_extension_columns_rntuple_v1-0-0-0.root")
 def test_read_rntuple(selenium):
     import uproot
 
-    with uproot.open("test_ntuple_extension_columns.root") as f:
-        obj = f["EventData"]
+    with uproot.open("test_extension_columns_rntuple_v1-0-0-0.root") as f:
+        obj = f["ntuple"]
+
+        assert len(obj.page_link_list[0]) < len(obj.page_link_list[1])
 
         assert len(obj.column_records) > len(obj.header.column_records)
-        assert len(obj.column_records) == 936
-        assert obj.column_records[903].first_element_index == 36
+        assert len(obj.column_records) == 4
+        assert obj.column_records[1].first_element_index == 200
+        assert obj.column_records[2].first_element_index == 400
 
         arrays = obj.arrays()
 
-        pbs = arrays[
-            "HLT_AntiKt4EMPFlowJets_subresjesgscIS_ftf_TLAAux::fastDIPS20211215_pb"
-        ]
-        assert len(pbs) == 40
-        assert all(len(a) == 0 for a in pbs[:36])
-        assert next(i for i, a in enumerate(pbs) if len(a) != 0) == 36
+        assert len(arrays.float_field) == 600
+        assert len(arrays.intvec_field) == 600
 
-        jets = arrays["HLT_AntiKt4EMPFlowJets_subresjesgscIS_ftf_TLAAux:"]
-        assert len(jets.pt) == len(pbs)
+        assert all(arrays.float_field[:200] == 0)
+        assert all(len(a) == 0 for a in arrays.intvec_field[:400])
+
+        assert next(i for i, a in enumerate(arrays.float_field) if a != 0) == 200
+        assert next(i for i, a in enumerate(arrays.intvec_field) if len(a) != 0) == 400
 
 
 # Taken from test_0034_generic_objects_in_ttrees.py
-@pytest.mark.skip(reason="Skipping until test files are available with RNTuple v1.0")
 @pytest.mark.network
 @run_test_in_pyodide(packages=["requests"])
 def test_read_ttree_http(selenium):
@@ -118,14 +118,13 @@ def test_read_ttree_http(selenium):
 
 
 # Taken from test_1191_rntuple_fixes.py
-@pytest.mark.skip(reason="Skipping until test files are available with RNTuple v1.0")
 @pytest.mark.network
 @run_test_in_pyodide(packages=["requests"])
 def test_read_rntuple_http(selenium):
     import uproot
 
     with uproot.open(
-        "https://github.com/scikit-hep/scikit-hep-testdata/raw/main/src/skhep_testdata/data/Run2012BC_DoubleMuParked_Muons_rntuple_1000evts.root",
+        "https://github.com/scikit-hep/scikit-hep-testdata/raw/main/src/skhep_testdata/data/Run2012BC_DoubleMuParked_Muons_1000evts_rntuple_v1-0-0-0.root",
         handler=uproot.source.http.HTTPSource,
     ) as f:
         obj = f["Events"]
