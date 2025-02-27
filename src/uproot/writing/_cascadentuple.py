@@ -293,7 +293,7 @@ class NTuple_Header(CascadeLeaf):
         if field_name is None:
             field_name = f"_{field_id}"
         self._ak_node_count += 1
-        if isinstance(akform, awkward.forms.NumpyForm):
+        if isinstance(akform, awkward.forms.NumpyForm) and akform.inner_shape == ():
             type_name = _cpp_typename(akform)
             field = NTuple_Field_Description(
                 0,
@@ -311,6 +311,32 @@ class NTuple_Header(CascadeLeaf):
             else:
                 field_id = parent_fid
             ak_primitive = akform.parameters.get("__array__", akform.primitive)
+            type_num = _ak_primitive_to_num_dict[ak_primitive]
+            type_size = uproot.const.rntuple_col_num_to_size_dict[type_num]
+            col = NTuple_Column_Description(type_num, type_size, field_id, 0, 0)
+            self._column_records.append(col)
+            self._column_keys.append(f"node{self._ak_node_count}-data")
+        elif isinstance(akform, awkward.forms.NumpyForm):
+            inner_shape = akform.inner_shape
+            for i, arr_size in enumerate(inner_shape):
+                if i > 0:
+                    field_id = len(self._field_records)
+                    parent_fid = field_id
+                type_name = _cpp_typename(akform)
+                field = NTuple_Field_Description(
+                    0,
+                    0,
+                    parent_fid,
+                    uproot.const.RNTupleFieldRole.LEAF,
+                    uproot.const.RNTupleFieldFlag.REPETITIVE,
+                    field_name,
+                    type_name,
+                    "",
+                    "",
+                    repetition=arr_size,
+                )
+                self._field_records.append(field)
+            ak_primitive = akform.primitive
             type_num = _ak_primitive_to_num_dict[ak_primitive]
             type_size = uproot.const.rntuple_col_num_to_size_dict[type_num]
             col = NTuple_Column_Description(type_num, type_size, field_id, 0, 0)
@@ -838,7 +864,8 @@ class NTuple(CascadeNode):
                     col_data[1:] + self._column_offsets[idx]
                 )  # TODO: check if there is a better way to do this
                 self._column_offsets[idx] = col_data[-1]
-            raw_data = col_data.view("uint8")
+            col_len = len(col_data.reshape(-1))
+            raw_data = col_data.reshape(-1).view("uint8")
             if col_data.dtype == numpy.dtype("bool"):
                 raw_data = numpy.packbits(raw_data, bitorder="little")
             page_key = self.add_rblob(sink, raw_data, len(raw_data), big=False)
@@ -846,9 +873,9 @@ class NTuple(CascadeNode):
                 len(raw_data), page_key.location + page_key.allocation
             )
             cluster_page_data.append(
-                [(page_locator, len(col_data), self._column_counts[idx])]
+                [(page_locator, col_len, self._column_counts[idx])]
             )
-            self._column_counts[idx] += len(col_data)
+            self._column_counts[idx] += col_len
         page_data = [
             cluster_page_data
         ]  # list of list of list of (locator, len, offset)
