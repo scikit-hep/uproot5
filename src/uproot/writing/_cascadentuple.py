@@ -81,9 +81,15 @@ _ak_primitive_to_num_dict = {
 
 
 def _cpp_typename(akform, subcall=False):
-    if isinstance(akform, awkward.forms.NumpyForm):
+    if isinstance(akform, awkward.forms.NumpyForm) and akform.inner_shape == ():
         ak_primitive = akform.primitive
         typename = _ak_primitive_to_typename_dict[ak_primitive]
+    elif isinstance(akform, awkward.forms.NumpyForm):
+        ak_primitive = akform.primitive
+        inner_shape = akform.inner_shape
+        typename = _ak_primitive_to_typename_dict[ak_primitive]
+        for arr_size in inner_shape[::-1]:
+            typename = f"std::array<{typename},{arr_size}>"
     elif isinstance(akform, awkward.forms.ListOffsetForm):
         content_typename = _cpp_typename(akform.content, subcall=True)
         typename = f"std::vector<{content_typename}>"
