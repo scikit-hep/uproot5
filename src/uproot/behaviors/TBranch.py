@@ -241,6 +241,8 @@ def concatenate(
     filter_branch=no_filter,
     aliases=None,
     language=uproot.language.python.python_language,
+    entry_start=None,
+    entry_stop=None,
     decompression_executor=None,
     interpretation_executor=None,
     library="ak",
@@ -277,6 +279,12 @@ def concatenate(
             :ref:`uproot.behaviors.TBranch.TBranch.aliases` are available.
         language (:doc:`uproot.language.Language`): Language used to interpret
             the ``expressions`` and ``aliases``.
+        entry_start (None or int): The first entry to include. If None, start
+            at zero. If negative, count from the end, like a Python slice.
+        entry_stop (None or int): The first entry to exclude (i.e. one greater
+            than the last entry to include). If None, stop at
+            :ref:`uproot.behaviors.TTree.TTree.num_entries`. If negative,
+            count from the end, like a Python slice.
         decompression_executor (None or Executor with a ``submit`` method): The
             executor that is used to decompress ``TBaskets``; if None, a
             :doc:`uproot.source.futures.TrivialExecutor` is created.
@@ -359,37 +367,70 @@ def concatenate(
 
     all_arrays = []
     global_start = 0
+    global_stop = 0
+
+    all_hasbranches = []
     for file_path, object_path in files:
-        hasbranches = uproot._util.regularize_object_path(
+        _hasbranches = uproot._util.regularize_object_path(
             file_path, object_path, custom_classes, allow_missing, options
         )
-        if hasbranches is not None:
-            with hasbranches:
-                try:
-                    arrays = hasbranches.arrays(
-                        expressions=expressions,
-                        cut=cut,
-                        filter_name=filter_name,
-                        filter_typename=filter_typename,
-                        filter_branch=filter_branch,
-                        aliases=aliases,
-                        language=language,
-                        decompression_executor=decompression_executor,
-                        interpretation_executor=interpretation_executor,
-                        array_cache=None,
-                        library=library,
-                        ak_add_doc=ak_add_doc,
-                        how=how,
-                    )
-                    arrays = library.global_index(arrays, global_start)
-                except uproot.exceptions.KeyInFileError:
-                    if allow_missing:
-                        continue
-                    else:
-                        raise
+        if _hasbranches is not None:
+            all_hasbranches.append(_hasbranches)
 
-                all_arrays.append(arrays)
-                global_start += hasbranches.num_entries
+    total_num_entries = sum(hasbranches.num_entries for hasbranches in all_hasbranches)
+    entry_start, entry_stop = _regularize_entries_start_stop(
+        total_num_entries, entry_start, entry_stop
+    )
+    for hasbranches in all_hasbranches:
+        with hasbranches:
+            nentries = hasbranches.num_entries
+            global_stop += nentries
+
+            if (
+                global_start <= entry_start < global_stop
+                or global_start < entry_stop <= global_stop
+            ):
+                # overlap, read only the overlapping entries
+                local_entry_start = max(
+                    0, entry_start - global_start
+                )  # need to clip to 0
+                local_entry_stop = entry_stop - global_start  # overflows are fine
+            elif entry_start >= global_stop or entry_stop <= global_start:  # no overlap
+                # outside of this file's range -> skip
+                global_start = global_stop
+                continue
+            else:
+                # read all entries
+                local_entry_start = 0
+                local_entry_stop = nentries
+
+            try:
+                arrays = hasbranches.arrays(
+                    expressions=expressions,
+                    cut=cut,
+                    filter_name=filter_name,
+                    filter_typename=filter_typename,
+                    filter_branch=filter_branch,
+                    aliases=aliases,
+                    language=language,
+                    entry_start=local_entry_start,
+                    entry_stop=local_entry_stop,
+                    decompression_executor=decompression_executor,
+                    interpretation_executor=interpretation_executor,
+                    array_cache=None,
+                    library=library,
+                    ak_add_doc=ak_add_doc,
+                    how=how,
+                )
+                arrays = library.global_index(arrays, global_start)
+            except uproot.exceptions.KeyInFileError:
+                if allow_missing:
+                    continue
+                else:
+                    raise
+
+            all_arrays.append(arrays)
+            global_start = global_stop
 
     return library.concatenate(all_arrays)
 
