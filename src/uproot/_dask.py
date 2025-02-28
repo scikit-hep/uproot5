@@ -1086,6 +1086,9 @@ class UprootReadMixin:
         keys = self.necessary_columns(report=report, state=state)
         return self.project_keys(keys)
 
+    def project_manually(self: T, columns: frozenset[str]) -> T:
+        return self.project_keys(columns)
+
     def necessary_columns(
         self, *, report: TypeTracerReport, state: dict
     ) -> frozenset[str]:
