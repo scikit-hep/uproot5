@@ -8,7 +8,6 @@ from __future__ import annotations
 import struct
 import sys
 from collections import defaultdict
-from itertools import accumulate
 
 import numpy
 import xxhash
@@ -776,10 +775,11 @@ in file {self.file.file_path}"""
         if dtype_byte in uproot.const.rntuple_delta_types:
             # Extract the last offset values:
             last_elements = [
-                (arr[-1] if len(arr) > 0 else 0) for arr in arrays[:-1]
+                (arr[-1] if len(arr) > 0 else numpy.zeros((), dtype=arr.dtype))
+                for arr in arrays[:-1]
             ]  # First value always zero, therefore skip first arr.
             # Compute cumulative sum using itertools.accumulate:
-            last_offsets = list(accumulate(last_elements))
+            last_offsets = numpy.cumsum(last_elements)
             # Add the offsets to each array
             for i in range(1, len(arrays)):
                 arrays[i] += last_offsets[i - 1]
