@@ -522,8 +522,7 @@ class NTuple_Footer(CascadeLeaf):
 
 class NTuple_Locator:
     def __init__(self, num_bytes, offset):
-        # approximate 2^16 - size of locator itself
-        assert num_bytes < 32768
+        assert num_bytes < (1 << 32)
         self.num_bytes = num_bytes
         self.offset = offset
 
@@ -671,7 +670,7 @@ class NTuple_InnerListLocator:
 
 class NTuple_PageDescription:
     def __init__(self, num_entries, locator):
-        assert num_entries <= 65536
+        assert num_entries < (1 << 32)
         self.num_entries = num_entries
         self.locator = locator
 
@@ -869,8 +868,11 @@ class NTuple(CascadeNode):
                 col_data = (
                     col_data[1:] + self._column_offsets[idx]
                 )  # TODO: check if there is a better way to do this
-                self._column_offsets[idx] = col_data[-1]
+                if len(col_data) > 0:
+                    self._column_offsets[idx] = col_data[-1]
             col_len = len(col_data.reshape(-1))
+            # TODO: when col_length is zero we can skip writing the page
+            # but other things need to be adjusted
             raw_data = col_data.reshape(-1).view("uint8")
             if col_data.dtype == numpy.dtype("bool"):
                 raw_data = numpy.packbits(raw_data, bitorder="little")
