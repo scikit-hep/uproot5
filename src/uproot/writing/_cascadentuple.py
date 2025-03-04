@@ -99,7 +99,11 @@ def _cpp_typename(akform, subcall=False):
                 f"std::{override_typename}"  # TODO: check if this could cause issues
             )
     elif isinstance(akform, awkward.forms.RecordForm):
-        typename = "UntypedRecord"
+        if akform.is_tuple:
+            field_typenames = [_cpp_typename(t, subcall=True) for t in akform.contents]
+            typename = f"std::tuple<{','.join(field_typenames)}>"
+        else:
+            typename = "UntypedRecord"
     elif isinstance(akform, awkward.forms.RegularForm):
         content_typename = _cpp_typename(akform.content, subcall=True)
         typename = f"std::array<{content_typename},{akform.size}>"
@@ -391,7 +395,8 @@ class NTuple_Header(CascadeLeaf):
                 "",
             )
             self._field_records.append(field)
-            for subfield_name, subakform in zip(akform.fields, akform.contents):
+            for i, subakform in enumerate(akform.contents):
+                subfield_name = f"_{i}" if akform.is_tuple else akform.fields[i]
                 self._build_field_col_records(
                     subakform,
                     field_name=subfield_name,
