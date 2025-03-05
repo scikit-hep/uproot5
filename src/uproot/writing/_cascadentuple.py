@@ -818,7 +818,6 @@ class NTuple(CascadeNode):
         self._num_entries = 0
 
         self._column_counts = numpy.zeros(len(self._header._column_keys), dtype=int)
-        self._column_offsets = numpy.zeros(len(self._header._column_keys), dtype=int)
 
     def __repr__(self):
         return f"{type(self).__name__}({self._directory}, {self._header}, {self._footer}, {self._cluster_metadata}, {self._anchor}, {self._freesegments})"
@@ -878,11 +877,7 @@ class NTuple(CascadeNode):
         for idx, key in enumerate(self._header._column_keys):
             col_data = data_buffers[key]
             if "offsets" in key:
-                col_data = (
-                    col_data[1:] + self._column_offsets[idx]
-                )  # TODO: check if there is a better way to do this
-                if len(col_data) > 0:
-                    self._column_offsets[idx] = col_data[-1]
+                col_data = col_data[1:]
             col_len = len(col_data.reshape(-1))
             # TODO: when col_length is zero we can skip writing the page
             # but other things need to be adjusted

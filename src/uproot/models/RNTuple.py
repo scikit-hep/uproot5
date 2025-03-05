@@ -775,7 +775,7 @@ in file {self.file.file_path}"""
         arrays = [self.read_col_page(ncol, i) for i in cluster_range]
 
         # Check if column stores offset values for jagged arrays (splitindex64) (applies to cardinality cols too):
-        if dtype_byte in uproot.const.rntuple_delta_types:
+        if dtype_byte in uproot.const.rntuple_index_types:
             # Extract the last offset values:
             last_elements = [
                 (arr[-1] if len(arr) > 0 else numpy.zeros((), dtype=arr.dtype))
