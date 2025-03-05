@@ -327,18 +327,24 @@ class NTuple_Header(CascadeLeaf):
             self._column_records.append(col)
             self._column_keys.append(f"node{self._ak_node_count}-data")
         elif isinstance(akform, awkward.forms.NumpyForm):
-            inner_shape = akform.inner_shape
+            reg_akform = akform.to_RegularForm()
+            inner_shape = (*akform.inner_shape, None)
             for i, arr_size in enumerate(inner_shape):
                 if i > 0:
-                    field_id = len(self._field_records)
                     parent_fid = field_id
-                type_name = _cpp_typename(akform)
+                    field_id = len(self._field_records)
+                    field_name = "_0"
+                    reg_akform = reg_akform.content
+                repetitive_flag = (
+                    0 if arr_size is None else uproot.const.RNTupleFieldFlag.REPETITIVE
+                )
+                type_name = _cpp_typename(reg_akform)
                 field = NTuple_Field_Description(
                     0,
                     0,
                     parent_fid,
                     uproot.const.RNTupleFieldRole.LEAF,
-                    uproot.const.RNTupleFieldFlag.REPETITIVE,
+                    repetitive_flag,
                     field_name,
                     type_name,
                     "",
@@ -381,6 +387,7 @@ class NTuple_Header(CascadeLeaf):
                 akform.content,
                 parent_fid=field_id,
                 add_field=field_role == uproot.const.RNTupleFieldRole.COLLECTION,
+                field_name="_0",
             )
         elif isinstance(akform, awkward.forms.RecordForm):
             field = NTuple_Field_Description(
@@ -421,6 +428,7 @@ class NTuple_Header(CascadeLeaf):
             self._build_field_col_records(
                 akform.content,
                 parent_fid=field_id,
+                field_name="_0",
             )
         else:
             raise NotImplementedError(f"Form type {type(akform)} cannot be written yet")

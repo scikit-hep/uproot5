@@ -653,8 +653,9 @@ in file {self.file.file_path}"""
             # go find N in the rest, N is the # of fields in struct
             recordlist = [self.field_form(i, seen) for i in newids]
             namelist = [field_records[i].field_name for i in newids]
-            if all(name.startswith("_") for name in namelist):
-                namelist = None
+            # TODO: uncomment this once tuples are fixed
+            # if all(name.startswith("_") for name in namelist):
+            #     namelist = None
             return ak.forms.RecordForm(recordlist, namelist, form_key="whatever")
         elif structural_role == uproot.const.RNTupleFieldRole.VARIANT:
             keyname = self.col_form(this_id)
