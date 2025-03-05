@@ -110,6 +110,9 @@ def _cpp_typename(akform, subcall=False):
     elif isinstance(akform, awkward.forms.IndexedOptionForm):
         content_typename = _cpp_typename(akform.content, subcall=True)
         typename = f"std::optional<{content_typename}>"
+    elif isinstance(akform, awkward.forms.UnionForm):
+        field_typenames = [_cpp_typename(t, subcall=True) for t in akform.contents]
+        typename = f"std::variant<{','.join(field_typenames)}>"
     else:
         raise NotImplementedError(f"Form type {type(akform)} cannot be written yet")
     if not subcall and "UntypedRecord" in typename:
@@ -459,6 +462,32 @@ class NTuple_Header(CascadeLeaf):
                 parent_fid=field_id,
                 field_name="_0",
             )
+        elif isinstance(akform, awkward.forms.UnionForm):
+            type_name = _cpp_typename(akform)
+            field = NTuple_Field_Description(
+                0,
+                0,
+                parent_fid,
+                uproot.const.RNTupleFieldRole.VARIANT,
+                0,
+                field_name,
+                type_name,
+                "",
+                "",
+            )
+            self._field_records.append(field)
+            type_num = uproot.const.rntuple_col_type_to_num_dict["switch"]
+            type_size = uproot.const.rntuple_col_num_to_size_dict[type_num]
+            col = NTuple_Column_Description(type_num, type_size, field_id, 0, 0)
+            self._column_records.append(col)
+            self._column_keys.append(f"node{self._ak_node_count}-switch")
+            for i, subakform in enumerate(akform.contents):
+                subfield_name = f"_{i}"
+                self._build_field_col_records(
+                    subakform,
+                    field_name=subfield_name,
+                    parent_fid=field_id,
+                )
         else:
             raise NotImplementedError(f"Form type {type(akform)} cannot be written yet")
 
@@ -904,7 +933,16 @@ class NTuple(CascadeNode):
         cluster_page_data = []  # list of list of (locator, len, offset)
         data_buffers = awkward.to_buffers(data)[2]
         for idx, key in enumerate(self._header._column_keys):
-            col_data = data_buffers[key]
+            if "switch" in key:
+                dtype = numpy.dtype([("index", "int64"), ("tag", "int32")])
+                indices = data_buffers[key.split("-")[0] + "-index"]
+                tags = data_buffers[key.split("-")[0] + "-tags"]
+                switches = numpy.zeros(len(indices), dtype=dtype)
+                switches["index"] = indices
+                switches["tag"] = tags + 1
+                col_data = switches
+            else:
+                col_data = data_buffers[key]
             if "offsets" in key:
                 col_data = col_data[1:]
             elif "index" in key:

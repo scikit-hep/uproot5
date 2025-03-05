@@ -36,6 +36,7 @@ data = ak.Array(
         "tuple": [(1, 2), (3, 4), (5, 6)],
         "tuple_list": [[(1,), (2,)], [(3,), (4,)], [(5,), (6,)]],
         "optional": [1, None, 2],
+        "union": [1, 2, "three"],
     }
 )
 
