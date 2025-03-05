@@ -37,6 +37,7 @@ data = ak.Array(
         "tuple_list": [[(1,), (2,)], [(3,), (4,)], [(5,), (6,)]],
         "optional": [1, None, 2],
         "union": [1, 2, "three"],
+        "optional_union": [1, None, "three"],
     }
 )
 
@@ -57,13 +58,22 @@ def test_writing_and_reading(tmp_path):
             # TODO: tuples are converted to records
             [tuple(t[f] for f in t.fields) for t in arrays[f][:3]] == data[f].tolist()
             [tuple(t[f] for f in t.fields) for t in arrays[f][3:]] == data[f].tolist()
-        elif "optional" in f:
+        elif f == "optional":
             assert [t[0] if len(t) > 0 else None for t in arrays[f][:3]] == data[
                 f
             ].tolist()
             assert [t[0] if len(t) > 0 else None for t in arrays[f][3:]] == data[
                 f
             ].tolist()
+        elif f == "optional_union":
+            assert [
+                t if isinstance(t, str) else t[0] if len(t) > 0 else None
+                for t in arrays[f][:3]
+            ] == data[f].tolist()
+            assert [
+                t if isinstance(t, str) else t[0] if len(t) > 0 else None
+                for t in arrays[f][3:]
+            ] == data[f].tolist()
         else:
             assert arrays[f][:3].tolist() == data[f].tolist()
             assert arrays[f][3:].tolist() == data[f].tolist()

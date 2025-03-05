@@ -113,6 +113,8 @@ def _cpp_typename(akform, subcall=False):
     elif isinstance(akform, awkward.forms.UnionForm):
         field_typenames = [_cpp_typename(t, subcall=True) for t in akform.contents]
         typename = f"std::variant<{','.join(field_typenames)}>"
+    elif isinstance(akform, awkward.forms.UnmaskedForm):
+        return _cpp_typename(akform.content, subcall=True)
     else:
         raise NotImplementedError(f"Form type {type(akform)} cannot be written yet")
     if not subcall and "UntypedRecord" in typename:
@@ -488,6 +490,13 @@ class NTuple_Header(CascadeLeaf):
                     field_name=subfield_name,
                     parent_fid=field_id,
                 )
+        elif isinstance(akform, awkward.forms.UnmaskedForm):
+            # Do nothing
+            self._build_field_col_records(
+                akform.content,
+                parent_fid=parent_fid,
+                field_name=field_name,
+            )
         else:
             raise NotImplementedError(f"Form type {type(akform)} cannot be written yet")
 
