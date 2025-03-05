@@ -72,12 +72,25 @@ def test_writing_then_reading_with_ROOT(tmp_path, capfd):
     RT.PrintInfo()
     RT.Show(0)
     RT.Show(2)
+    RT.Show(4)
     out = capfd.readouterr().out
     assert "* N-Tuple : ntuple" in out
-    assert "* Entries : 3" in out
-    assert "* Field 1   : one (std::int64_t)" in out
-    assert "* Field 2   : two (double)" in out
-    assert '  "one": 1,' in out
-    assert '  "two": 1.1' in out
-    assert '  "one": 3' in out
-    assert '  "two": 3.3' in out
+    assert "* Entries : 6" in out
+    assert "* Field 1            : bool (bool)" in out
+    assert "* Field 2            : int (std::int64_t)" in out
+    assert "* Field 3            : float (double)" in out
+    assert "* Field 4            : jagged_list (std::vector<std::int64_t>)" in out
+    assert (
+        "* Field 5            : nested_list (std::vector<std::vector<std::int64_t>>)"
+        in out
+    )
+    assert "* Field 6            : string (std::string)" in out
+    assert "* Field 7            : regular (std::array<std::int64_t,3>)" in out
+    assert "* Field 8            : numpy_regular (std::array<std::int64_t,3>)" in out
+    assert "* Field 9            : struct" in out
+    assert "* Field 10           : struct_list" in out
+    assert "* Field 11           : tuple" in out
+    assert (
+        "* Field 12           : tuple_list (std::vector<std::tuple<std::int64_t>>)"
+        in out
+    )
