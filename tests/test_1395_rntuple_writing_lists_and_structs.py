@@ -35,6 +35,7 @@ data = ak.Array(
         ],
         "tuple": [(1, 2), (3, 4), (5, 6)],
         "tuple_list": [[(1,), (2,)], [(3,), (4,)], [(5,), (6,)]],
+        "optional": [1, None, 2],
     }
 )
 
@@ -53,9 +54,18 @@ def test_writing_and_reading(tmp_path):
     for f in data.fields:
         if "tuple" in f:
             # TODO: tuples are converted to records
-            continue
-        assert arrays[f][:3].tolist() == data[f].tolist()
-        assert arrays[f][3:].tolist() == data[f].tolist()
+            [tuple(t[f] for f in t.fields) for t in arrays[f][:3]] == data[f].tolist()
+            [tuple(t[f] for f in t.fields) for t in arrays[f][3:]] == data[f].tolist()
+        elif "optional" in f:
+            assert [t[0] if len(t) > 0 else None for t in arrays[f][:3]] == data[
+                f
+            ].tolist()
+            assert [t[0] if len(t) > 0 else None for t in arrays[f][3:]] == data[
+                f
+            ].tolist()
+        else:
+            assert arrays[f][:3].tolist() == data[f].tolist()
+            assert arrays[f][3:].tolist() == data[f].tolist()
 
 
 def test_writing_then_reading_with_ROOT(tmp_path, capfd):

@@ -107,6 +107,9 @@ def _cpp_typename(akform, subcall=False):
     elif isinstance(akform, awkward.forms.RegularForm):
         content_typename = _cpp_typename(akform.content, subcall=True)
         typename = f"std::array<{content_typename},{akform.size}>"
+    elif isinstance(akform, awkward.forms.IndexedOptionForm):
+        content_typename = _cpp_typename(akform.content, subcall=True)
+        typename = f"std::optional<{content_typename}>"
     else:
         raise NotImplementedError(f"Form type {type(akform)} cannot be written yet")
     if not subcall and "UntypedRecord" in typename:
@@ -425,6 +428,32 @@ class NTuple_Header(CascadeLeaf):
                 repetition=akform.size,
             )
             self._field_records.append(field)
+            self._build_field_col_records(
+                akform.content,
+                parent_fid=field_id,
+                field_name="_0",
+            )
+        elif isinstance(akform, awkward.forms.IndexedOptionForm):
+            type_name = _cpp_typename(akform)
+            field = NTuple_Field_Description(
+                0,
+                0,
+                parent_fid,
+                uproot.const.RNTupleFieldRole.COLLECTION,
+                0,
+                field_name,
+                type_name,
+                "",
+                "",
+            )
+            self._field_records.append(field)
+            ak_index = akform.index
+            type_num = _ak_primitive_to_num_dict[ak_index]
+            type_size = uproot.const.rntuple_col_num_to_size_dict[type_num]
+            col = NTuple_Column_Description(type_num, type_size, field_id, 0, 0)
+            self._column_records.append(col)
+            self._column_keys.append(f"node{self._ak_node_count}-index")
+            # content data
             self._build_field_col_records(
                 akform.content,
                 parent_fid=field_id,
@@ -878,6 +907,9 @@ class NTuple(CascadeNode):
             col_data = data_buffers[key]
             if "offsets" in key:
                 col_data = col_data[1:]
+            elif "index" in key:
+                deltas = numpy.array(col_data != -1, dtype=col_data.dtype)
+                col_data = numpy.cumsum(deltas)
             col_len = len(col_data.reshape(-1))
             # TODO: when col_length is zero we can skip writing the page
             # but other things need to be adjusted
