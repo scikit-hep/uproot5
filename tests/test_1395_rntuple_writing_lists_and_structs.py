@@ -46,6 +46,10 @@ def test_writing_and_reading(tmp_path):
     filepath = os.path.join(tmp_path, "test.root")
 
     with uproot.recreate(filepath) as file:
+        obj = file.mkrntuple("ntuple", data)  # test inputting the data directly
+        obj.extend(data)
+
+    with uproot.recreate(filepath) as file:
         obj = file.mkrntuple("ntuple", data.layout.form)
         obj.extend(data)
         obj.extend(data)  # test multiple cluster groups
@@ -110,8 +114,16 @@ def test_writing_then_reading_with_ROOT(tmp_path, capfd):
     assert "* Field 8            : numpy_regular (std::array<std::int64_t,3>)" in out
     assert "* Field 9            : struct" in out
     assert "* Field 10           : struct_list" in out
-    assert "* Field 11           : tuple" in out
+    assert "* Field 11           : tuple (std::tuple<std::int64_t,std::int64_t>)" in out
     assert (
         "* Field 12           : tuple_list (std::vector<std::tuple<std::int64_t>>)"
+        in out
+    )
+    assert "* Field 13           : optional (std::optional<std::int64_t>)" in out
+    assert (
+        "* Field 14           : union (std::variant<std::int64_t,std::string>)" in out
+    )
+    assert (
+        "* Field 15           : optional_union (std::variant<std::optional<std::int64..."
         in out
     )

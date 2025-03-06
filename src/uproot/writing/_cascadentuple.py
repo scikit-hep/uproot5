@@ -398,6 +398,7 @@ class NTuple_Header(CascadeLeaf):
                 field_name="_0",
             )
         elif isinstance(akform, awkward.forms.RecordForm):
+            type_name = _cpp_typename(akform)
             field = NTuple_Field_Description(
                 0,
                 0,
@@ -405,7 +406,7 @@ class NTuple_Header(CascadeLeaf):
                 uproot.const.RNTupleFieldRole.RECORD,
                 0,
                 field_name,
-                "",
+                type_name,
                 "",
                 "",
             )
