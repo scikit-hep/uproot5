@@ -31,8 +31,6 @@ def test_flat_arrays(tmp_path):
 
 def test_flat_arrays_ROOT(tmp_path, capfd):
     ROOT = pytest.importorskip("ROOT")
-    if ROOT.gROOT.GetVersionInt() < 63500:
-        pytest.skip("ROOT version does not support RNTuple v1.0.0.0")
 
     filepath = os.path.join(tmp_path, "test.root")
 

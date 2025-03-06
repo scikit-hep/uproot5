@@ -8,7 +8,6 @@ from __future__ import annotations
 import struct
 import sys
 from collections import defaultdict
-from itertools import accumulate
 
 import numpy
 import xxhash
@@ -654,6 +653,9 @@ in file {self.file.file_path}"""
             # go find N in the rest, N is the # of fields in struct
             recordlist = [self.field_form(i, seen) for i in newids]
             namelist = [field_records[i].field_name for i in newids]
+            # TODO: uncomment this once tuples are fixed
+            # if all(name.startswith("_") for name in namelist):
+            #     namelist = None
             return ak.forms.RecordForm(recordlist, namelist, form_key="whatever")
         elif structural_role == uproot.const.RNTupleFieldRole.VARIANT:
             keyname = self.col_form(this_id)
@@ -743,10 +745,8 @@ in file {self.file.file_path}"""
             content = res.view(dtype)
 
         if isbit:
-            content = (
-                numpy.unpackbits(content.view(dtype=numpy.uint8))
-                .reshape(-1, 8)[:, ::-1]
-                .reshape(-1)
+            content = numpy.unpackbits(
+                content.view(dtype=numpy.uint8), bitorder="little"
             )
         elif dtype_str in ("real32trunc", "real32quant"):
             if nbits == 32:
@@ -775,20 +775,23 @@ in file {self.file.file_path}"""
         arrays = [self.read_col_page(ncol, i) for i in cluster_range]
 
         # Check if column stores offset values for jagged arrays (splitindex64) (applies to cardinality cols too):
-        if dtype_byte in uproot.const.rntuple_delta_types:
+        if dtype_byte in uproot.const.rntuple_index_types:
             # Extract the last offset values:
             last_elements = [
-                arr[-1] for arr in arrays[:-1]
+                (arr[-1] if len(arr) > 0 else numpy.zeros((), dtype=arr.dtype))
+                for arr in arrays[:-1]
             ]  # First value always zero, therefore skip first arr.
             # Compute cumulative sum using itertools.accumulate:
-            last_offsets = list(accumulate(last_elements))
+            last_offsets = numpy.cumsum(last_elements)
             # Add the offsets to each array
             for i in range(1, len(arrays)):
                 arrays[i] += last_offsets[i - 1]
-            # Remove the first element from every sub-array except for the first one:
-            arrays = [arrays[0]] + [arr[1:] for arr in arrays[1:]]
 
         res = numpy.concatenate(arrays, axis=0)
+
+        dtype_byte = self.column_records[ncol].type
+        if dtype_byte in uproot.const.rntuple_index_types:
+            res = numpy.insert(res, 0, 0)  # for offsets
 
         if pad_missing_element:
             first_element_index = self.column_records[ncol].first_element_index
@@ -817,7 +820,6 @@ in file {self.file.file_path}"""
         split = dtype_byte in uproot.const.rntuple_split_types
         zigzag = dtype_byte in uproot.const.rntuple_zigzag_types
         delta = dtype_byte in uproot.const.rntuple_delta_types
-        index = dtype_byte in uproot.const.rntuple_index_types
         nbits = (
             self.column_records[ncol].nbits
             if ncol < len(self.column_records)
@@ -836,8 +838,6 @@ in file {self.file.file_path}"""
                 cumsum += numpy.sum(res[tracker:tracker_end])
             tracker = tracker_end
 
-        if index:
-            res = numpy.insert(res, 0, 0)  # for offsets
         if zigzag:
             res = _from_zigzag(res)
         elif delta:

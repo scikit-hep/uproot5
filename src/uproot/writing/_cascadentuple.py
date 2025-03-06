@@ -14,6 +14,7 @@ import datetime
 import struct
 
 import awkward
+import numpy
 import xxhash
 
 import uproot
@@ -39,36 +40,31 @@ from uproot.models.RNTuple import (
     _rntuple_locator_offset_format,
     _rntuple_locator_size_format,
     _rntuple_page_num_elements_format,
+    _rntuple_repetition_format,
 )
 from uproot.writing._cascade import CascadeLeaf, CascadeNode, Key, String
 
 _rntuple_string_length_format = struct.Struct("<I")
 
 _ak_primitive_to_typename_dict = {
-    "i64": "std::int64_t",
-    "i32": "std::int32_t",
-    # "switch": 3,
-    # "byte": 4,
-    # "char": 5,
-    "bool": "bool",  # check
-    "float64": "double",
-    "float32": "float",
-    # "float16": 9,
-    "int64": "std::int64_t",
-    "int32": "std::int32_t",
-    "int16": "std::int16_t",
+    "bool": "bool",
+    "char": "char",
     "int8": "std::int8_t",
-    # "splitindex64": 14,
-    # "splitindex32": 15,
-    # "splitreal64": 16,
-    # "splitreal32": 17,
-    # "splitreal16": 18,
-    # "splitin64": 19,
-    # "splitint32": 20,
-    # "splitint16": 21,
+    "uint8": "std::uint8_t",
+    "int16": "std::int16_t",
+    "uint16": "std::uint16_t",
+    "int32": "std::int32_t",
+    "uint32": "std::uint32_t",
+    "int64": "std::int64_t",
+    "uint64": "std::uint64_t",
+    "float32": "float",
+    "float64": "double",
+    "i32": "std::int32_t",  # index type
+    "i64": "std::int64_t",  # index type
 }
 _ak_primitive_to_num_dict = {
     "bool": 0x00,
+    "char": 0x02,
     "int8": 0x03,
     "uint8": 0x04,
     "int16": 0x05,
@@ -77,12 +73,53 @@ _ak_primitive_to_num_dict = {
     "uint32": 0x08,
     "int64": 0x09,
     "uint64": 0x0A,
-    "float16": 0x0B,
     "float32": 0x0C,
     "float64": 0x0D,
     "i32": 0x0E,
     "i64": 0x0F,
 }
+
+
+def _cpp_typename(akform, subcall=False):
+    if isinstance(akform, awkward.forms.NumpyForm) and akform.inner_shape == ():
+        ak_primitive = akform.primitive
+        typename = _ak_primitive_to_typename_dict[ak_primitive]
+    elif isinstance(akform, awkward.forms.NumpyForm):
+        ak_primitive = akform.primitive
+        inner_shape = akform.inner_shape
+        typename = _ak_primitive_to_typename_dict[ak_primitive]
+        for arr_size in inner_shape[::-1]:
+            typename = f"std::array<{typename},{arr_size}>"
+    elif isinstance(akform, awkward.forms.ListOffsetForm):
+        content_typename = _cpp_typename(akform.content, subcall=True)
+        typename = f"std::vector<{content_typename}>"
+        override_typename = akform.parameters.get("__array__", "")
+        if override_typename != "":
+            typename = (
+                f"std::{override_typename}"  # TODO: check if this could cause issues
+            )
+    elif isinstance(akform, awkward.forms.RecordForm):
+        if akform.is_tuple:
+            field_typenames = [_cpp_typename(t, subcall=True) for t in akform.contents]
+            typename = f"std::tuple<{','.join(field_typenames)}>"
+        else:
+            typename = "UntypedRecord"
+    elif isinstance(akform, awkward.forms.RegularForm):
+        content_typename = _cpp_typename(akform.content, subcall=True)
+        typename = f"std::array<{content_typename},{akform.size}>"
+    elif isinstance(akform, awkward.forms.IndexedOptionForm):
+        content_typename = _cpp_typename(akform.content, subcall=True)
+        typename = f"std::optional<{content_typename}>"
+    elif isinstance(akform, awkward.forms.UnionForm):
+        field_typenames = [_cpp_typename(t, subcall=True) for t in akform.contents]
+        typename = f"std::variant<{','.join(field_typenames)}>"
+    elif isinstance(akform, awkward.forms.UnmaskedForm):
+        return _cpp_typename(akform.content, subcall=True)
+    else:
+        raise NotImplementedError(f"Form type {type(akform)} cannot be written yet")
+    if not subcall and "UntypedRecord" in typename:
+        typename = ""  # empty types for anything that contains UntypedRecord
+    return typename
 
 
 class RBlob_Key(Key):
@@ -181,6 +218,7 @@ class NTuple_Field_Description:
         type_name,
         type_alias,
         field_description,
+        repetition=None,
     ):
         self.field_version = field_version
         self.type_version = type_version
@@ -191,6 +229,7 @@ class NTuple_Field_Description:
         self.type_name = type_name
         self.type_alias = type_alias
         self.field_description = field_description
+        self.repetition = repetition
 
     def __repr__(self):
         return f"{type(self).__name__}({self.field_version!r}, {self.type_version!r}, {self.parent_field_id!r}, {self.struct_role!r}, {self.flags!r}, {self.field_name!r}, {self.type_name!r}, {self.type_alias!r}, {self.field_description!r})"
@@ -214,7 +253,10 @@ class NTuple_Field_Description:
                 )
             ]
         )
-        return b"".join([header_bytes, string_bytes])
+        additional_bytes = b""
+        if self.flags & uproot.const.RNTupleFieldFlag.REPETITIVE:
+            additional_bytes += _rntuple_repetition_format.pack(self.repetition)
+        return b"".join([header_bytes, string_bytes, additional_bytes])
 
 
 # https://github.com/root-project/root/blob/master/tree/ntuple/v7/doc/specifications.md#column-description
@@ -246,6 +288,10 @@ class NTuple_Header(CascadeLeaf):
 
         self._serialize = None
         self._checksum = None
+        self._field_records = []
+        self._column_records = []
+        self._column_keys = []
+        self._ak_node_count = 0
         aloc = len(self.serialize())
         super().__init__(location, aloc)
 
@@ -256,30 +302,212 @@ class NTuple_Header(CascadeLeaf):
             ", ".join([repr(x) for x in self._akform]),
         )
 
-    def generate_field_col_records(self):
-        akform = self._akform
-        field_names = akform.fields
-        contents = akform.contents
-        field_records = []
-        column_records = []
-
-        for field_id, (field_name, ak_col) in enumerate(zip(field_names, contents)):
-            if not isinstance(ak_col, awkward.forms.NumpyForm):
-                raise NotImplementedError("only flat column is supported")
-            ak_primitive = ak_col.primitive
-            type_name = _ak_primitive_to_typename_dict[ak_primitive]
-            parent_field_id = field_id
+    def _build_field_col_records(
+        self, akform, field_name=None, parent_fid=None, add_field=True
+    ):
+        field_id = len(self._field_records)
+        if parent_fid is None:
+            parent_fid = field_id
+        if field_name is None:
+            field_name = f"_{field_id}"
+        self._ak_node_count += 1
+        if isinstance(akform, awkward.forms.NumpyForm) and akform.inner_shape == ():
+            type_name = _cpp_typename(akform)
             field = NTuple_Field_Description(
-                0, 0, parent_field_id, 0, 0, field_name, type_name, "", ""
+                0,
+                0,
+                parent_fid,
+                uproot.const.RNTupleFieldRole.LEAF,
+                0,
+                field_name,
+                type_name,
+                "",
+                "",
             )
+            if add_field:
+                self._field_records.append(field)
+            else:
+                field_id = parent_fid
+            ak_primitive = akform.parameters.get("__array__", akform.primitive)
             type_num = _ak_primitive_to_num_dict[ak_primitive]
             type_size = uproot.const.rntuple_col_num_to_size_dict[type_num]
             col = NTuple_Column_Description(type_num, type_size, field_id, 0, 0)
+            self._column_records.append(col)
+            self._column_keys.append(f"node{self._ak_node_count}-data")
+        elif isinstance(akform, awkward.forms.NumpyForm):
+            reg_akform = akform.to_RegularForm()
+            inner_shape = (*akform.inner_shape, None)
+            for i, arr_size in enumerate(inner_shape):
+                if i > 0:
+                    parent_fid = field_id
+                    field_id = len(self._field_records)
+                    field_name = "_0"
+                    reg_akform = reg_akform.content
+                repetitive_flag = (
+                    0 if arr_size is None else uproot.const.RNTupleFieldFlag.REPETITIVE
+                )
+                type_name = _cpp_typename(reg_akform)
+                field = NTuple_Field_Description(
+                    0,
+                    0,
+                    parent_fid,
+                    uproot.const.RNTupleFieldRole.LEAF,
+                    repetitive_flag,
+                    field_name,
+                    type_name,
+                    "",
+                    "",
+                    repetition=arr_size,
+                )
+                self._field_records.append(field)
+            ak_primitive = akform.primitive
+            type_num = _ak_primitive_to_num_dict[ak_primitive]
+            type_size = uproot.const.rntuple_col_num_to_size_dict[type_num]
+            col = NTuple_Column_Description(type_num, type_size, field_id, 0, 0)
+            self._column_records.append(col)
+            self._column_keys.append(f"node{self._ak_node_count}-data")
+        elif isinstance(akform, awkward.forms.ListOffsetForm):
+            type_name = _cpp_typename(akform)
+            field_role = uproot.const.RNTupleFieldRole.COLLECTION
+            if akform.parameters.get("__array__", "") == "string":
+                type_name = "std::string"
+                field_role = uproot.const.RNTupleFieldRole.LEAF
+            field = NTuple_Field_Description(
+                0,
+                0,
+                parent_fid,
+                field_role,
+                0,
+                field_name,
+                type_name,
+                "",
+                "",
+            )
+            self._field_records.append(field)
+            ak_offset = akform.offsets
+            type_num = _ak_primitive_to_num_dict[ak_offset]
+            type_size = uproot.const.rntuple_col_num_to_size_dict[type_num]
+            col = NTuple_Column_Description(type_num, type_size, field_id, 0, 0)
+            self._column_records.append(col)
+            self._column_keys.append(f"node{self._ak_node_count}-offsets")
+            # content data
+            self._build_field_col_records(
+                akform.content,
+                parent_fid=field_id,
+                add_field=field_role == uproot.const.RNTupleFieldRole.COLLECTION,
+                field_name="_0",
+            )
+        elif isinstance(akform, awkward.forms.RecordForm):
+            type_name = _cpp_typename(akform)
+            field = NTuple_Field_Description(
+                0,
+                0,
+                parent_fid,
+                uproot.const.RNTupleFieldRole.RECORD,
+                0,
+                field_name,
+                type_name,
+                "",
+                "",
+            )
+            self._field_records.append(field)
+            for i, subakform in enumerate(akform.contents):
+                subfield_name = f"_{i}" if akform.is_tuple else akform.fields[i]
+                self._build_field_col_records(
+                    subakform,
+                    field_name=subfield_name,
+                    parent_fid=field_id,
+                )
+        elif isinstance(akform, awkward.forms.RegularForm):
+            type_name = _cpp_typename(akform)
+            field_role = uproot.const.RNTupleFieldRole.LEAF
+            field = NTuple_Field_Description(
+                0,
+                0,
+                parent_fid,
+                field_role,
+                uproot.const.RNTupleFieldFlag.REPETITIVE,
+                field_name,
+                type_name,
+                "",
+                "",
+                repetition=akform.size,
+            )
+            self._field_records.append(field)
+            self._build_field_col_records(
+                akform.content,
+                parent_fid=field_id,
+                field_name="_0",
+            )
+        elif isinstance(akform, awkward.forms.IndexedOptionForm):
+            type_name = _cpp_typename(akform)
+            field = NTuple_Field_Description(
+                0,
+                0,
+                parent_fid,
+                uproot.const.RNTupleFieldRole.COLLECTION,
+                0,
+                field_name,
+                type_name,
+                "",
+                "",
+            )
+            self._field_records.append(field)
+            ak_index = akform.index
+            type_num = _ak_primitive_to_num_dict[ak_index]
+            type_size = uproot.const.rntuple_col_num_to_size_dict[type_num]
+            col = NTuple_Column_Description(type_num, type_size, field_id, 0, 0)
+            self._column_records.append(col)
+            self._column_keys.append(f"node{self._ak_node_count}-index")
+            # content data
+            self._build_field_col_records(
+                akform.content,
+                parent_fid=field_id,
+                field_name="_0",
+            )
+        elif isinstance(akform, awkward.forms.UnionForm):
+            type_name = _cpp_typename(akform)
+            field = NTuple_Field_Description(
+                0,
+                0,
+                parent_fid,
+                uproot.const.RNTupleFieldRole.VARIANT,
+                0,
+                field_name,
+                type_name,
+                "",
+                "",
+            )
+            self._field_records.append(field)
+            type_num = uproot.const.rntuple_col_type_to_num_dict["switch"]
+            type_size = uproot.const.rntuple_col_num_to_size_dict[type_num]
+            col = NTuple_Column_Description(type_num, type_size, field_id, 0, 0)
+            self._column_records.append(col)
+            self._column_keys.append(f"node{self._ak_node_count}-switch")
+            for i, subakform in enumerate(akform.contents):
+                subfield_name = f"_{i}"
+                self._build_field_col_records(
+                    subakform,
+                    field_name=subfield_name,
+                    parent_fid=field_id,
+                )
+        elif isinstance(akform, awkward.forms.UnmaskedForm):
+            # Do nothing
+            self._build_field_col_records(
+                akform.content,
+                parent_fid=parent_fid,
+                field_name=field_name,
+            )
+        else:
+            raise NotImplementedError(f"Form type {type(akform)} cannot be written yet")
 
-            field_records.append(field)
-            column_records.append(col)
-
-        return field_records, column_records
+    def generate_field_col_records(self):
+        akform = self._akform
+        for field_name, topakform in zip(akform.fields, akform.contents):
+            self._build_field_col_records(
+                topakform,
+                field_name=field_name,
+            )
 
     def serialize(self):
         if self._serialize:
@@ -293,12 +521,12 @@ class NTuple_Header(CascadeLeaf):
         out = []
         out.extend([feature_flag, name, description, writer])
 
-        field_records, column_records = self.generate_field_col_records()
+        self.generate_field_col_records()
         alias_records = []
         extra_type_info = []
 
-        out.append(_serialize_rntuple_list_frame(field_records))
-        out.append(_serialize_rntuple_list_frame(column_records))
+        out.append(_serialize_rntuple_list_frame(self._field_records))
+        out.append(_serialize_rntuple_list_frame(self._column_records))
         out.append(_serialize_rntuple_list_frame(alias_records))
         out.append(_serialize_rntuple_list_frame(extra_type_info))
         payload = b"".join(out)
@@ -375,8 +603,7 @@ class NTuple_Footer(CascadeLeaf):
 
 class NTuple_Locator:
     def __init__(self, num_bytes, offset):
-        # approximate 2^16 - size of locator itself
-        assert num_bytes < 32768
+        assert num_bytes < (1 << 32)
         self.num_bytes = num_bytes
         self.offset = offset
 
@@ -524,7 +751,7 @@ class NTuple_InnerListLocator:
 
 class NTuple_PageDescription:
     def __init__(self, num_entries, locator):
-        assert num_entries <= 65536
+        assert num_entries < (1 << 32)
         self.num_entries = num_entries
         self.locator = locator
 
@@ -658,6 +885,8 @@ class NTuple(CascadeNode):
         self._header_key = None
         self._num_entries = 0
 
+        self._column_counts = numpy.zeros(len(self._header._column_keys), dtype=int)
+
     def __repr__(self):
         return f"{type(self).__name__}({self._directory}, {self._header}, {self._footer}, {self._cluster_metadata}, {self._anchor}, {self._freesegments})"
 
@@ -712,13 +941,37 @@ class NTuple(CascadeNode):
         # We write a single page for each column for now
 
         cluster_page_data = []  # list of list of (locator, len, offset)
-        for field in data.fields:
-            raw_data = data[field].to_numpy().view("uint8")
+        data_buffers = awkward.to_buffers(data)[2]
+        for idx, key in enumerate(self._header._column_keys):
+            if "switch" in key:
+                dtype = numpy.dtype([("index", "int64"), ("tag", "int32")])
+                indices = data_buffers[key.split("-")[0] + "-index"]
+                tags = data_buffers[key.split("-")[0] + "-tags"]
+                switches = numpy.zeros(len(indices), dtype=dtype)
+                switches["index"] = indices
+                switches["tag"] = tags + 1
+                col_data = switches
+            else:
+                col_data = data_buffers[key]
+            if "offsets" in key:
+                col_data = col_data[1:]
+            elif "index" in key:
+                deltas = numpy.array(col_data != -1, dtype=col_data.dtype)
+                col_data = numpy.cumsum(deltas)
+            col_len = len(col_data.reshape(-1))
+            # TODO: when col_length is zero we can skip writing the page
+            # but other things need to be adjusted
+            raw_data = col_data.reshape(-1).view("uint8")
+            if col_data.dtype == numpy.dtype("bool"):
+                raw_data = numpy.packbits(raw_data, bitorder="little")
             page_key = self.add_rblob(sink, raw_data, len(raw_data), big=False)
             page_locator = NTuple_Locator(
-                len(raw_data), page_key.location + page_key.allocation  # probably wrong
+                len(raw_data), page_key.location + page_key.allocation
             )
-            cluster_page_data.append([(page_locator, len(data), self._num_entries)])
+            cluster_page_data.append(
+                [(page_locator, col_len, self._column_counts[idx])]
+            )
+            self._column_counts[idx] += col_len
         page_data = [
             cluster_page_data
         ]  # list of list of list of (locator, len, offset)
