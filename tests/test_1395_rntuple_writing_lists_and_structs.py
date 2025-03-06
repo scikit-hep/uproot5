@@ -21,6 +21,7 @@ data = ak.Array(
         "jagged_list": [[1], [2, 3], [4, 5, 6]],
         "nested_list": [[[1], []], [[2], [3, 3]], [[4, 5, 6]]],
         "string": ["one", "two", "three"],
+        "utf8_string": ["こんにちは", "⚛️💫🎆😀", "ǧ̸̛̫͍̰͖̟̈͛͑͆̆̌̃̉̅̄̔̈́̀̔͆̄͋̍͐͂̎͗̈́͒͘͝ͅö̴̮̝̪̬͎͚̜̖̜͖̞̤͕̙͂̀̀̊͛͑̈́͛͐͊͂͂̇͛̾̔͐͆͑͂̓̅̀͘͘͘̕͝͠͝͝ơ̶͍̙̻̾̈́̓̈́̀̅͑ḑ̷͚̠̹̗͉͙̞͇͕̼̲̥͉̯̞͕̲̻̞͗̓̃̊̅͗͊͊́̑̈́̎͋̇̓͛̅͜͜͠͝ͅb̷̢̢̨̨̛̛̘̠̞̰̺̘̰̖̺̞̱͇̰̙̲̱̪͕͎͉̖̞͇̹̮͙͋̀͑͂̈́̇͛̐͊̀̇͆̓̋̀̿̋̂̅̀̌̑̓̽͊̂͑̈̇̚͜͝y̶̗͇̠̞͚̦̮̦͈̹̥̋̓̓̈́̐̆̀̄̋̂̀̇͋̎̚͜͝ȩ̷̢̡͇̮̩̹̥̬̰͎͔̬̩̰̯͍̲͎̭͉̬̣̻̖͍̥̟̪͕̫̟̋̔̀͆̑̈́̐̃͐͌̍͒̔̈́̃̈́̐̔̾͊̿̓͆͑̚͜͝͝͝ͅ"],
         "regular": ak.Array(
             ak.contents.RegularArray(
                 ak.contents.NumpyArray([1, 2, 3, 4, 5, 6, 7, 8, 9]), 3
@@ -110,20 +111,21 @@ def test_writing_then_reading_with_ROOT(tmp_path, capfd):
         in out
     )
     assert "* Field 6            : string (std::string)" in out
-    assert "* Field 7            : regular (std::array<std::int64_t,3>)" in out
-    assert "* Field 8            : numpy_regular (std::array<std::int64_t,3>)" in out
-    assert "* Field 9            : struct" in out
-    assert "* Field 10           : struct_list" in out
-    assert "* Field 11           : tuple (std::tuple<std::int64_t,std::int64_t>)" in out
+    assert "* Field 7            : utf8_string (std::string)" in out
+    assert "* Field 8            : regular (std::array<std::int64_t,3>)" in out
+    assert "* Field 9            : numpy_regular (std::array<std::int64_t,3>)" in out
+    assert "* Field 10           : struct" in out
+    assert "* Field 11           : struct_list" in out
+    assert "* Field 12           : tuple (std::tuple<std::int64_t,std::int64_t>)" in out
     assert (
-        "* Field 12           : tuple_list (std::vector<std::tuple<std::int64_t>>)"
+        "* Field 13           : tuple_list (std::vector<std::tuple<std::int64_t>>)"
         in out
     )
-    assert "* Field 13           : optional (std::optional<std::int64_t>)" in out
+    assert "* Field 14           : optional (std::optional<std::int64_t>)" in out
     assert (
-        "* Field 14           : union (std::variant<std::int64_t,std::string>)" in out
+        "* Field 15           : union (std::variant<std::int64_t,std::string>)" in out
     )
     assert (
-        "* Field 15           : optional_union (std::variant<std::optional<std::int64..."
+        "* Field 16           : optional_union (std::variant<std::optional<std::int64..."
         in out
     )
