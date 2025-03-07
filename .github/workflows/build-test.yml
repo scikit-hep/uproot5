@@ -36,7 +36,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
           miniforge-version: latest
           use-mamba: true
-          mamba-version: 2.0.5 # FIXME: Unpin when conda-incubator/setup-miniconda#392 is fixed
+          mamba-version: 2.0.4 # FIXME: Unpin when conda-incubator/setup-miniconda#392 is fixed
 
       - name: Check active Python version
         run: python -c "import sys; assert '.'.join(str(s) for s in sys.version_info[:2]) == '${{ matrix.python-version }}', f'{version} incorrect!'"
