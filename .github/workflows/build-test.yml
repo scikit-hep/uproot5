@@ -34,6 +34,8 @@ jobs:
         with:
           auto-update-conda: true
           python-version: ${{ matrix.python-version }}
+          channels: conda-forge
+          conda-remove-defaults: true
 
       - name: Check active Python version
         run: python -c "import sys; assert '.'.join(str(s) for s in sys.version_info[:2]) == '${{ matrix.python-version }}', f'{version} incorrect!'"
