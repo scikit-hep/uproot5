@@ -41,14 +41,14 @@ jobs:
         run: python -c "import sys; assert '.'.join(str(s) for s in sys.version_info[:2]) == '${{ matrix.python-version }}', f'{version} incorrect!'"
 
       - name: Install ROOT
-        if: matrix.python-version == 3.9  &&  runner.os != 'macOS'  &&  runner.os != 'Windows'
+        if: matrix.python-version == 3.9  &&  runner.os == 'Linux'
         run: |
           micromamba env list
           micromamba install root
           micromamba list
 
       - name: Install sshd for fsspec ssh tests
-        if: runner.os != 'macOS' && runner.os != 'Windows'
+        if: runner.os == 'Linux'
         run: |
           sudo apt-get install -y openssh-server
           sudo service ssh restart
