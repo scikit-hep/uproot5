@@ -32,6 +32,7 @@ jobs:
       - name: Get micromamba
         uses: mamba-org/setup-micromamba@v2
         with:
+          environment-name: test-env
           init-shell: bash
           create-args: >-
             python=${{ matrix.python-version }}
