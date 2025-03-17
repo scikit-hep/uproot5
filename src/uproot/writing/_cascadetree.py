@@ -462,7 +462,7 @@ class Tree:
         if self._num_baskets >= self._basket_capacity - 1:
             self._basket_capacity = max(
                 self._basket_capacity + 1,
-                int(math.ceil(self._basket_capacity * self._resize_factor)),
+                math.ceil(self._basket_capacity * self._resize_factor),
             )
 
             for datum in self._branch_data:
