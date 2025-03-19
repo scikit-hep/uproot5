@@ -500,12 +500,11 @@ in file {self.file.file_path}"""
         else:
             raise (RuntimeError(f"Missing special case: {field_id}"))
 
-    def field_form(self, this_id, seen):
+    def field_form(self, this_id, keys):
         ak = uproot.extras.awkward()
 
         field_records = self.field_records
         this_record = field_records[this_id]
-        seen.add(this_id)
         structural_role = this_record.struct_role
         if (
             structural_role == uproot.const.RNTupleFieldRole.LEAF
@@ -519,7 +518,6 @@ in file {self.file.file_path}"""
                 and len(self._related_ids[tmp_id]) == 1
             ):
                 this_id = self._related_ids[tmp_id][0]
-                seen.add(this_id)
             # base case of recursion
             # n.b. the split may happen in column
             return self.col_form(this_id)
@@ -527,7 +525,7 @@ in file {self.file.file_path}"""
             if this_id in self._related_ids:
                 # std::array has only one subfield
                 child_id = self._related_ids[this_id][0]
-                inner = self.field_form(child_id, seen)
+                inner = self.field_form(child_id, keys)
             else:
                 # std::bitset has no subfields, so we use it directly
                 inner = self.col_form(this_id)
@@ -538,7 +536,7 @@ in file {self.file.file_path}"""
                 keyname = f"vector-{this_id}"
                 newids = self._related_ids.get(this_id, [])
                 # go find N in the rest, N is the # of fields in vector
-                recordlist = [self.field_form(i, seen) for i in newids]
+                recordlist = [self.field_form(i, keys) for i in newids]  # FIXME
                 namelist = [field_records[i].field_name for i in newids]
                 return ak.forms.RecordForm(recordlist, namelist, form_key="whatever")
             cfid = this_id
@@ -557,25 +555,24 @@ in file {self.file.file_path}"""
             #  this only has one child
             if this_id in self._related_ids:
                 child_id = self._related_ids[this_id][0]
-            inner = self.field_form(child_id, seen)
+            inner = self.field_form(child_id, keys)
             return ak.forms.ListOffsetForm("i64", inner, form_key=keyname)
         elif structural_role == uproot.const.RNTupleFieldRole.RECORD:
             newids = []
             if this_id in self._related_ids:
                 newids = self._related_ids[this_id]
             # go find N in the rest, N is the # of fields in struct
-            recordlist = [self.field_form(i, seen) for i in newids]
+            recordlist = [self.field_form(i, keys) for i in newids]  # FIXME
             namelist = [field_records[i].field_name for i in newids]
-            # TODO: uncomment this once tuples are fixed
-            # if all(name.startswith("_") for name in namelist):
-            #     namelist = None
+            if all(name == f"_{i}" for i, name in enumerate(namelist)):
+                namelist = None
             return ak.forms.RecordForm(recordlist, namelist, form_key="whatever")
         elif structural_role == uproot.const.RNTupleFieldRole.VARIANT:
             keyname = self.col_form(this_id)
             newids = []
             if this_id in self._related_ids:
                 newids = self._related_ids[this_id]
-            recordlist = [self.field_form(i, seen) for i in newids]
+            recordlist = [self.field_form(i, keys) for i in newids]
             inner = ak.forms.UnionForm(
                 "i8", "i64", recordlist, form_key=keyname + "-union"
             )
@@ -587,22 +584,6 @@ in file {self.file.file_path}"""
         else:
             # everything should recurse above this branch
             raise AssertionError("this should be unreachable")
-
-    def to_akform(self):
-        ak = uproot.extras.awkward()
-
-        field_records = self.field_records
-        recordlist = []
-        topnames = self.keys()
-        seen = set()
-        for i in range(len(field_records)):
-            if i not in seen:
-                ff = self.field_form(i, seen)
-                if not field_records[i].field_name.startswith("_"):
-                    recordlist.append(ff)
-
-        form = ak.forms.RecordForm(recordlist, topnames, form_key="toplevel")
-        return form
 
     def read_pagedesc(self, destination, desc, dtype_str, dtype, nbits, split):
         loc = desc.locator

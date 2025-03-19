@@ -90,6 +90,58 @@ class HasFields(Mapping):
             self._fields = fields
         return self._fields
 
+    def to_akform(
+        self,
+        *,
+        filter_name=no_filter,
+        filter_typename=no_filter,
+        filter_field=no_filter,
+        # For compatibility reasons we also accepts kwargs meant for TTrees
+        filter_branch=unset,
+    ):
+        """
+        Args:
+            filter_name (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
+                filter to select ``RFields``s by name.
+            filter_typename (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
+                filter to select ``RFields`` by type.
+            filter_field (None or function of :doc:`uproot.models.RNTuple.RField` \u2192 bool): A
+                filter to select ``RFields`` using the full
+                :doc:`uproot.models.RNTuple.RField` object. The ``RField`` is
+                included if the function returns True, excluded if it returns False.
+            filter_branch (None or function of :doc:`uproot.models.RNTuple.RField` \u2192 bool): An alias for ``filter_field`` included
+                for compatibility with software that was used for :doc:`uproot.behaviors.TBranch.TBranch`. This argument should not be used
+                and will be removed in a future version.
+
+        Returns the an Awkward Form with the structure of the data in the ``RNTuple`` or ``RField``.
+        """
+        ak = uproot.extras.awkward()
+
+        keys = self.keys(
+            filter_name=filter_name,
+            filter_typename=filter_typename,
+            filter_field=filter_field,
+            filter_branch=filter_branch,
+        )
+        rntuple = self.ntuple
+
+        top_names = []
+        record_list = []
+        if self is rntuple:
+            for field in self.fields:
+                # the field needs to be in the keys or be a parent of a field in the keys
+                if any(key.startswith(field.name) for key in keys):
+                    top_names.append(field.name)
+                    record_list.append(rntuple.field_form(field.field_id, keys))
+        else:
+            # the field needs to be in the keys or be a parent of a field in the keys
+            if any(key.startswith(self.name) for key in keys):
+                top_names.append(self.name)
+                record_list.append(rntuple.field_form(self.field_id, keys))
+
+        form = ak.forms.RecordForm(record_list, top_names, form_key="toplevel")
+        return form
+
     # def arrays(
     #     self,
     #     expressions=None,
