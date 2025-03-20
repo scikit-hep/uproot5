@@ -536,8 +536,14 @@ in file {self.file.file_path}"""
                 keyname = f"vector-{this_id}"
                 newids = self._related_ids.get(this_id, [])
                 # go find N in the rest, N is the # of fields in vector
-                recordlist = [self.field_form(i, keys) for i in newids]  # FIXME
-                namelist = [field_records[i].field_name for i in newids]
+                recordlist = []
+                namelist = []
+                for i in newids:
+                    if any(key.startswith(self.all_fields[i].path) for key in keys):
+                        recordlist.append(self.field_form(i, keys))
+                        namelist.append(field_records[i].field_name)
+                if all(name == f"_{i}" for i, name in enumerate(namelist)):
+                    namelist = None
                 return ak.forms.RecordForm(recordlist, namelist, form_key="whatever")
             cfid = this_id
             if self.field_records[cfid].source_field_id is not None:
@@ -562,8 +568,12 @@ in file {self.file.file_path}"""
             if this_id in self._related_ids:
                 newids = self._related_ids[this_id]
             # go find N in the rest, N is the # of fields in struct
-            recordlist = [self.field_form(i, keys) for i in newids]  # FIXME
-            namelist = [field_records[i].field_name for i in newids]
+            recordlist = []
+            namelist = []
+            for i in newids:
+                if any(key.startswith(self.all_fields[i].path) for key in keys):
+                    recordlist.append(self.field_form(i, keys))
+                    namelist.append(field_records[i].field_name)
             if all(name == f"_{i}" for i, name in enumerate(namelist)):
                 namelist = None
             return ak.forms.RecordForm(recordlist, namelist, form_key="whatever")
@@ -1135,6 +1145,7 @@ class RField(uproot.behaviors.RNTuple.HasFields):
         self._length = None
         self._fields = None
         self._lookup = None
+        self._path = None
 
     def __repr__(self):
         if len(self) == 0:

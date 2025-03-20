@@ -90,6 +90,25 @@ class HasFields(Mapping):
             self._fields = fields
         return self._fields
 
+    @property
+    def path(self):
+        """
+        The full path of the field in the :doc:`uproot.models.RNTuple.RNTuple`. When it is
+        the ``RNTuple`` itself, this is ``"."``.
+        """
+        if isinstance(self, uproot.behaviors.RNTuple.RNTuple):
+            return "."
+        if self._path is None:
+            path = self.name
+            parent = self.parent
+            field = self
+            while not isinstance(parent, uproot.behaviors.RNTuple.RNTuple):
+                path = f"{parent.name}.{path}"
+                field = parent
+                parent = field.parent
+            self._path = path
+        return self._path
+
     def to_akform(
         self,
         *,
@@ -134,8 +153,10 @@ class HasFields(Mapping):
                     top_names.append(field.name)
                     record_list.append(rntuple.field_form(field.field_id, keys))
         else:
-            # the field needs to be in the keys or be a parent of a field in the keys
-            if any(key.startswith(self.name) for key in keys):
+            # Always use the full path for keys
+            keys = [f"{self.path}.{k}" for k in keys]
+            # The field needs to be in the keys or be a parent of a field in the keys
+            if any(key.startswith(self.path) for key in keys):
                 top_names.append(self.name)
                 record_list.append(rntuple.field_form(self.field_id, keys))
 

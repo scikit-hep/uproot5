@@ -90,3 +90,16 @@ def test_to_akform(tmp_path):
 
     akform = obj.to_akform()
     assert akform == data.layout.form
+
+    assert obj["struct1"].to_akform() == akform.select_columns("struct1")
+    assert obj["struct2"].to_akform() == akform.select_columns("struct2")
+    assert obj["struct3"].to_akform() == akform.select_columns("struct3")
+    assert obj["struct4"].to_akform() == akform.select_columns("struct4")
+    assert obj["struct5"].to_akform() == akform.select_columns("struct5")
+
+    assert obj["struct1"].to_akform(filter_name="x") == akform.select_columns(
+        ["struct1.x"]
+    )
+    assert obj["struct3"].to_akform(filter_typename="double") == akform.select_columns(
+        ["struct3.t"]
+    )
