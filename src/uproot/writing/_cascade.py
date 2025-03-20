@@ -1581,8 +1581,8 @@ class Directory(CascadeNode):
         if replaces is None:
             next_key = key.copy_to(self._data.next_location)
             if self._data.num_bytes + next_key.num_bytes > self._data.allocation:
-                requested_num_bytes = int(
-                    math.ceil(1.5 * (self._data.allocation + next_key.num_bytes + 8))
+                requested_num_bytes = math.ceil(
+                    1.5 * (self._data.allocation + next_key.num_bytes + 8)
                 )
                 self._reallocate_data(requested_num_bytes)
                 next_key = key.copy_to(self._data.next_location)
@@ -1597,8 +1597,8 @@ class Directory(CascadeNode):
                 self._data.num_bytes + new_key.num_bytes - original_key.num_bytes
                 > self._data.allocation
             ):
-                requested_num_bytes = int(
-                    math.ceil(1.5 * (self._data.allocation + new_key.num_bytes + 8))
+                requested_num_bytes = math.ceil(
+                    1.5 * (self._data.allocation + new_key.num_bytes + 8)
                 )
                 self._reallocate_data(requested_num_bytes)
                 original_key = self._data.get_key(replaces.name.string, replaces.cycle)
@@ -1685,7 +1685,7 @@ class Directory(CascadeNode):
         next_key = subdirectory_key.copy_to(self._data.next_location)
         if self._data.num_bytes + next_key.num_bytes > self._data.allocation:
             self._reallocate_data(
-                int(math.ceil(1.5 * (self._data.allocation + next_key.num_bytes + 8)))
+                math.ceil(1.5 * (self._data.allocation + next_key.num_bytes + 8))
             )
             next_key = subdirectory_key.copy_to(self._data.next_location)
         next_key._location = self._data.next_location

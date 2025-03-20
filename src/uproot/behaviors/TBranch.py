@@ -3242,7 +3242,7 @@ def _hasbranches_num_entries_for(
     if total_bytes == 0:
         num_entries = 0
     else:
-        num_entries = int(round(target_num_bytes * total_entries / total_bytes))
+        num_entries = round(target_num_bytes * total_entries / total_bytes)
     if num_entries <= 0:
         return 1
     else:
