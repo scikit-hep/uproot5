@@ -66,123 +66,51 @@ def _envelop_header(chunk, cursor, context):
     return {"env_type_id": env_type_id, "env_length": env_length}
 
 
-def _arrays(
-    in_ntuple,
-    filter_name="*",
-    filter_typename=None,
-    entry_start=0,
-    entry_stop=None,
-    decompression_executor=None,
-    array_cache=None,
-):
-    ak = uproot.extras.awkward()
+# def _num_entries_for(in_ntuple, target_num_bytes, filter_name):
+#     # TODO: part of this is also done in _arrays, so we should refactor this
+#     # TODO: there might be a better way to estimate the number of entries
+#     entry_stop = in_ntuple._ntuple.num_entries
 
-    entry_stop = entry_stop or in_ntuple._ntuple.num_entries
+#     clusters = in_ntuple._ntuple.cluster_summaries
+#     cluster_starts = numpy.array([c.num_first_entry for c in clusters])
 
-    clusters = in_ntuple._ntuple.cluster_summaries
-    cluster_starts = numpy.array([c.num_first_entry for c in clusters])
+#     start_cluster_idx = numpy.searchsorted(cluster_starts, 0, side="right") - 1
+#     stop_cluster_idx = numpy.searchsorted(cluster_starts, entry_stop, side="right")
 
-    start_cluster_idx = (
-        numpy.searchsorted(cluster_starts, entry_start, side="right") - 1
-    )
-    stop_cluster_idx = numpy.searchsorted(cluster_starts, entry_stop, side="right")
-    cluster_num_entries = numpy.sum(
-        [c.num_entries for c in clusters[start_cluster_idx:stop_cluster_idx]]
-    )
+#     form = in_ntuple.to_akform().select_columns(
+#         filter_name, prune_unions_and_records=False
+#     )
+#     target_cols = []
+#     _recursive_find(form, target_cols)
 
-    form = in_ntuple.to_akform().select_columns(
-        filter_name, prune_unions_and_records=False
-    )
-    # only read columns mentioned in the awkward form
-    target_cols = []
-    container_dict = {}
-    _recursive_find(form, target_cols)
-    for key in target_cols:
-        if "column" in key and "union" not in key:
-            key_nr = int(key.split("-")[1])
-            dtype_byte = in_ntuple._ntuple.column_records[key_nr].type
+#     total_bytes = 0
+#     for key in target_cols:
+#         if "column" in key and "union" not in key:
+#             key_nr = int(key.split("-")[1])
+#             for cluster in range(start_cluster_idx, stop_cluster_idx):
+#                 pages = in_ntuple._ntuple.page_link_list[cluster][key_nr].pages
+#                 total_bytes += sum(page.locator.num_bytes for page in pages)
 
-            content = in_ntuple._ntuple.read_col_pages(
-                key_nr,
-                range(start_cluster_idx, stop_cluster_idx),
-                dtype_byte=dtype_byte,
-                pad_missing_element=True,
-            )
-            if "cardinality" in key:
-                content = numpy.diff(content)
-            if dtype_byte == uproot.const.rntuple_col_type_to_num_dict["switch"]:
-                kindex, tags = _split_switch_bits(content)
-                # Find invalid variants and adjust buffers accordingly
-                invalid = numpy.flatnonzero(tags == -1)
-                if len(invalid) > 0:
-                    kindex = numpy.delete(kindex, invalid)
-                    tags = numpy.delete(tags, invalid)
-                    invalid -= numpy.arange(len(invalid))
-                    optional_index = numpy.insert(
-                        numpy.arange(len(kindex), dtype=numpy.int64), invalid, -1
-                    )
-                else:
-                    optional_index = numpy.arange(len(kindex), dtype=numpy.int64)
-                container_dict[f"{key}-index"] = optional_index
-                container_dict[f"{key}-union-index"] = kindex
-                container_dict[f"{key}-union-tags"] = tags
-            else:
-                # don't distinguish data and offsets
-                container_dict[f"{key}-data"] = content
-                container_dict[f"{key}-offsets"] = content
-    cluster_offset = cluster_starts[start_cluster_idx]
-    entry_start -= cluster_offset
-    entry_stop -= cluster_offset
-    return ak.from_buffers(
-        form, cluster_num_entries, container_dict, allow_noncanonical_form=True
-    )[entry_start:entry_stop]
+#     total_entries = entry_stop
+#     if total_bytes == 0:
+#         num_entries = 0
+#     else:
+#         num_entries = int(round(target_num_bytes * total_entries / total_bytes))
+#     if num_entries <= 0:
+#         return 1
+#     else:
+#         return num_entries
 
 
-def _num_entries_for(in_ntuple, target_num_bytes, filter_name):
-    # TODO: part of this is also done in _arrays, so we should refactor this
-    # TODO: there might be a better way to estimate the number of entries
-    entry_stop = in_ntuple._ntuple.num_entries
-
-    clusters = in_ntuple._ntuple.cluster_summaries
-    cluster_starts = numpy.array([c.num_first_entry for c in clusters])
-
-    start_cluster_idx = numpy.searchsorted(cluster_starts, 0, side="right") - 1
-    stop_cluster_idx = numpy.searchsorted(cluster_starts, entry_stop, side="right")
-
-    form = in_ntuple.to_akform().select_columns(
-        filter_name, prune_unions_and_records=False
-    )
-    target_cols = []
-    _recursive_find(form, target_cols)
-
-    total_bytes = 0
-    for key in target_cols:
-        if "column" in key and "union" not in key:
-            key_nr = int(key.split("-")[1])
-            for cluster in range(start_cluster_idx, stop_cluster_idx):
-                pages = in_ntuple._ntuple.page_link_list[cluster][key_nr].pages
-                total_bytes += sum(page.locator.num_bytes for page in pages)
-
-    total_entries = entry_stop
-    if total_bytes == 0:
-        num_entries = 0
-    else:
-        num_entries = int(round(target_num_bytes * total_entries / total_bytes))
-    if num_entries <= 0:
-        return 1
-    else:
-        return num_entries
-
-
-def _regularize_step_size(in_ntuple, step_size, filter_name):
-    if uproot._util.isint(step_size):
-        return step_size
-    target_num_bytes = uproot._util.memory_size(
-        step_size,
-        "number of entries or memory size string with units "
-        f"(such as '100 MB') required, not {step_size!r}",
-    )
-    return _num_entries_for(in_ntuple, target_num_bytes, filter_name)
+# def _regularize_step_size(in_ntuple, step_size, filter_name):
+#     if uproot._util.isint(step_size):
+#         return step_size
+#     target_num_bytes = uproot._util.memory_size(
+#         step_size,
+#         "number of entries or memory size string with units "
+#         f"(such as '100 MB') required, not {step_size!r}",
+#     )
+#     return _num_entries_for(in_ntuple, target_num_bytes, filter_name)
 
 
 class Model_ROOT_3a3a_RNTuple(uproot.behaviors.RNTuple.RNTuple, uproot.model.Model):
@@ -757,31 +685,12 @@ in file {self.file.file_path}"""
             res = res.astype(numpy.float32)
         return res
 
-    def arrays(
-        self,
-        filter_name="*",
-        filter_typename=None,
-        entry_start=0,
-        entry_stop=None,
-        decompression_executor=None,
-        array_cache=None,
-    ):
-        return _arrays(
-            self,
-            filter_name=filter_name,
-            filter_typename=filter_typename,
-            entry_start=entry_start,
-            entry_stop=entry_stop,
-            decompression_executor=decompression_executor,
-            array_cache=array_cache,
-        )
-
-    def iterate(self, filter_name="*", *args, step_size="100 MB", **kwargs):
-        step_size = _regularize_step_size(self, step_size, filter_name)
-        for start in range(0, self.num_entries, step_size):
-            yield self.arrays(
-                *args, entry_start=start, entry_stop=start + step_size, **kwargs
-            )
+    # def iterate(self, filter_name="*", *args, step_size="100 MB", **kwargs):
+    #     step_size = _regularize_step_size(self, step_size, filter_name)
+    #     for start in range(0, self.num_entries, step_size):
+    #         yield self.arrays(
+    #             *args, entry_start=start, entry_stop=start + step_size, **kwargs
+    #         )
 
 
 # Supporting function and classes
@@ -789,18 +698,6 @@ def _split_switch_bits(content):
     tags = content["tag"].astype(numpy.dtype("int8")) - 1
     kindex = content["index"]
     return kindex, tags
-
-
-def _recursive_find(form, res):
-    ak = uproot.extras.awkward()
-
-    if hasattr(form, "form_key"):
-        res.append(form.form_key)
-    if hasattr(form, "contents"):
-        for c in form.contents:
-            _recursive_find(c, res)
-    if hasattr(form, "content") and issubclass(type(form.content), ak.forms.Form):
-        _recursive_find(form.content, res)
 
 
 # https://github.com/root-project/root/blob/8cd9eed6f3a32e55ef1f0f1df8e5462e753c735d/tree/ntuple/v7/doc/BinaryFormatSpecification.md#page-locations
@@ -1202,6 +1099,69 @@ class RField(uproot.behaviors.RNTuple.HasFields):
         True if this is a top-level field, False otherwise.
         """
         return self.parent is self.ntuple
+
+    def array(
+        self,
+        entry_start=None,
+        entry_stop=None,
+        *,
+        decompression_executor=None,  # TODO: Not implemented yet
+        array_cache="inherit",  # TODO: Not implemented yet
+        library="ak",
+        ak_add_doc=False,
+        # For compatibility reasons we also accepts kwargs meant for TTrees
+        interpretation=None,
+        interpretation_executor=None,
+    ):
+        """
+        Args:
+            entry_start (None or int): The first entry to include. If None, start
+                at zero. If negative, count from the end, like a Python slice.
+            entry_stop (None or int): The first entry to exclude (i.e. one greater
+                than the last entry to include). If None, stop at
+                :ref:`uproot.behaviors.TTree.TTree.num_entries`. If negative,
+                count from the end, like a Python slice.
+            decompression_executor (None or Executor with a ``submit`` method): The
+                executor that is used to decompress ``RPages``; if None, the
+                file's :ref:`uproot.reading.ReadOnlyFile.decompression_executor`
+                is used. (Not implemented yet.)
+            array_cache ("inherit", None, MutableMapping, or memory size): Cache of arrays;
+                if "inherit", use the file's cache; if None, do not use a cache;
+                if a memory size, create a new cache of this size. (Not implemented yet.)
+            library (str or :doc:`uproot.interpretation.library.Library`): The library
+                that is used to represent arrays. Options are ``"np"`` for NumPy,
+                ``"ak"`` for Awkward Array, and ``"pd"`` for Pandas.
+            ak_add_doc (bool | dict ): If True and ``library="ak"``, add the RField ``name``
+                to the Awkward ``__doc__`` parameter of the array.
+                if dict = {key:value} and ``library="ak"``, add the RField ``value`` to the
+                Awkward ``key`` parameter of the array.
+            interpretation (None): This argument is not used and is only included for now
+                for compatibility with software that was used for :doc:`uproot.behaviors.TBranch.TBranch`. This argument should not be used
+                and will be removed in a future version.
+            interpretation_executor (None): This argument is not used and is only included for now
+                for compatibility with software that was used for :doc:`uproot.behaviors.TBranch.TBranch`. This argument should not be used
+                and will be removed in a future version.
+
+        Returns the ``RField`` data as an array.
+
+        For example:
+
+        .. code-block:: python
+
+            >>> field = ntuple["my_field"]
+            >>> array = field.array()
+            >>> array
+            <Array [-41.2, 35.1, 35.1, ... 32.4, 32.5] type='2304 * float64'>
+
+        See also :ref:`uproot.behaviors.RNTuple.HasFields.arrays` to read
+        multiple ``RFields`` into a group of arrays or an array-group.
+        """
+        return self.arrays(
+            entry_start=entry_start,
+            entry_stop=entry_stop,
+            library=library,
+            ak_add_doc=ak_add_doc,
+        )[self.name]
 
 
 uproot.classes["ROOT::RNTuple"] = Model_ROOT_3a3a_RNTuple

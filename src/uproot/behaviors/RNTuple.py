@@ -163,221 +163,177 @@ class HasFields(Mapping):
         form = ak.forms.RecordForm(record_list, top_names, form_key="toplevel")
         return form
 
-    # def arrays(
-    #     self,
-    #     expressions=None,
-    #     cut=None,
-    #     *,
-    #     filter_name=no_filter,
-    #     filter_typename=no_filter,
-    #     filter_branch=no_filter,
-    #     aliases=None,
-    #     language=uproot.language.python.python_language,
-    #     entry_start=None,
-    #     entry_stop=None,
-    #     decompression_executor=None,
-    #     interpretation_executor=None,
-    #     array_cache="inherit",
-    #     library="ak",
-    #     ak_add_doc=False,
-    #     how=None,
-    # ):
-    #     """
-    #     Args:
-    #         expressions (None, str, or list of str): Names of ``TBranches`` or
-    #             aliases to convert to arrays or mathematical expressions of them.
-    #             Uses the ``language`` to evaluate. If None, all ``TBranches``
-    #             selected by the filters are included.
-    #         cut (None or str): If not None, this expression filters all of the
-    #             ``expressions``.
-    #         filter_name (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
-    #             filter to select ``TBranches`` by name.
-    #         filter_typename (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
-    #             filter to select ``TBranches`` by type.
-    #         filter_branch (None or function of :doc:`uproot.behaviors.TBranch.TBranch` \u2192 bool, :doc:`uproot.interpretation.Interpretation`, or None): A
-    #             filter to select ``TBranches`` using the full
-    #             :doc:`uproot.behaviors.TBranch.TBranch` object. If the function
-    #             returns False or None, the ``TBranch`` is excluded; if the function
-    #             returns True, it is included with its standard
-    #             :ref:`uproot.behaviors.TBranch.TBranch.interpretation`; if an
-    #             :doc:`uproot.interpretation.Interpretation`, this interpretation
-    #             overrules the standard one.
-    #         aliases (None or dict of str \u2192 str): Mathematical expressions that
-    #             can be used in ``expressions`` or other aliases (without cycles).
-    #             Uses the ``language`` engine to evaluate. If None, only the
-    #             :ref:`uproot.behaviors.TBranch.TBranch.aliases` are available.
-    #         language (:doc:`uproot.language.Language`): Language used to interpret
-    #             the ``expressions`` and ``aliases``.
-    #         entry_start (None or int): The first entry to include. If None, start
-    #             at zero. If negative, count from the end, like a Python slice.
-    #         entry_stop (None or int): The first entry to exclude (i.e. one greater
-    #             than the last entry to include). If None, stop at
-    #             :ref:`uproot.behaviors.TTree.TTree.num_entries`. If negative,
-    #             count from the end, like a Python slice.
-    #         decompression_executor (None or Executor with a ``submit`` method): The
-    #             executor that is used to decompress ``TBaskets``; if None, the
-    #             file's :ref:`uproot.reading.ReadOnlyFile.decompression_executor`
-    #             is used.
-    #         interpretation_executor (None or Executor with a ``submit`` method): The
-    #             executor that is used to interpret uncompressed ``TBasket`` data as
-    #             arrays; if None, the file's :ref:`uproot.reading.ReadOnlyFile.interpretation_executor`
-    #             is used.
-    #         array_cache ("inherit", None, MutableMapping, or memory size): Cache of arrays;
-    #             if "inherit", use the file's cache; if None, do not use a cache;
-    #             if a memory size, create a new cache of this size.
-    #         library (str or :doc:`uproot.interpretation.library.Library`): The library
-    #             that is used to represent arrays. Options are ``"np"`` for NumPy,
-    #             ``"ak"`` for Awkward Array, and ``"pd"`` for Pandas.
-    #         ak_add_doc (bool | dict ): If True and ``library="ak"``, add the TBranch ``title``
-    #             to the Awkward ``__doc__`` parameter of the array.
-    #             if dict = {key:value} and ``library="ak"``, add the TBranch ``value`` to the
-    #             Awkward ``key`` parameter of the array.
-    #         how (None, str, or container type): Library-dependent instructions
-    #             for grouping. The only recognized container types are ``tuple``,
-    #             ``list``, and ``dict``. Note that the container *type itself*
-    #             must be passed as ``how``, not an instance of that type (i.e.
-    #             ``how=tuple``, not ``how=()``).
+    def arrays(
+        self,
+        expressions=None,  # TODO: Not implemented yet
+        cut=None,  # TODO: Not implemented yet
+        *,
+        filter_name=no_filter,
+        filter_typename=no_filter,
+        filter_field=no_filter,
+        aliases=None,  # TODO: Not implemented yet
+        language=uproot.language.python.python_language,  # TODO: Not implemented yet
+        entry_start=None,
+        entry_stop=None,
+        decompression_executor=None,  # TODO: Not implemented yet
+        array_cache="inherit",  # TODO: Not implemented yet
+        library="ak",
+        ak_add_doc=False,
+        how=None,
+        # For compatibility reasons we also accepts kwargs meant for TTrees
+        interpretation_executor=None,
+        filter_branch=unset,
+    ):
+        """
+        Args:
+            expressions (None, str, or list of str): Names of ``RFields`` or
+                aliases to convert to arrays or mathematical expressions of them.
+                Uses the ``language`` to evaluate. If None, all ``RFields``
+                selected by the filters are included. (Not implemented yet.)
+            cut (None or str): If not None, this expression filters all of the
+                ``expressions``. (Not implemented yet.)
+            filter_name (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
+                filter to select ``RFields`` by name.
+            filter_typename (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
+                filter to select ``RFields`` by type.
+            filter_branch (None or function of :doc:`uproot.models.RNTuple.RField` \u2192 bool, or None): A
+                filter to select ``RFields`` using the full
+                :doc:`uproot.models.RNTuple.RField` object. If the function
+                returns False or None, the ``RField`` is excluded; if the function
+                returns True, it is included.
+            aliases (None or dict of str \u2192 str): Mathematical expressions that
+                can be used in ``expressions`` or other aliases.
+                Uses the ``language`` engine to evaluate. (Not implemented yet.)
+            language (:doc:`uproot.language.Language`): Language used to interpret
+                the ``expressions`` and ``aliases``. (Not implemented yet.)
+            entry_start (None or int): The first entry to include. If None, start
+                at zero. If negative, count from the end, like a Python slice.
+            entry_stop (None or int): The first entry to exclude (i.e. one greater
+                than the last entry to include). If None, stop at
+                :ref:`uproot.behaviors.RNTuple.RNTuple.num_entries`. If negative,
+                count from the end, like a Python slice.
+            decompression_executor (None or Executor with a ``submit`` method): The
+                executor that is used to decompress ``RPages``; if None, the
+                file's :ref:`uproot.reading.ReadOnlyFile.decompression_executor`
+                is used. (Not implemented yet.)
+            array_cache ("inherit", None, MutableMapping, or memory size): Cache of arrays;
+                if "inherit", use the file's cache; if None, do not use a cache;
+                if a memory size, create a new cache of this size. (Not implemented yet.)
+            library (str or :doc:`uproot.interpretation.library.Library`): The library
+                that is used to represent arrays. Options are ``"np"`` for NumPy,
+                ``"ak"`` for Awkward Array, and ``"pd"`` for Pandas.
+            ak_add_doc (bool | dict ): If True and ``library="ak"``, add the RField ``name``
+                to the Awkward ``__doc__`` parameter of the array.
+                if dict = {key:value} and ``library="ak"``, add the RField ``value`` to the
+                Awkward ``key`` parameter of the array.
+            how (None, str, or container type): Library-dependent instructions
+                for grouping. The only recognized container types are ``tuple``,
+                ``list``, and ``dict``. Note that the container *type itself*
+                must be passed as ``how``, not an instance of that type (i.e.
+                ``how=tuple``, not ``how=()``).
+            interpretation_executor (None): This argument is not used and is only included for now
+                for compatibility with software that was used for :doc:`uproot.behaviors.TBranch.TBranch`. This argument should not be used
+                and will be removed in a future version.
+            filter_branch (None or function of :doc:`uproot.models.RNTuple.RField` \u2192 bool): An alias for ``filter_field`` included
+                for compatibility with software that was used for :doc:`uproot.behaviors.TBranch.TBranch`. This argument should not be used
+                and will be removed in a future version.
 
-    #     Returns a group of arrays from the ``TTree``.
+        Returns a group of arrays from the ``RNTuple``.
 
-    #     For example:
+        For example:
 
-    #     .. code-block:: python
+        .. code-block:: python
 
-    #         >>> my_tree["x"].array()
-    #         <Array [-41.2, 35.1, 35.1, ... 32.4, 32.5] type='2304 * float64'>
-    #         >>> my_tree["y"].array()
-    #         <Array [17.4, -16.6, -16.6, ... 1.2, 1.2, 1.2] type='2304 * float64'>
+            >>> my_ntuple.arrays()
+            <Array [{my_vector: [1, 2]}, {...}] type='2 * {my_vector: var * int64}'>
 
-    #     See also :ref:`uproot.behaviors.TBranch.TBranch.array` to read a single
-    #     ``TBranch`` as an array.
+        See also :ref:`uproot.behaviors.RNTuple.HasFields.array` to read a single
+        ``RField`` as an array.
 
-    #     See also :ref:`uproot.behaviors.TBranch.HasBranches.iterate` to iterate over
-    #     the array in contiguous ranges of entries.
-    #     """
-    #     keys = _keys_deep(self)
-    #     if isinstance(self, TBranch) and expressions is None and len(keys) == 0:
-    #         filter_branch = uproot._util.regularize_filter(filter_branch)
-    #         return self.parent.arrays(
-    #             expressions=expressions,
-    #             cut=cut,
-    #             filter_name=filter_name,
-    #             filter_typename=filter_typename,
-    #             filter_branch=lambda branch: branch is self and filter_branch(branch),
-    #             aliases=aliases,
-    #             language=language,
-    #             entry_start=entry_start,
-    #             entry_stop=entry_stop,
-    #             decompression_executor=decompression_executor,
-    #             interpretation_executor=interpretation_executor,
-    #             array_cache=array_cache,
-    #             library=library,
-    #             how=how,
-    #         )
+        See also :ref:`uproot.behaviors.RNTuple.HasFields.iterate` to iterate over
+        the array in contiguous ranges of entries.
+        """
+        entry_start, entry_stop = (
+            uproot.behaviors.TBranch._regularize_entries_start_stop(
+                self.num_entries, entry_start, entry_stop
+            )
+        )
+        library = uproot.interpretation.library._regularize_library(library)
 
-    #     entry_start, entry_stop = _regularize_entries_start_stop(
-    #         self.tree.num_entries, entry_start, entry_stop
-    #     )
-    #     decompression_executor, interpretation_executor = _regularize_executors(
-    #         decompression_executor, interpretation_executor, self._file
-    #     )
-    #     array_cache = _regularize_array_cache(array_cache, self._file)
-    #     library = uproot.interpretation.library._regularize_library(library)
+        clusters = self.ntuple.cluster_summaries
+        cluster_starts = numpy.array([c.num_first_entry for c in clusters])
+        start_cluster_idx = (
+            numpy.searchsorted(cluster_starts, entry_start, side="right") - 1
+        )
+        stop_cluster_idx = numpy.searchsorted(cluster_starts, entry_stop, side="right")
+        cluster_num_entries = numpy.sum(
+            [c.num_entries for c in clusters[start_cluster_idx:stop_cluster_idx]]
+        )
 
-    #     def get_from_cache(branchname, interpretation):
-    #         if array_cache is not None:
-    #             cache_key = f"{self.cache_key}:{branchname}:{interpretation.cache_key}:{entry_start}-{entry_stop}:{library.name}"
-    #             return array_cache.get(cache_key)
-    #         else:
-    #             return None
+        form = self.to_akform(
+            filter_name=filter_name,
+            filter_typename=filter_typename,
+            filter_field=filter_field,
+            filter_branch=filter_branch,
+        )
 
-    #     aliases = _regularize_aliases(self, aliases)
-    #     arrays, expression_context, branchid_interpretation = _regularize_expressions(
-    #         self,
-    #         expressions,
-    #         cut,
-    #         filter_name,
-    #         filter_typename,
-    #         filter_branch,
-    #         keys,
-    #         aliases,
-    #         language,
-    #         get_from_cache,
-    #     )
+        # only read columns mentioned in the awkward form
+        target_cols = []
+        container_dict = {}
+        _recursive_find(form, target_cols)
+        for key in target_cols:
+            if "column" in key and "union" not in key:
+                key_nr = int(key.split("-")[1])
+                dtype_byte = self.ntuple.column_records[key_nr].type
 
-    #     ranges_or_baskets = []
-    #     checked = set()
-    #     for _, context in expression_context:
-    #         for branch in context["branches"]:
-    #             if branch.cache_key not in checked and not isinstance(
-    #                 branchid_interpretation[branch.cache_key],
-    #                 uproot.interpretation.grouped.AsGrouped,
-    #             ):
-    #                 checked.add(branch.cache_key)
-    #                 for (
-    #                     basket_num,
-    #                     range_or_basket,
-    #                 ) in branch.entries_to_ranges_or_baskets(entry_start, entry_stop):
-    #                     ranges_or_baskets.append((branch, basket_num, range_or_basket))
+                content = self.ntuple.read_col_pages(
+                    key_nr,
+                    range(start_cluster_idx, stop_cluster_idx),
+                    dtype_byte=dtype_byte,
+                    pad_missing_element=True,
+                )
+                if "cardinality" in key:
+                    content = numpy.diff(content)
+                if dtype_byte == uproot.const.rntuple_col_type_to_num_dict["switch"]:
+                    kindex, tags = uproot.models.RNTuple._split_switch_bits(content)
+                    # Find invalid variants and adjust buffers accordingly
+                    invalid = numpy.flatnonzero(tags == -1)
+                    if len(invalid) > 0:
+                        kindex = numpy.delete(kindex, invalid)
+                        tags = numpy.delete(tags, invalid)
+                        invalid -= numpy.arange(len(invalid))
+                        optional_index = numpy.insert(
+                            numpy.arange(len(kindex), dtype=numpy.int64), invalid, -1
+                        )
+                    else:
+                        optional_index = numpy.arange(len(kindex), dtype=numpy.int64)
+                    container_dict[f"{key}-index"] = optional_index
+                    container_dict[f"{key}-union-index"] = kindex
+                    container_dict[f"{key}-union-tags"] = tags
+                else:
+                    # don't distinguish data and offsets
+                    container_dict[f"{key}-data"] = content
+                    container_dict[f"{key}-offsets"] = content
+        cluster_offset = cluster_starts[start_cluster_idx]
+        entry_start -= cluster_offset
+        entry_stop -= cluster_offset
+        return uproot.extras.awkward().from_buffers(
+            form, cluster_num_entries, container_dict, allow_noncanonical_form=True
+        )[entry_start:entry_stop]
 
-    #     interp_options = {"ak_add_doc": ak_add_doc}
-    #     _ranges_or_baskets_to_arrays(
-    #         self,
-    #         ranges_or_baskets,
-    #         branchid_interpretation,
-    #         entry_start,
-    #         entry_stop,
-    #         decompression_executor,
-    #         interpretation_executor,
-    #         library,
-    #         arrays,
-    #         False,
-    #         interp_options,
-    #     )
+        # return _ak_add_doc(
+        #     library.group(output, expression_context, how), self, ak_add_doc
+        # )
 
-    #     # no longer needed; save memory
-    #     del ranges_or_baskets
-
-    #     _fix_asgrouped(
-    #         arrays,
-    #         expression_context,
-    #         branchid_interpretation,
-    #         library,
-    #         how,
-    #         ak_add_doc,
-    #     )
-
-    #     if array_cache is not None:
-    #         checked = set()
-    #         for expression, context in expression_context:
-    #             for branch in context["branches"]:
-    #                 if branch.cache_key not in checked:
-    #                     checked.add(branch.cache_key)
-    #                     interpretation = branchid_interpretation[branch.cache_key]
-    #                     if branch is not None:
-    #                         cache_key = f"{self.cache_key}:{expression}:{interpretation.cache_key}:{entry_start}-{entry_stop}:{library.name}"
-    #                     array_cache[cache_key] = arrays[branch.cache_key]
-
-    #     output = language.compute_expressions(
-    #         self,
-    #         arrays,
-    #         expression_context,
-    #         keys,
-    #         aliases,
-    #         self.file.file_path,
-    #         self.object_path,
-    #     )
-
-    #     # no longer needed; save memory
-    #     del arrays
-
-    #     expression_context = [
-    #         (e, c) for e, c in expression_context if c["is_primary"] and not c["is_cut"]
-    #     ]
-
-    #     return _ak_add_doc(
-    #         library.group(output, expression_context, how), self, ak_add_doc
-    #     )
+    def __array__(self, *args, **kwargs):
+        if isinstance(self, uproot.behaviors.RNTuple.RNTuple):
+            out = self.arrays(library="np")
+        else:
+            out = self.array(library="np")
+        if args == () and kwargs == {}:
+            return out
+        else:
+            return numpy.array(out, *args, **kwargs)
 
     # def iterate(
     #     self,
@@ -1386,157 +1342,6 @@ class RNTuple(HasFields):
 
     #         stream.write(formatter.format(name, typename, interp).rstrip(" ") + "\n")
 
-    def array(
-        self,
-        interpretation=None,
-        entry_start=None,
-        entry_stop=None,
-        *,
-        decompression_executor=None,
-        interpretation_executor=None,
-        array_cache="inherit",
-        library="ak",
-        ak_add_doc=False,
-    ):
-        """
-        Args:
-            interpretation (None or :doc:`uproot.interpretation.Interpretation`): An
-                interpretation of the ``TBranch`` data as an array. If None, the
-                standard :ref:`uproot.behaviors.TBranch.TBranch.interpretation`
-                is used, which is derived from
-                :doc:`uproot.interpretation.identify.interpretation_of`.
-            entry_start (None or int): The first entry to include. If None, start
-                at zero. If negative, count from the end, like a Python slice.
-            entry_stop (None or int): The first entry to exclude (i.e. one greater
-                than the last entry to include). If None, stop at
-                :ref:`uproot.behaviors.TTree.TTree.num_entries`. If negative,
-                count from the end, like a Python slice.
-            decompression_executor (None or Executor with a ``submit`` method): The
-                executor that is used to decompress ``TBaskets``; if None, the
-                file's :ref:`uproot.reading.ReadOnlyFile.decompression_executor`
-                is used.
-            interpretation_executor (None or Executor with a ``submit`` method): The
-                executor that is used to interpret uncompressed ``TBasket`` data as
-                arrays; if None, the file's :ref:`uproot.reading.ReadOnlyFile.interpretation_executor`
-                is used.
-            array_cache ("inherit", None, MutableMapping, or memory size): Cache of arrays;
-                if "inherit", use the file's cache; if None, do not use a cache;
-                if a memory size, create a new cache of this size.
-            library (str or :doc:`uproot.interpretation.library.Library`): The library
-                that is used to represent arrays. Options are ``"np"`` for NumPy,
-                ``"ak"`` for Awkward Array, and ``"pd"`` for Pandas.
-            ak_add_doc (bool | dict ): If True and ``library="ak"``, add the TBranch ``title``
-                to the Awkward ``__doc__`` parameter of the array.
-                if dict = {key:value} and ``library="ak"``, add the TBranch ``value`` to the
-                Awkward ``key`` parameter of the array.
-
-        Returns the ``TBranch`` data as an array.
-
-        For example:
-
-        .. code-block:: python
-
-            >>> array = tree
-            >>> array = tree.arrays(["x", "y"])    # only reads branches "x" and "y"
-            >>> array
-            <Array [{x: -41.2, y: 17.4}, ... {x: 32.5, y: 1.2}], type='2304 * {"x": float64,...'>
-            >>> array["x"]
-            <Array [-41.2, 35.1, 35.1, ... 32.4, 32.5] type='2304 * float64'>
-            >>> array["y"]
-            <Array [17.4, -16.6, -16.6, ... 1.2, 1.2, 1.2] type='2304 * float64'>
-
-        See also :ref:`uproot.behaviors.TBranch.HasBranches.arrays` to read
-        multiple ``TBranches`` into a group of arrays or an array-group.
-        """
-        if interpretation is None:
-            interpretation = self.interpretation
-        else:
-            interpretation = _regularize_interpretation(interpretation)
-
-        entry_start, entry_stop = _regularize_entries_start_stop(
-            self.num_entries, entry_start, entry_stop
-        )
-        decompression_executor, interpretation_executor = _regularize_executors(
-            decompression_executor, interpretation_executor, self._file
-        )
-        array_cache = _regularize_array_cache(array_cache, self._file)
-        library = uproot.interpretation.library._regularize_library(library)
-
-        def get_from_cache(branchname, interpretation):
-            if array_cache is not None:
-                cache_key = f"{self.cache_key}:{branchname}:{interpretation.cache_key}:{entry_start}-{entry_stop}:{library.name}"
-                return array_cache.get(cache_key)
-            else:
-                return None
-
-        arrays = {}
-        expression_context = []
-        branchid_interpretation = {}
-        _regularize_branchname(
-            self,
-            self.name,
-            self,
-            interpretation,
-            get_from_cache,
-            arrays,
-            expression_context,
-            branchid_interpretation,
-            True,
-            False,
-        )
-
-        ranges_or_baskets = []
-        checked = set()
-        for _, context in expression_context:
-            for branch in context["branches"]:
-                if branch.cache_key not in checked and not isinstance(
-                    branchid_interpretation[branch.cache_key],
-                    uproot.interpretation.grouped.AsGrouped,
-                ):
-                    checked.add(branch.cache_key)
-                    for (
-                        basket_num,
-                        range_or_basket,
-                    ) in branch.entries_to_ranges_or_baskets(entry_start, entry_stop):
-                        ranges_or_baskets.append((branch, basket_num, range_or_basket))
-
-        interp_options = {"ak_add_doc": ak_add_doc}
-        _ranges_or_baskets_to_arrays(
-            self,
-            ranges_or_baskets,
-            branchid_interpretation,
-            entry_start,
-            entry_stop,
-            decompression_executor,
-            interpretation_executor,
-            library,
-            arrays,
-            False,
-            interp_options,
-        )
-
-        _fix_asgrouped(
-            arrays,
-            expression_context,
-            branchid_interpretation,
-            library,
-            None,
-            ak_add_doc,
-        )
-
-        if array_cache is not None:
-            cache_key = f"{self.cache_key}:{self.name}:{interpretation.cache_key}:{entry_start}-{entry_stop}:{library.name}"
-            array_cache[cache_key] = arrays[self.cache_key]
-
-        return arrays[self.cache_key]
-
-    def __array__(self, *args, **kwargs):
-        out = self.array(library="np")
-        if args == () and kwargs == {}:
-            return out
-        else:
-            return numpy.array(out, *args, **kwargs)
-
 
 def _filter_name_deep(filter_name, hasfields, field):
     shallow = name = field.name
@@ -1577,25 +1382,6 @@ def _get_recursive(hasfields, where):
             return got
     else:
         return None
-
-
-def _regularize_entries_start_stop(num_entries, entry_start, entry_stop):
-    if entry_start is None:
-        entry_start = 0
-    elif entry_start < 0:
-        entry_start += num_entries
-    entry_start = min(num_entries, max(0, entry_start))
-
-    if entry_stop is None:
-        entry_stop = num_entries
-    elif entry_stop < 0:
-        entry_stop += num_entries
-    entry_stop = min(num_entries, max(0, entry_stop))
-
-    if entry_stop < entry_start:
-        entry_stop = entry_start
-
-    return int(entry_start), int(entry_stop)
 
 
 def _regularize_executors(decompression_executor, interpretation_executor, file):
@@ -2183,3 +1969,15 @@ def _ak_add_doc(array, hasbranches, ak_add_doc):
                 }
             )
     return array
+
+
+def _recursive_find(form, res):
+    ak = uproot.extras.awkward()
+
+    if hasattr(form, "form_key"):
+        res.append(form.form_key)
+    if hasattr(form, "contents"):
+        for c in form.contents:
+            _recursive_find(c, res)
+    if hasattr(form, "content") and issubclass(type(form.content), ak.forms.Form):
+        _recursive_find(form.content, res)
