@@ -1183,6 +1183,107 @@ class HasFields(Mapping):
     def __len__(self):
         return len(self.fields)
 
+    def show(
+        self,
+        *,
+        filter_name=no_filter,
+        filter_typename=no_filter,
+        filter_field=no_filter,
+        recursive=True,
+        name_width=20,
+        typename_width=24,
+        path_width=30,
+        stream=sys.stdout,
+        # For compatibility reasons we also accepts kwargs meant for TTrees
+        full_paths=unset,
+        filter_branch=unset,
+        interpretation_width=unset,
+    ):
+        """
+        Args:
+            filter_name (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
+                filter to select ``RFields`` by name.
+            filter_typename (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
+                filter to select ``RFields`` by type.
+            filter_field (None or function of :doc:`uproot.models.RNTuple.RField` \u2192 bool, or None): A
+                filter to select ``RFields`` using the full
+                :doc:`uproot.models.RNTuple.RField` object. The ``RField`` is
+                included if the function returns True, excluded if it returns False.
+            recursive (bool): If True, recursively descend into subfields.
+            name_width (int): Number of characters to reserve for the ``TBranch``
+                names.
+            typename_width (int): Number of characters to reserve for the C++
+                typenames.
+            interpretation_width (int): Number of characters to reserve for the
+                :doc:`uproot.interpretation.Interpretation` displays.
+            stream (object with a ``write(str)`` method): Stream to write the
+                output to.
+            full_paths (None): This argument is not used and is only included for now
+                for compatibility with software that was used for :doc:`uproot.behaviors.TBranch.TBranch`. This argument should not be used
+                and will be removed in a future version.
+            filter_branch (None or function of :doc:`uproot.models.RNTuple.RField` \u2192 bool): An alias for ``filter_field`` included
+                for compatibility with software that was used for :doc:`uproot.behaviors.TBranch.TBranch`. This argument should not be used
+                and will be removed in a future version.
+            interpretation_width (None): This argument is not used and is only included for now
+                for compatibility with software that was used for :doc:`uproot.behaviors.TBranch.TBranch`. This argument should not be used
+                and will be removed in a future version.
+
+        Interactively display the ``RFields``.
+
+        For example,
+
+        .. code-block::
+
+            >>> my_ntuple.show()
+            name                 | typename                 | path
+            ---------------------+--------------------------+-------------------------------
+            my_int               | std::int64_t             | my_int
+            my_vec               | std::vector<std::int6... | my_vec
+            _0                   | std::int64_t             | my_vec._0
+        """
+        if name_width < 3:
+            raise ValueError("'name_width' must be at least 3")
+        if typename_width < 3:
+            raise ValueError("'typename_width' must be at least 3")
+        if path_width < 3:
+            raise ValueError("'path_width' must be at least 3")
+
+        formatter = f"{{0:{name_width}.{name_width}}} | {{1:{typename_width}.{typename_width}}} | {{2:{path_width}.{path_width}}}"
+
+        stream.write(formatter.format("name", "typename", "path"))
+        stream.write(
+            "\n"
+            + "-" * name_width
+            + "-+-"
+            + "-" * typename_width
+            + "-+-"
+            + "-" * path_width
+            + "\n"
+        )
+
+        if isinstance(self, uproot.models.RNTuple.RField):
+            stream.write(formatter.format(self.name, self.typename, self.path) + "\n")
+
+        for field in self.itervalues(
+            filter_name=filter_name,
+            filter_typename=filter_typename,
+            filter_field=filter_field,
+            recursive=recursive,
+            filter_branch=filter_branch,
+        ):
+            name = field.name
+            typename = field.typename
+            path = field.path
+
+            if len(name) > name_width:
+                name = name[: name_width - 3] + "..."
+            if len(typename) > typename_width:
+                typename = typename[: typename_width - 3] + "..."
+            if len(path) > path_width:
+                path = path[: path_width - 3] + "..."
+
+            stream.write(formatter.format(name, typename, path).rstrip(" ") + "\n")
+
     # @property
     # def source(self) -> uproot.source.chunk.Source | None:
     #     """Returns the associated source of data for this container, if it exists
@@ -1241,106 +1342,6 @@ class RNTuple(HasFields):
         part of object and array cache keys.
         """
         return f"{self.parent.cache_key}{self.name};{self.parent.fCycle}"
-
-    # def show(
-    #     self,
-    #     *,
-    #     filter_name=no_filter,
-    #     filter_typename=no_filter,
-    #     filter_branch=no_filter,
-    #     recursive=True,
-    #     full_paths=True,
-    #     name_width=20,
-    #     typename_width=24,
-    #     interpretation_width=30,
-    #     stream=sys.stdout,
-    # ):
-    #     """
-    #     Args:
-    #         filter_name (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
-    #             filter to select ``TBranches`` by name.
-    #         filter_typename (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
-    #             filter to select ``TBranches`` by type.
-    #         filter_branch (None or function of :doc:`uproot.behaviors.TBranch.TBranch` \u2192 bool, :doc:`uproot.interpretation.Interpretation`, or None): A
-    #             filter to select ``TBranches`` using the full
-    #             :doc:`uproot.behaviors.TBranch.TBranch` object. The ``TBranch`` is
-    #             included if the function returns True, excluded if it returns False.
-    #         recursive (bool): If True, recursively descend into the branches'
-    #             branches.
-    #         full_paths (bool): If True, include the full path to each subbranch
-    #             with slashes (``/``); otherwise, use the descendant's name as
-    #             the display name.
-    #         name_width (int): Number of characters to reserve for the ``TBranch``
-    #             names.
-    #         typename_width (int): Number of characters to reserve for the C++
-    #             typenames.
-    #         interpretation_width (int): Number of characters to reserve for the
-    #             :doc:`uproot.interpretation.Interpretation` displays.
-    #         stream (object with a ``write(str)`` method): Stream to write the
-    #             output to.
-
-    #     Interactively display the ``TBranches``.
-
-    #     For example,
-
-    #     .. code-block::
-
-    #         name                 | typename             | interpretation
-    #         ---------------------+----------------------+-----------------------------------
-    #         event_number         | int32_t              | AsDtype('>i4')
-    #         trigger_isomu24      | bool                 | AsDtype('bool')
-    #         eventweight          | float                | AsDtype('>f4')
-    #         MET                  | TVector2             | AsStridedObjects(Model_TVector2_v3
-    #         jetp4                | std::vector<TLorentz | AsJagged(AsStridedObjects(Model_TL
-    #         jetbtag              | std::vector<float>   | AsJagged(AsDtype('>f4'), header_by
-    #         jetid                | std::vector<bool>    | AsJagged(AsDtype('bool'), header_b
-    #     """
-    #     if name_width < 3:
-    #         raise ValueError("'name_width' must be at least 3")
-    #     if typename_width < 3:
-    #         raise ValueError("'typename_width' must be at least 3")
-    #     if interpretation_width < 3:
-    #         raise ValueError("'interpretation_width' must be at least 3")
-
-    #     formatter = f"{{0:{name_width}.{name_width}}} | {{1:{typename_width}.{typename_width}}} | {{2:{interpretation_width}.{interpretation_width}}}"
-
-    #     stream.write(formatter.format("name", "typename", "interpretation"))
-    #     stream.write(
-    #         "\n"
-    #         + "-" * name_width
-    #         + "-+-"
-    #         + "-" * typename_width
-    #         + "-+-"
-    #         + "-" * interpretation_width
-    #         + "\n"
-    #     )
-
-    #     if isinstance(self, TBranch):
-    #         stream.write(
-    #             formatter.format(self.name, self.typename, repr(self.interpretation))
-    #             + "\n"
-    #         )
-
-    #     for name, branch in self.iteritems(
-    #         filter_name=filter_name,
-    #         filter_typename=filter_typename,
-    #         filter_branch=filter_branch,
-    #         recursive=recursive,
-    #         full_paths=full_paths,
-    #     ):
-    #         typename = branch.typename
-    #         interp = repr(branch.interpretation)
-
-    #         if len(name) > name_width:
-    #             name = (
-    #                 name[: name_width - 3] + "..."
-    #             )
-    #         if len(typename) > typename_width:
-    #             typename = typename[: typename_width - 3] + "..."
-    #         if len(interp) > interpretation_width:
-    #             interp = interp[: interpretation_width - 3] + "..."
-
-    #         stream.write(formatter.format(name, typename, interp).rstrip(" ") + "\n")
 
 
 def _filter_name_deep(filter_name, hasfields, field):
