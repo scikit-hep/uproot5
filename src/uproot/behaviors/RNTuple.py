@@ -1075,48 +1075,6 @@ class HasFields(Mapping):
     #         self, target_num_bytes, entry_start, entry_stop, branchid_interpretation
     #     )
 
-    # def common_entry_offsets(
-    #     self,
-    #     *,
-    #     filter_name=no_filter,
-    #     filter_typename=no_filter,
-    #     filter_branch=no_filter,
-    #     recursive=True,
-    # ):
-    #     """
-    #     Args:
-    #         filter_name (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
-    #             filter to select ``TBranches`` by name.
-    #         filter_typename (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
-    #             filter to select ``TBranches`` by type.
-    #         filter_branch (None or function of :doc:`uproot.behaviors.TBranch.TBranch` \u2192 bool, :doc:`uproot.interpretation.Interpretation`, or None): A
-    #             filter to select ``TBranches`` using the full
-    #             :doc:`uproot.behaviors.TBranch.TBranch` object. The ``TBranch`` is
-    #             included if the function returns True, excluded if it returns False.
-    #         recursive (bool): If True, descend into any nested subbranches.
-    #             If False, only consider branches directly accessible under this
-    #             object. (Only applies when ``branches=None``.)
-
-    #     Returns entry offsets in which ``TBasket`` boundaries align in the
-    #     specified set of branches.
-
-    #     If this :doc:`uproot.behaviors.TBranch.TBranch` has no subbranches,
-    #     the output is identical to
-    #     :ref:`uproot.behaviors.TBranch.TBranch.entry_offsets`.
-    #     """
-    #     common_offsets = None
-    #     for branch in self.itervalues(
-    #         filter_name=filter_name,
-    #         filter_typename=filter_typename,
-    #         filter_branch=filter_branch,
-    #         recursive=recursive,
-    #     ):
-    #         if common_offsets is None:
-    #             common_offsets = set(branch.entry_offsets)
-    #         else:
-    #             common_offsets = common_offsets.intersection(set(branch.entry_offsets))
-    #     return sorted(common_offsets)
-
     def __getitem__(self, where):
         original_where = where
 
@@ -1381,33 +1339,39 @@ def _get_recursive(hasfields, where):
         return None
 
 
-def _hasbranches_num_entries_for(
-    hasbranches, target_num_bytes, entry_start, entry_stop, branchid_interpretation
-):
-    total_bytes = 0.0
-    for branch in hasbranches.itervalues(recursive=True):
-        if branch.cache_key in branchid_interpretation:
-            entry_offsets = branch.entry_offsets
-            start = entry_offsets[0]
-            for basket_num, stop in enumerate(entry_offsets[1:]):
-                if entry_start < stop and start <= entry_stop:
-                    total_bytes += branch.basket_compressed_bytes(basket_num)
-                start = stop
+def _num_entries_for(ntuple, akform, target_num_bytes, filter_name):
+    # TODO: there might be a better way to estimate the number of entries
+    entry_stop = ntuple.num_entries
 
-    total_entries = entry_stop - entry_start
+    clusters = ntuple.cluster_summaries
+    cluster_starts = numpy.array([c.num_first_entry for c in clusters])
+
+    start_cluster_idx = numpy.searchsorted(cluster_starts, 0, side="right") - 1
+    stop_cluster_idx = numpy.searchsorted(cluster_starts, entry_stop, side="right")
+
+    target_cols = []
+    _recursive_find(akform, target_cols)
+
+    total_bytes = 0
+    for key in target_cols:
+        if "column" in key and "union" not in key:
+            key_nr = int(key.split("-")[1])
+            for cluster in range(start_cluster_idx, stop_cluster_idx):
+                pages = ntuple.page_link_list[cluster][key_nr].pages
+                total_bytes += sum(page.locator.num_bytes for page in pages)
+
+    total_entries = entry_stop
     if total_bytes == 0:
         num_entries = 0
     else:
-        num_entries = int(round(target_num_bytes * total_entries / total_bytes))
+        num_entries = round(target_num_bytes * total_entries / total_bytes)
     if num_entries <= 0:
         return 1
     else:
         return num_entries
 
 
-def _regularize_step_size(
-    hasbranches, step_size, entry_start, entry_stop, branchid_interpretation
-):
+def _regularize_step_size(ntuple, akform, step_size, filter_name):
     if uproot._util.isint(step_size):
         return step_size
     target_num_bytes = uproot._util.memory_size(
@@ -1415,9 +1379,7 @@ def _regularize_step_size(
         "number of entries or memory size string with units "
         f"(such as '100 MB') required, not {step_size!r}",
     )
-    return _hasbranches_num_entries_for(
-        hasbranches, target_num_bytes, entry_start, entry_stop, branchid_interpretation
-    )
+    return _num_entries_for(ntuple, akform, target_num_bytes, filter_name)
 
 
 def _ak_add_doc(array, hasbranches, ak_add_doc):

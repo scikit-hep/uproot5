@@ -66,53 +66,6 @@ def _envelop_header(chunk, cursor, context):
     return {"env_type_id": env_type_id, "env_length": env_length}
 
 
-# def _num_entries_for(in_ntuple, target_num_bytes, filter_name):
-#     # TODO: part of this is also done in _arrays, so we should refactor this
-#     # TODO: there might be a better way to estimate the number of entries
-#     entry_stop = in_ntuple._ntuple.num_entries
-
-#     clusters = in_ntuple._ntuple.cluster_summaries
-#     cluster_starts = numpy.array([c.num_first_entry for c in clusters])
-
-#     start_cluster_idx = numpy.searchsorted(cluster_starts, 0, side="right") - 1
-#     stop_cluster_idx = numpy.searchsorted(cluster_starts, entry_stop, side="right")
-
-#     form = in_ntuple.to_akform().select_columns(
-#         filter_name, prune_unions_and_records=False
-#     )
-#     target_cols = []
-#     _recursive_find(form, target_cols)
-
-#     total_bytes = 0
-#     for key in target_cols:
-#         if "column" in key and "union" not in key:
-#             key_nr = int(key.split("-")[1])
-#             for cluster in range(start_cluster_idx, stop_cluster_idx):
-#                 pages = in_ntuple._ntuple.page_link_list[cluster][key_nr].pages
-#                 total_bytes += sum(page.locator.num_bytes for page in pages)
-
-#     total_entries = entry_stop
-#     if total_bytes == 0:
-#         num_entries = 0
-#     else:
-#         num_entries = int(round(target_num_bytes * total_entries / total_bytes))
-#     if num_entries <= 0:
-#         return 1
-#     else:
-#         return num_entries
-
-
-# def _regularize_step_size(in_ntuple, step_size, filter_name):
-#     if uproot._util.isint(step_size):
-#         return step_size
-#     target_num_bytes = uproot._util.memory_size(
-#         step_size,
-#         "number of entries or memory size string with units "
-#         f"(such as '100 MB') required, not {step_size!r}",
-#     )
-#     return _num_entries_for(in_ntuple, target_num_bytes, filter_name)
-
-
 class Model_ROOT_3a3a_RNTuple(uproot.behaviors.RNTuple.RNTuple, uproot.model.Model):
     """
     A versionless :doc:`uproot.model.Model` for ``ROOT::RNTuple``.
