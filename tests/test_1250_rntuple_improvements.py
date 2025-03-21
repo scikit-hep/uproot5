@@ -20,7 +20,7 @@ def test_field_class():
         assert len(sub_sub_struct) == 2
 
         v = sub_sub_struct["v"]
-        assert len(v) == 0
+        assert len(v) == 1
 
 
 def test_array_methods():
@@ -55,15 +55,15 @@ def test_iterate():
 
         for i, arrays in enumerate(obj.iterate(step_size="10 kB")):
             if i == 0:
-                assert len(arrays) == 363
+                assert len(arrays) == 188
                 expected_pt = [10.763696670532227, 15.736522674560547]
                 expected_charge = [-1, -1]
                 assert arrays["Muon_pt"][0].tolist() == expected_pt
                 assert arrays["Muon_charge"][0].tolist() == expected_charge
-            elif i == 1:
-                assert len(arrays) == 363
-            elif i == 2:
-                assert len(arrays) == 274
+            elif i in (1, 2, 3, 4):
+                assert len(arrays) == 188
+            elif i == 5:
+                assert len(arrays) == 60
             else:
                 assert False
 
@@ -72,13 +72,13 @@ def test_iterate():
             assert len(arrays) == 100
             if i == 0:
                 expected_pt = [10.763696670532227, 15.736522674560547]
-                assert arrays[0].tolist() == expected_pt
+                assert arrays["Muon_pt"][0].tolist() == expected_pt
 
         for i, arrays in enumerate(Muon_pt.iterate(step_size="5 kB")):
             if i == 0:
                 assert len(arrays) == 611
                 expected_pt = [10.763696670532227, 15.736522674560547]
-                assert arrays[0].tolist() == expected_pt
+                assert arrays["Muon_pt"][0].tolist() == expected_pt
             elif i == 1:
                 assert len(arrays) == 389
             else:

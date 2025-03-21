@@ -462,7 +462,7 @@ class HasFields(Mapping):
         )
 
         step_size = _regularize_step_size(
-            self, akform, step_size, entry_start, entry_stop
+            self.ntuple, akform, step_size, entry_start, entry_stop
         )
         # TODO: This can be done more efficiently
         for start in range(0, self.num_entries, step_size):
