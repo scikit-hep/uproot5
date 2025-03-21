@@ -152,7 +152,8 @@ class HasFields(Mapping):
                     record_list.append(rntuple.field_form(field.field_id, keys))
         else:
             # Always use the full path for keys
-            keys = [f"{self.path}.{k}" for k in keys]
+            # Also include the field itself
+            keys = [self.path] + [f"{self.path}.{k}" for k in keys]
             # The field needs to be in the keys or be a parent of a field in the keys
             if any(key.startswith(self.path) for key in keys):
                 top_names.append(self.name)
