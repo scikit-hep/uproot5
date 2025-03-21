@@ -350,257 +350,131 @@ class HasFields(Mapping):
         else:
             return numpy.array(out, *args, **kwargs)
 
-    # def iterate(
-    #     self,
-    #     expressions=None,
-    #     cut=None,
-    #     *,
-    #     filter_name=no_filter,
-    #     filter_typename=no_filter,
-    #     filter_branch=no_filter,
-    #     aliases=None,
-    #     language=uproot.language.python.python_language,
-    #     entry_start=None,
-    #     entry_stop=None,
-    #     step_size="100 MB",
-    #     decompression_executor=None,
-    #     interpretation_executor=None,
-    #     library="ak",
-    #     ak_add_doc=False,
-    #     how=None,
-    #     report=False,
-    # ):
-    #     """
-    #     Args:
-    #         expressions (None, str, or list of str): Names of ``TBranches`` or
-    #             aliases to convert to arrays or mathematical expressions of them.
-    #             Uses the ``language`` to evaluate. If None, all ``TBranches``
-    #             selected by the filters are included.
-    #         cut (None or str): If not None, this expression filters all of the
-    #             ``expressions``.
-    #         filter_name (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
-    #             filter to select ``TBranches`` by name.
-    #         filter_typename (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
-    #             filter to select ``TBranches`` by type.
-    #         filter_branch (None or function of :doc:`uproot.behaviors.TBranch.TBranch` \u2192 bool, :doc:`uproot.interpretation.Interpretation`, or None): A
-    #             filter to select ``TBranches`` using the full
-    #             :doc:`uproot.behaviors.TBranch.TBranch` object. If the function
-    #             returns False or None, the ``TBranch`` is excluded; if the function
-    #             returns True, it is included with its standard
-    #             :ref:`uproot.behaviors.TBranch.TBranch.interpretation`; if an
-    #             :doc:`uproot.interpretation.Interpretation`, this interpretation
-    #             overrules the standard one.
-    #         aliases (None or dict of str \u2192 str): Mathematical expressions that
-    #             can be used in ``expressions`` or other aliases (without cycles).
-    #             Uses the ``language`` engine to evaluate. If None, only the
-    #             :ref:`uproot.behaviors.TBranch.TBranch.aliases` are available.
-    #         language (:doc:`uproot.language.Language`): Language used to interpret
-    #             the ``expressions`` and ``aliases``.
-    #         entry_start (None or int): The first entry to include. If None, start
-    #             at zero. If negative, count from the end, like a Python slice.
-    #         entry_stop (None or int): The first entry to exclude (i.e. one greater
-    #             than the last entry to include). If None, stop at
-    #             :ref:`uproot.behaviors.TTree.TTree.num_entries`. If negative,
-    #             count from the end, like a Python slice.
-    #         step_size (int or str): If an integer, the maximum number of entries to
-    #             include in each iteration step; if a string, the maximum memory size
-    #             to include. The string must be a number followed by a memory unit,
-    #             such as "100 MB".
-    #         decompression_executor (None or Executor with a ``submit`` method): The
-    #             executor that is used to decompress ``TBaskets``; if None, the
-    #             file's :ref:`uproot.reading.ReadOnlyFile.decompression_executor`
-    #             is used.
-    #         interpretation_executor (None or Executor with a ``submit`` method): The
-    #             executor that is used to interpret uncompressed ``TBasket`` data as
-    #             arrays; if None, the file's :ref:`uproot.reading.ReadOnlyFile.interpretation_executor`
-    #             is used.
-    #         library (str or :doc:`uproot.interpretation.library.Library`): The library
-    #             that is used to represent arrays. Options are ``"np"`` for NumPy,
-    #             ``"ak"`` for Awkward Array, and ``"pd"`` for Pandas.
-    #         ak_add_doc (bool | dict ): If True and ``library="ak"``, add the TBranch ``title``
-    #             to the Awkward ``__doc__`` parameter of the array.
-    #             if dict = {key:value} and ``library="ak"``, add the TBranch ``value`` to the
-    #             Awkward ``key`` parameter of the array.
-    #         how (None, str, or container type): Library-dependent instructions
-    #             for grouping. The only recognized container types are ``tuple``,
-    #             ``list``, and ``dict``. Note that the container *type itself*
-    #             must be passed as ``how``, not an instance of that type (i.e.
-    #             ``how=tuple``, not ``how=()``).
-    #         report (bool): If True, this generator yields
-    #             (arrays, :doc:`uproot.behaviors.TBranch.Report`) pairs; if False,
-    #             it only yields arrays. The report has data about the ``TFile``,
-    #             ``TTree``, and global and local entry ranges.
+    def iterate(
+        self,
+        expressions=None,  # TODO: Not implemented yet
+        cut=None,  # TODO: Not implemented yet
+        *,
+        filter_name=no_filter,
+        filter_typename=no_filter,
+        filter_field=no_filter,
+        aliases=None,  # TODO: Not implemented yet
+        language=uproot.language.python.python_language,  # TODO: Not implemented yet
+        entry_start=None,
+        entry_stop=None,
+        step_size="100 MB",
+        decompression_executor=None,  # TODO: Not implemented yet
+        library="ak",  # TODO: Not implemented yet
+        ak_add_doc=False,  # TODO: Not implemented yet
+        how=None,
+        report=False,  # TODO: Not implemented yet
+        # For compatibility reasons we also accepts kwargs meant for TTrees
+        interpretation_executor=None,
+        filter_branch=unset,
+    ):
+        """
+        Args:
+            expressions (None, str, or list of str): Names of ``RFields`` or
+                aliases to convert to arrays or mathematical expressions of them.
+                Uses the ``language`` to evaluate. If None, all ``RFields``
+                selected by the filters are included. (Not implemented yet.)
+            cut (None or str): If not None, this expression filters all of the
+                ``expressions``. (Not implemented yet.)
+            filter_name (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
+                filter to select ``RFields`` by name.
+            filter_typename (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
+                filter to select ``EFields`` by type.
+            filter_field (None or function of :doc:`uproot.models.RNTuple.RField` \u2192 bool, or None): A
+                filter to select ``RFields`` using the full
+                :doc:`uproot.models.RNTuple.RField` object. If the function
+                returns False or None, the ``RField`` is excluded; if the function
+                returns True, it is included.
+            aliases (None or dict of str \u2192 str): Mathematical expressions that
+                can be used in ``expressions`` or other aliases.
+                Uses the ``language`` engine to evaluate. (Not implemented yet.)
+            language (:doc:`uproot.language.Language`): Language used to interpret
+                the ``expressions`` and ``aliases``. (Not implemented yet.)
+            entry_start (None or int): The first entry to include. If None, start
+                at zero. If negative, count from the end, like a Python slice.
+            entry_stop (None or int): The first entry to exclude (i.e. one greater
+                than the last entry to include). If None, stop at
+                :ref:`uproot.behaviors.RNTuple.HasFields.num_entries`. If negative,
+                count from the end, like a Python slice.
+            step_size (int or str): If an integer, the maximum number of entries to
+                include in each iteration step; if a string, the maximum memory size
+                to include. The string must be a number followed by a memory unit,
+                such as "100 MB".
+            decompression_executor (None or Executor with a ``submit`` method): The
+                executor that is used to decompress ``RPages``; if None, the
+                file's :ref:`uproot.reading.ReadOnlyFile.decompression_executor`
+                is used. (Not implemented yet.)
+            library (str or :doc:`uproot.interpretation.library.Library`): The library
+                that is used to represent arrays. Options are ``"np"`` for NumPy,
+                ``"ak"`` for Awkward Array, and ``"pd"`` for Pandas. (Not implemented yet.)
+            ak_add_doc (bool | dict ): If True and ``library="ak"``, add the RField ``name``
+                to the Awkward ``__doc__`` parameter of the array.
+                if dict = {key:value} and ``library="ak"``, add the RField ``value`` to the
+                Awkward ``key`` parameter of the array. (Not implemented yet.)
+            how (None, str, or container type): Library-dependent instructions
+                for grouping. The only recognized container types are ``tuple``,
+                ``list``, and ``dict``. Note that the container *type itself*
+                must be passed as ``how``, not an instance of that type (i.e.
+                ``how=tuple``, not ``how=()``).
+            report (bool): If True, this generator yields
+                (arrays, :doc:`uproot.behaviors.TBranch.Report`) pairs; if False,
+                it only yields arrays. The report has data about the ``TFile``,
+                ``RNTuple``, and global and local entry ranges. (Not implemented yet.)
+            interpretation_executor (None): This argument is not used and is only included for now
+                for compatibility with software that was used for :doc:`uproot.behaviors.TBranch.TBranch`. This argument should not be used
+                and will be removed in a future version.
+            filter_branch (None or function of :doc:`uproot.models.RNTuple.RField` \u2192 bool): An alias for ``filter_field`` included
+                for compatibility with software that was used for :doc:`uproot.behaviors.TBranch.TBranch`. This argument should not be used
+                and will be removed in a future version.
 
-    #     Iterates through contiguous chunks of entries from the ``TTree``.
+        Iterates through contiguous chunks of entries from the ``RNTuple``.
 
-    #     For example:
+        For example:
 
-    #     .. code-block:: python
+        .. code-block:: python
 
-    #         >>> for array in tree.iterate(["x", "y"], step_size=100):
-    #         ...     # each of the following have 100 entries
-    #         ...     array["x"], array["y"]
+            >>> for array in rntuple.iterate(filter_name=["x", "y"], step_size=100):
+            ...     # each of the following have 100 entries
+            ...     array["x"], array["y"]
 
-    #     See also :ref:`uproot.behaviors.TBranch.HasBranches.arrays` to read
-    #     everything in a single step, without iteration.
+        See also :ref:`uproot.behaviors.RNTuple.HasFields.arrays` to read
+        everything in a single step, without iteration.
 
-    #     See also :doc:`uproot.behaviors.TBranch.iterate` to iterate over many
-    #     files.
-    #     """
-    #     keys = _keys_deep(self)
-    #     if isinstance(self, TBranch) and expressions is None and len(keys) == 0:
-    #         filter_branch = uproot._util.regularize_filter(filter_branch)
-    #         yield from self.parent.iterate(
-    #             expressions=expressions,
-    #             cut=cut,
-    #             filter_name=filter_name,
-    #             filter_typename=filter_typename,
-    #             filter_branch=lambda branch: branch is self and filter_branch(branch),
-    #             aliases=aliases,
-    #             language=language,
-    #             entry_start=entry_start,
-    #             entry_stop=entry_stop,
-    #             step_size=step_size,
-    #             decompression_executor=decompression_executor,
-    #             interpretation_executor=interpretation_executor,
-    #             library=library,
-    #             how=how,
-    #             report=report,
-    #         )
+        See also :doc:`uproot.behaviors.RNTuple.iterate` to iterate over many
+        files.
+        """
+        entry_start, entry_stop = (
+            uproot.behaviors.TBranch._regularize_entries_start_stop(
+                self.ntuple.num_entries, entry_start, entry_stop
+            )
+        )
 
-    #     else:
-    #         entry_start, entry_stop = _regularize_entries_start_stop(
-    #             self.tree.num_entries, entry_start, entry_stop
-    #         )
-    #         decompression_executor, interpretation_executor = _regularize_executors(
-    #             decompression_executor, interpretation_executor, self._file
-    #         )
-    #         library = uproot.interpretation.library._regularize_library(library)
+        akform = self.to_akform(
+            filter_name=filter_name,
+            filter_typename=filter_typename,
+            filter_field=filter_field,
+            filter_branch=filter_branch,
+        )
 
-    #         aliases = _regularize_aliases(self, aliases)
-    #         (
-    #             arrays,
-    #             expression_context,
-    #             branchid_interpretation,
-    #         ) = _regularize_expressions(
-    #             self,
-    #             expressions,
-    #             cut,
-    #             filter_name,
-    #             filter_typename,
-    #             filter_branch,
-    #             keys,
-    #             aliases,
-    #             language,
-    #             (lambda branchname, interpretation: None),
-    #         )
-
-    #         entry_step = _regularize_step_size(
-    #             self, step_size, entry_start, entry_stop, branchid_interpretation
-    #         )
-
-    #         previous_baskets = {}
-    #         for sub_entry_start in range(entry_start, entry_stop, entry_step):
-    #             sub_entry_stop = min(sub_entry_start + entry_step, entry_stop)
-    #             if sub_entry_stop - sub_entry_start == 0:
-    #                 continue
-
-    #             ranges_or_baskets = []
-    #             checked = set()
-    #             for _, context in expression_context:
-    #                 for branch in context["branches"]:
-    #                     if branch.cache_key not in checked and not isinstance(
-    #                         branchid_interpretation[branch.cache_key],
-    #                         uproot.interpretation.grouped.AsGrouped,
-    #                     ):
-    #                         checked.add(branch.cache_key)
-    #                         for (
-    #                             basket_num,
-    #                             range_or_basket,
-    #                         ) in branch.entries_to_ranges_or_baskets(
-    #                             sub_entry_start, sub_entry_stop
-    #                         ):
-    #                             previous_basket = previous_baskets.get(
-    #                                 (branch.cache_key, basket_num)
-    #                             )
-    #                             if previous_basket is None:
-    #                                 ranges_or_baskets.append(
-    #                                     (branch, basket_num, range_or_basket)
-    #                                 )
-    #                             else:
-    #                                 ranges_or_baskets.append(
-    #                                     (branch, basket_num, previous_basket)
-    #                                 )
-
-    #             arrays = {}
-    #             interp_options = {"ak_add_doc": ak_add_doc}
-    #             _ranges_or_baskets_to_arrays(
-    #                 self,
-    #                 ranges_or_baskets,
-    #                 branchid_interpretation,
-    #                 sub_entry_start,
-    #                 sub_entry_stop,
-    #                 decompression_executor,
-    #                 interpretation_executor,
-    #                 library,
-    #                 arrays,
-    #                 True,
-    #                 interp_options,
-    #             )
-
-    #             _fix_asgrouped(
-    #                 arrays,
-    #                 expression_context,
-    #                 branchid_interpretation,
-    #                 library,
-    #                 how,
-    #                 ak_add_doc,
-    #             )
-
-    #             output = language.compute_expressions(
-    #                 self,
-    #                 arrays,
-    #                 expression_context,
-    #                 keys,
-    #                 aliases,
-    #                 self.file.file_path,
-    #                 self.object_path,
-    #             )
-
-    #             # no longer needed; save memory
-    #             del arrays
-
-    #             minimized_expression_context = [
-    #                 (e, c)
-    #                 for e, c in expression_context
-    #                 if c["is_primary"] and not c["is_cut"]
-    #             ]
-
-    #             out = _ak_add_doc(
-    #                 library.group(output, minimized_expression_context, how),
-    #                 self,
-    #                 ak_add_doc,
-    #             )
-
-    #             # no longer needed; save memory
-    #             del output
-
-    #             next_baskets = {}
-    #             for branch, basket_num, basket in ranges_or_baskets:
-    #                 basket_entry_start, basket_entry_stop = basket.entry_start_stop
-    #                 if basket_entry_stop > sub_entry_stop:
-    #                     next_baskets[branch.cache_key, basket_num] = basket
-
-    #             previous_baskets = next_baskets
-
-    #             # no longer needed; save memory
-    #             popper = [out]
-    #             del out
-
-    #             if report:
-    #                 yield popper.pop(), Report(self, sub_entry_start, sub_entry_stop)
-    #             else:
-    #                 yield popper.pop()
+        step_size = _regularize_step_size(
+            self, akform, step_size, entry_start, entry_stop
+        )
+        # TODO: This can be done more efficiently
+        for start in range(0, self.num_entries, step_size):
+            yield self.arrays(
+                filter_name=filter_name,
+                filter_typename=filter_typename,
+                filter_field=filter_field,
+                entry_start=start,
+                entry_stop=start + step_size,
+                library=library,
+                how=how,
+                filter_branch=filter_branch,
+            )
 
     def keys(
         self,
@@ -1004,93 +878,84 @@ class HasFields(Mapping):
         """
         return self.iterkeys()
 
-    # def num_entries_for(
-    #     self,
-    #     memory_size,
-    #     expressions=None,
-    #     cut=None,
-    #     *,
-    #     filter_name=no_filter,
-    #     filter_typename=no_filter,
-    #     filter_branch=no_filter,
-    #     aliases=None,
-    #     language=uproot.language.python.python_language,
-    #     entry_start=None,
-    #     entry_stop=None,
-    # ):
-    #     """
-    #     Args:
-    #         memory_size (int or str): An integer is interpreted as a number of
-    #             bytes and a string must be a number followed by a unit, such as
-    #             "100 MB".
-    #         expressions (None, str, or list of str): Names of ``TBranches`` or
-    #             aliases to convert to arrays or mathematical expressions of them.
-    #             Uses the ``language`` to evaluate. If None, all ``TBranches``
-    #             selected by the filters are included.
-    #         cut (None or str): If not None, this expression filters all of the
-    #             ``expressions``.
-    #         filter_name (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
-    #             filter to select ``TBranches`` by name.
-    #         filter_typename (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
-    #             filter to select ``TBranches`` by type.
-    #         filter_branch (None or function of :doc:`uproot.behaviors.TBranch.TBranch` \u2192 bool, :doc:`uproot.interpretation.Interpretation`, or None): A
-    #             filter to select ``TBranches`` using the full
-    #             :doc:`uproot.behaviors.TBranch.TBranch` object. The ``TBranch`` is
-    #             included if the function returns True, excluded if it returns False.
-    #         aliases (None or dict of str \u2192 str): Mathematical expressions that
-    #             can be used in ``expressions`` or other aliases (without cycles).
-    #             Uses the ``language`` engine to evaluate. If None, only the
-    #             :ref:`uproot.behaviors.TBranch.TBranch.aliases` are available.
-    #         language (:doc:`uproot.language.Language`): Language used to interpret
-    #             the ``expressions`` and ``aliases``.
-    #         entry_start (None or int): The first entry to include. If None, start
-    #             at zero. If negative, count from the end, like a Python slice.
-    #         entry_stop (None or int): The first entry to exclude (i.e. one greater
-    #             than the last entry to include). If None, stop at
-    #             :ref:`uproot.behaviors.TTree.TTree.num_entries`. If negative,
-    #             count from the end, like a Python slice.
+    def num_entries_for(
+        self,
+        memory_size,
+        expressions=None,  # TODO: Not implemented yet
+        cut=None,  # TODO: Not implemented yet
+        *,
+        filter_name=no_filter,
+        filter_typename=no_filter,
+        filter_field=no_filter,
+        aliases=None,  # TODO: Not implemented yet
+        language=uproot.language.python.python_language,  # TODO: Not implemented yet
+        entry_start=None,
+        entry_stop=None,
+        # For compatibility reasons we also accepts kwargs meant for TTrees
+        filter_branch=unset,
+    ):
+        """
+        Args:
+            memory_size (int or str): An integer is interpreted as a number of
+                bytes and a string must be a number followed by a unit, such as
+                "100 MB".
+            expressions (None, str, or list of str): Names of ``RFields`` or
+                aliases to convert to arrays or mathematical expressions of them.
+                Uses the ``language`` to evaluate. If None, all ``RFields``
+                selected by the filters are included. (Not implemented yet.)
+            cut (None or str): If not None, this expression filters all of the
+                ``expressions``. (Not implemented yet.)
+            filter_name (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
+                filter to select ``RFields`` by name.
+            filter_typename (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
+                filter to select ``RFields`` by type.
+            filter_field (None or function of :doc:`uproot.models.RField.RField` \u2192 bool, or None): A
+                filter to select ``RFields`` using the full
+                :doc:`uproot.models.RField.RField` object. The ``RField`` is
+                included if the function returns True, excluded if it returns False.
+            aliases (None or dict of str \u2192 str): Mathematical expressions that
+                can be used in ``expressions`` or other aliases.
+                Uses the ``language`` engine to evaluate.
+            language (:doc:`uproot.language.Language`): Language used to interpret
+                the ``expressions`` and ``aliases``.
+            entry_start (None or int): The first entry to include. If None, start
+                at zero. If negative, count from the end, like a Python slice.
+            entry_stop (None or int): The first entry to exclude (i.e. one greater
+                than the last entry to include). If None, stop at
+                :ref:`uproot.behaviors.RNTuple.HasFields.num_entries`. If negative,
+                count from the end, like a Python slice.
+            filter_branch (None or function of :doc:`uproot.models.RNTuple.RField` \u2192 bool): An alias for ``filter_field`` included
+                for compatibility with software that was used for :doc:`uproot.behaviors.TBranch.TBranch`. This argument should not be used
+                and will be removed in a future version.
 
-    #     Returns an *approximate* step size as a number of entries to read
-    #     a given ``memory_size`` in each step.
+        Returns an *approximate* step size as a number of entries to read
+        a given ``memory_size`` in each step.
 
-    #     This method does not actually read the ``TBranch`` data or compute any
-    #     expressions to arrive at its estimate. It only uses metadata from the
-    #     already-loaded ``TTree``; it only needs ``language`` to parse the
-    #     expressions, not to evaluate them.
+        This method does not actually read the ``RField`` data or compute any
+        expressions to arrive at its estimate. It only uses metadata from the
+        already-loaded ``RNTuple``; it only needs ``language`` to parse the
+        expressions, not to evaluate them.
 
-    #     In addition, the estimate is based on compressed ``TBasket`` sizes
-    #     (the amount of data that would have to be read), not uncompressed
-    #     ``TBasket`` sizes (the amount of data that the final arrays would use
-    #     in memory, without considering ``cuts``).
+        This is the algorithm that
+        :ref:`uproot.behaviors.RNTuple.HasFields.iterate` uses to convert a
+        ``step_size`` expressed in memory units into a number of entries.
+        """
+        target_num_bytes = uproot._util.memory_size(memory_size)
 
-    #     This is the algorithm that
-    #     :ref:`uproot.behaviors.TBranch.HasBranches.iterate` uses to convert a
-    #     ``step_size`` expressed in memory units into a number of entries.
-    #     """
-    #     target_num_bytes = uproot._util.memory_size(memory_size)
+        entry_start, entry_stop = (
+            uproot.behaviors.TBranch._regularize_entries_start_stop(
+                self.ntuple.num_entries, entry_start, entry_stop
+            )
+        )
 
-    #     entry_start, entry_stop = _regularize_entries_start_stop(
-    #         self.tree.num_entries, entry_start, entry_stop
-    #     )
+        akform = self.to_akform(
+            filter_name=filter_name,
+            filter_typename=filter_typename,
+            filter_field=filter_field,
+            filter_branch=filter_branch,
+        )
 
-    #     keys = _keys_deep(self)
-    #     aliases = _regularize_aliases(self, aliases)
-    #     arrays, expression_context, branchid_interpretation = _regularize_expressions(
-    #         self,
-    #         expressions,
-    #         cut,
-    #         filter_name,
-    #         filter_typename,
-    #         filter_branch,
-    #         keys,
-    #         aliases,
-    #         language,
-    #         (lambda branchname, interpretation: None),
-    #     )
-
-    #     return _hasbranches_num_entries_for(
-    #         self, target_num_bytes, entry_start, entry_stop, branchid_interpretation
-    #     )
+        return _num_entries_for(self, akform, target_num_bytes, entry_start, entry_stop)
 
     def __getitem__(self, where):
         original_where = where
@@ -1356,14 +1221,14 @@ def _get_recursive(hasfields, where):
         return None
 
 
-def _num_entries_for(ntuple, akform, target_num_bytes, filter_name):
+def _num_entries_for(ntuple, akform, target_num_bytes, entry_start, entry_stop):
     # TODO: there might be a better way to estimate the number of entries
-    entry_stop = ntuple.num_entries
-
     clusters = ntuple.cluster_summaries
     cluster_starts = numpy.array([c.num_first_entry for c in clusters])
 
-    start_cluster_idx = numpy.searchsorted(cluster_starts, 0, side="right") - 1
+    start_cluster_idx = (
+        numpy.searchsorted(cluster_starts, entry_start, side="right") - 1
+    )
     stop_cluster_idx = numpy.searchsorted(cluster_starts, entry_stop, side="right")
 
     target_cols = []
@@ -1377,7 +1242,7 @@ def _num_entries_for(ntuple, akform, target_num_bytes, filter_name):
                 pages = ntuple.page_link_list[cluster][key_nr].pages
                 total_bytes += sum(page.locator.num_bytes for page in pages)
 
-    total_entries = entry_stop
+    total_entries = entry_stop - entry_start
     if total_bytes == 0:
         num_entries = 0
     else:
@@ -1388,7 +1253,7 @@ def _num_entries_for(ntuple, akform, target_num_bytes, filter_name):
         return num_entries
 
 
-def _regularize_step_size(ntuple, akform, step_size, filter_name):
+def _regularize_step_size(ntuple, akform, step_size, entry_start, entry_stop):
     if uproot._util.isint(step_size):
         return step_size
     target_num_bytes = uproot._util.memory_size(
@@ -1396,22 +1261,7 @@ def _regularize_step_size(ntuple, akform, step_size, filter_name):
         "number of entries or memory size string with units "
         f"(such as '100 MB') required, not {step_size!r}",
     )
-    return _num_entries_for(ntuple, akform, target_num_bytes, filter_name)
-
-
-def _ak_add_doc(array, hasbranches, ak_add_doc):
-    if type(array).__module__ == "awkward.highlevel":
-        if isinstance(ak_add_doc, bool):
-            if ak_add_doc:
-                array.layout.parameters["__doc__"] = hasbranches.title
-        elif isinstance(ak_add_doc, dict):
-            array.layout.parameters.update(
-                {
-                    key: hasbranches.__getattribute__(value)
-                    for key, value in ak_add_doc.items()
-                }
-            )
-    return array
+    return _num_entries_for(ntuple, akform, target_num_bytes, entry_start, entry_stop)
 
 
 def _recursive_find(form, res):

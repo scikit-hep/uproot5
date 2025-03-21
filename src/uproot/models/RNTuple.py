@@ -638,13 +638,6 @@ in file {self.file.file_path}"""
             res = res.astype(numpy.float32)
         return res
 
-    # def iterate(self, filter_name="*", *args, step_size="100 MB", **kwargs):
-    #     step_size = _regularize_step_size(self, step_size, filter_name)
-    #     for start in range(0, self.num_entries, step_size):
-    #         yield self.arrays(
-    #             *args, entry_start=start, entry_stop=start + step_size, **kwargs
-    #         )
-
 
 # Supporting function and classes
 def _split_switch_bits(content):
