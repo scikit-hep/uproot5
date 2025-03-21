@@ -175,7 +175,7 @@ class HasFields(Mapping):
         entry_stop=None,
         decompression_executor=None,  # TODO: Not implemented yet
         array_cache="inherit",  # TODO: Not implemented yet
-        library="ak",
+        library="ak",  # TODO: Not implemented yet
         ak_add_doc=False,
         how=None,
         # For compatibility reasons we also accepts kwargs meant for TTrees
@@ -219,7 +219,7 @@ class HasFields(Mapping):
                 if a memory size, create a new cache of this size. (Not implemented yet.)
             library (str or :doc:`uproot.interpretation.library.Library`): The library
                 that is used to represent arrays. Options are ``"np"`` for NumPy,
-                ``"ak"`` for Awkward Array, and ``"pd"`` for Pandas.
+                ``"ak"`` for Awkward Array, and ``"pd"`` for Pandas. (Not implemented yet.)
             ak_add_doc (bool | dict ): If True and ``library="ak"``, add the RField ``name``
                 to the Awkward ``__doc__`` parameter of the array.
                 if dict = {key:value} and ``library="ak"``, add the RField ``value`` to the
@@ -315,13 +315,30 @@ class HasFields(Mapping):
         cluster_offset = cluster_starts[start_cluster_idx]
         entry_start -= cluster_offset
         entry_stop -= cluster_offset
-        return uproot.extras.awkward().from_buffers(
+        arrays = uproot.extras.awkward().from_buffers(
             form, cluster_num_entries, container_dict, allow_noncanonical_form=True
         )[entry_start:entry_stop]
 
-        # return _ak_add_doc(
-        #     library.group(output, expression_context, how), self, ak_add_doc
-        # )
+        # no longer needed; save memory
+        del container_dict
+
+        # FIXME: This is not right, but it might temporarily work
+        if library.name == "np":
+            return arrays.to_numpy()
+
+        # TODO: This should be done with library.group, if possible
+        if how is tuple:
+            arrays = tuple(arrays[f] for f in arrays.fields)
+        elif how is list:
+            arrays = [arrays[f] for f in arrays.fields]
+        elif how is dict:
+            arrays = {f: arrays[f] for f in arrays.fields}
+        elif how is not None:
+            raise ValueError(
+                f"unrecognized 'how' parameter: {how}. Options are None, tuple, list and dict."
+            )
+
+        return arrays
 
     def __array__(self, *args, **kwargs):
         if isinstance(self, uproot.behaviors.RNTuple.RNTuple):
