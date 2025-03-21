@@ -47,4 +47,9 @@ def test_jagged():
     )
     with uproot.open(filename) as f:
         R = f["ntuple"]
-        assert R.keys() == ["one_integers", "two_v_floats", "three_LV", "four_v_LVs"]
+        assert R.keys(recursive=False) == [
+            "one_integers",
+            "two_v_floats",
+            "three_LV",
+            "four_v_LVs",
+        ]
