@@ -135,6 +135,12 @@ in file {self.file.file_path}"""
 
     @property
     def all_fields(self):
+        """
+        The full list of fields in the RNTuple.
+
+        The fields are sorted in the same way they appear in the
+        file, so the field at index n corresponds to the field with ``field_id==n``.
+        """
         if self._all_fields is None:
             self._all_fields = [RField(i, self) for i in range(len(self.field_records))]
         return self._all_fields
@@ -185,6 +191,11 @@ in file {self.file.file_path}"""
 
     @property
     def header(self):
+        """
+        The header of the RNTuple.
+
+        This provides low level access to all the metadata contained in the header.
+        """
         if self._header is None:
             if not self._header_chunk_ready:
                 self._prepare_header_chunk()
@@ -201,6 +212,11 @@ in file {self.file.file_path}"""
 
     @property
     def field_records(self):
+        """
+        The complete list of field records in the RNTuple.
+
+        This includes the fields from the header and from schema extensions in the footer.
+        """
         if self._field_records is None:
             self._field_records = list(self.header.field_records)
             self._field_records.extend(self.footer.extension_links.field_records)
@@ -208,12 +224,20 @@ in file {self.file.file_path}"""
 
     @property
     def field_names(self):
+        """
+        The list of names of the fields in the RNTuple.
+        """
         if self._field_names is None:
             self._field_names = [r.field_name for r in self.field_records]
         return self._field_names
 
     @property
     def column_records(self):
+        """
+        The complete list of column records in the RNTuple.
+
+        This includes the columns from the header and from schema extensions in the footer.
+        """
         if self._column_records is None:
             self._column_records = list(self.header.column_records)
             self._column_records.extend(self.footer.extension_links.column_records)
@@ -223,6 +247,9 @@ in file {self.file.file_path}"""
 
     @property
     def alias_column_records(self):
+        """
+        The list of alias column records in the RNTuple.
+        """
         if self._alias_column_records is None:
             self._alias_column_records = list(self.header.alias_column_records)
             self._alias_column_records.extend(
@@ -260,6 +287,11 @@ in file {self.file.file_path}"""
 
     @property
     def footer(self):
+        """
+        The footer of the RNTuple.
+
+        This provides low level access to all the metadata contained in the footer.
+        """
         if self._footer is None:
             if not self._footer_chunk_ready:
                 self._prepare_footer_chunk()
@@ -279,6 +311,9 @@ in file {self.file.file_path}"""
 
     @property
     def cluster_summaries(self):
+        """
+        The list of cluster summaries in the RNTuple.
+        """
         if self._cluster_summaries is None:
             self._cluster_summaries = []
             for pl in self.page_list_envelopes:
@@ -287,6 +322,9 @@ in file {self.file.file_path}"""
 
     @property
     def page_link_list(self):
+        """
+        The list of page links in the RNTuple.
+        """
         if self._page_link_list is None:
             self._page_link_list = []
             for pl in self.page_list_envelopes:
@@ -294,6 +332,14 @@ in file {self.file.file_path}"""
         return self._page_link_list
 
     def read_locator(self, loc, uncomp_size, context):
+        """
+        Args:
+            loc (:doc:`uproot.models.RNTuple.MetaData`): The locator of the page.
+            uncomp_size (int): The size in bytes of the uncompressed data.
+            context (dict): Auxiliary data used in deserialization.
+
+        Returns a tuple of the decompressed chunk and the updated cursor.
+        """
         cursor = uproot.source.cursor.Cursor(loc.offset)
         chunk = self.file.source.chunk(loc.offset, loc.offset + loc.num_bytes)
         if loc.num_bytes < uncomp_size:
@@ -307,6 +353,9 @@ in file {self.file.file_path}"""
 
     @property
     def page_list_envelopes(self):
+        """
+        The list of page list envelopes in the RNTuple.
+        """
         context = {}
 
         if not self._page_list_envelopes:
@@ -323,6 +372,15 @@ in file {self.file.file_path}"""
         return self._page_list_envelopes
 
     def base_col_form(self, cr, col_id, parameters=None, cardinality=False):
+        """
+        Args:
+            cr (:doc:`uproot.models.RNTuple.MetaData`): The column record.
+            col_id (int): The column id.
+            parameters (dict): The parameters to pass to the ``NumpyForm``.
+            cardinality (bool): Whether the column is a cardinality column.
+
+        Returns an Awkward Form describing the column if applicable, or a form key otherwise.
+        """
         ak = uproot.extras.awkward()
 
         form_key = f"column-{col_id}" + ("-cardinality" if cardinality else "")
@@ -343,6 +401,12 @@ in file {self.file.file_path}"""
         )
 
     def col_form(self, field_id):
+        """
+        Args:
+            field_id (int): The field id.
+
+        Returns an Awkward Form describing the column if applicable, or a form key otherwise.
+        """
         ak = uproot.extras.awkward()
 
         cfid = field_id
@@ -382,6 +446,13 @@ in file {self.file.file_path}"""
             raise (RuntimeError(f"Missing special case: {field_id}"))
 
     def field_form(self, this_id, keys):
+        """
+        Args:
+            this_id (int): The field id.
+            keys (list): The list of keys to search for.
+
+        Returns an Awkward Form describing the field.
+        """
         ak = uproot.extras.awkward()
 
         field_records = self.field_records
@@ -477,6 +548,17 @@ in file {self.file.file_path}"""
             raise AssertionError("this should be unreachable")
 
     def read_pagedesc(self, destination, desc, dtype_str, dtype, nbits, split):
+        """
+        Args:
+            destination (numpy.ndarray): The array to fill.
+            desc (:doc:`uproot.models.RNTuple.MetaData`): The page description.
+            dtype_str (str): The data type as a string.
+            dtype (numpy.dtype): The data type.
+            nbits (int): The number of bits.
+            split (bool): Whether the data is split.
+
+        Fills the destination array with the data from the page.
+        """
         loc = desc.locator
         context = {}
         # bool in RNTuple is always stored as bits
@@ -557,22 +639,32 @@ in file {self.file.file_path}"""
     def read_col_pages(
         self, ncol, cluster_range, dtype_byte, pad_missing_element=False
     ):
+        """
+        Args:
+            ncol (int): The column id.
+            cluster_range (range): The range of cluster indices.
+            dtype_byte (int): The data type.
+            pad_missing_element (bool): Whether to pad the missing elements.
+
+        Returns a numpy array with the data from the column.
+        """
         arrays = [self.read_col_page(ncol, i) for i in cluster_range]
 
-        # Check if column stores offset values for jagged arrays (splitindex64) (applies to cardinality cols too):
+        # Check if column stores offset values
         if dtype_byte in uproot.const.rntuple_index_types:
             # Extract the last offset values:
             last_elements = [
                 (arr[-1] if len(arr) > 0 else numpy.zeros((), dtype=arr.dtype))
                 for arr in arrays[:-1]
             ]  # First value always zero, therefore skip first arr.
-            # Compute cumulative sum using itertools.accumulate:
             last_offsets = numpy.cumsum(last_elements)
-            # Add the offsets to each array
             for i in range(1, len(arrays)):
                 arrays[i] += last_offsets[i - 1]
 
         res = numpy.concatenate(arrays, axis=0)
+
+        # No longer needed; free memory
+        del arrays
 
         dtype_byte = self.column_records[ncol].type
         if dtype_byte in uproot.const.rntuple_index_types:
@@ -584,6 +676,13 @@ in file {self.file.file_path}"""
         return res
 
     def read_col_page(self, ncol, cluster_i):
+        """
+        Args:
+            ncol (int): The column id.
+            cluster_i (int): The cluster index.
+
+        Returns a numpy array with the data from the column.
+        """
         linklist = self._ntuple.page_link_list[cluster_i]
         # Check if the column is suppressed and pick the non-suppressed one if so
         if ncol < len(linklist) and linklist[ncol].suppressed:
