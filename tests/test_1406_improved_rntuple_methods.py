@@ -103,3 +103,28 @@ def test_to_akform(tmp_path):
     assert obj["struct3"].to_akform(filter_typename="double") == akform.select_columns(
         ["struct3.t"]
     )
+
+
+def test_iterate_and_concatenate(tmp_path):
+    filepath1 = os.path.join(tmp_path, "test1.root")
+    filepath2 = os.path.join(tmp_path, "test2.root")
+
+    with uproot.recreate(filepath1) as file:
+        file.mkrntuple("ntuple", data)
+
+    with uproot.recreate(filepath2) as file:
+        file.mkrntuple("ntuple", data)
+
+    total_iterations = 0
+    for i, array in enumerate(
+        uproot.behaviors.RNTuple.iterate([f"{tmp_path}/test*.root:ntuple"], step_size=2)
+    ):
+        total_iterations += 1
+        assert ak.array_equal(array, data)
+
+    assert total_iterations == 2
+
+    array = uproot.behaviors.RNTuple.concatenate([f"{tmp_path}/test*.root:ntuple"])
+    true_array = ak.concatenate([data, data], axis=0)
+
+    assert ak.array_equal(array, true_array)

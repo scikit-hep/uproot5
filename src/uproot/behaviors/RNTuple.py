@@ -25,6 +25,381 @@ import uproot.source.chunk
 from uproot._util import no_filter, unset
 
 
+def iterate(
+    files,
+    expressions=None,  # TODO: Not implemented yet
+    cut=None,  # TODO: Not implemented yet
+    *,
+    filter_name=no_filter,
+    filter_typename=no_filter,
+    filter_field=no_filter,
+    aliases=None,  # TODO: Not implemented yet
+    language=uproot.language.python.python_language,  # TODO: Not implemented yet
+    step_size="100 MB",
+    decompression_executor=None,  # TODO: Not implemented yet
+    library="ak",  # TODO: Not implemented yet
+    ak_add_doc=False,  # TODO: Not implemented yet
+    how=None,
+    report=False,  # TODO: Not implemented yet
+    allow_missing=False,  # TODO: Not implemented yet
+    # For compatibility reasons we also accepts kwargs meant for TTrees
+    filter_branch=unset,
+    interpretation_executor=unset,
+    custom_classes=unset,
+    **options,
+):
+    """
+    Args:
+        files: See below.
+        expressions (None, str, or list of str): Names of ``RFields`` or
+            aliases to convert to arrays or mathematical expressions of them.
+            Uses the ``language`` to evaluate. If None, all ``RFields``
+            selected by the filters are included. (Not implemented yet.)
+        cut (None or str): If not None, this expression filters all of the
+            ``expressions``. (Not implemented yet.)
+        filter_name (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
+            filter to select ``TBranches`` by name.
+        filter_typename (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
+            filter to select ``TBranches`` by type.
+        filter_field (None or function of :doc:`uproot.models.RNTuple.RField` \u2192 bool, or None): A
+            filter to select ``RFields`` using the full
+            :doc:`uproot.models.RNTuple.RField` object. If the function
+            returns False or None, the ``RField`` is excluded; if the function
+            returns True, it is included.
+        aliases (None or dict of str \u2192 str): Mathematical expressions that
+            can be used in ``expressions`` or other aliases.
+            Uses the ``language`` engine to evaluate. (Not implemented yet.)
+        language (:doc:`uproot.language.Language`): Language used to interpret
+            the ``expressions`` and ``aliases``. (Not implemented yet.)
+        step_size (int or str): If an integer, the maximum number of entries to
+            include in each iteration step; if a string, the maximum memory size
+            to include. The string must be a number followed by a memory unit,
+            such as "100 MB".
+        decompression_executor (None or Executor with a ``submit`` method): The
+            executor that is used to decompress ``RPages``; if None, a
+            :doc:`uproot.source.futures.TrivialExecutor` is created. (Not implemented yet.)
+        library (str or :doc:`uproot.interpretation.library.Library`): The library
+            that is used to represent arrays. Options are ``"np"`` for NumPy,
+            ``"ak"`` for Awkward Array, and ``"pd"`` for Pandas. (Not implemented yet.)
+        ak_add_doc (bool | dict ): If True and ``library="ak"``, add the RField ``name``
+            to the Awkward ``__doc__`` parameter of the array.
+            if dict = {key:value} and ``library="ak"``, add the RField ``value`` to the
+            Awkward ``key`` parameter of the array.
+        how (None, str, or container type): Library-dependent instructions
+            for grouping. The only recognized container types are ``tuple``,
+            ``list``, and ``dict``. Note that the container *type itself*
+            must be passed as ``how``, not an instance of that type (i.e.
+            ``how=tuple``, not ``how=()``).
+        report (bool): If True, this generator yields
+            (arrays, :doc:`uproot.behaviors.TBranch.Report`) pairs; if False,
+            it only yields arrays. The report has data about the ``TFile``,
+            ``TTree``, and global and local entry ranges.
+        allow_missing (bool): If True, skip over any files that do not contain
+            the specified ``RNTuple``.
+        filter_branch (None or function of :doc:`uproot.models.RNTuple.RField` \u2192 bool): An alias for ``filter_field`` included
+            for compatibility with software that was used for :doc:`uproot.behaviors.TBranch.TBranch`. This argument should not be used
+            and will be removed in a future version.
+        interpretation_executor (None): This argument is not used and is only included for now
+            for compatibility with software that was used for :doc:`uproot.behaviors.TBranch.TBranch`. This argument should not be used
+            and will be removed in a future version.
+        custom_classes (None): This argument is not used and is only included for now
+            for compatibility with software that was used for :doc:`uproot.behaviors.TBranch.TBranch`. This argument should not be used
+            and will be removed in a future version.
+        options: See below.
+
+    Iterates through contiguous chunks of entries from a set of files.
+
+    For example:
+
+    .. code-block:: python
+
+        >>> for array in uproot.iterate("files*.root:ntuple", filter_names=["x", "y"], step_size=100):
+        ...     # each of the following have 100 entries
+        ...     array["x"], array["y"]
+
+    Allowed types for the ``files`` parameter:
+
+    * str/bytes: relative or absolute filesystem path or URL, without any colons
+      other than Windows drive letter or URL schema.
+      Examples: ``"rel/file.root"``, ``"C:\\abs\\file.root"``, ``"http://where/what.root"``
+    * str/bytes: same with an object-within-ROOT path, separated by a colon.
+      Example: ``"rel/file.root:tdirectory/rntuple"``
+    * pathlib.Path: always interpreted as a filesystem path or URL only (no
+      object-within-ROOT path), regardless of whether there are any colons.
+      Examples: ``Path("rel:/file.root")``, ``Path("/abs/path:stuff.root")``
+    * glob syntax in str/bytes and pathlib.Path.
+      Examples: ``Path("rel/*.root")``, ``"/abs/*.root:tdirectory/rntuple"``
+    * dict: keys are filesystem paths, values are objects-within-ROOT paths.
+      Example: ``{{"/data_v1/*.root": "rntuple_v1", "/data_v2/*.root": "rntuple_v2"}}``
+    * already-open RNTuple objects.
+    * iterables of the above.
+
+    Options (type; default): (Not implemented yet.)
+
+    * handler (:doc:`uproot.source.chunk.Source` class; None)
+    * timeout (float for HTTP, int for XRootD; 30)
+    * max_num_elements (None or int; None)
+    * num_workers (int; 1)
+    * use_threads (bool; False on the emscripten platform (i.e. in a web browser), else True)
+    * num_fallback_workers (int; 10)
+    * begin_chunk_size (memory_size; 403, the smallest a ROOT file can be)
+    * minimal_ttree_metadata (bool; True)
+
+    See also :ref:`uproot.behaviors.RNTuple.HasFields.iterate` to iterate
+    within a single file.
+
+    Other file entry points:
+
+    * :doc:`uproot.reading.open`: opens one file to read any of its objects.
+    * :doc:`uproot.behaviors.RNTuple.iterate` (this function): iterates through
+      chunks of contiguous entries in ``RNTuples``.
+    * :doc:`uproot.behaviors.RNTuple.concatenate`: returns a single concatenated
+      array from ``RNTuples``.
+    * :doc:`uproot._dask.dask`: returns an unevaluated Dask array from ``RNTuples``.
+    """
+    files = uproot._util.regularize_files(files, steps_allowed=False, **options)
+    library = uproot.interpretation.library._regularize_library(library)
+
+    for file_path, object_path in files:
+        hasfields = uproot._util.regularize_object_path(
+            file_path, object_path, None, allow_missing, options
+        )
+
+        if hasfields is not None:
+            with hasfields:
+                try:
+                    yield from hasfields.iterate(
+                        expressions=expressions,
+                        cut=cut,
+                        filter_name=filter_name,
+                        filter_typename=filter_typename,
+                        filter_field=filter_field,
+                        aliases=aliases,
+                        language=language,
+                        step_size=step_size,
+                        decompression_executor=decompression_executor,
+                        library=library,
+                        ak_add_doc=ak_add_doc,
+                        how=how,
+                        report=report,
+                        filter_branch=filter_branch,
+                        interpretation_executor=interpretation_executor,
+                    )
+
+                except uproot.exceptions.KeyInFileError:
+                    if allow_missing:
+                        continue
+                    else:
+                        raise
+
+
+def concatenate(
+    files,
+    expressions=None,  # TODO: Not implemented yet
+    cut=None,  # TODO: Not implemented yet
+    *,
+    filter_name=no_filter,
+    filter_typename=no_filter,
+    filter_field=no_filter,
+    aliases=None,  # TODO: Not implemented yet
+    language=uproot.language.python.python_language,  # TODO: Not implemented yet
+    entry_start=None,
+    entry_stop=None,
+    decompression_executor=None,  # TODO: Not implemented yet
+    library="ak",  # TODO: Not implemented yet
+    ak_add_doc=False,  # TODO: Not implemented yet
+    how=None,
+    allow_missing=False,
+    # For compatibility reasons we also accepts kwargs meant for TTrees
+    filter_branch=unset,
+    interpretation_executor=unset,
+    custom_classes=unset,
+    **options,
+):
+    """
+    Args:
+        files: See below.
+        expressions (None, str, or list of str): Names of ``RFields`` or
+            aliases to convert to arrays or mathematical expressions of them.
+            Uses the ``language`` to evaluate. If None, all ``RFields``
+            selected by the filters are included. (Not implemented yet.)
+        cut (None or str): If not None, this expression filters all of the
+            ``expressions``. (Not implemented yet.)
+        filter_name (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
+            filter to select ``TBranches`` by name.
+        filter_typename (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
+            filter to select ``TBranches`` by type.
+        filter_field (None or function of :doc:`uproot.models.RNTuple.RField` \u2192 bool, or None): A
+            filter to select ``RFields`` using the full
+            :doc:`uproot.models.RNTuple.RField` object. If the function
+            returns False or None, the ``RField`` is excluded; if the function
+            returns True, it is included.
+        aliases (None or dict of str \u2192 str): Mathematical expressions that
+            can be used in ``expressions`` or other aliases.
+            Uses the ``language`` engine to evaluate. (Not implemented yet.)
+        language (:doc:`uproot.language.Language`): Language used to interpret
+            the ``expressions`` and ``aliases``. (Not implemented yet.)
+        entry_start (None or int): The first entry to include. If None, start
+            at zero. If negative, count from the end, like a Python slice.
+        entry_stop (None or int): The first entry to exclude (i.e. one greater
+            than the last entry to include). If None, stop at
+            :ref:`uproot.behaviors.RNTuple.HasFields.num_entries`. If negative,
+            count from the end, like a Python slice.
+        decompression_executor (None or Executor with a ``submit`` method): The
+            executor that is used to decompress ``RPages``; if None, a
+            :doc:`uproot.source.futures.TrivialExecutor` is created. (Not implemented yet.)
+        library (str or :doc:`uproot.interpretation.library.Library`): The library
+            that is used to represent arrays. Options are ``"np"`` for NumPy,
+            ``"ak"`` for Awkward Array, and ``"pd"`` for Pandas. (Not implemented yet.)
+        ak_add_doc (bool | dict ): If True and ``library="ak"``, add the RField ``name``
+            to the Awkward ``__doc__`` parameter of the array.
+            if dict = {key:value} and ``library="ak"``, add the RField ``value`` to the
+            Awkward ``key`` parameter of the array.
+        how (None, str, or container type): Library-dependent instructions
+            for grouping. The only recognized container types are ``tuple``,
+            ``list``, and ``dict``. Note that the container *type itself*
+            must be passed as ``how``, not an instance of that type (i.e.
+            ``how=tuple``, not ``how=()``).
+        report (bool): If True, this generator yields
+            (arrays, :doc:`uproot.behaviors.TBranch.Report`) pairs; if False,
+            it only yields arrays. The report has data about the ``TFile``,
+            ``TTree``, and global and local entry ranges.
+        allow_missing (bool): If True, skip over any files that do not contain
+            the specified ``RNTuple``.
+        filter_branch (None or function of :doc:`uproot.models.RNTuple.RField` \u2192 bool): An alias for ``filter_field`` included
+            for compatibility with software that was used for :doc:`uproot.behaviors.TBranch.TBranch`. This argument should not be used
+            and will be removed in a future version.
+        interpretation_executor (None): This argument is not used and is only included for now
+            for compatibility with software that was used for :doc:`uproot.behaviors.TBranch.TBranch`. This argument should not be used
+            and will be removed in a future version.
+        custom_classes (None): This argument is not used and is only included for now
+            for compatibility with software that was used for :doc:`uproot.behaviors.TBranch.TBranch`. This argument should not be used
+            and will be removed in a future version.
+        options: See below.
+
+    Returns an array with data from a set of files concatenated into one.
+
+    For example:
+
+    .. code-block:: python
+
+        >>> array = uproot.concatenate("files*.root:ntuple", filter_field=["x", "y"])
+
+    Depending on the number of files, the number of selected ``RFields``, and
+    the size of your computer's memory, this function might not have enough
+    memory to run.
+
+    Allowed types for the ``files`` parameter:
+
+    * str/bytes: relative or absolute filesystem path or URL, without any colons
+      other than Windows drive letter or URL schema.
+      Examples: ``"rel/file.root"``, ``"C:\\abs\\file.root"``, ``"http://where/what.root"``
+    * str/bytes: same with an object-within-ROOT path, separated by a colon.
+      Example: ``"rel/file.root:tdirectory/rntuple"``
+    * pathlib.Path: always interpreted as a filesystem path or URL only (no
+      object-within-ROOT path), regardless of whether there are any colons.
+      Examples: ``Path("rel:/file.root")``, ``Path("/abs/path:stuff.root")``
+    * glob syntax in str/bytes and pathlib.Path.
+      Examples: ``Path("rel/*.root")``, ``"/abs/*.root:tdirectory/rntuple"``
+    * dict: keys are filesystem paths, values are objects-within-ROOT paths.
+      Example: ``{{"/data_v1/*.root": "rntuple_v1", "/data_v2/*.root": "rntuple_v2"}}``
+    * already-open RNTuple objects.
+    * iterables of the above.
+
+    Options (type; default): (Not implemented yet.)
+
+    * handler (:doc:`uproot.source.chunk.Source` class; None)
+    * timeout (float for HTTP, int for XRootD; 30)
+    * max_num_elements (None or int; None)
+    * num_workers (int; 1)
+    * use_threads (bool; False on the emscripten platform (i.e. in a web browser), else True)
+    * num_fallback_workers (int; 10)
+    * begin_chunk_size (memory_size; 403, the smallest a ROOT file can be)
+    * minimal_ttree_metadata (bool; True)
+
+    Other file entry points:
+
+    * :doc:`uproot.reading.open`: opens one file to read any of its objects.
+    * :doc:`uproot.behaviors.RNTuple.iterate`: iterates through chunks of
+      contiguous entries in ``RNTuples``.
+    * :doc:`uproot.behaviors.RNTuple.concatenate` (this function): returns a
+      single concatenated array from ``RNTuples``.
+    * :doc:`uproot._dask.dask`: returns an unevaluated Dask array from ``RNTuples``.
+    """
+    files = uproot._util.regularize_files(files, steps_allowed=False, **options)
+    library = uproot.interpretation.library._regularize_library(library)
+
+    all_arrays = []
+    global_start = 0
+    global_stop = 0
+
+    all_hasfields = []
+    for file_path, object_path in files:
+        _hasfields = uproot._util.regularize_object_path(
+            file_path, object_path, None, allow_missing, options
+        )
+        if _hasfields is not None:
+            all_hasfields.append(_hasfields)
+
+    total_num_entries = sum(hasfields.num_entries for hasfields in all_hasfields)
+    entry_start, entry_stop = uproot.behaviors.TBranch._regularize_entries_start_stop(
+        total_num_entries, entry_start, entry_stop
+    )
+    for hasfields in all_hasfields:
+        with hasfields:
+            nentries = hasfields.num_entries
+            global_stop += nentries
+
+            if (
+                global_start <= entry_start < global_stop
+                or global_start < entry_stop <= global_stop
+            ):
+                # overlap, read only the overlapping entries
+                local_entry_start = max(
+                    0, entry_start - global_start
+                )  # need to clip to 0
+                local_entry_stop = entry_stop - global_start  # overflows are fine
+            elif entry_start >= global_stop or entry_stop <= global_start:  # no overlap
+                # outside of this file's range -> skip
+                global_start = global_stop
+                continue
+            else:
+                # read all entries
+                local_entry_start = 0
+                local_entry_stop = nentries
+
+            try:
+                arrays = hasfields.arrays(
+                    expressions=expressions,
+                    cut=cut,
+                    filter_name=filter_name,
+                    filter_typename=filter_typename,
+                    filter_field=filter_field,
+                    aliases=aliases,
+                    language=language,
+                    entry_start=local_entry_start,
+                    entry_stop=local_entry_stop,
+                    decompression_executor=decompression_executor,
+                    array_cache=None,
+                    library=library,
+                    ak_add_doc=ak_add_doc,
+                    how=how,
+                    filter_branch=filter_branch,
+                    interpretation_executor=interpretation_executor,
+                )
+                arrays = library.global_index(arrays, global_start)
+            except uproot.exceptions.KeyInFileError:
+                if allow_missing:
+                    continue
+                else:
+                    raise
+
+            all_arrays.append(arrays)
+            global_start = global_stop
+
+    return library.concatenate(all_arrays)
+
+
 class HasFields(Mapping):
     """
     Abstract class of behaviors for anything that "has fields," namely
