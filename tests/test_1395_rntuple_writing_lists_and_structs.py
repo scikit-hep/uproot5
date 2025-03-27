@@ -59,11 +59,7 @@ def test_writing_and_reading(tmp_path):
     arrays = obj.arrays()
 
     for f in data.fields:
-        if "tuple" in f:
-            # TODO: tuples are converted to records
-            [tuple(t[f] for f in t.fields) for t in arrays[f][:3]] == data[f].tolist()
-            [tuple(t[f] for f in t.fields) for t in arrays[f][3:]] == data[f].tolist()
-        elif f == "optional":
+        if f == "optional":
             assert [t[0] if len(t) > 0 else None for t in arrays[f][:3]] == data[
                 f
             ].tolist()

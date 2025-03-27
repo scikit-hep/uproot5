@@ -17,7 +17,7 @@ def test_rntuple_stl_containers():
     filename = skhep_testdata.data_path("test_stl_containers_rntuple_v1-0-0-0.root")
     with uproot.open(filename) as f:
         R = f["ntuple"]
-        assert R.keys() == [
+        assert R.keys(recursive=False) == [
             "string",
             "vector_int32",
             "array_float",
@@ -57,21 +57,23 @@ def test_rntuple_stl_containers():
         assert r["vector_variant_int64_string"][1][1] == 2
         assert type(r["vector_variant_int64_string"][1][1]) == numpy.int64
 
-        assert ak.all(r["tuple_int32_string"]._0 == [1, 2, 3, 4, 5])
-        assert ak.all(
-            r["tuple_int32_string"]._1 == ["one", "two", "three", "four", "five"]
-        )
-        assert list(r["tuple_int32_string"][0].to_list().values()) == [1, "one"]
-        assert list(r["tuple_int32_string"][-1].to_list().values()) == [5, "five"]
-        assert ak.all(r["pair_int32_string"]._0 == [1, 2, 3, 4, 5])
-        assert ak.all(
-            r["pair_int32_string"]._1 == ["one", "two", "three", "four", "five"]
-        )
+        assert r["tuple_int32_string"].tolist() == [
+            (1, "one"),
+            (2, "two"),
+            (3, "three"),
+            (4, "four"),
+            (5, "five"),
+        ]
+        assert r["pair_int32_string"].tolist() == [
+            (1, "one"),
+            (2, "two"),
+            (3, "three"),
+            (4, "four"),
+            (5, "five"),
+        ]
 
-        assert r["vector_tuple_int32_string"][0]._0 == [1]
-        assert r["vector_tuple_int32_string"][0]._1 == ["one"]
-        assert ak.all(r["vector_tuple_int32_string"][1]._0 == [1, 2])
-        assert ak.all(r["vector_tuple_int32_string"][1]._1 == ["one", "two"])
+        assert r["vector_tuple_int32_string"][0].tolist() == [(1, "one")]
+        assert r["vector_tuple_int32_string"][1].tolist() == [(1, "one"), (2, "two")]
 
         assert ak.all(r["array_float"][0] == [1, 1, 1])
         assert ak.all(r["array_float"][-1] == [5, 5, 5])
