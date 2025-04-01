@@ -75,7 +75,7 @@ def test_empty_struct():
 
         a = obj.arrays("empty_struct")
 
-        assert a.empty_struct.tolist() == [{}, {}, {}]
+        assert a.empty_struct.tolist() == [(), (), ()]
 
 
 def test_invalid_variant():

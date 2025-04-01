@@ -18,6 +18,8 @@ jobs:
     uses: ./.github/workflows/build-distributions.yml
 
   publish:
+    environment:
+      name: pypi
     needs: [build_dist]
     runs-on: ubuntu-latest
     if: github.event_name == 'release' && github.event.action == 'published'
@@ -36,7 +38,7 @@ jobs:
         run: ls -lha dist/
 
       - name: Generate artifact attestation for sdist and wheel
-        uses: actions/attest-build-provenance@520d128f165991a6c774bcb264f323e3d70747f4 # v2.2.0
+        uses: actions/attest-build-provenance@c074443f1aee8d4aeeae555aebba3282517141b2 # v2.2.3
         with:
           subject-path: dist/uproot-*
 

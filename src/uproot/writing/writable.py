@@ -1009,7 +1009,7 @@ class WritableDirectory(MutableMapping):
                 raise TypeError(
                     "WritableDirectory cannot view preexisting TTrees; open the file with uproot.open instead of uproot.recreate or uproot.update"
                 )
-        elif key.classname.string == "ROOT::Experimental::RNTuple":
+        elif key.classname.string == "ROOT::RNTuple":
             if self._file._has_ntuple(key.seek_location):
                 return self._file._get_ntuple(key.seek_location)
             else:
@@ -1347,20 +1347,30 @@ in file {self.file_path} in directory {self.path}"""
     def mkrntuple(
         self,
         name,
-        branch_types,
+        ak_form_or_data,
         title="",
     ):
         """
         Args:
             name (str): Name of the new RNTuple.
-            branch_types (dict or pairs of str \u2192 NumPy dtype/Awkward type): Name
-                and type specification for the TBranches.
+            ak_form_or_data (Awkward RecordForm or RecordArray): Name
+                and type specification for the fields. If a RecordForm is provided,
+                the RNTuple will be empty. If a RecordArray is provided, the RNTuple
+                will be initialized with the input data.
             title (str): Title for the new RNTuple.
 
         Creates an empty RNTuple in this directory.
         """
         if self._file.sink.closed:
             raise ValueError("cannot create a RNTuple in a closed file")
+
+        # TODO: Think of a better alternative to this
+        if isinstance(ak_form_or_data, uproot.extras.awkward().Array):
+            ntuple = self.mkrntuple(name, ak_form_or_data.layout.form, title)
+            ntuple.extend(ak_form_or_data)
+            return ntuple
+
+        # The rest assumes that ak_form_or_data is a RecordForm
 
         try:
             at = name.rindex("/")
@@ -1380,7 +1390,7 @@ in file {self.file_path} in directory {self.path}"""
                 directory._file.sink,
                 treename,
                 title,
-                branch_types,
+                ak_form_or_data,
             ),
         )
         directory._file._new_ntuple(ntuple)

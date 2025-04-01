@@ -87,8 +87,10 @@ def dask(
             of dask arrays and if ``library='ak'`` it returns a single dask-awkward
             array. ``library='pd'`` has not been implemented yet and will raise a
             ``NotImplementedError``.
-        ak_add_doc (bool): If True and ``library="ak"``, add the TBranch ``title``
+        ak_add_doc (bool | dict ): If True and ``library="ak"``, add the TBranch ``title``
             to the Awkward ``__doc__`` parameter of the array.
+            if dict = {key:value} and ``library="ak"``, add the TBranch ``value`` to the
+            Awkward ``key`` parameter of the array.
         custom_classes (None or dict): If a dict, override the classes from
             the :doc:`uproot.reading.ReadOnlyFile` or ``uproot.classes``.
         allow_missing (bool): If True, skip over any files that do not contain
@@ -630,9 +632,7 @@ def _get_dask_array(
         assert steps_per_file is not unset  # either assigned or assumed to be 1
         total_files = len(ttrees)
         total_entries = sum(ttree.num_entries for ttree in ttrees)
-        step_size = max(
-            1, int(math.ceil(total_entries / (total_files * steps_per_file)))
-        )
+        step_size = max(1, math.ceil(total_entries / (total_files * steps_per_file)))
 
     if count == 0:
         raise ValueError(
@@ -670,7 +670,7 @@ def _get_dask_array(
         )
         step_sum += int(ttree_step)
 
-    entry_step = int(round(step_sum / len(ttrees)))
+    entry_step = round(step_sum / len(ttrees))
     assert entry_step >= 1
 
     for key in common_keys:
@@ -1166,6 +1166,9 @@ class UprootReadMixin:
         keys = self.necessary_columns(report=report, state=state)
         return self.project_keys(keys)
 
+    def project_manually(self: T, columns: frozenset[str]) -> T:
+        return self.project_keys(columns)
+
     def necessary_columns(
         self, *, report: TypeTracerReport, state: dict
     ) -> frozenset[str]:
@@ -1465,11 +1468,29 @@ def _get_ttree_form(
     for key in common_keys:
         branch = ttree[key]
         content_form = branch.interpretation.awkward_form(ttree.file)
-        if ak_add_doc:
-            content_form = content_form.copy(parameters={"__doc__": branch.title})
+        content_parameters = {}
+        if isinstance(ak_add_doc, bool):
+            if ak_add_doc:
+                content_parameters["__doc__"] = branch.title
+        elif isinstance(ak_add_doc, dict):
+            content_parameters.update(
+                {
+                    key: branch.__getattribute__(value)
+                    for key, value in ak_add_doc.items()
+                }
+            )
+        if len(content_parameters.keys()) != 0:
+            content_form = content_form.copy(parameters=content_parameters)
         contents.append(content_form)
 
-    parameters = {"__doc__": ttree.title} if ak_add_doc else None
+    if isinstance(ak_add_doc, bool):
+        parameters = {"__doc__": ttree.title} if ak_add_doc else None
+    elif isinstance(ak_add_doc, dict):
+        parameters = (
+            {"__doc__": ttree.title} if "__doc__" in ak_add_doc.keys() else None
+        )
+    else:
+        parameters = None
 
     return awkward.forms.RecordForm(contents, common_keys, parameters=parameters)
 
@@ -1549,9 +1570,7 @@ def _get_dak_array(
         assert steps_per_file is not unset  # either assigned or assumed to be 1
         total_files = len(ttrees)
         total_entries = sum(ttree.num_entries for ttree in ttrees)
-        step_size = max(
-            1, int(math.ceil(total_entries / (total_files * steps_per_file)))
-        )
+        step_size = max(1, math.ceil(total_entries / (total_files * steps_per_file)))
 
     if count == 0:
         raise ValueError(
@@ -1587,7 +1606,7 @@ def _get_dak_array(
         )
         step_sum += int(ttree_step)
 
-    entry_step = int(round(step_sum / len(ttrees)))
+    entry_step = round(step_sum / len(ttrees))
 
     divisions = [0]
     partition_args = []
