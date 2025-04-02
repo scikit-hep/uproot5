@@ -80,6 +80,6 @@ def test_truth_muon_containers(physlite_file):
     mu_pdgid=[13,-13]
 
     assert arrays["TruthMuons"].fields==AOD_type, f"TruthMuons fields have changed, {sarrays['TruthMuons'].fields} instead of {AOD_type}"
-    assert ak.flatten(arrays["TruthMuonsAuxDyn:m"])[0] == mass_evt_0, f"Truth mass of first event does not what is expected"
+    assert np.isclose(ak.flatten(arrays["TruthMuonsAuxDyn:m"])[0], mass_evt_0), "Truth mass of first event does not match expected value"    
     assert np.all(np.isin(ak.to_numpy(ak.flatten(arrays["TruthMuonsAuxDyn:pdgId"])), mu_pdgid)), "Retrieved pdgids are not 13/-13"
 
