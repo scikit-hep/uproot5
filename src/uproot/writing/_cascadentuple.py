@@ -964,7 +964,7 @@ class NTuple(CascadeNode):
             raw_data = col_data.reshape(-1).view("uint8")
             if col_data.dtype == numpy.dtype("bool"):
                 raw_data = numpy.packbits(raw_data, bitorder="little")
-            page_key = self.add_rblob(sink, raw_data, len(raw_data), big=False)
+            page_key = self.add_rblob(sink, raw_data, len(raw_data))
             page_locator = NTuple_Locator(
                 len(raw_data), page_key.location + page_key.allocation
             )
@@ -989,7 +989,7 @@ class NTuple(CascadeNode):
         )
         pagelistenv_rawdata = pagelistenv.serialize()
         pagelistenv_key = self.add_rblob(
-            sink, pagelistenv_rawdata, len(pagelistenv_rawdata), big=False
+            sink, pagelistenv_rawdata, len(pagelistenv_rawdata)
         )
         pagelistenv_locator = NTuple_Locator(
             len(pagelistenv_rawdata),
@@ -1012,12 +1012,7 @@ class NTuple(CascadeNode):
             old_footer_key.location, old_footer_key.location + old_footer_key.allocation
         )
         footer_raw_data = self._footer.serialize()
-        self._footer_key = self.add_rblob(
-            sink,
-            footer_raw_data,
-            len(footer_raw_data),
-            big=False,
-        )
+        self._footer_key = self.add_rblob(sink, footer_raw_data, len(footer_raw_data))
 
         # 4. Update anchor's foot metadata values in-place
 
@@ -1038,33 +1033,21 @@ class NTuple(CascadeNode):
         sink,
         raw_data,
         uncompressed_bytes,
-        big=None,
     ):
-        strings_size = 8
+        strings_size = 8  # TODO: What is this?
 
-        location = None
-        if not big:
-            requested_bytes = (
-                uproot.reading._key_format_small.size + strings_size + len(raw_data)
-            )
-            location = self._freesegments.allocate(requested_bytes, dry_run=True)
-            if location < uproot.const.kStartBigFile:
-                self._freesegments.allocate(requested_bytes, dry_run=False)
-            else:
-                location = None
-
-        if location is None:
-            requested_bytes = (
-                uproot.reading._key_format_big.size + strings_size + len(raw_data)
-            )
-            location = self._freesegments.allocate(requested_bytes, dry_run=False)
+        # Always use big files
+        requested_bytes = (
+            uproot.reading._key_format_big.size + strings_size + len(raw_data)
+        )
+        location = self._freesegments.allocate(requested_bytes, dry_run=False)
 
         key = RBlob_Key(
             location,
             uncompressed_bytes,
             len(raw_data),
             created_on=datetime.datetime.now(),
-            big=big,
+            big=True,
         )
 
         key.write(sink)
@@ -1076,12 +1059,7 @@ class NTuple(CascadeNode):
     def write(self, sink):
         #### Header ##############################
         header_raw_data = self._header.serialize()
-        self._header_key = self.add_rblob(
-            sink,
-            header_raw_data,
-            len(header_raw_data),
-            big=False,
-        )
+        self._header_key = self.add_rblob(sink, header_raw_data, len(header_raw_data))
         self._anchor.seek_header = (
             self._header_key.location + self._header_key.allocation
         )
@@ -1091,12 +1069,7 @@ class NTuple(CascadeNode):
 
         #### Footer ##############################
         footer_raw_data = self._footer.serialize()
-        self._footer_key = self.add_rblob(
-            sink,
-            footer_raw_data,
-            len(footer_raw_data),
-            big=False,
-        )
+        self._footer_key = self.add_rblob(sink, footer_raw_data, len(footer_raw_data))
         self._anchor.seek_footer = (
             self._footer_key.location + self._footer_key.allocation
         )
