@@ -1395,6 +1395,12 @@ class Tree:
         fObjlen = len(uncompressed_data)
         fNbytes = fKeylen + len(compressed_data)
 
+        if fObjlen > 2**31 - 1 or fNbytes > 2**31 - 1:
+            raise ValueError(
+                f"Numpy array data of branch {branch_name} has an uncompressed size of {fObjlen} bytes "
+                f"and a compressed size of {fNbytes} bytes, which is too large to fit in a TBasket"
+            )
+
         parent_location = self._directory.key.location  # FIXME: is this correct?
 
         location = self._freesegments.allocate(fNbytes, dry_run=False)
@@ -1469,6 +1475,12 @@ class Tree:
 
         fObjlen = len(uncompressed_data)
         fNbytes = fKeylen + len(compressed_data)
+
+        if fObjlen > 2**31 - 1 or fNbytes > 2**31 - 1:
+            raise ValueError(
+                f"Jagged array data of branch {branch_name} has an uncompressed size of {fObjlen} bytes "
+                f"and a compressed size of {fNbytes} bytes, which is too large to fit in a TBasket"
+            )
 
         parent_location = self._directory.key.location  # FIXME: is this correct?
 
@@ -1558,6 +1570,12 @@ class Tree:
 
         fObjlen = len(uncompressed_data)
         fNbytes = fKeylen + len(compressed_data)
+
+        if fObjlen > 2**31 - 1 or fNbytes > 2**31 - 1:
+            raise ValueError(
+                f"String data of branch {branch_name} has an uncompressed size of {fObjlen} bytes "
+                f"and a compressed size of {fNbytes} bytes, which is too large to fit in a TBasket"
+            )
 
         parent_location = self._directory.key.location  # FIXME: is this correct?
 
