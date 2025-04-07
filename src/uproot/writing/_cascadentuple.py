@@ -964,7 +964,12 @@ class NTuple(CascadeNode):
             raw_data = col_data.reshape(-1).view("uint8")
             if col_data.dtype == numpy.dtype("bool"):
                 raw_data = numpy.packbits(raw_data, bitorder="little")
-            page_key = self.add_rblob(sink, raw_data, len(raw_data))
+            uncompressed_bytes = len(raw_data)
+            # Need better logic to specify per-column/field compression
+            raw_data = uproot.compression.compress(
+                raw_data, self._directory.freesegments.fileheader.compression
+            )
+            page_key = self.add_rblob(sink, raw_data, uncompressed_bytes)
             page_locator = NTuple_Locator(
                 len(raw_data), page_key.location + page_key.allocation
             )
