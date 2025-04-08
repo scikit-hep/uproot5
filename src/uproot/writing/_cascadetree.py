@@ -1398,7 +1398,8 @@ class Tree:
         if fObjlen > 2**31 - 1 or fNbytes > 2**31 - 1:
             raise ValueError(
                 f"Numpy array data of branch {branch_name} has an uncompressed size of {fObjlen} bytes "
-                f"and a compressed size of {fNbytes} bytes, which is too large to fit in a TBasket"
+                f"and a compressed size of {fNbytes} bytes, which is too large to fit in a TBasket. "
+                "Neither of these sizes can exceed 2 GiB."
             )
 
         parent_location = self._directory.key.location  # FIXME: is this correct?
@@ -1479,7 +1480,8 @@ class Tree:
         if fObjlen > 2**31 - 1 or fNbytes > 2**31 - 1:
             raise ValueError(
                 f"Jagged array data of branch {branch_name} has an uncompressed size of {fObjlen} bytes "
-                f"and a compressed size of {fNbytes} bytes, which is too large to fit in a TBasket"
+                f"and a compressed size of {fNbytes} bytes, which is too large to fit in a TBasket. "
+                "Neither of these sizes can exceed 2 GiB."
             )
 
         parent_location = self._directory.key.location  # FIXME: is this correct?
@@ -1574,7 +1576,8 @@ class Tree:
         if fObjlen > 2**31 - 1 or fNbytes > 2**31 - 1:
             raise ValueError(
                 f"String data of branch {branch_name} has an uncompressed size of {fObjlen} bytes "
-                f"and a compressed size of {fNbytes} bytes, which is too large to fit in a TBasket"
+                f"and a compressed size of {fNbytes} bytes, which is too large to fit in a TBasket. "
+                "Neither of these sizes can exceed 2 GiB."
             )
 
         parent_location = self._directory.key.location  # FIXME: is this correct?
