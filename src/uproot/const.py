@@ -12,6 +12,8 @@ import numpy
 # determines when a file is "big"
 kStartBigFile = 2000000000
 
+kMaxTBasketBytes = numpy.iinfo(numpy.int32).max
+
 # used in unmarshaling
 kByteCountMask = numpy.int64(0x40000000)
 kByteCountVMask = numpy.int64(0x4000)
