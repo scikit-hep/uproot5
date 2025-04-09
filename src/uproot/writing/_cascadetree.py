@@ -1395,7 +1395,7 @@ class Tree:
         fObjlen = len(uncompressed_data)
         fNbytes = fKeylen + len(compressed_data)
 
-        if fObjlen > 2**31 - 1 or fNbytes > 2**31 - 1:
+        if max(fObjlen, fNbytes) > uproot.const.kMaxTBasketBytes:
             raise ValueError(
                 f"Numpy array data of branch {branch_name} has an uncompressed size of {fObjlen} bytes "
                 f"and a compressed size of {fNbytes} bytes, which is too large to fit in a TBasket. "
@@ -1477,7 +1477,7 @@ class Tree:
         fObjlen = len(uncompressed_data)
         fNbytes = fKeylen + len(compressed_data)
 
-        if fObjlen > 2**31 - 1 or fNbytes > 2**31 - 1:
+        if max(fObjlen, fNbytes) > uproot.const.kMaxTBasketBytes:
             raise ValueError(
                 f"Jagged array data of branch {branch_name} has an uncompressed size of {fObjlen} bytes "
                 f"and a compressed size of {fNbytes} bytes, which is too large to fit in a TBasket. "
@@ -1573,7 +1573,7 @@ class Tree:
         fObjlen = len(uncompressed_data)
         fNbytes = fKeylen + len(compressed_data)
 
-        if fObjlen > 2**31 - 1 or fNbytes > 2**31 - 1:
+        if max(fObjlen, fNbytes) > uproot.const.kMaxTBasketBytes:
             raise ValueError(
                 f"String data of branch {branch_name} has an uncompressed size of {fObjlen} bytes "
                 f"and a compressed size of {fNbytes} bytes, which is too large to fit in a TBasket. "
