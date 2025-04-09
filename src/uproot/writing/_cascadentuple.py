@@ -192,19 +192,6 @@ def _serialize_envelope_header(type, length):
     return _rntuple_env_header_format.pack(data)
 
 
-def _serialize_rntuple_page_innerlist(items):  # TODO: check
-    n_items = len(items)
-    payload_bytes = b"".join([x.serialize() for x in items])
-    offset = (0).to_bytes(8, "little")
-    compression_setting = (0).to_bytes(4, "little")
-    payload_bytes = b"".join([payload_bytes, offset, compression_setting])
-    size = 4 + 4 + len(payload_bytes)
-    size_bytes = struct.Struct("<i").pack(-size)  # negative size means list
-    # n.b last byte of `n_item bytes` is reserved as of Sep 2022
-    raw_bytes = b"".join([size_bytes, n_items.to_bytes(4, "little"), payload_bytes])
-    return raw_bytes
-
-
 # https://github.com/root-project/root/blob/master/tree/ntuple/v7/doc/specifications.md#field-description
 class NTuple_Field_Description:
     def __init__(
@@ -634,13 +621,10 @@ class NTuple_EnvLink:
 
 
 class NTuple_PageListEnvelope:
-    def __init__(
-        self, header_checksum, cluster_summaries, page_data, compression_settings=0
-    ):
+    def __init__(self, header_checksum, cluster_summaries, page_data):
         self.header_checksum = header_checksum
         self.cluster_summaries = cluster_summaries
         self.page_data = page_data
-        self.compression_settings = compression_settings
         self._checksum = None
         assert len(cluster_summaries) == len(page_data)
 
@@ -661,7 +645,7 @@ class NTuple_PageListEnvelope:
                                         col[0][2]
                                     ),
                                     _rntuple_column_compression_settings_format.pack(
-                                        self.compression_settings
+                                        col[0][3]
                                     ),
                                 ]
                             ),
@@ -733,20 +717,6 @@ class NTuple_ClusterSummary:
 
     def __repr__(self):
         return f"{type(self).__name__}({self.num_first_entry}, {self.num_entries}, {self.flags})"
-
-
-class NTuple_InnerListLocator:
-    def __init__(self, page_descs):
-        self.page_descs = page_descs
-
-    def serialize(self):
-        # from RNTuple spec:
-        # to save space, the page descriptions (inner items) are not in a record frame.
-        raw_bytes = _serialize_rntuple_page_innerlist(self.page_descs)
-        return raw_bytes
-
-    def __repr__(self):
-        return f"{type(self).__name__}({self.page_descs})"
 
 
 class NTuple_PageDescription:
@@ -964,12 +934,16 @@ class NTuple(CascadeNode):
             raw_data = col_data.reshape(-1).view("uint8")
             if col_data.dtype == numpy.dtype("bool"):
                 raw_data = numpy.packbits(raw_data, bitorder="little")
-            page_key = self.add_rblob(sink, raw_data, len(raw_data), big=False)
+            uncompressed_bytes = len(raw_data)
+            # Need better logic to specify per-column/field compression
+            compression = self._directory.freesegments.fileheader.compression
+            raw_data = uproot.compression.compress(raw_data, compression)
+            page_key = self.add_rblob(sink, raw_data, uncompressed_bytes)
             page_locator = NTuple_Locator(
                 len(raw_data), page_key.location + page_key.allocation
             )
             cluster_page_data.append(
-                [(page_locator, col_len, self._column_counts[idx])]
+                [(page_locator, col_len, self._column_counts[idx], compression.code)]
             )
             self._column_counts[idx] += col_len
         page_data = [
@@ -989,7 +963,7 @@ class NTuple(CascadeNode):
         )
         pagelistenv_rawdata = pagelistenv.serialize()
         pagelistenv_key = self.add_rblob(
-            sink, pagelistenv_rawdata, len(pagelistenv_rawdata), big=False
+            sink, pagelistenv_rawdata, len(pagelistenv_rawdata)
         )
         pagelistenv_locator = NTuple_Locator(
             len(pagelistenv_rawdata),
@@ -1012,12 +986,7 @@ class NTuple(CascadeNode):
             old_footer_key.location, old_footer_key.location + old_footer_key.allocation
         )
         footer_raw_data = self._footer.serialize()
-        self._footer_key = self.add_rblob(
-            sink,
-            footer_raw_data,
-            len(footer_raw_data),
-            big=False,
-        )
+        self._footer_key = self.add_rblob(sink, footer_raw_data, len(footer_raw_data))
 
         # 4. Update anchor's foot metadata values in-place
 
@@ -1038,33 +1007,21 @@ class NTuple(CascadeNode):
         sink,
         raw_data,
         uncompressed_bytes,
-        big=None,
     ):
-        strings_size = 8
+        strings_size = 8  # TODO: What is this?
 
-        location = None
-        if not big:
-            requested_bytes = (
-                uproot.reading._key_format_small.size + strings_size + len(raw_data)
-            )
-            location = self._freesegments.allocate(requested_bytes, dry_run=True)
-            if location < uproot.const.kStartBigFile:
-                self._freesegments.allocate(requested_bytes, dry_run=False)
-            else:
-                location = None
-
-        if location is None:
-            requested_bytes = (
-                uproot.reading._key_format_big.size + strings_size + len(raw_data)
-            )
-            location = self._freesegments.allocate(requested_bytes, dry_run=False)
+        # Always use big files
+        requested_bytes = (
+            uproot.reading._key_format_big.size + strings_size + len(raw_data)
+        )
+        location = self._freesegments.allocate(requested_bytes, dry_run=False)
 
         key = RBlob_Key(
             location,
             uncompressed_bytes,
             len(raw_data),
             created_on=datetime.datetime.now(),
-            big=big,
+            big=True,
         )
 
         key.write(sink)
@@ -1076,12 +1033,7 @@ class NTuple(CascadeNode):
     def write(self, sink):
         #### Header ##############################
         header_raw_data = self._header.serialize()
-        self._header_key = self.add_rblob(
-            sink,
-            header_raw_data,
-            len(header_raw_data),
-            big=False,
-        )
+        self._header_key = self.add_rblob(sink, header_raw_data, len(header_raw_data))
         self._anchor.seek_header = (
             self._header_key.location + self._header_key.allocation
         )
@@ -1091,12 +1043,7 @@ class NTuple(CascadeNode):
 
         #### Footer ##############################
         footer_raw_data = self._footer.serialize()
-        self._footer_key = self.add_rblob(
-            sink,
-            footer_raw_data,
-            len(footer_raw_data),
-            big=False,
-        )
+        self._footer_key = self.add_rblob(sink, footer_raw_data, len(footer_raw_data))
         self._anchor.seek_footer = (
             self._footer_key.location + self._footer_key.allocation
         )
