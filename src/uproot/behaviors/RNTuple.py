@@ -1644,7 +1644,8 @@ def _recursive_find(form, res):
     ak = uproot.extras.awkward()
 
     if hasattr(form, "form_key"):
-        res.append(form.form_key)
+        if form.form_key not in res:
+            res.append(form.form_key)
     if hasattr(form, "contents"):
         for c in form.contents:
             _recursive_find(c, res)
