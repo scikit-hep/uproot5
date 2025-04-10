@@ -8,6 +8,7 @@ import pytest
 import uproot
 
 ak = pytest.importorskip("awkward")
+dask = pytest.importorskip("dask")
 
 data = ak.Array(
     {
