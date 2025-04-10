@@ -623,7 +623,7 @@ def _get_dask_array(
                 **{
                     (
                         "filter_field"
-                        if isinstance(obj, uproot.behaviors.RNTuple.HasFields)
+                        if isinstance(obj, HasFields)
                         else "filter_branch"
                     ): real_filter_branch
                 },
@@ -768,9 +768,7 @@ def _get_dask_array_delay_open(
         filter_typename=filter_typename,
         **{
             (
-                "filter_field"
-                if isinstance(obj, uproot.behaviors.RNTuple.HasFields)
-                else "filter_branch"
+                "filter_field" if isinstance(obj, HasFields) else "filter_branch"
             ): filter_branch
         },
         full_paths=full_paths,
@@ -941,8 +939,11 @@ class TrivialFormMappingInfo(ImplementsFormMappingInfo):
             how=tuple,
         )
 
-        if isinstance(tree, uproot.behaviors.RNTuple.HasFields):
-            # temporary workaround to have basic support for RNTuple
+        if isinstance(tree, HasFields):
+            # Temporary workaround to have basic support for RNTuple
+            # This is needed since currently arrays only has top-level fields
+            # TODO: Ask people how they want this handled since the previous
+            # approach might not make sense for RNTuples
             keys = [f for f in tree.field_names if f in keys]
 
         awkward = uproot.extras.awkward()
@@ -1495,7 +1496,7 @@ def _get_dak_array(
                 **{
                     (
                         "filter_field"
-                        if isinstance(obj, uproot.behaviors.RNTuple.HasFields)
+                        if isinstance(obj, HasFields)
                         else "filter_branch"
                     ): real_filter_branch
                 },
@@ -1666,9 +1667,7 @@ def _get_dak_array_delay_open(
             filter_typename=filter_typename,
             **{
                 (
-                    "filter_field"
-                    if isinstance(obj, uproot.behaviors.RNTuple.HasFields)
-                    else "filter_branch"
+                    "filter_field" if isinstance(obj, HasFields) else "filter_branch"
                 ): filter_branch
             },
             full_paths=full_paths,
