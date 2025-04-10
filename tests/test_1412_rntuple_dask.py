@@ -33,6 +33,5 @@ def test_dask(tmp_path):
 
     arr = dask_arr.compute()
 
-    print(arr, data)
-    assert ak.to_list(arr[:5]) == ak.to_list(data)
-    assert ak.to_list(arr[5:]) == ak.to_list(data)
+    assert ak.array_equal(arr[:5], data)
+    assert ak.array_equal(arr[5:], data)
