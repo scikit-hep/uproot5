@@ -1950,7 +1950,7 @@ class WritableNTuple:
         path (tuple of str): Path of directory names to this RNTuple.
         file (:doc:`uproot.writing.writable.WritableFile`): Handle to the file in
             which this RNTuple can be found.
-        cascading (:doc:`uproot.writing._cascadetree.NTuple`): The low-level
+        cascading (:doc:`uproot.writing._cascadentuple.NTuple`): The low-level
             directory object.
 
     Represents a writable ``RNTuple`` from a ROOT file.
