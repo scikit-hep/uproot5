@@ -90,7 +90,7 @@ def _cpp_typename(akform, subcall=False):
         typename = _ak_primitive_to_typename_dict[ak_primitive]
         for arr_size in inner_shape[::-1]:
             typename = f"std::array<{typename},{arr_size}>"
-    elif isinstance(akform, awkward.forms.ListOffsetForm):
+    elif isinstance(akform, (awkward.forms.ListOffsetForm, awkward.forms.ListForm)):
         content_typename = _cpp_typename(akform.content, subcall=True)
         typename = f"std::vector<{content_typename}>"
         override_typename = akform.parameters.get("__array__", "")
@@ -377,6 +377,37 @@ class NTuple_Header(CascadeLeaf):
             col = NTuple_Column_Description(type_num, type_size, field_id, 0, 0)
             self._column_records.append(col)
             self._column_keys.append(f"node{self._ak_node_count}-offsets")
+            # content data
+            self._build_field_col_records(
+                akform.content,
+                parent_fid=field_id,
+                add_field=field_role == uproot.const.RNTupleFieldRole.COLLECTION,
+                field_name="_0",
+            )
+        elif isinstance(akform, awkward.forms.ListForm):
+            type_name = _cpp_typename(akform)
+            field_role = uproot.const.RNTupleFieldRole.COLLECTION
+            if akform.parameters.get("__array__", "") == "string":
+                type_name = "std::string"
+                field_role = uproot.const.RNTupleFieldRole.LEAF
+            field = NTuple_Field_Description(
+                0,
+                0,
+                parent_fid,
+                field_role,
+                0,
+                field_name,
+                type_name,
+                "",
+                "",
+            )
+            self._field_records.append(field)
+            # They are always converted to ListOffsetArrays with Int64 offsets
+            type_num = _ak_primitive_to_num_dict["i64"]
+            type_size = uproot.const.rntuple_col_num_to_size_dict[type_num]
+            col = NTuple_Column_Description(type_num, type_size, field_id, 0, 0)
+            self._column_records.append(col)
+            self._column_keys.append(f"node{self._ak_node_count}-startstop")
             # content data
             self._build_field_col_records(
                 akform.content,
@@ -921,6 +952,24 @@ class NTuple(CascadeNode):
                 switches["index"] = indices
                 switches["tag"] = tags + 1
                 col_data = switches
+            elif "startstop" in key:
+                # ListArrays need to be converted to ListOffsetArrays
+                barekey = key.split("-")[0]
+                starts = awkward.index.Index(data_buffers[f"{barekey}-starts"])
+                stops = awkward.index.Index(data_buffers[f"{barekey}-stops"])
+                next_barekey = f"node{int(barekey[4:])+1}"
+                content = awkward.contents.NumpyArray(
+                    data_buffers[f"{next_barekey}-data"]
+                )
+                tmp_buffers = awkward.to_buffers(
+                    awkward.contents.ListArray(
+                        starts, stops, content
+                    ).to_ListOffsetArray64()
+                )[2]
+                data_buffers[f"{next_barekey}-data"] = tmp_buffers["node1-data"]
+                col_data = tmp_buffers["node0-offsets"][1:]
+                # no longer need the temporary data
+                del starts, stops, content, tmp_buffers
             else:
                 col_data = data_buffers[key]
             if "offsets" in key:

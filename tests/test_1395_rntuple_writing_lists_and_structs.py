@@ -39,6 +39,11 @@ data = ak.Array(
         "optional": [1, None, 2],
         "union": [1, 2, "three"],
         "optional_union": [1, None, "three"],
+        "list_array": ak.contents.ListArray(
+            ak.index.Index([1, 0, 3]),
+            ak.index.Index([1, 2, 4]),
+            ak.contents.NumpyArray([0, 1, 2, 3, 4, 5]),
+        ),
     }
 )
 
@@ -125,3 +130,4 @@ def test_writing_then_reading_with_ROOT(tmp_path, capfd):
         "* Field 16           : optional_union (std::variant<std::optional<std::int64..."
         in out
     )
+    assert "* Field 17           : list_array (std::vector<std::int64_t>)" in out
