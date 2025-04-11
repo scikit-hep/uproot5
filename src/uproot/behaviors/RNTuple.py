@@ -627,6 +627,15 @@ class HasFields(Mapping):
         See also :ref:`uproot.behaviors.RNTuple.HasFields.iterate` to iterate over
         the array in contiguous ranges of entries.
         """
+        # This temporarily provides basic functionality while expressions are properly implemented
+        if expressions is not None:
+            if filter_name == no_filter:
+                filter_name = expressions
+            else:
+                raise ValueError(
+                    "Expressions are not supported yet. They are currently equivalent to filter_name."
+                )
+
         entry_start, entry_stop = (
             uproot.behaviors.TBranch._regularize_entries_start_stop(
                 self.num_entries, entry_start, entry_stop
@@ -823,6 +832,15 @@ class HasFields(Mapping):
         See also :doc:`uproot.behaviors.RNTuple.iterate` to iterate over many
         files.
         """
+        # This temporarily provides basic functionality while expressions are properly implemented
+        if expressions is not None:
+            if filter_name == no_filter:
+                filter_name = expressions
+            else:
+                raise ValueError(
+                    "Expressions are not supported yet. They are currently equivalent to filter_name."
+                )
+
         entry_start, entry_stop = (
             uproot.behaviors.TBranch._regularize_entries_start_stop(
                 self.ntuple.num_entries, entry_start, entry_stop
@@ -1316,6 +1334,15 @@ class HasFields(Mapping):
         :ref:`uproot.behaviors.RNTuple.HasFields.iterate` uses to convert a
         ``step_size`` expressed in memory units into a number of entries.
         """
+        # This temporarily provides basic functionality while expressions are properly implemented
+        if expressions is not None:
+            if filter_name == no_filter:
+                filter_name = expressions
+            else:
+                raise ValueError(
+                    "Expressions are not supported yet. They are currently equivalent to filter_name."
+                )
+
         target_num_bytes = uproot._util.memory_size(memory_size)
 
         entry_start, entry_stop = (
