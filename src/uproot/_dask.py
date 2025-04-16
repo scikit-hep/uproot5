@@ -20,6 +20,10 @@ import numpy
 
 import uproot
 from uproot._util import no_filter, unset
+from uproot.behaviors.RNTuple import HasFields
+from uproot.behaviors.RNTuple import (
+    _regularize_step_size as _RNTuple_regularize_step_size,
+)
 from uproot.behaviors.TBranch import HasBranches, TBranch, _regularize_step_size
 
 if TYPE_CHECKING:
@@ -616,7 +620,13 @@ def _get_dask_array(
                 recursive=recursive,
                 filter_name=filter_name,
                 filter_typename=filter_typename,
-                filter_branch=real_filter_branch,
+                **{
+                    (
+                        "filter_field"
+                        if isinstance(obj, HasFields)
+                        else "filter_branch"
+                    ): real_filter_branch
+                },
                 full_paths=full_paths,
                 ignore_duplicates=True,
             )
@@ -756,7 +766,11 @@ def _get_dask_array_delay_open(
         recursive=recursive,
         filter_name=filter_name,
         filter_typename=filter_typename,
-        filter_branch=filter_branch,
+        **{
+            (
+                "filter_field" if isinstance(obj, HasFields) else "filter_branch"
+            ): filter_branch
+        },
         full_paths=full_paths,
         ignore_duplicates=True,
     )
@@ -924,6 +938,13 @@ class TrivialFormMappingInfo(ImplementsFormMappingInfo):
             interpretation_executor=interpretation_executor,
             how=tuple,
         )
+
+        if isinstance(tree, HasFields):
+            # Temporary workaround to have basic support for RNTuple
+            # This is needed since currently arrays only has top-level fields
+            # TODO: Ask people how they want this handled since the previous
+            # approach might not make sense for RNTuples
+            keys = [f for f in tree.field_names if f in keys]
 
         awkward = uproot.extras.awkward()
 
@@ -1472,7 +1493,13 @@ def _get_dak_array(
                 recursive=recursive,
                 filter_name=filter_name,
                 filter_typename=filter_typename,
-                filter_branch=real_filter_branch,
+                **{
+                    (
+                        "filter_field"
+                        if isinstance(obj, HasFields)
+                        else "filter_branch"
+                    ): real_filter_branch
+                },
                 full_paths=full_paths,
                 ignore_duplicates=True,
             )
@@ -1515,14 +1542,21 @@ def _get_dak_array(
         entry_start = 0
         entry_stop = ttree.num_entries
 
-        branchid_interpretation = {}
-        for key in common_keys:
-            branch = ttree[key]
-            branchid_interpretation[branch.cache_key] = branch.interpretation
-        ttree_step = _regularize_step_size(
-            ttree, step_size, entry_start, entry_stop, branchid_interpretation
-        )
-        step_sum += int(ttree_step)
+        if isinstance(ttree, HasFields):
+            akform = ttree.to_akform(filter_name=common_keys)
+            ttree_step = _RNTuple_regularize_step_size(
+                ttree, akform, step_size, entry_start, entry_stop
+            )
+            step_sum += int(ttree_step)
+        else:
+            branchid_interpretation = {}
+            for key in common_keys:
+                branch = ttree[key]
+                branchid_interpretation[branch.cache_key] = branch.interpretation
+            ttree_step = _regularize_step_size(
+                ttree, step_size, entry_start, entry_stop, branchid_interpretation
+            )
+            step_sum += int(ttree_step)
 
     entry_step = round(step_sum / len(ttrees))
 
@@ -1558,9 +1592,12 @@ which has {entry_stop} entries"""
                     divisions.append(divisions[-1] + length)
                     partition_args.append((i, start, stop))
 
-    base_form = _get_ttree_form(
-        awkward, ttrees[0], common_keys, interp_options.get("ak_add_doc")
-    )
+    if isinstance(ttrees[0], HasFields):
+        base_form = ttrees[0].to_akform(filter_name=common_keys)
+    else:
+        base_form = _get_ttree_form(
+            awkward, ttrees[0], common_keys, interp_options.get("ak_add_doc")
+        )
 
     if len(partition_args) == 0:
         divisions.append(0)
@@ -1628,7 +1665,11 @@ def _get_dak_array_delay_open(
             recursive=recursive,
             filter_name=filter_name,
             filter_typename=filter_typename,
-            filter_branch=filter_branch,
+            **{
+                (
+                    "filter_field" if isinstance(obj, HasFields) else "filter_branch"
+                ): filter_branch
+            },
             full_paths=full_paths,
             ignore_duplicates=True,
         )
