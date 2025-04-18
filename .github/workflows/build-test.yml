@@ -175,8 +175,8 @@ jobs:
         uses: pyodide/pyodide-actions/install-browser@v2
         with:
           runner: selenium
-          browser: node
-          browser-version: 20
+          browser: chrome
+          browser-version: 1446681
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Install dependencies
@@ -184,7 +184,7 @@ jobs:
 
       - name: Run pytest
         run: |
-          pytest -vv --dist-dir=./pyodide-dist/ --runner=selenium --runtime=node tests-wasm
+          pytest -vv --dist-dir=./pyodide-dist/ --runner=selenium --runtime=chrome tests-wasm
 
   pass:
     if: always()

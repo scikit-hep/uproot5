@@ -10,10 +10,23 @@ import pytest
 import skhep_testdata
 
 try:
+    import pytest_pyodide
     from pytest_pyodide import run_in_pyodide
     from pytest_pyodide.decorator import copy_files_to_pyodide
 except ImportError:
     pytest.skip("Pyodide is not available", allow_module_level=True)
+
+# Disable CORS so that we can fetch files for http tests
+# Currently, this can only be done for Chrome
+selenium_config = pytest_pyodide.config.get_global_config()
+selenium_config.set_flags(
+    "chrome",
+    [
+        *selenium_config.get_flags("chrome"),
+        "--disable-web-security",
+        "--disable-site-isolation-trials",
+    ],
+)
 
 
 # copy skhep_testdata files to testdata directory (needed for @copy_files_to_pyodide)
