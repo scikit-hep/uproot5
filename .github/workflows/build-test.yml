@@ -176,7 +176,7 @@ jobs:
         with:
           runner: selenium
           browser: chrome
-          browser-version: latest
+          browser-version: 137.0.7125
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Install dependencies
