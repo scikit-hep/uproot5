@@ -184,7 +184,7 @@ jobs:
 
       - name: Run pytest
         run: |
-          pytest -vv --dist-dir=./pyodide-dist/ --runner=selenium --runtime=chrome tests-wasm
+          pytest -vv --dist-dir=./pyodide-dist/ --runner=selenium --runtime=node tests-wasm
 
   pass:
     if: always()
