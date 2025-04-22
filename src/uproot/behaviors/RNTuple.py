@@ -24,6 +24,11 @@ import uproot.language.python
 import uproot.source.chunk
 from uproot._util import no_filter, unset
 
+# GDS Depdencies
+try:
+    import cupy as cp
+except ImportError:
+    pass
 
 def iterate(
     files,
@@ -552,6 +557,8 @@ class HasFields(Mapping):
         decompression_executor=None,  # TODO: Not implemented yet
         array_cache="inherit",  # TODO: Not implemented yet
         library="ak",  # TODO: Not implemented yet
+        backend="cpu",  # TODO: Not Implemented yet
+        use_GDS=False,
         ak_add_doc=False,
         how=None,
         # For compatibility reasons we also accepts kwargs meant for TTrees
@@ -596,6 +603,140 @@ class HasFields(Mapping):
             library (str or :doc:`uproot.interpretation.library.Library`): The library
                 that is used to represent arrays. Options are ``"np"`` for NumPy,
                 ``"ak"`` for Awkward Array, and ``"pd"`` for Pandas. (Not implemented yet.)
+            backend (str): The backend Awkward Array will use.
+            use_GDS (bool): If True and ``backend="cuda"`` will use kvikIO bindings
+                to CuFile to provide direct memory access (DMA) transfers between GPU
+                memory and storage. KvikIO bindings to nvcomp decompress data
+                buffers.
+            ak_add_doc (bool | dict ): If True and ``library="ak"``, add the RField ``name``
+                to the Awkward ``__doc__`` parameter of the array.
+                if dict = {key:value} and ``library="ak"``, add the RField ``value`` to the
+                Awkward ``key`` parameter of the array.
+            how (None, str, or container type): Library-dependent instructions
+                for grouping. The only recognized container types are ``tuple``,
+                ``list``, and ``dict``. Note that the container *type itself*
+                must be passed as ``how``, not an instance of that type (i.e.
+                ``how=tuple``, not ``how=()``).
+            interpretation_executor (None): This argument is not used and is only included for now
+                for compatibility with software that was used for :doc:`uproot.behaviors.TBranch.TBranch`. This argument should not be used
+                and will be removed in a future version.
+            filter_branch (None or function of :doc:`uproot.models.RNTuple.RField` \u2192 bool): An alias for ``filter_field`` included
+                for compatibility with software that was used for :doc:`uproot.behaviors.TBranch.TBranch`. This argument should not be used
+                and will be removed in a future version.
+
+        Returns a group of arrays from the ``RNTuple``.
+
+        For example:
+
+        .. code-block:: python
+
+            >>> my_ntuple.arrays()
+            <Array [{my_vector: [1, 2]}, {...}] type='2 * {my_vector: var * int64}'>
+
+        See also :ref:`uproot.behaviors.RNTuple.HasFields.array` to read a single
+        ``RField`` as an array.
+
+        See also :ref:`uproot.behaviors.RNTuple.HasFields.iterate` to iterate over
+        the array in contiguous ranges of entries.
+        """
+        if use_GDS == False:
+            return self._arrays(
+                        expressions,
+                        cut,
+                        filter_name=no_filter,
+                        filter_typename=no_filter,
+                        filter_field=no_filter,
+                        aliases=None,  # TODO: Not implemented yet
+                        language=uproot.language.python.python_language,  # TODO: Not implemented yet
+                        entry_start=None,
+                        entry_stop=None,
+                        decompression_executor=None,  # TODO: Not implemented yet
+                        array_cache="inherit",  # TODO: Not implemented yet
+                        library="ak",  # TODO: Not implemented yet
+                        backend=backend,  # TODO: Not Implemented yet
+                        use_GDS=False,
+                        ak_add_doc=False,
+                        how=None,
+                        # For compatibility reasons we also accepts kwargs meant for TTrees
+                        interpretation_executor=None,
+                        filter_branch=unset,
+                    )
+            
+        elif use_GDS == True and backend == "cuda":
+            return self._arrays_GDS(
+                            expressions,
+                            entry_start,
+                            entry_stop,
+                    )
+        elif use_GDS == True and backend != "cuda":
+            raise NotImplementedError("Backend {} GDS support not implemented.")
+        
+    def _arrays(
+        self,
+        expressions=None,  # TODO: Not implemented yet
+        cut=None,  # TODO: Not implemented yet
+        *,
+        filter_name=no_filter,
+        filter_typename=no_filter,
+        filter_field=no_filter,
+        aliases=None,  # TODO: Not implemented yet
+        language=uproot.language.python.python_language,  # TODO: Not implemented yet
+        entry_start=None,
+        entry_stop=None,
+        decompression_executor=None,  # TODO: Not implemented yet
+        array_cache="inherit",  # TODO: Not implemented yet
+        library="ak",  # TODO: Not implemented yet
+        backend="cpu",  # TODO: Not Implemented yet
+        use_GDS=False,
+        ak_add_doc=False,
+        how=None,
+        # For compatibility reasons we also accepts kwargs meant for TTrees
+        interpretation_executor=None,
+        filter_branch=unset,
+    ):
+        """
+        Args:
+            expressions (None, str, or list of str): Names of ``RFields`` or
+                aliases to convert to arrays or mathematical expressions of them.
+                Uses the ``language`` to evaluate. If None, all ``RFields``
+                selected by the filters are included. (Not implemented yet.)
+            cut (None or str): If not None, this expression filters all of the
+                ``expressions``. (Not implemented yet.)
+            filter_name (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
+                filter to select ``RFields`` by name.
+            filter_typename (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
+                filter to select ``RFields`` by type.
+            filter_branch (None or function of :doc:`uproot.models.RNTuple.RField` \u2192 bool, or None): A
+                filter to select ``RFields`` using the full
+                :doc:`uproot.models.RNTuple.RField` object. If the function
+                returns False or None, the ``RField`` is excluded; if the function
+                returns True, it is included.
+            aliases (None or dict of str \u2192 str): Mathematical expressions that
+                can be used in ``expressions`` or other aliases.
+                Uses the ``language`` engine to evaluate. (Not implemented yet.)
+            language (:doc:`uproot.language.Language`): Language used to interpret
+                the ``expressions`` and ``aliases``. (Not implemented yet.)
+            entry_start (None or int): The first entry to include. If None, start
+                at zero. If negative, count from the end, like a Python slice.
+            entry_stop (None or int): The first entry to exclude (i.e. one greater
+                than the last entry to include). If None, stop at
+                :ref:`uproot.behaviors.RNTuple.RNTuple.num_entries`. If negative,
+                count from the end, like a Python slice.
+            decompression_executor (None or Executor with a ``submit`` method): The
+                executor that is used to decompress ``RPages``; if None, the
+                file's :ref:`uproot.reading.ReadOnlyFile.decompression_executor`
+                is used. (Not implemented yet.)
+            array_cache ("inherit", None, MutableMapping, or memory size): Cache of arrays;
+                if "inherit", use the file's cache; if None, do not use a cache;
+                if a memory size, create a new cache of this size. (Not implemented yet.)
+            library (str or :doc:`uproot.interpretation.library.Library`): The library
+                that is used to represent arrays. Options are ``"np"`` for NumPy,
+                ``"ak"`` for Awkward Array, and ``"pd"`` for Pandas. (Not implemented yet.)
+            backend (str): The backend Awkward Array will use.
+            use_GDS (bool): If True and ``backend="cuda"`` will use kvikIO bindings
+                to CuFile to provide direct memory access (DMA) transfers between GPU
+                memory and storage. KvikIO bindings to nvcomp decompress data
+                buffers.
             ak_add_doc (bool | dict ): If True and ``library="ak"``, add the RField ``name``
                 to the Awkward ``__doc__`` parameter of the array.
                 if dict = {key:value} and ``library="ak"``, add the RField ``value`` to the
@@ -701,9 +842,10 @@ class HasFields(Mapping):
         entry_start -= cluster_offset
         entry_stop -= cluster_offset
         arrays = uproot.extras.awkward().from_buffers(
-            form, cluster_num_entries, container_dict, allow_noncanonical_form=True
+            form, cluster_num_entries, container_dict, allow_noncanonical_form=True,
         )[entry_start:entry_stop]
 
+        arrays = uproot.extras.awkward().to_backend(arrays, backend = backend)
         # no longer needed; save memory
         del container_dict
 
@@ -724,6 +866,110 @@ class HasFields(Mapping):
             )
 
         return arrays
+
+    def _arrays_GDS(self, columns, entry_start = 0, entry_stop = None):
+        """
+        Current GDS support is limited to nvidia GPUs. The python library kvikIO is 
+        a required dependency for Uproot GDS reading which can be installed by 
+        calling pip install uproot[GDS_cux] where x corresponds to the major cuda
+        version available on the user's system.
+        Args:
+            columns (list of str): Names of ``RFields`` or
+                aliases to convert to arrays. 
+            entry_start (None or int): The first entry to include. If None, start
+                at zero. If negative, count from the end, like a Python slice.
+            entry_stop (None or int): The first entry to exclude (i.e. one greater
+                than the last entry to include). If None, stop at
+                :ref:`uproot.behaviors.TTree.TTree.num_entries`. If negative,
+                count from the end, like a Python slice.
+        """
+        #####
+        # Find clusters to read that contain data from entry_start to entry_stop
+        entry_start, entry_stop = (
+                uproot.behaviors.TBranch._regularize_entries_start_stop(
+                    self.num_entries, entry_start, entry_stop
+                )
+            )
+        clusters = self.ntuple.cluster_summaries
+        cluster_starts = numpy.array([c.num_first_entry for c in clusters])
+        start_cluster_idx = (
+            numpy.searchsorted(cluster_starts, entry_start, side="right") - 1
+        )
+        stop_cluster_idx = numpy.searchsorted(cluster_starts, entry_stop, side="right")
+        cluster_num_entries = numpy.sum(
+            [c.num_entries for c in clusters[start_cluster_idx:stop_cluster_idx]]
+        )
+    
+        # Get form for requested columns
+        form = self.to_akform().select_columns(
+            columns, prune_unions_and_records=False
+        )
+    
+        # Only read columns mentioned in the awkward form
+        target_cols = []
+        container_dict = {}
+        uproot.behaviors.RNTuple._recursive_find(form, target_cols)
+    
+        #####
+        # Read and decompress all columns' data
+        clusters_datas = self.GPU_read_clusters(
+                                           target_cols,
+                                           start_cluster_idx,
+                                           stop_cluster_idx)
+        clusters_datas.decompress()
+        #####
+        # Deserialize decompressed datas
+        content_dict = self.Deserialize_decompressed_content(
+                                              target_cols,
+                                              start_cluster_idx,
+                                              stop_cluster_idx,
+                                              clusters_datas)
+        #####
+        # Reconstitute arrays to an awkward array
+        container_dict = {}
+        # Debugging
+        for key in target_cols:
+            if "column" in key and "union" not in key:
+                key_nr = int(key.split("-")[1])
+                dtype_byte = self.ntuple.column_records[key_nr].type
+                content = content_dict[key_nr]
+    
+                if "cardinality" in key:
+                    content = cp.diff(content)
+    
+                if dtype_byte == uproot.const.rntuple_col_type_to_num_dict["switch"]:
+                    kindex, tags = _split_switch_bits(content)
+                    # Find invalid variants and adjust buffers accordingly
+                    invalid = numpy.flatnonzero(tags == -1)
+                    if len(invalid) > 0:
+                        kindex = numpy.delete(kindex, invalid)
+                        tags = numpy.delete(tags, invalid)
+                        invalid -= numpy.arange(len(invalid))
+                        optional_index = numpy.insert(
+                            numpy.arange(len(kindex), dtype=numpy.int64), invalid, -1
+                        )
+                    else:
+                        optional_index = numpy.arange(len(kindex), dtype=numpy.int64)
+                    container_dict[f"{key}-index"] = optional_index
+                    container_dict[f"{key}-union-index"] = kindex
+                    container_dict[f"{key}-union-tags"] = tags
+                else:
+                    # don't distinguish data and offsets
+                    container_dict[f"{key}-data"] = content
+                    container_dict[f"{key}-offsets"] = content
+        cluster_offset = cluster_starts[start_cluster_idx]
+        entry_start -= cluster_offset
+        entry_stop -= cluster_offset
+        arrays = uproot.extras.awkward().from_buffers(
+            form, cluster_num_entries, container_dict, allow_noncanonical_form=True,
+            backend = "cuda"
+        )[entry_start:entry_stop]
+    
+        # Free memory
+        del content_dict, container_dict, clusters_datas
+        
+        return arrays
+
 
     def __array__(self, *args, **kwargs):
         if isinstance(self, uproot.behaviors.RNTuple.RNTuple):
@@ -750,6 +996,7 @@ class HasFields(Mapping):
         step_size="100 MB",
         decompression_executor=None,  # TODO: Not implemented yet
         library="ak",  # TODO: Not implemented yet
+
         ak_add_doc=False,  # TODO: Not implemented yet
         how=None,
         report=False,  # TODO: Not implemented yet

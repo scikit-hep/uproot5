@@ -17,14 +17,15 @@ import uproot.behaviors.RNTuple
 
 import uproot.const
 
-# GDS Depdencies
-from kvikio.nvcomp_codec import NvCompBatchCodec
-from kvikio import defaults, CuFile
-import cupy as cp
-import awkward as ak
-from dataclasses import dataclass, field
-import functools
-import operator
+try:
+    from kvikio.nvcomp_codec import NvCompBatchCodec
+    from kvikio import defaults, CuFile
+    import cupy as cp
+    from dataclasses import dataclass, field
+    import functools
+    import operator
+except ImportError:
+    pass
 
 # https://github.com/root-project/root/blob/8cd9eed6f3a32e55ef1f0f1df8e5462e753c735d/tree/ntuple/v7/doc/BinaryFormatSpecification.md#anchor-schema
 _rntuple_anchor_format = struct.Struct(">HHHHQQQQQQQ")
@@ -67,15 +68,6 @@ _rntuple_column_compression_settings_format = struct.Struct("<I")
 
 def _from_zigzag(n):
     return n >> 1 ^ -(n & 1)
-# No cupy version of numpy.insert() provided
-def _cupy_insert0(arr):
-    #Intended for flat cupy arrays
-    array_len = arr.shape[0]
-    array_dtype = arr.dtype
-    out_arr = cp.empty(array_len + 1, dtype = array_dtype)
-    cp.copyto(out_arr[1:], arr)
-    out_arr[0] = 0
-    return(out_arr)
 
 def _envelop_header(chunk, cursor, context):
     env_data = cursor.field(chunk, _rntuple_env_header_format, context)
@@ -755,95 +747,6 @@ in file {self.file.file_path}"""
             res = res.astype(numpy.float32)
         return res
 
-    ############################################################################
-    # GDS Functionality
-    def array_gds(self, columns, entry_start = 0, entry_stop = None):
-        #####
-        # Find clusters to read that contain data from entry_start to entry_stop
-        entry_start, entry_stop = (
-                uproot.behaviors.TBranch._regularize_entries_start_stop(
-                    self.num_entries, entry_start, entry_stop
-                )
-            )
-        clusters = self.ntuple.cluster_summaries
-        cluster_starts = numpy.array([c.num_first_entry for c in clusters])
-        start_cluster_idx = (
-            numpy.searchsorted(cluster_starts, entry_start, side="right") - 1
-        )
-        stop_cluster_idx = numpy.searchsorted(cluster_starts, entry_stop, side="right")
-        cluster_num_entries = numpy.sum(
-            [c.num_entries for c in clusters[start_cluster_idx:stop_cluster_idx]]
-        )
-    
-        # Get form for requested columns
-        form = self.to_akform().select_columns(
-            columns, prune_unions_and_records=False
-        )
-    
-        # Only read columns mentioned in the awkward form
-        target_cols = []
-        container_dict = {}
-        uproot.behaviors.RNTuple._recursive_find(form, target_cols)
-    
-        #####
-        # Read and decompress all columns' data
-        clusters_datas = self.GPU_read_clusters(
-                                           target_cols,
-                                           start_cluster_idx,
-                                           stop_cluster_idx)
-        #####
-        # Deserialize decompressed datas
-        content_dict = self.Deserialize_decompressed_content(
-                                              target_cols,
-                                              start_cluster_idx,
-                                              stop_cluster_idx,
-                                              clusters_datas)
-        #####
-        # Reconstitute arrays to an awkward array
-        container_dict = {}
-        # Debugging
-        for key in target_cols:
-            if "column" in key and "union" not in key:
-                key_nr = int(key.split("-")[1])
-                dtype_byte = self.ntuple.column_records[key_nr].type
-                content = content_dict[key_nr]
-    
-                if "cardinality" in key:
-                    content = cp.diff(content)
-    
-                if dtype_byte == uproot.const.rntuple_col_type_to_num_dict["switch"]:
-                    kindex, tags = _split_switch_bits(content)
-                    # Find invalid variants and adjust buffers accordingly
-                    invalid = numpy.flatnonzero(tags == -1)
-                    if len(invalid) > 0:
-                        kindex = numpy.delete(kindex, invalid)
-                        tags = numpy.delete(tags, invalid)
-                        invalid -= numpy.arange(len(invalid))
-                        optional_index = numpy.insert(
-                            numpy.arange(len(kindex), dtype=numpy.int64), invalid, -1
-                        )
-                    else:
-                        optional_index = numpy.arange(len(kindex), dtype=numpy.int64)
-                    container_dict[f"{key}-index"] = optional_index
-                    container_dict[f"{key}-union-index"] = kindex
-                    container_dict[f"{key}-union-tags"] = tags
-                else:
-                    # don't distinguish data and offsets
-                    container_dict[f"{key}-data"] = content
-                    container_dict[f"{key}-offsets"] = content
-        cluster_offset = cluster_starts[start_cluster_idx]
-        entry_start -= cluster_offset
-        entry_stop -= cluster_offset
-        _arrays = ak.from_buffers(
-            form, cluster_num_entries, container_dict, allow_noncanonical_form=True,
-            backend = "cuda"
-        )[entry_start:entry_stop]
-    
-        # Free memory
-        del content_dict, container_dict, clusters_datas
-        
-        return _arrays
-
     def GPU_read_clusters(self, columns, start_cluster_idx, stop_cluster_idx):
         cluster_range = range(start_cluster_idx, stop_cluster_idx)
         clusters_datas = Cluster_Refs()
@@ -851,31 +754,29 @@ in file {self.file.file_path}"""
         for cluster_i in cluster_range:
             with CuFile(self.file.source.file_path, "rb") as filehandle:
                 futures = []
-                cluster_colrefs = Cluster_ColRefs(cluster_i)
+                colrefs_cluster = ColRefs_Cluster(cluster_i)
                 #Open filehandle and read columns for cluster
             
                 for key in columns:
                     if "column" in key and "union" not in key:
                         key_nr = int(key.split("-")[1])
-                        if key_nr not in cluster_colrefs.columns:
+                        if key_nr not in colrefs_cluster.columns:
                             (Col_ClusterBuffers,
                              future)           = self.GPU_read_col_cluster_pages(
                                                                             key_nr,
                                                                             cluster_i,
                                                                             filehandle)
                             futures.extend(future)
-                            cluster_colrefs.add_Col(Col_ClusterBuffers)
+                            colrefs_cluster.add_Col(Col_ClusterBuffers)
             
                 for future in futures:
                     future.get()
-            cluster_colrefs.decompress()
-            clusters_datas.add_cluster(cluster_colrefs)
+            clusters_datas.add_cluster(colrefs_cluster)
         
         return(clusters_datas)
 
-    def GPU_read_col_cluster_pages(self, ncol, cluster_i, filehandle):
+    def GPU_read_col_cluster_pages(self, ncol, cluster_i, filehandle, debug = False):
         # Get cluster and pages metadatas
-        verbose = False
         linklist = self.page_link_list[cluster_i]
         pagelist = linklist[ncol].pages if ncol < len(linklist) else []
         dtype_byte = self.column_records[ncol].type
@@ -904,37 +805,20 @@ in file {self.file.file_path}"""
         Cluster_Contents = ColBuffers_Cluster(ncol,
                                               full_output_buffer,
                                               isCompressed)
-        if verbose:
-            print("###################")
-            print("\nKey {} Cluster {}".format(ncol, cluster_i))
-            print("Datatype:        {}".format(dtype))
-            print("Number of Pages: {}".format(len(pagelist)))
-            print("Total bytes raw: {}".format(total_bytes))
-            print("Total bytes out: {}".format(total_len*dtype.itemsize))
-            print("Is compressed:   {}".format(isCompressed))
         tracker = 0
         futures = []
     
         i = 0
         for page_desc in pagelist:
-            # Page Datas
             num_elements = page_desc.num_elements
             loc = page_desc.locator
             n_bytes = loc.num_bytes
-            
-            if isbit:
+
+            if isbit: # Need to correct length when dtype = bit
                 num_elements = int(numpy.ceil(num_elements / 8)) 
+                
             tracker_end = tracker + num_elements
             out_buff = full_output_buffer[tracker:tracker_end]
-            
-            if verbose:
-                print("\nPage {}".format(i))
-                print("Offset       : {}".format(loc.offset))
-                if isCompressed:
-                    print("Num bytes raw: {}".format(n_bytes-9))
-                else:
-                    print("Num bytes raw: {}".format(n_bytes))
-                print("Num bytes out: {}".format(num_elements*dtype.itemsize))
             
             # If compressed, skip 9 byte header    
             if isCompressed:
@@ -1133,109 +1017,8 @@ in file {self.file.file_path}"""
             pass
 
 
-# GDS Helper Dataclasses
-@dataclass
-class ColBuffers_Cluster:
-    """
-    A Cluster_ColBuffers is a cupy ndarray that contains the compressed and 
-    decompression output buffers for a particular column in a particular cluster
-    of all pages. It contains pointers to portions of the cluster data
-    which correspond to the different pages of that cluster. 
-    """
 
-    key: str
-    data: cp.ndarray
-    isCompressed: bool
-    pages: list[cp.ndarray] = field(default_factory=list)
-    output: list[cp.ndarray] = field(default_factory=list)
 
-    def add_page(self, page: cp.ndarray):
-        self.pages.append(page)
-
-    def add_output(self, buffer: cp.ndarray):
-        self.output.append(buffer)
-
-@dataclass
-class Cluster_ColRefs:
-    """
-    A Cluster_ColRefs is a set of dictionaries containing the ColBuffers_Cluster
-    for all requested columns in a given cluster. Columns are separated by 
-    whether they are compressed or uncompressed. Compressed columns can be
-    decompressed. 
-    """
-    cluster_i: int
-    columns: list[str] = field(default_factory=list)
-    data_dict: dict[str: list[cp.ndarray]] = field(default_factory=dict)
-    data_dict_comp: dict[str: list[cp.ndarray]] = field(default_factory=dict)
-    data_dict_uncomp: dict[str: list[cp.ndarray]] = field(default_factory=dict)
-
-    def add_Col(self, ColBuffers_Cluster):
-        self.columns.append(ColBuffers_Cluster.key)
-        self.data_dict[ColBuffers_Cluster.key] = ColBuffers_Cluster
-        if ColBuffers_Cluster.isCompressed == True:
-            self.data_dict_comp[ColBuffers_Cluster.key] = ColBuffers_Cluster
-        else:
-            self.data_dict_uncomp[ColBuffers_Cluster.key] = ColBuffers_Cluster
-
-    def decompress(self, alg = "zstd"):
-        # Combine comp and output buffers into two flattened lists
-        list_ColBuffers = list(self.data_dict_comp.values())
-        list_pagebuffers = [buffers.pages for buffers in list_ColBuffers]
-        list_outputbuffers = [buffers.output for buffers in list_ColBuffers]
-
-        list_pagebuffers = functools.reduce(operator.iconcat, list_pagebuffers, [])
-        list_outputbuffers = functools.reduce(operator.iconcat, list_outputbuffers, [])
-        # Decompress
-        if len(list_outputbuffers) == 0:
-            print("No output buffers provided for decompression")
-        if len(list_pagebuffers) == 0:
-            print("No page buffers to decompress")
-        else:
-            codec = NvCompBatchCodec(alg)
-            codec.decode_batch(list_pagebuffers, list_outputbuffers)
-
-@dataclass        
-class Cluster_Refs:
-    """"
-    A Cluster_refs is a dictionaries containing the Cluster_ColRefs for multiple
-    clusters.
-    """
-    clusters: [int] = field(default_factory=list)
-    columns: list[str] = field(default_factory=list)
-    refs: dict[int: Cluster_ColRefs] = field(default_factory=dict)
-
-    def add_cluster(self, Cluster):
-        if self.columns == []:
-            self.columns = Cluster.columns
-        cluster_i = Cluster.cluster_i
-        self.clusters.append(cluster_i)
-        self.refs[cluster_i] = Cluster
-
-    def grab_ColOutput(self, nCol):
-        output_list = []
-        for cluster in self.refs.values():
-            colbuffer = cluster.data_dict[nCol].data
-            output_list.append(colbuffer)
-        
-        return output_list
-
-    def decompress(self, alg = "zstd"):
-        comp_content = []
-        output_target = []
-        for cluster in self.refs.values():
-            # Flatten buffer lists
-            list_ColBuffers = list(cluster.data_dict_comp.values())
-            list_pagebuffers = [buffers.pages for buffers in list_ColBuffers]
-            list_outputbuffers = [buffers.output for buffers in list_ColBuffers]
-    
-            list_pagebuffers = functools.reduce(operator.iconcat, list_pagebuffers, [])
-            list_outputbuffers = functools.reduce(operator.iconcat, list_outputbuffers, [])
-
-            comp_content.extend(list_pagebuffers)
-            output_target.extend(list_outputbuffers)
-
-        codec = NvCompBatchCodec(alg)
-        codec.decode_batch(comp_content, output_target)
 
 # Supporting function and classes
 def _split_switch_bits(content):
@@ -1706,5 +1489,118 @@ class RField(uproot.behaviors.RNTuple.HasFields):
             library=library,
             ak_add_doc=ak_add_doc,
         )[self.name]
+
+# No cupy version of numpy.insert() provided
+def _cupy_insert0(arr):
+    #Intended for flat cupy arrays
+    array_len = arr.shape[0]
+    array_dtype = arr.dtype
+    out_arr = cp.empty(array_len + 1, dtype = array_dtype)
+    cp.copyto(out_arr[1:], arr)
+    out_arr[0] = 0
+    return(out_arr)
+
+# GDS Helper Dataclasses
+@dataclass
+class ColBuffers_Cluster:
+    """
+    A ColBuffers_Cluster contains the compressed and decompression target output
+    buffers for a particular column in a particular cluster of all pages. It 
+    contains pointers to portions of the cluster data which correspond to the
+    different pages of that cluster. 
+    """
+
+    key: str
+    data: cp.ndarray
+    isCompressed: bool
+    pages: list[cp.ndarray] = field(default_factory=list)
+    output: list[cp.ndarray] = field(default_factory=list)
+
+    def add_page(self, page: cp.ndarray):
+        self.pages.append(page)
+
+    def add_output(self, buffer: cp.ndarray):
+        self.output.append(buffer)
+
+@dataclass
+class ColRefs_Cluster:
+    """
+    A ColRefs_Cluster contains the ColBuffers_Cluster for all requested columns
+    in a given cluster. Columns are separated by whether they are compressed or
+    uncompressed. Compressed columns can be decompressed. 
+    """
+    cluster_i: int
+    columns: list[str] = field(default_factory=list)
+    data_dict: dict[str: list[cp.ndarray]] = field(default_factory=dict)
+    data_dict_comp: dict[str: list[cp.ndarray]] = field(default_factory=dict)
+    data_dict_uncomp: dict[str: list[cp.ndarray]] = field(default_factory=dict)
+
+    def add_Col(self, ColBuffers_Cluster):
+        self.columns.append(ColBuffers_Cluster.key)
+        self.data_dict[ColBuffers_Cluster.key] = ColBuffers_Cluster
+        if ColBuffers_Cluster.isCompressed == True:
+            self.data_dict_comp[ColBuffers_Cluster.key] = ColBuffers_Cluster
+        else:
+            self.data_dict_uncomp[ColBuffers_Cluster.key] = ColBuffers_Cluster
+
+    def decompress(self, alg = "zstd"):
+        # Combine comp and output buffers into two flattened lists
+        list_ColBuffers = list(self.data_dict_comp.values())
+        list_pagebuffers = [buffers.pages for buffers in list_ColBuffers]
+        list_outputbuffers = [buffers.output for buffers in list_ColBuffers]
+
+        list_pagebuffers = functools.reduce(operator.iconcat, list_pagebuffers, [])
+        list_outputbuffers = functools.reduce(operator.iconcat, list_outputbuffers, [])
+        
+        # Decompress
+        if len(list_outputbuffers) == 0:
+            print("No output buffers provided for decompression")
+        if len(list_pagebuffers) == 0:
+            print("No page buffers to decompress")
+        else:
+            codec = NvCompBatchCodec(alg)
+            codec.decode_batch(list_pagebuffers, list_outputbuffers)
+
+@dataclass        
+class Cluster_Refs:
+    """"
+    A Cluster_refs contains the ColRefs_Cluster for multiple clusters.
+    """
+    clusters: [int] = field(default_factory=list)
+    columns: list[str] = field(default_factory=list)
+    refs: dict[int: ColRefs_Cluster] = field(default_factory=dict)
+
+    def add_cluster(self, Cluster):
+        if self.columns == []:
+            self.columns = Cluster.columns
+        cluster_i = Cluster.cluster_i
+        self.clusters.append(cluster_i)
+        self.refs[cluster_i] = Cluster
+
+    def grab_ColOutput(self, nCol):
+        output_list = []
+        for cluster in self.refs.values():
+            colbuffer = cluster.data_dict[nCol].data
+            output_list.append(colbuffer)
+        
+        return output_list
+
+    def decompress(self, alg = "zstd"):
+        comp_content = []
+        output_target = []
+        for cluster in self.refs.values():
+            # Flatten buffer lists
+            list_ColBuffers = list(cluster.data_dict_comp.values())
+            list_pagebuffers = [buffers.pages for buffers in list_ColBuffers]
+            list_outputbuffers = [buffers.output for buffers in list_ColBuffers]
+    
+            list_pagebuffers = functools.reduce(operator.iconcat, list_pagebuffers, [])
+            list_outputbuffers = functools.reduce(operator.iconcat, list_outputbuffers, [])
+
+            comp_content.extend(list_pagebuffers)
+            output_target.extend(list_outputbuffers)
+
+        codec = NvCompBatchCodec(alg)
+        codec.decode_batch(comp_content, output_target)
 
 uproot.classes["ROOT::RNTuple"] = Model_ROOT_3a3a_RNTuple
