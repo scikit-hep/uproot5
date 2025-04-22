@@ -30,6 +30,7 @@ try:
 except ImportError:
     pass
 
+
 def iterate(
     files,
     expressions=None,  # TODO: Not implemented yet
@@ -641,36 +642,36 @@ class HasFields(Mapping):
         """
         if use_GDS == False:
             return self._arrays(
-                        expressions,
-                        cut,
-                        filter_name=no_filter,
-                        filter_typename=no_filter,
-                        filter_field=no_filter,
-                        aliases=None,  # TODO: Not implemented yet
-                        language=uproot.language.python.python_language,  # TODO: Not implemented yet
-                        entry_start=None,
-                        entry_stop=None,
-                        decompression_executor=None,  # TODO: Not implemented yet
-                        array_cache="inherit",  # TODO: Not implemented yet
-                        library="ak",  # TODO: Not implemented yet
-                        backend=backend,  # TODO: Not Implemented yet
-                        use_GDS=False,
-                        ak_add_doc=False,
-                        how=None,
-                        # For compatibility reasons we also accepts kwargs meant for TTrees
-                        interpretation_executor=None,
-                        filter_branch=unset,
-                    )
-            
+                expressions,
+                cut,
+                filter_name=no_filter,
+                filter_typename=no_filter,
+                filter_field=no_filter,
+                aliases=None,  # TODO: Not implemented yet
+                language=uproot.language.python.python_language,  # TODO: Not implemented yet
+                entry_start=None,
+                entry_stop=None,
+                decompression_executor=None,  # TODO: Not implemented yet
+                array_cache="inherit",  # TODO: Not implemented yet
+                library="ak",  # TODO: Not implemented yet
+                backend=backend,  # TODO: Not Implemented yet
+                use_GDS=False,
+                ak_add_doc=False,
+                how=None,
+                # For compatibility reasons we also accepts kwargs meant for TTrees
+                interpretation_executor=None,
+                filter_branch=unset,
+            )
+
         elif use_GDS == True and backend == "cuda":
             return self._arrays_GDS(
-                            expressions,
-                            entry_start,
-                            entry_stop,
-                    )
+                expressions,
+                entry_start,
+                entry_stop,
+            )
         elif use_GDS == True and backend != "cuda":
             raise NotImplementedError("Backend {} GDS support not implemented.")
-        
+
     def _arrays(
         self,
         expressions=None,  # TODO: Not implemented yet
@@ -842,10 +843,13 @@ class HasFields(Mapping):
         entry_start -= cluster_offset
         entry_stop -= cluster_offset
         arrays = uproot.extras.awkward().from_buffers(
-            form, cluster_num_entries, container_dict, allow_noncanonical_form=True,
+            form,
+            cluster_num_entries,
+            container_dict,
+            allow_noncanonical_form=True,
         )[entry_start:entry_stop]
 
-        arrays = uproot.extras.awkward().to_backend(arrays, backend = backend)
+        arrays = uproot.extras.awkward().to_backend(arrays, backend=backend)
         # no longer needed; save memory
         del container_dict
 
@@ -867,15 +871,15 @@ class HasFields(Mapping):
 
         return arrays
 
-    def _arrays_GDS(self, columns, entry_start = 0, entry_stop = None):
+    def _arrays_GDS(self, columns, entry_start=0, entry_stop=None):
         """
-        Current GDS support is limited to nvidia GPUs. The python library kvikIO is 
-        a required dependency for Uproot GDS reading which can be installed by 
+        Current GDS support is limited to nvidia GPUs. The python library kvikIO is
+        a required dependency for Uproot GDS reading which can be installed by
         calling pip install uproot[GDS_cux] where x corresponds to the major cuda
         version available on the user's system.
         Args:
             columns (list of str): Names of ``RFields`` or
-                aliases to convert to arrays. 
+                aliases to convert to arrays.
             entry_start (None or int): The first entry to include. If None, start
                 at zero. If negative, count from the end, like a Python slice.
             entry_stop (None or int): The first entry to exclude (i.e. one greater
@@ -886,10 +890,10 @@ class HasFields(Mapping):
         #####
         # Find clusters to read that contain data from entry_start to entry_stop
         entry_start, entry_stop = (
-                uproot.behaviors.TBranch._regularize_entries_start_stop(
-                    self.num_entries, entry_start, entry_stop
-                )
+            uproot.behaviors.TBranch._regularize_entries_start_stop(
+                self.num_entries, entry_start, entry_stop
             )
+        )
         clusters = self.ntuple.cluster_summaries
         cluster_starts = numpy.array([c.num_first_entry for c in clusters])
         start_cluster_idx = (
@@ -899,31 +903,26 @@ class HasFields(Mapping):
         cluster_num_entries = numpy.sum(
             [c.num_entries for c in clusters[start_cluster_idx:stop_cluster_idx]]
         )
-    
+
         # Get form for requested columns
-        form = self.to_akform().select_columns(
-            columns, prune_unions_and_records=False
-        )
-    
+        form = self.to_akform().select_columns(columns, prune_unions_and_records=False)
+
         # Only read columns mentioned in the awkward form
         target_cols = []
         container_dict = {}
         uproot.behaviors.RNTuple._recursive_find(form, target_cols)
-    
+
         #####
         # Read and decompress all columns' data
         clusters_datas = self.GPU_read_clusters(
-                                           target_cols,
-                                           start_cluster_idx,
-                                           stop_cluster_idx)
+            target_cols, start_cluster_idx, stop_cluster_idx
+        )
         clusters_datas.decompress()
         #####
         # Deserialize decompressed datas
         content_dict = self.Deserialize_decompressed_content(
-                                              target_cols,
-                                              start_cluster_idx,
-                                              stop_cluster_idx,
-                                              clusters_datas)
+            target_cols, start_cluster_idx, stop_cluster_idx, clusters_datas
+        )
         #####
         # Reconstitute arrays to an awkward array
         container_dict = {}
@@ -933,10 +932,10 @@ class HasFields(Mapping):
                 key_nr = int(key.split("-")[1])
                 dtype_byte = self.ntuple.column_records[key_nr].type
                 content = content_dict[key_nr]
-    
+
                 if "cardinality" in key:
                     content = cp.diff(content)
-    
+
                 if dtype_byte == uproot.const.rntuple_col_type_to_num_dict["switch"]:
                     kindex, tags = _split_switch_bits(content)
                     # Find invalid variants and adjust buffers accordingly
@@ -961,15 +960,17 @@ class HasFields(Mapping):
         entry_start -= cluster_offset
         entry_stop -= cluster_offset
         arrays = uproot.extras.awkward().from_buffers(
-            form, cluster_num_entries, container_dict, allow_noncanonical_form=True,
-            backend = "cuda"
+            form,
+            cluster_num_entries,
+            container_dict,
+            allow_noncanonical_form=True,
+            backend="cuda",
         )[entry_start:entry_stop]
-    
+
         # Free memory
         del content_dict, container_dict, clusters_datas
-        
-        return arrays
 
+        return arrays
 
     def __array__(self, *args, **kwargs):
         if isinstance(self, uproot.behaviors.RNTuple.RNTuple):
@@ -996,7 +997,6 @@ class HasFields(Mapping):
         step_size="100 MB",
         decompression_executor=None,  # TODO: Not implemented yet
         library="ak",  # TODO: Not implemented yet
-
         ak_add_doc=False,  # TODO: Not implemented yet
         how=None,
         report=False,  # TODO: Not implemented yet

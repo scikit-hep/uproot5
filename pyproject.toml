@@ -55,6 +55,18 @@ readme = "README.md"
 requires-python = ">=3.9"
 
 [project.optional-dependencies]
+GDS_cu11 = [
+  "kvikio-cu11>=25.02.01",
+  "dataclasses",
+  "functools",
+  "operator"
+]
+GDS_cu12 = [
+  "kvikio-cu12>=25.02.01",
+  "dataclasses",
+  "functools",
+  "operator"
+]
 dev = [
   "boost_histogram>=0.13",
   "dask-awkward>=2025.2.0",
@@ -87,18 +99,6 @@ test-pyodide = [
   "scikit-hep-testdata"
 ]
 xrootd = ["fsspec-xrootd>=0.5.0"]
-GDS_cu11 = [
-    "kvikio-cu11>=25.02.01",
-    "dataclasses",
-    "functools",
-    "operator",
-]
-GDS_cu12 = [
-    "kvikio-cu12>=25.02.01",
-    "dataclasses",
-    "functools",
-    "operator",
-]
 
 [project.urls]
 Download = "https://github.com/scikit-hep/uproot5/releases"
