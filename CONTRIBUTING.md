@@ -50,7 +50,7 @@ This guide will help you get started with contributing.
 
 4. **Install Uproot in editable mode**:
    ```bash
-   pip install -e .
+   pip install -e ."[dev,test]"
    ```
 
 ---
