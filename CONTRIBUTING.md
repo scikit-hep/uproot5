@@ -130,10 +130,19 @@ Some tests may depend on having ROOT or XRootD installed. These are covered in t
 
 ## 📚 Improving Documentation
 
-Documentation lives in the `docs/` folder and is built using **Sphinx**. To build locally:
+Documentation lives in the `docs-sphinx/` folder and is built using **Sphinx**. To build locally
+make sure you have Sphinx and the ReadTheDocs theme installed in your virtualenv:
 ```bash
-cd docs
-make html
+pip install sphinx sphinx-rtd-theme
+```
+Navigate to your docs folder and invoke the Sphinx builder to produce HTML in the _build/html directory:
+```
+cd docs-sphinx
+sphinx-build -b html . _build/html
+```
+Once it finishes, open:
+```
+open _build/html/index.html
 ```
 
 You can also suggest improvements to examples, tutorials, and API references.
