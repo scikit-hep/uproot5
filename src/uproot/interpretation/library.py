@@ -460,7 +460,7 @@ def _awkward_json_to_array(awkward, form, array):
 
 def _awkward_add_doc(awkward, array, branch, ak_add_doc):
     if ak_add_doc:
-        return awkward.with_parameter(array, "__doc__", branch.title)
+        return awkward.with_parameter(array, "__doc__", getattr(branch, "title", None))
     else:
         return array
 
