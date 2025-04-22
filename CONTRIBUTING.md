@@ -149,4 +149,4 @@ You can also suggest improvements to examples, tutorials, and API references.
 
 ## 🙌 Thanks!
 
-uproot thrives on its community. Whether you're fixing a typo, contributing a feature, or suggesting a design—you're making a difference!
+uproot thrives on its community. Whether you're fixing a typo, contributing a feature, or suggesting a design&mdash;you're making a difference!
