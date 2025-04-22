@@ -70,16 +70,9 @@ This guide will help you get started with contributing.
 
 ## 🎨 Code Style
 
-- Follow **PEP8** where applicable.
-- Use **Black** for automatic formatting:
+- Use **pre-commit** for automatic linting, style issues, and formatting:
   ```bash
-  black src tests
-  ```
-- Use **isort** for import sorting:
-  ```bash
-  isort src tests
-  ```
-- Run **flake8** to check for style issues.
+  pre-commit run --all
 
 ---
 
