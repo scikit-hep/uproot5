@@ -11,7 +11,7 @@ This guide will help you get started with contributing.
 1. **Fork** the repository on GitHub.
 2. **Clone** your fork locally:
    ```bash
-   git clone https://github.com/YOUR_USERNAME/uproot.git
+   git clone git@github.com:YOUR_USERNAME/uproot5.git
    cd uproot
    ```
 
