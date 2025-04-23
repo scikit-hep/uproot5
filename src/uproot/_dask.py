@@ -1006,11 +1006,6 @@ class TrivialFormMappingInfo(ImplementsFormMappingInfo):
                             f"{access_log=} needs to implement '__iadd__'."
                         )
                     else:
-
-                        class Accessed(NamedTuple):
-                            branch: str
-                            buffer_key: str
-
                         access_log += [Accessed(branch=key, buffer_key=buffer_key)]
 
                 # Convert the sub-array into buffers
@@ -1839,3 +1834,8 @@ def _get_dak_array_delay_open(
         divisions=None if divisions is None else tuple(divisions),
         label="from-uproot",
     )
+
+
+class Accessed(NamedTuple):
+    branch: str
+    buffer_key: str
