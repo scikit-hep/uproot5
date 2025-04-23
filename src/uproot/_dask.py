@@ -10,7 +10,7 @@ from concurrent.futures import Executor
 from uproot.source.chunk import SourcePerformanceCounters
 
 try:
-    from typing import TYPE_CHECKING, Final
+    from typing import TYPE_CHECKING, Final, NamedTuple
 
     from typing_extensions import Any, Protocol, TypeVar
 except ImportError:
@@ -997,6 +997,18 @@ class TrivialFormMappingInfo(ImplementsFormMappingInfo):
                     library="ak",
                     ak_add_doc=options.get("ak_add_doc"),
                 )
+
+                # add to access_log
+                access_log = options.get("access_log")
+                if access_log is not None:
+                    if not hasattr(access_log, "__iadd__"):
+                        raise ValueError(f"{access_log=} needs to implement '__iadd__'.")
+                    else:
+                        class Accessed(NamedTuple):
+                            branch: str
+                            buffer_key: str
+
+                        access_log += [Accessed(branch=key, buffer_key=buffer_key)]
 
                 # Convert the sub-array into buffers
                 ttree_subform, _, ttree_container = awkward.to_buffers(array)

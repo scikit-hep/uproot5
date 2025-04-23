@@ -745,6 +745,7 @@ class HasBranches(Mapping):
         interpretation_executor=None,
         array_cache="inherit",
         ak_add_doc=False,
+        access_log=None,
     ):
         from uproot._dask import (
             TrivialFormMappingInfo,
@@ -791,7 +792,7 @@ class HasBranches(Mapping):
             entry_stop,
             decompression_executor,
             interpretation_executor,
-            {"ak_add_doc": ak_add_doc},
+            {"ak_add_doc": ak_add_doc, "access_log": access_log},
         )
         return awkward.from_buffers(
             expected_form,
