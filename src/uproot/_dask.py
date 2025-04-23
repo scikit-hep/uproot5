@@ -1002,8 +1002,11 @@ class TrivialFormMappingInfo(ImplementsFormMappingInfo):
                 access_log = options.get("access_log")
                 if access_log is not None:
                     if not hasattr(access_log, "__iadd__"):
-                        raise ValueError(f"{access_log=} needs to implement '__iadd__'.")
+                        raise ValueError(
+                            f"{access_log=} needs to implement '__iadd__'."
+                        )
                     else:
+
                         class Accessed(NamedTuple):
                             branch: str
                             buffer_key: str
