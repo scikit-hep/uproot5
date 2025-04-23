@@ -971,7 +971,7 @@ class TrivialFormMappingInfo(ImplementsFormMappingInfo):
 
         return container
 
-    def load_virtual_arrays(
+    def load_virtual_buffers(
         self,
         tree: HasBranches,
         keys: frozenset[str],
@@ -983,42 +983,46 @@ class TrivialFormMappingInfo(ImplementsFormMappingInfo):
     ) -> Mapping[str, AwkArray]:
         awkward = uproot.extras.awkward()
 
-        class Generator:
-            def __init__(self, branch, attribute):
-                self.branch = branch
-                self.attribute = attribute
+        def generator(tree, buffer_key):
+            form_key, attribute = self.parse_buffer_key(buffer_key)
+            key = self._form_key_to_key[form_key]
+            branch = tree[key]
 
-            def __repr__(self):
-                return f"Generator({self.branch}, {self.attribute})"
-
-            def __call__(self):
-                layout = self.branch.array(
+            def _generator():
+                array = branch.array(
                     entry_start=start,
                     entry_stop=stop,
                     interpretation_executor=interpretation_executor,
                     decompression_executor=decompression_executor,
                     library="ak",
                     ak_add_doc=options.get("ak_add_doc"),
-                ).layout
-                # this is a bit of a hack, but it works for now
-                if isinstance(layout, awkward.contents.NumpyArray):
-                    return layout.data
-                elif isinstance(layout, awkward.contents.ListOffsetArray):
-                    if self.attribute == "data":
-                        return layout.content.data
-                    elif self.attribute == "offsets":
-                        return layout.offsets.data
-                    else:
-                        raise NotImplementedError()
-                else:
-                    raise NotImplementedError()
+                )
+
+                # Convert the sub-array into buffers
+                ttree_subform, _, ttree_container = awkward.to_buffers(array)
+
+                # Load the associated projection subform
+                projection_subform = self._form.content(key)
+
+                # Correlate each TTree form key with the projection form key
+                for (src, src_dtype), (dst, dst_dtype) in zip(
+                    ttree_subform.expected_from_buffers().items(),
+                    projection_subform.expected_from_buffers(self.buffer_key).items(),
+                ):
+                    # Return the corresponding array from the TTree if buffer key matches
+                    if buffer_key == dst:
+                        if src_dtype != dst_dtype:
+                            raise TypeError(f"Data type mismatch: {src_dtype} != {dst_dtype}")
+                        return ttree_container[src]
+
+                # Raise an error if the buffer key is not found
+                raise ValueError(f"Buffer key {buffer_key} not found in form {self._form}")
+            return _generator
+
 
         container = {}
         for buffer_key, _ in self._form.expected_from_buffers().items():
-            form_key, attribute = self.parse_buffer_key(buffer_key)
-            branch_name = self._form_key_to_key[form_key]
-            branch = tree[branch_name]
-            container[buffer_key] = Generator(branch, attribute)
+            container[buffer_key] = generator(tree, buffer_key)
 
         return container
 

@@ -784,7 +784,7 @@ class HasBranches(Mapping):
         else:
             expected_form, form_mapping_info = form_mapping(base_form)
 
-        container = form_mapping_info.load_virtual_arrays(
+        container = form_mapping_info.load_virtual_buffers(
             self,
             keys,
             entry_start,
