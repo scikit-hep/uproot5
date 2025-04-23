@@ -1012,13 +1012,17 @@ class TrivialFormMappingInfo(ImplementsFormMappingInfo):
                     # Return the corresponding array from the TTree if buffer key matches
                     if buffer_key == dst:
                         if src_dtype != dst_dtype:
-                            raise TypeError(f"Data type mismatch: {src_dtype} != {dst_dtype}")
+                            raise TypeError(
+                                f"Data type mismatch: {src_dtype} != {dst_dtype}"
+                            )
                         return ttree_container[src]
 
                 # Raise an error if the buffer key is not found
-                raise ValueError(f"Buffer key {buffer_key} not found in form {self._form}")
-            return _generator
+                raise ValueError(
+                    f"Buffer key {buffer_key} not found in form {self._form}"
+                )
 
+            return _generator
 
         container = {}
         for buffer_key, _ in self._form.expected_from_buffers().items():
