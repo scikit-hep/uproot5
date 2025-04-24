@@ -137,7 +137,7 @@ class RBlob_Key(Key):
             String(None, ""),
             String(None, ""),
             0,
-            13,
+            0,
             location,
             created_on=created_on,
             big=big,
@@ -1055,7 +1055,8 @@ class NTuple(CascadeNode):
         raw_data,
         uncompressed_bytes,
     ):
-        strings_size = 8  # TODO: What is this?
+        # The strings included with the RBlob ("RBlob", "", "")
+        strings_size = 8
 
         # Always use big files
         requested_bytes = (
