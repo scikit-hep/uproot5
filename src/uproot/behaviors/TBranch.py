@@ -791,9 +791,9 @@ class HasBranches(Mapping):
             array_cache ("inherit", None, MutableMapping, or memory size): Cache of arrays;
                 if "inherit", use the file's cache; if None, do not use a cache;
                 if a memory size, create a new cache of this size.
-            ak_add_doc (bool | dict ): If True and ``library="ak"``, add the TBranch ``title``
+            ak_add_doc (bool | dict ): If True, add the TBranch ``title``
                 to the Awkward ``__doc__`` parameter of the array.
-                if dict = {key:value} and ``library="ak"``, add the TBranch ``value`` to the
+                if dict = {key:value}, add the TBranch ``value`` to the
                 Awkward ``key`` parameter of the array.
             access_log (None or object with a ``__iadd__`` method): If an access_log is
                 provided, e.g. a list, all materializations of the virtual arrays are
