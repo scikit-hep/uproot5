@@ -93,11 +93,9 @@ def _cpp_typename(akform, subcall=False):
     elif isinstance(akform, (awkward.forms.ListOffsetForm, awkward.forms.ListForm)):
         content_typename = _cpp_typename(akform.content, subcall=True)
         typename = f"std::vector<{content_typename}>"
-        override_typename = akform.parameters.get("__array__", "")
-        if override_typename != "":
-            typename = (
-                f"std::{override_typename}"  # TODO: check if this could cause issues
-            )
+        # Check if it contains strings and fix the type
+        if akform.parameters.get("__array__", "") == "string":
+            typename = "std::string"
     elif isinstance(akform, awkward.forms.RecordForm):
         if akform.is_tuple:
             field_typenames = [_cpp_typename(t, subcall=True) for t in akform.contents]
