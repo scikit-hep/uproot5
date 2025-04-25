@@ -24,7 +24,7 @@ import uproot
 import uproot.interpretation.grouped
 import uproot.language.python
 import uproot.source.chunk
-from uproot._util import no_filter
+from uproot._util import get_ttree_form, no_filter
 
 np_uint8 = numpy.dtype("u1")
 
@@ -818,12 +818,6 @@ class HasBranches(Mapping):
         See also :ref:`uproot.behaviors.TBranch.HasBranches.arrays` to iterate over
         the array in contiguous ranges of entries.
         """
-        from uproot._dask import (
-            TrivialFormMappingInfo,
-            _get_ttree_form,
-            form_with_unique_keys,
-        )
-
         awkward = uproot.extras.awkward()
 
         entry_start, entry_stop = _regularize_entries_start_stop(
@@ -843,15 +837,16 @@ class HasBranches(Mapping):
             ignore_duplicates=ignore_duplicates,
         )
 
-        base_form = _get_ttree_form(
-            awkward,
+        base_form = get_ttree_form(
             self,
             keys,
             ak_add_doc,
         )
 
         if form_mapping is None:
-            expected_form = form_with_unique_keys(base_form, "<root>")
+            from uproot._dask import TrivialFormMappingInfo
+
+            expected_form = awkward.forms.form_with_unique_keys(base_form, ("<root>",))
             form_mapping_info = TrivialFormMappingInfo(expected_form)
         else:
             expected_form, form_mapping_info = form_mapping(base_form)

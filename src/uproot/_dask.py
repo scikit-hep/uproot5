@@ -19,7 +19,7 @@ except ImportError:
 import numpy
 
 import uproot
-from uproot._util import no_filter, unset
+from uproot._util import get_ttree_form, no_filter, unset
 from uproot.behaviors.RNTuple import HasFields
 from uproot.behaviors.RNTuple import (
     _regularize_step_size as _RNTuple_regularize_step_size,
@@ -1041,41 +1041,10 @@ class TrivialFormMappingInfo(ImplementsFormMappingInfo):
         return container
 
 
-def form_with_unique_keys(form: Form, key: str) -> Form:
-    awkward = uproot.extras.awkward()
-
-    def impl(form: Form, key: str) -> None:
-        # Set form key
-        form.form_key = key
-
-        # If the form is a record we need to loop over all fields in the
-        # record and set form that include the field name; this will keep
-        # recursing as well.
-        if form.is_record:
-            for field in form.fields:
-                impl(form.content(field), f"{key}.{field}")
-
-        elif form.is_union:
-            for i, entry in enumerate(form.contents):
-                impl(entry, f"{key}#{i}")
-
-        # NumPy like array is easy
-        elif form.is_numpy or form.is_unknown:
-            pass
-
-        # Anything else grab the content and keep recursing
-        else:
-            impl(form.content, f"{key}.content")
-
-    # Perform a "deep" copy without preserving references
-    form = awkward.forms.from_dict(form.to_dict())
-    impl(form, key)
-    return form
-
-
 class TrivialFormMapping(ImplementsFormMapping):
     def __call__(self, form: Form) -> tuple[Form, TrivialFormMappingInfo]:
-        new_form = form_with_unique_keys(form, "<root>")
+        awkward = uproot.extras.awkward()
+        new_form = awkward.forms.form_with_unique_keys(form, ("<root>",))
         return new_form, TrivialFormMappingInfo(new_form)
 
 
@@ -1497,43 +1466,6 @@ which has {num_entries} entries"""
         )
 
 
-def _get_ttree_form(
-    awkward,
-    ttree,
-    common_keys,
-    ak_add_doc,
-):
-    contents = []
-    for key in common_keys:
-        branch = ttree[key]
-        content_form = branch.interpretation.awkward_form(ttree.file)
-        content_parameters = {}
-        if isinstance(ak_add_doc, bool):
-            if ak_add_doc:
-                content_parameters["__doc__"] = branch.title
-        elif isinstance(ak_add_doc, dict):
-            content_parameters.update(
-                {
-                    key: branch.__getattribute__(value)
-                    for key, value in ak_add_doc.items()
-                }
-            )
-        if len(content_parameters.keys()) != 0:
-            content_form = content_form.copy(parameters=content_parameters)
-        contents.append(content_form)
-
-    if isinstance(ak_add_doc, bool):
-        parameters = {"__doc__": ttree.title} if ak_add_doc else None
-    elif isinstance(ak_add_doc, dict):
-        parameters = (
-            {"__doc__": ttree.title} if "__doc__" in ak_add_doc.keys() else None
-        )
-    else:
-        parameters = None
-
-    return awkward.forms.RecordForm(contents, common_keys, parameters=parameters)
-
-
 def _get_dak_array(
     files,
     filter_name,
@@ -1695,8 +1627,8 @@ which has {entry_stop} entries"""
     if isinstance(ttrees[0], HasFields):
         base_form = ttrees[0].to_akform(filter_name=common_keys)
     else:
-        base_form = _get_ttree_form(
-            awkward, ttrees[0], common_keys, interp_options.get("ak_add_doc")
+        base_form = get_ttree_form(
+            ttrees[0], common_keys, interp_options.get("ak_add_doc")
         )
 
     if len(partition_args) == 0:
@@ -1704,7 +1636,7 @@ which has {entry_stop} entries"""
         partition_args.append((0, 0, 0))
 
     if form_mapping is None:
-        expected_form = form_with_unique_keys(base_form, "<root>")
+        expected_form = awkward.forms.form_with_unique_keys(base_form, ("<root>",))
         form_mapping_info = TrivialFormMappingInfo(expected_form)
     else:
         expected_form, form_mapping_info = form_mapping(base_form)
@@ -1771,9 +1703,7 @@ def _get_dak_array_delay_open(
             full_paths=full_paths,
             ignore_duplicates=True,
         )
-        base_form = _get_ttree_form(
-            awkward, obj, common_keys, interp_options.get("ak_add_doc")
-        )
+        base_form = get_ttree_form(obj, common_keys, interp_options.get("ak_add_doc"))
 
     divisions = [0]
     partition_args = []
@@ -1809,7 +1739,7 @@ def _get_dak_array_delay_open(
                 )
 
     if form_mapping is None:
-        expected_form = form_with_unique_keys(base_form, "<root>")
+        expected_form = awkward.forms.form_with_unique_keys(base_form, ("<root>",))
         form_mapping_info = TrivialFormMappingInfo(expected_form)
     else:
         expected_form, form_mapping_info = form_mapping(base_form)

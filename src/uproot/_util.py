@@ -691,6 +691,45 @@ def awkward_form_of_iter(awkward, form):
         raise RuntimeError(f"unrecognized form: {type(form)}")
 
 
+def get_ttree_form(
+    ttree,
+    common_keys,
+    ak_add_doc,
+):
+    import uproot
+
+    awkward = uproot.extras.awkward()
+    contents = []
+    for key in common_keys:
+        branch = ttree[key]
+        content_form = branch.interpretation.awkward_form(ttree.file)
+        content_parameters = {}
+        if isinstance(ak_add_doc, bool):
+            if ak_add_doc:
+                content_parameters["__doc__"] = branch.title
+        elif isinstance(ak_add_doc, dict):
+            content_parameters.update(
+                {
+                    key: branch.__getattribute__(value)
+                    for key, value in ak_add_doc.items()
+                }
+            )
+        if len(content_parameters.keys()) != 0:
+            content_form = content_form.copy(parameters=content_parameters)
+        contents.append(content_form)
+
+    if isinstance(ak_add_doc, bool):
+        parameters = {"__doc__": ttree.title} if ak_add_doc else None
+    elif isinstance(ak_add_doc, dict):
+        parameters = (
+            {"__doc__": ttree.title} if "__doc__" in ak_add_doc.keys() else None
+        )
+    else:
+        parameters = None
+
+    return awkward.forms.RecordForm(contents, common_keys, parameters=parameters)
+
+
 def damerau_levenshtein(a, b, ratio=False):
     """
     Calculates the Damerau-Levenshtein distance of two strings.
