@@ -43,6 +43,7 @@ This guide will help you get started with contributing.
    pip install awkward-pandas
    pip install pytest-timeout
    pip install fsspec-xrootd
+   pip install uv
 
    # Run local HTTP server (if needed for test data)
    python -m RangeHTTPServer
@@ -50,7 +51,7 @@ This guide will help you get started with contributing.
 
 4. **Install Uproot in editable mode**:
    ```bash
-   pip install -e ."[dev,test]"
+   uv pip install -e. --group=dev
    ```
 
 ---
