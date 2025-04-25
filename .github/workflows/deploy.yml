@@ -31,7 +31,7 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with:
-          name: distribution-artifact
+          name: Packages
           path: dist
 
       - name: List distributions to be deployed
