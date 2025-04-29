@@ -738,7 +738,6 @@ class HasBranches(Mapping):
         full_paths=True,
         ignore_duplicates=False,
         language=uproot.language.python.python_language,
-        form_mapping=None,
         entry_start=None,
         entry_stop=None,
         decompression_executor=None,
@@ -818,6 +817,8 @@ class HasBranches(Mapping):
         See also :ref:`uproot.behaviors.TBranch.HasBranches.arrays` to iterate over
         the array in contiguous ranges of entries.
         """
+        from uproot._dask import FormMappingWithVirtualArrays
+
         awkward = uproot.extras.awkward()
 
         entry_start, entry_stop = _regularize_entries_start_stop(
@@ -843,15 +844,10 @@ class HasBranches(Mapping):
             ak_add_doc,
         )
 
-        if form_mapping is None:
-            from uproot._dask import TrivialFormMappingInfo
+        expected_form, form_mapping_info = FormMappingWithVirtualArrays()(base_form)
 
-            expected_form = awkward.forms.form_with_unique_keys(base_form, ("<root>",))
-            form_mapping_info = TrivialFormMappingInfo(expected_form)
-        else:
-            expected_form, form_mapping_info = form_mapping(base_form)
-
-        container = form_mapping_info.load_virtual_buffers(
+        # The buffer replacements of FormMappingInfoWithVirtualArrays are VirtualArrays
+        container = form_mapping_info.buffer_replacements(
             self,
             keys,
             entry_start,

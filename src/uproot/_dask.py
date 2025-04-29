@@ -971,7 +971,9 @@ class TrivialFormMappingInfo(ImplementsFormMappingInfo):
 
         return container
 
-    def load_virtual_buffers(
+
+class FormMappingInfoWithVirtualArrays(TrivialFormMappingInfo):
+    def buffer_replacements(
         self,
         tree: HasBranches,
         keys: frozenset[str],
@@ -1048,6 +1050,13 @@ class TrivialFormMapping(ImplementsFormMapping):
         return new_form, TrivialFormMappingInfo(new_form)
 
 
+class FormMappingWithVirtualArrays(ImplementsFormMapping):
+    def __call__(self, form: Form) -> tuple[Form, FormMappingInfoWithVirtualArrays]:
+        awkward = uproot.extras.awkward()
+        new_form = awkward.forms.form_with_unique_keys(form, ("<root>",))
+        return new_form, FormMappingInfoWithVirtualArrays(new_form)
+
+
 T = TypeVar("T")
 
 
@@ -1108,7 +1117,18 @@ class UprootReadMixin:
             # but not two of the keys required for buffer B
             if all(k in self.common_keys for k in keys_for_buffer):
                 container[buffer_key] = mapping[buffer_key]
-            # Otherwise, introduce a placeholder
+            # if the form mapping info provides a replacements, use it
+            elif hasattr(self.form_mapping_info, "buffer_replacements"):
+                container[buffer_key] = self.form_mapping_info.buffer_replacements(
+                    tree,
+                    keys_for_buffer,
+                    start,
+                    stop,
+                    self.decompression_executor,
+                    self.interpretation_executor,
+                    self.interp_options,
+                )[buffer_key]
+            # Otherwise, introduce a placeholder (default replacement)
             else:
                 container[buffer_key] = awkward.typetracer.PlaceholderArray(
                     nplike=nplike,
