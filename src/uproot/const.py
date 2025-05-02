@@ -184,8 +184,8 @@ rntuple_col_num_to_size_dict = {
     0x19: 64,
     0x1A: 32,
     0x1B: 64,
-    0x1C: 31,  # variable from 10 to 31
-    0x1D: 32,  # variable from 1 to 32
+    0x1C: 32,  # from 10 to 31 in storage, but 32 in memory
+    0x1D: 32,  # from 1 to 32 in storage, but 32 in memory
 }
 rntuple_col_type_to_num_dict = {
     "bit": 0x00,
@@ -274,12 +274,14 @@ class RNTupleFieldRole(IntEnum):
 
 
 class RNTupleFieldFlag(IntEnum):
+    NOFLAG = 0x00
     REPETITIVE = 0x01
     PROJECTED = 0x02
     CHECKSUM = 0x04
 
 
 class RNTupleColumnFlag(IntEnum):
+    NOFLAG = 0x00
     DEFERRED = 0x01
     RANGE = 0x02
 
@@ -289,4 +291,5 @@ class RNTupleExtraTypeIdentifier(IntEnum):
 
 
 class RNTupleClusterFlag(IntEnum):
+    NOFLAG = 0x00
     SHARDED = 0x01

@@ -158,7 +158,6 @@ def _record_frame_wrap(payload, includeself=True):
 
 
 def _serialize_rntuple_list_frame(items, wrap=True, rawinput=False, extra_payload=None):
-    # when items is [], b'\xf4\xff\xff\xff\xff\xff\xff\xff\x00\x00\x00\x00'
     n_items = len(items)
     if wrap and rawinput:
         payload_bytes = b"".join([_record_frame_wrap(x) for x in items])
@@ -194,15 +193,15 @@ def _serialize_envelope_header(type, length):
 class NTuple_Field_Description:
     def __init__(
         self,
-        field_version,
-        type_version,
         parent_field_id,
         struct_role,
-        flags,
         field_name,
         type_name,
-        type_alias,
-        field_description,
+        field_version=0,
+        type_version=0,
+        flags=0,
+        type_alias="",
+        field_description="",
         repetition=None,
     ):
         self.field_version = field_version
@@ -299,15 +298,10 @@ class NTuple_Header(CascadeLeaf):
         if isinstance(akform, awkward.forms.NumpyForm) and akform.inner_shape == ():
             type_name = _cpp_typename(akform)
             field = NTuple_Field_Description(
-                0,
-                0,
                 parent_fid,
                 uproot.const.RNTupleFieldRole.LEAF,
-                0,
                 field_name,
                 type_name,
-                "",
-                "",
             )
             if add_field:
                 self._field_records.append(field)
@@ -333,15 +327,11 @@ class NTuple_Header(CascadeLeaf):
                 )
                 type_name = _cpp_typename(reg_akform)
                 field = NTuple_Field_Description(
-                    0,
-                    0,
                     parent_fid,
                     uproot.const.RNTupleFieldRole.LEAF,
-                    repetitive_flag,
                     field_name,
                     type_name,
-                    "",
-                    "",
+                    flags=repetitive_flag,
                     repetition=arr_size,
                 )
                 self._field_records.append(field)
@@ -358,15 +348,10 @@ class NTuple_Header(CascadeLeaf):
                 type_name = "std::string"
                 field_role = uproot.const.RNTupleFieldRole.LEAF
             field = NTuple_Field_Description(
-                0,
-                0,
                 parent_fid,
                 field_role,
-                0,
                 field_name,
                 type_name,
-                "",
-                "",
             )
             self._field_records.append(field)
             ak_offset = akform.offsets
@@ -389,15 +374,10 @@ class NTuple_Header(CascadeLeaf):
                 type_name = "std::string"
                 field_role = uproot.const.RNTupleFieldRole.LEAF
             field = NTuple_Field_Description(
-                0,
-                0,
                 parent_fid,
                 field_role,
-                0,
                 field_name,
                 type_name,
-                "",
-                "",
             )
             self._field_records.append(field)
             # They are always converted to ListOffsetArrays with Int64 offsets
@@ -416,15 +396,10 @@ class NTuple_Header(CascadeLeaf):
         elif isinstance(akform, awkward.forms.RecordForm):
             type_name = _cpp_typename(akform)
             field = NTuple_Field_Description(
-                0,
-                0,
                 parent_fid,
                 uproot.const.RNTupleFieldRole.RECORD,
-                0,
                 field_name,
                 type_name,
-                "",
-                "",
             )
             self._field_records.append(field)
             for i, subakform in enumerate(akform.contents):
@@ -438,15 +413,11 @@ class NTuple_Header(CascadeLeaf):
             type_name = _cpp_typename(akform)
             field_role = uproot.const.RNTupleFieldRole.LEAF
             field = NTuple_Field_Description(
-                0,
-                0,
                 parent_fid,
                 field_role,
-                uproot.const.RNTupleFieldFlag.REPETITIVE,
                 field_name,
                 type_name,
-                "",
-                "",
+                flags=uproot.const.RNTupleFieldFlag.REPETITIVE,
                 repetition=akform.size,
             )
             self._field_records.append(field)
@@ -458,15 +429,10 @@ class NTuple_Header(CascadeLeaf):
         elif isinstance(akform, awkward.forms.IndexedOptionForm):
             type_name = _cpp_typename(akform)
             field = NTuple_Field_Description(
-                0,
-                0,
                 parent_fid,
                 uproot.const.RNTupleFieldRole.COLLECTION,
-                0,
                 field_name,
                 type_name,
-                "",
-                "",
             )
             self._field_records.append(field)
             ak_index = akform.index
@@ -484,15 +450,10 @@ class NTuple_Header(CascadeLeaf):
         elif isinstance(akform, awkward.forms.UnionForm):
             type_name = _cpp_typename(akform)
             field = NTuple_Field_Description(
-                0,
-                0,
                 parent_fid,
                 uproot.const.RNTupleFieldRole.VARIANT,
-                0,
                 field_name,
                 type_name,
-                "",
-                "",
             )
             self._field_records.append(field)
             type_num = uproot.const.rntuple_col_type_to_num_dict["switch"]
