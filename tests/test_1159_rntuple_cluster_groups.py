@@ -4,9 +4,13 @@ import pytest
 import skhep_testdata
 
 import uproot
+import numpy
+import cupy
 
+ak = pytest.importorskip("awkward")
 
-def test_multiple_cluster_groups():
+@pytest.mark.parametrize("backend,GDS,library", [("cpu", False, numpy), ("cuda", True, cupy)])
+def test_multiple_cluster_groups(backend, GDS, library):
     filename = skhep_testdata.data_path(
         "test_multiple_cluster_groups_rntuple_v1-0-0-0.root"
     )
@@ -21,7 +25,8 @@ def test_multiple_cluster_groups():
 
         assert obj.num_entries == 1000
 
-        arrays = obj.arrays()
+        arrays = obj.arrays(backend = backend,
+                            use_GDS = GDS)
 
-        assert arrays.one.tolist() == list(range(1000))
-        assert arrays.int_vector.tolist() == [[i, i + 1] for i in range(1000)]
+        assert ak.all(arrays.one == library.array(list(range(1000))))
+        assert ak.all(arrays.int_vector == library.array([[i, i + 1] for i in range(1000)]))

@@ -65,6 +65,17 @@ _rntuple_page_num_elements_format = struct.Struct("<i")
 _rntuple_column_element_offset_format = struct.Struct("<q")
 _rntuple_column_compression_settings_format = struct.Struct("<I")
 
+# https://github.com/root-project/root/blob/6dc4ff848329eaa3ca433985e709b12321098fe2/core/zip/inc/Compression.h#L93-L105
+compression_settings_dict = {
+    -1 : "Inherit",
+    0 : "UseGlobal",
+    1 : "ZLIB",
+    2 : "LZMA",
+    3 : "OldCompressionAlgo",
+    4 : "LZ4",
+    5 : "zstd",
+}
+
 
 def _from_zigzag(n):
     return n >> 1 ^ -(n & 1)
@@ -751,13 +762,17 @@ in file {self.file.file_path}"""
     def GPU_read_clusters(self, columns, start_cluster_idx, stop_cluster_idx):
         cluster_range = range(start_cluster_idx, stop_cluster_idx)
         clusters_datas = Cluster_Refs()
-        # Iterate through each cluster
-        for cluster_i in cluster_range:
-            with CuFile(self.file.source.file_path, "rb") as filehandle:
-                futures = []
+        #Open filehandle and read columns for clusters
+        with CuFile(self.file.source.file_path, "rb") as filehandle:
+            futures = []
+            # Iterate through each cluster
+            for cluster_i in cluster_range:
                 colrefs_cluster = ColRefs_Cluster(cluster_i)
+<<<<<<< HEAD
                 # Open filehandle and read columns for cluster
 
+=======
+>>>>>>> 3b5a29d (Add support for LZ4 decompression. Update some RNTuple tests to verify GDS behavior.)
                 for key in columns:
                     if "column" in key and "union" not in key:
                         key_nr = int(key.split("-")[1])
@@ -769,17 +784,41 @@ in file {self.file.file_path}"""
                             )
                             futures.extend(future)
                             colrefs_cluster.add_Col(Col_ClusterBuffers)
+<<<<<<< HEAD
 
                 for future in futures:
                     future.get()
             clusters_datas.add_cluster(colrefs_cluster)
+=======
+            
+                
+                clusters_datas.add_cluster(colrefs_cluster)
+            
+            for future in futures:
+                future.get()
+        return(clusters_datas)
+>>>>>>> 3b5a29d (Add support for LZ4 decompression. Update some RNTuple tests to verify GDS behavior.)
 
         return clusters_datas
 
     def GPU_read_col_cluster_pages(self, ncol, cluster_i, filehandle, debug=False):
         # Get cluster and pages metadatas
         linklist = self.page_link_list[cluster_i]
-        pagelist = linklist[ncol].pages if ncol < len(linklist) else []
+        if ncol < len(linklist):
+            if linklist[ncol].suppressed:
+                rel_crs = self._column_records_dict[self.column_records[ncol].field_id]
+                ncol = next(cr.idx for cr in rel_crs if not linklist[cr.idx].suppressed)
+            linklist_col = linklist[ncol]
+            pagelist = linklist_col.pages
+            compression = linklist_col.compression_settings
+            compression_level = compression % 100
+            algorithm = compression//100
+            algorithm_str = compression_settings_dict[algorithm]
+        else:
+            pagelist = []
+            algorithm_str = None
+            compression_level = None
+        
         dtype_byte = self.column_records[ncol].type
         split = dtype_byte in uproot.const.rntuple_split_types
         dtype_str = uproot.const.rntuple_col_num_to_dtype_dict[dtype_byte]
@@ -792,9 +831,14 @@ in file {self.file.file_path}"""
             dtype = numpy.dtype("bool")
         else:
             dtype = numpy.dtype(dtype_str)
+<<<<<<< HEAD
 
         full_output_buffer = cp.empty(total_len, dtype=dtype)
 
+=======
+        full_output_buffer = cp.empty(total_len, dtype = dtype)    
+    
+>>>>>>> 3b5a29d (Add support for LZ4 decompression. Update some RNTuple tests to verify GDS behavior.)
         # Check if col compressed/decompressed
         if isbit:  # Need to correct length when dtype = bit
             total_len = int(numpy.ceil(total_len / 8))
@@ -803,24 +847,41 @@ in file {self.file.file_path}"""
             isCompressed = True
         else:
             isCompressed = False
+<<<<<<< HEAD
         Cluster_Contents = ColBuffers_Cluster(ncol, full_output_buffer, isCompressed)
         tracker = 0
         futures = []
 
         i = 0
+=======
+            
+        Cluster_Contents = ColBuffers_Cluster(ncol,
+                                              full_output_buffer,
+                                              isCompressed,
+                                              algorithm_str,
+                                              compression_level)
+        tracker = 0
+        futures = []
+>>>>>>> 3b5a29d (Add support for LZ4 decompression. Update some RNTuple tests to verify GDS behavior.)
         for page_desc in pagelist:
             num_elements = page_desc.num_elements
             loc = page_desc.locator
             n_bytes = loc.num_bytes
+<<<<<<< HEAD
 
             if isbit:  # Need to correct length when dtype = bit
                 num_elements = int(numpy.ceil(num_elements / 8))
 
+=======
+            if isbit: # Need to correct length when dtype = bit
+                num_elements = int(numpy.ceil(num_elements / 8)) 
+>>>>>>> 3b5a29d (Add support for LZ4 decompression. Update some RNTuple tests to verify GDS behavior.)
             tracker_end = tracker + num_elements
             out_buff = full_output_buffer[tracker:tracker_end]
 
             # If compressed, skip 9 byte header
             if isCompressed:
+<<<<<<< HEAD
                 comp_buff = cp.empty(n_bytes - 9, dtype="b")
                 fut = filehandle.pread(
                     comp_buff, size=int(n_bytes - 9), file_offset=int(loc.offset + 9)
@@ -850,14 +911,106 @@ in file {self.file.file_path}"""
         n_clusters = stop_cluster_idx - start_cluster_idx
         col_arrays = {}  # collect content for each col
         j = 0
+=======
+                comp_buff = cp.empty(n_bytes - 9, dtype = "b")
+                fut = filehandle.pread(comp_buff,
+                                      size = int(n_bytes - 9),
+                                      file_offset = int(loc.offset+9))
+                Cluster_Contents.add_page(comp_buff)
+                Cluster_Contents.add_output(out_buff)
+            
+            # If uncompressed, read directly into out_buff
+            else:
+                fut = filehandle.pread(out_buff,
+                                      size = int(n_bytes),
+                                      file_offset = int(loc.offset))
+                Cluster_Contents.add_output(out_buff)
+    
+            futures.append(fut)
+            tracker = tracker_end
+                
+        return (Cluster_Contents, futures)
+
+    def Deserialize_pages(self, cluster_buffer, ncol, cluster_i, arrays):
+        # Get pagelist and metadatas
+        linklist = self.page_link_list[cluster_i]
+        pagelist = linklist[ncol].pages if ncol < len(linklist) else []
+        dtype_byte = self.column_records[ncol].type
+        dtype_str = uproot.const.rntuple_col_num_to_dtype_dict[dtype_byte]
+        total_len = numpy.sum([desc.num_elements for desc in pagelist], dtype=int)
+        if dtype_str == "switch":
+            dtype = cp.dtype([("index", "int64"), ("tag", "int32")])
+        elif dtype_str == "bit":
+            dtype = cp.dtype("bool")
+        else:
+            dtype = cp.dtype(dtype_str)
+        split = dtype_byte in uproot.const.rntuple_split_types
+        zigzag = dtype_byte in uproot.const.rntuple_zigzag_types
+        delta = dtype_byte in uproot.const.rntuple_delta_types
+        index = dtype_byte in uproot.const.rntuple_index_types
+        nbits = (
+            self.column_records[ncol].nbits
+            if ncol < len(self.column_records)
+            else uproot.const.rntuple_col_num_to_size_dict[dtype_byte]
+            )
+        
+        # Begin looping through pages
+        tracker = 0
+        cumsum = 0
+        for page_desc in pagelist:
+            num_elements = page_desc.num_elements
+            tracker_end = tracker + num_elements
+            
+            # Get content associated with page
+            page_buffer = cluster_buffer[tracker:tracker_end]
+            self.Deserialize_page_decompressed_buffer(page_buffer,
+                                            page_desc,
+                                            dtype_str,
+                                            dtype,
+                                            nbits,
+                                            split)
+    
+            if delta:
+                cluster_buffer[tracker] -= cumsum
+                cumsum += cp.sum(cluster_buffer[tracker:tracker_end])
+            tracker = tracker_end
+    
+        if index:
+            cluster_buffer = _cupy_insert0(cluster_buffer)  # for offsets
+        if zigzag:
+            cluster_buffer = _from_zigzag(cluster_buffer)
+        elif delta:
+            cluster_buffer = cp.cumsum(cluster_buffer)
+        elif dtype_str == "real32trunc":
+            cluster_buffer = cluster_buffer.view(cp.float32)
+        elif dtype_str == "real32quant" and ncol < len(self.column_records):
+            min_value = self.column_records[ncol].min_value
+            max_value = self.column_records[ncol].max_value
+            cluster_content = min_value + cluster_content.astype(cp.float32) * (max_value - min_value) / (
+                (1 << nbits) - 1
+            )
+            cluster_buffer = cluster_buffer.astype(cp.float32)
+        
+        arrays.append(cluster_buffer)
+        return(cluster_buffer)
+ 
+
+    def Deserialize_decompressed_content(self,
+                                     start_cluster_idx, stop_cluster_idx,
+                                     clusters_datas):
+    
+        cluster_range = range(start_cluster_idx, stop_cluster_idx)
+        n_clusters = stop_cluster_idx - start_cluster_idx
+        col_arrays = {} # collect content for each col
+>>>>>>> 3b5a29d (Add support for LZ4 decompression. Update some RNTuple tests to verify GDS behavior.)
         for key_nr in clusters_datas.columns:
             key_nr = int(key_nr)
             # Get uncompressed array for key for all clusters
-            j += 1
             col_decompressed_buffers = clusters_datas.grab_ColOutput(key_nr)
             dtype_byte = self.ntuple.column_records[key_nr].type
             arrays = []
             ncol = key_nr
+<<<<<<< HEAD
 
             for i in cluster_range:
                 # Get decompressed buffer corresponding to cluster i
@@ -921,6 +1074,13 @@ in file {self.file.file_path}"""
                     ) / ((1 << nbits) - 1)
                     cluster_buffer = cluster_buffer.astype(cp.float32)
                 arrays.append(cluster_buffer)
+=======
+            
+            for cluster_i in cluster_range:
+                # Get decompressed buffer corresponding to cluster i
+                cluster_buffer = col_decompressed_buffers[cluster_i]
+                self.Deserialize_pages(cluster_buffer, ncol, cluster_i, arrays)
+>>>>>>> 3b5a29d (Add support for LZ4 decompression. Update some RNTuple tests to verify GDS behavior.)
 
             if dtype_byte in uproot.const.rntuple_delta_types:
                 # Extract the last offset values:
@@ -1149,7 +1309,6 @@ class RecordFrameReader:
         return self.payload.read(chunk, local_cursor, context)
 
 
-# https://github.com/root-project/root/blob/8cd9eed6f3a32e55ef1f0f1df8e5462e753c735d/tree/ntuple/v7/doc/BinaryFormatSpecification.md#frames
 class ListFrameReader:
     def __init__(self, payload):
         self.payload = payload
@@ -1434,6 +1593,8 @@ class RField(uproot.behaviors.RNTuple.HasFields):
         # For compatibility reasons we also accepts kwargs meant for TTrees
         interpretation=None,
         interpretation_executor=None,
+        use_GDS = False,
+        backend = "cpu",
     ):
         """
         Args:
@@ -1483,6 +1644,8 @@ class RField(uproot.behaviors.RNTuple.HasFields):
             entry_stop=entry_stop,
             library=library,
             ak_add_doc=ak_add_doc,
+            use_GDS = use_GDS,
+            backend = backend,
         )[self.name]
 
 
@@ -1510,6 +1673,8 @@ class ColBuffers_Cluster:
     key: str
     data: cp.ndarray
     isCompressed: bool
+    algorithm: str
+    compression_level: int
     pages: list[cp.ndarray] = field(default_factory=list)
     output: list[cp.ndarray] = field(default_factory=list)
 
@@ -1519,6 +1684,14 @@ class ColBuffers_Cluster:
     def add_output(self, buffer: cp.ndarray):
         self.output.append(buffer)
 
+<<<<<<< HEAD
+=======
+    def decompress(self):
+        if self.isCompressed and self.algorithm != None:
+            codec = NvCompBatchCodec(self.algorithm)
+            codec.decode_batch(self.pages, self.output)
+        
+>>>>>>> 3b5a29d (Add support for LZ4 decompression. Update some RNTuple tests to verify GDS behavior.)
 
 @dataclass
 class ColRefs_Cluster:
@@ -1530,18 +1703,30 @@ class ColRefs_Cluster:
 
     cluster_i: int
     columns: list[str] = field(default_factory=list)
+<<<<<<< HEAD
     data_dict: dict[str : list[cp.ndarray]] = field(default_factory=dict)
     data_dict_comp: dict[str : list[cp.ndarray]] = field(default_factory=dict)
     data_dict_uncomp: dict[str : list[cp.ndarray]] = field(default_factory=dict)
+=======
+    data_dict: dict[str: list[cp.ndarray]] = field(default_factory=dict)
+    data_dict_comp: dict[str: list[cp.ndarray]] = field(default_factory=dict)
+    data_dict_uncomp: dict[str: list[cp.ndarray]] = field(default_factory=dict)
+    colbuffers_cluster: list[ColBuffers_Cluster] = field(default_factory = list)
+    algorithms: dict[str: str] = field(default_factory=dict)
+>>>>>>> 3b5a29d (Add support for LZ4 decompression. Update some RNTuple tests to verify GDS behavior.)
 
     def add_Col(self, ColBuffers_Cluster):
-        self.columns.append(ColBuffers_Cluster.key)
-        self.data_dict[ColBuffers_Cluster.key] = ColBuffers_Cluster
+        self.colbuffers_cluster.append(ColBuffers_Cluster)
+        key = ColBuffers_Cluster.key
+        self.columns.append(key)
+        self.data_dict[key] = ColBuffers_Cluster
+        self.algorithms[key] = ColBuffers_Cluster.algorithm
         if ColBuffers_Cluster.isCompressed == True:
-            self.data_dict_comp[ColBuffers_Cluster.key] = ColBuffers_Cluster
+            self.data_dict_comp[key] = ColBuffers_Cluster
         else:
-            self.data_dict_uncomp[ColBuffers_Cluster.key] = ColBuffers_Cluster
+            self.data_dict_uncomp[key] = ColBuffers_Cluster
 
+<<<<<<< HEAD
     def decompress(self, alg="zstd"):
         # Combine comp and output buffers into two flattened lists
         list_ColBuffers = list(self.data_dict_comp.values())
@@ -1559,6 +1744,26 @@ class ColRefs_Cluster:
         else:
             codec = NvCompBatchCodec(alg)
             codec.decode_batch(list_pagebuffers, list_outputbuffers)
+=======
+    def decompress(self):
+        to_decompress = {}
+        target = {}
+        # organize data by compression algorithm
+        for colbuffers in self.colbuffers_cluster:
+            if colbuffers.algorithm != None:
+                if colbuffers.algorithm not in to_decompress.keys():
+                    to_decompress[colbuffers.algorithm] = []
+                    target[colbuffers.algorithm] = []
+                if colbuffers.isCompressed == True:
+                    to_decompress[colbuffers.algorithm].extend(colbuffers.pages)
+                    target[colbuffers.algorithm].extend(colbuffers.output)
+
+        # Batch decompress
+        for algorithm in to_decompress.keys():
+            codec = NvCompBatchCodec(algorithm)
+            codec.decode_batch(to_decompress[algorithm], target[algorithm])
+            
+>>>>>>> 3b5a29d (Add support for LZ4 decompression. Update some RNTuple tests to verify GDS behavior.)
 
 
 @dataclass
@@ -1586,6 +1791,7 @@ class Cluster_Refs:
 
         return output_list
 
+<<<<<<< HEAD
     def decompress(self, alg="zstd"):
         comp_content = []
         output_target = []
@@ -1605,6 +1811,28 @@ class Cluster_Refs:
 
         codec = NvCompBatchCodec(alg)
         codec.decode_batch(comp_content, output_target)
+=======
+    def decompress(self):
+        to_decompress = {}
+        target = {}
+        # organize data by compression algorithm
+        for cluster in self.refs.values():
+            for colbuffers in cluster.colbuffers_cluster:
+                if colbuffers.algorithm != None:
+                    if colbuffers.algorithm not in to_decompress.keys():
+                        to_decompress[colbuffers.algorithm] = []
+                        target[colbuffers.algorithm] = []
+                    if colbuffers.isCompressed == True:
+                        to_decompress[colbuffers.algorithm].extend(colbuffers.pages)
+                        target[colbuffers.algorithm].extend(colbuffers.output)
+        
+        # Batch decompress
+        for algorithm in to_decompress.keys():
+                codec = NvCompBatchCodec(algorithm)
+                codec.decode_batch(to_decompress[algorithm], target[algorithm])   
+        
+        
+>>>>>>> 3b5a29d (Add support for LZ4 decompression. Update some RNTuple tests to verify GDS behavior.)
 
 
 uproot.classes["ROOT::RNTuple"] = Model_ROOT_3a3a_RNTuple
