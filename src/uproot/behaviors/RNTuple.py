@@ -642,35 +642,6 @@ class HasFields(Mapping):
         """
         if use_GDS == False:
             return self._arrays(
-<<<<<<< HEAD
-                expressions,
-                cut,
-                filter_name=no_filter,
-                filter_typename=no_filter,
-                filter_field=no_filter,
-                aliases=None,  # TODO: Not implemented yet
-                language=uproot.language.python.python_language,  # TODO: Not implemented yet
-                entry_start=None,
-                entry_stop=None,
-                decompression_executor=None,  # TODO: Not implemented yet
-                array_cache="inherit",  # TODO: Not implemented yet
-                library="ak",  # TODO: Not implemented yet
-                backend=backend,  # TODO: Not Implemented yet
-                use_GDS=False,
-                ak_add_doc=False,
-                how=None,
-                # For compatibility reasons we also accepts kwargs meant for TTrees
-                interpretation_executor=None,
-                filter_branch=unset,
-            )
-
-        elif use_GDS == True and backend == "cuda":
-            return self._arrays_GDS(
-                expressions,
-                entry_start,
-                entry_stop,
-            )
-=======
                         expressions,
                         cut,
                         filter_name=filter_name,
@@ -712,7 +683,7 @@ class HasFields(Mapping):
                         interpretation_executor=interpretation_executor,
                         filter_branch=filter_branch,
                     )
->>>>>>> 3b5a29d (Add support for LZ4 decompression. Update some RNTuple tests to verify GDS behavior.)
+
         elif use_GDS == True and backend != "cuda":
             raise NotImplementedError("Backend {} GDS support not implemented.")
 
@@ -914,9 +885,6 @@ class HasFields(Mapping):
 
         return arrays
 
-<<<<<<< HEAD
-    def _arrays_GDS(self, columns, entry_start=0, entry_stop=None):
-=======
     def _arrays_GDS(        
         self,
         expressions=None,  # TODO: Not implemented yet
@@ -939,7 +907,7 @@ class HasFields(Mapping):
         interpretation_executor=None,
         filter_branch=unset,
     ):
->>>>>>> 3b5a29d (Add support for LZ4 decompression. Update some RNTuple tests to verify GDS behavior.)
+
         """
         Current GDS support is limited to nvidia GPUs. The python library kvikIO is
         a required dependency for Uproot GDS reading which can be installed by
@@ -982,26 +950,6 @@ class HasFields(Mapping):
         )
 
         # Get form for requested columns
-<<<<<<< HEAD
-        form = self.to_akform().select_columns(columns, prune_unions_and_records=False)
-
-        # Only read columns mentioned in the awkward form
-        target_cols = []
-        container_dict = {}
-        uproot.behaviors.RNTuple._recursive_find(form, target_cols)
-
-        #####
-        # Read and decompress all columns' data
-        clusters_datas = self.GPU_read_clusters(
-            target_cols, start_cluster_idx, stop_cluster_idx
-        )
-        clusters_datas.decompress()
-        #####
-        # Deserialize decompressed datas
-        content_dict = self.Deserialize_decompressed_content(
-            target_cols, start_cluster_idx, stop_cluster_idx, clusters_datas
-        )
-=======
         form = self.to_akform(
             filter_name=filter_name,
             filter_typename=filter_typename,
@@ -1027,7 +975,6 @@ class HasFields(Mapping):
                                               start_cluster_idx,
                                               stop_cluster_idx,
                                               clusters_datas)
->>>>>>> 3b5a29d (Add support for LZ4 decompression. Update some RNTuple tests to verify GDS behavior.)
         #####
         # Reconstitute arrays to an awkward array
         container_dict = {}
