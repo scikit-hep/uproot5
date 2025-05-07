@@ -73,7 +73,7 @@ classifiers = [
   "Topic :: Utilities"
 ]
 dependencies = [
-  "awkward>=2.4.6",
+  "awkward>=2.8.2",
   "cramjam>=2.5.0",
   "xxhash",
   "numpy",
