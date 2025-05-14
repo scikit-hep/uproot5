@@ -86,7 +86,10 @@ def test_bitset(backend, GDS, library):
         )
         assert ak.all(a.bitset[2][16:] == 0)
 
-@pytest.mark.parametrize("backend,GDS,library", [("cpu", False, numpy), ("cuda", True, cupy)])
+
+@pytest.mark.parametrize(
+    "backend,GDS,library", [("cpu", False, numpy), ("cuda", True, cupy)]
+)
 def test_empty_struct(backend, GDS, library):
     filename = skhep_testdata.data_path(
         "test_emptystruct_invalidvar_rntuple_v1-0-0-0.root"
@@ -94,8 +97,7 @@ def test_empty_struct(backend, GDS, library):
     with uproot.open(filename) as f:
         obj = f["ntuple"]
 
-        a = obj.arrays("empty_struct", backend = backend,
-                                       use_GDS = GDS)
+        a = obj.arrays("empty_struct", backend=backend, use_GDS=GDS)
 
         assert a.empty_struct.tolist() == [(), (), ()]
 

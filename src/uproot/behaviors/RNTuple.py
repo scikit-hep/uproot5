@@ -679,9 +679,7 @@ class HasFields(Mapping):
             )
 
         elif use_GDS == True and backend != "cuda":
-            raise NotImplementedError(
-                f"Backend {backend} GDS support not implemented."
-            )
+            raise NotImplementedError(f"Backend {backend} GDS support not implemented.")
 
     def _arrays(
         self,
