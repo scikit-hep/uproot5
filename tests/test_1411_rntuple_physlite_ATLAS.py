@@ -100,7 +100,7 @@ def test_truth_muon_containers(physlite_file, backend, GDS, library):
     # Check values
     mass_evt_0 = 105.7
     AOD_type = [":_0"]  # Uproot interpretation of AOD containers
-    mu_pdgid = [13, -13]
+    mu_pdgid = library.array([13, -13])
 
     assert (
         arrays["TruthMuons"].fields == AOD_type
