@@ -71,7 +71,7 @@ compression_settings_dict = {
     0 : "UseGlobal",
     1 : "ZLIB",
     2 : "LZMA",
-    3 : "OldCompressionAlgo",
+    3 : "deflate",
     4 : "LZ4",
     5 : "zstd",
 }
@@ -790,6 +790,7 @@ in file {self.file.file_path}"""
     def GPU_read_col_cluster_pages(self, ncol, cluster_i, filehandle, debug=False):
         # Get cluster and pages metadatas
         linklist = self.page_link_list[cluster_i]
+        ncol_orig = ncol
         if ncol < len(linklist):
             if linklist[ncol].suppressed:
                 rel_crs = self._column_records_dict[self.column_records[ncol].field_id]
@@ -815,21 +816,33 @@ in file {self.file.file_path}"""
             dtype = numpy.dtype([("index", "int64"), ("tag", "int32")])
         elif dtype_str == "bit":
             dtype = numpy.dtype("bool")
+        elif dtype_byte in uproot.const.rntuple_custom_float_types:
+            dtype = numpy.dtype("uint32")  # for easier bit manipulation
         else:
             dtype = numpy.dtype(dtype_str)
 
+
         full_output_buffer = cp.empty(total_len, dtype = dtype)    
-    
+
+        nbits = (
+            self.column_records[ncol].nbits
+            if ncol < len(self.column_records)
+            else uproot.const.rntuple_col_num_to_size_dict[dtype_byte]
+            )
         # Check if col compressed/decompressed
         if isbit:  # Need to correct length when dtype = bit
             total_len = int(numpy.ceil(total_len / 8))
+        elif dtype_str in ("real32trunc", "real32quant"):
+            total_len = int(numpy.ceil((total_len * 4 * nbits) / 32))
+            dtype = numpy.dtype("uint8")
+            
         total_bytes = numpy.sum([desc.locator.num_bytes for desc in pagelist])
         if total_bytes != total_len * dtype.itemsize:
             isCompressed = True
         else:
             isCompressed = False
 
-        Cluster_Contents = ColBuffers_Cluster(ncol,
+        Cluster_Contents = ColBuffers_Cluster(ncol_orig,
                                               full_output_buffer,
                                               isCompressed,
                                               algorithm_str,
@@ -871,16 +884,26 @@ in file {self.file.file_path}"""
     def Deserialize_pages(self, cluster_buffer, ncol, cluster_i, arrays):
         # Get pagelist and metadatas
         linklist = self.page_link_list[cluster_i]
-        pagelist = linklist[ncol].pages if ncol < len(linklist) else []
+        if ncol < len(linklist):
+            if linklist[ncol].suppressed:
+                rel_crs = self._column_records_dict[self.column_records[ncol].field_id]
+                ncol = next(cr.idx for cr in rel_crs if not linklist[cr.idx].suppressed)
+            linklist_col = linklist[ncol]
+            pagelist = linklist_col.pages
+        else:
+            pagelist = []
+
         dtype_byte = self.column_records[ncol].type
         dtype_str = uproot.const.rntuple_col_num_to_dtype_dict[dtype_byte]
         total_len = numpy.sum([desc.num_elements for desc in pagelist], dtype=int)
         if dtype_str == "switch":
-            dtype = cp.dtype([("index", "int64"), ("tag", "int32")])
+            dtype = numpy.dtype([("index", "int64"), ("tag", "int32")])
         elif dtype_str == "bit":
-            dtype = cp.dtype("bool")
+            dtype = numpy.dtype("bool")
+        elif dtype_byte in uproot.const.rntuple_custom_float_types:
+            dtype = numpy.dtype("uint32")  # for easier bit manipulation
         else:
-            dtype = cp.dtype(dtype_str)
+            dtype = numpy.dtype(dtype_str)
         split = dtype_byte in uproot.const.rntuple_split_types
         zigzag = dtype_byte in uproot.const.rntuple_zigzag_types
         delta = dtype_byte in uproot.const.rntuple_delta_types
@@ -900,12 +923,14 @@ in file {self.file.file_path}"""
             
             # Get content associated with page
             page_buffer = cluster_buffer[tracker:tracker_end]
+
             self.Deserialize_page_decompressed_buffer(page_buffer,
                                             page_desc,
                                             dtype_str,
                                             dtype,
                                             nbits,
                                             split)
+
     
             if delta:
                 cluster_buffer[tracker] -= cumsum
@@ -923,7 +948,7 @@ in file {self.file.file_path}"""
         elif dtype_str == "real32quant" and ncol < len(self.column_records):
             min_value = self.column_records[ncol].min_value
             max_value = self.column_records[ncol].max_value
-            cluster_content = min_value + cluster_content.astype(cp.float32) * (max_value - min_value) / (
+            cluster_buffer = min_value + cluster_buffer.astype(cp.float32) * (max_value - min_value) / (
                 (1 << nbits) - 1
             )
             cluster_buffer = cluster_buffer.astype(cp.float32)
@@ -943,6 +968,7 @@ in file {self.file.file_path}"""
             key_nr = int(key_nr)
             # Get uncompressed array for key for all clusters
             col_decompressed_buffers = clusters_datas.grab_ColOutput(key_nr)
+
             dtype_byte = self.ntuple.column_records[key_nr].type
             arrays = []
             ncol = key_nr
@@ -950,6 +976,7 @@ in file {self.file.file_path}"""
             for cluster_i in cluster_range:
                 # Get decompressed buffer corresponding to cluster i
                 cluster_buffer = col_decompressed_buffers[cluster_i]
+
                 self.Deserialize_pages(cluster_buffer, ncol, cluster_i, arrays)
 
             if dtype_byte in uproot.const.rntuple_delta_types:
@@ -965,7 +992,7 @@ in file {self.file.file_path}"""
                     arrays[i] += last_offsets[i - 1]
                 # Remove the first element from every sub-array except for the first one:
                 arrays = [arrays[0]] + [arr[1:] for arr in arrays[1:]]
-
+            
             res = cp.concatenate(arrays, axis=0)
             del arrays
             if True:
@@ -983,7 +1010,7 @@ in file {self.file.file_path}"""
         # bool in RNTuple is always stored as bits
         isbit = dtype_str == "bit"
         num_elements = len(destination)
-
+        
         if split:
             content = cp.copy(destination).view(cp.uint8)
             length = content.shape[0]
@@ -1017,32 +1044,66 @@ in file {self.file.file_path}"""
                 res[7::8] = content[length * 7 // 8 : length * 8 // 8]
 
             content = res.view(dtype)
-
+        
         if isbit:
             content = cp.unpackbits(destination.view(dtype=cp.uint8), bitorder="little")
         elif dtype_str in ("real32trunc", "real32quant"):
             if nbits == 32:
-                content = content.view(cp.uint32)
-            elif nbits % 8 == 0:
-                new_content = cp.zeros((num_elements, 4), cp.uint8)
-                nbytes = nbits // 8
-                new_content[:, :nbytes] = content.reshape(-1, nbytes)
-                content = new_content.view(cp.uint32).reshape(-1)
+                content = cp.copy(destination).view(cp.uint32)
+            # elif nbits % 8 == 0:
+            #     new_content = cp.zeros((num_elements, 4), cp.uint8)
+            #     nbytes = nbits // 8
+            #     new_content[:, :nbytes] = content.reshape(-1, nbytes)
+            #     content = new_content.view(cp.uint32).reshape(-1)
+    
+    
+            #     new_content = numpy.zeros((num_elements, 4), numpy.uint8)
+            #     nbytes = nbits // 8
+            #     new_content[:, :nbytes] = content.reshape(-1, nbytes)
+            #     content = new_content.view(numpy.uint32).reshape(-1)
+                
             else:
-                ak = uproot.extras.awkward()
-                vm = ak.forth.ForthMachine32(
-                    f"""input x output y uint32 {num_elements} x #{nbits}bit-> y"""
-                )
-                vm.run({"x": content})
-                content = vm["y"]
+                content = cp.copy(destination).view(cp.uint8)
+                content = extract_bits_cupy(content, nbits)
             if dtype_str == "real32trunc":
                 content <<= 32 - nbits
 
+
         # needed to chop off extra bits incase we used `unpackbits`
         try:
-            destination[:] = content[:num_elements]
+            destination[:] = content[:num_elements].view(dtype)
         except:
             pass
+
+
+
+def extract_bits_cupy(packed, nbits):
+    packed = packed.view(dtype=cp.uint32)
+
+    total_bits = packed.size * 32
+    n_values = total_bits // nbits
+    result = cp.empty(n_values, dtype=cp.uint32)
+
+    # Indices into packed array
+    bit_positions = cp.arange(n_values, dtype=cp.uint32) * nbits
+    word_idx = bit_positions // 32
+    offset = bit_positions % 32
+
+    # Read bits from packed words
+    current_word = packed[word_idx]
+    next_word = packed[word_idx + 1] if nbits > 1 else cp.zeros_like(current_word)
+
+    # Handle bit overflow (i.e., bits span two words)
+    mask = (1 << nbits) - 1
+    bits_left = 32 - offset
+    needs_second_word = offset + nbits > 32
+
+    # Extract bits
+    first_part = (current_word >> offset) & mask
+    second_part = ((next_word << bits_left) & mask)
+
+    result = cp.where(needs_second_word, first_part | second_part, first_part)
+    return result
 
 
 # Supporting function and classes
@@ -1618,11 +1679,14 @@ class Cluster_Refs:
 
     clusters: [int] = field(default_factory=list)
     columns: list[str] = field(default_factory=list)
-    refs: dict[int:ColRefs_Cluster] = field(default_factory=dict)
+    refs: dict[int: ColRefs_Cluster] = field(default_factory=dict)
 
     def add_cluster(self, Cluster):
-        if self.columns == []:
-            self.columns = Cluster.columns
+        for nCol in Cluster.columns:
+            if nCol not in self.columns:
+                self.columns.append(nCol)
+        # if self.columns == []:
+        #     self.columns = Cluster.columns
         cluster_i = Cluster.cluster_i
         self.clusters.append(cluster_i)
         self.refs[cluster_i] = Cluster
@@ -1630,8 +1694,11 @@ class Cluster_Refs:
     def grab_ColOutput(self, nCol):
         output_list = []
         for cluster in self.refs.values():
-            colbuffer = cluster.data_dict[nCol].data
-            output_list.append(colbuffer)
+            try:
+                colbuffer = cluster.data_dict[nCol].data
+                output_list.append(colbuffer)
+            except: 
+                pass
 
         return output_list
 

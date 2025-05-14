@@ -1,10 +1,14 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot5/blob/main/LICENSE
 
+import pytest
 import skhep_testdata
 import numpy as np
 
 import uproot
 
+import numpy
+import cupy
+ak = pytest.importorskip("awkward")
 
 def truncate_float(value, bits):
     a = np.float32(value).view(np.uint32)
@@ -22,13 +26,14 @@ def quantize_float(value, bits, min, max):
     quantized_float = min + int_value * (max - min) / ((1 << bits) - 1)
     return quantized_float.astype(np.float32)
 
-
-def test_custom_floats():
+@pytest.mark.parametrize("backend,GDS,library", [("cpu", False, numpy), ("cuda", True, cupy)])
+def test_custom_floats(backend, GDS, library):
     filename = skhep_testdata.data_path("test_float_types_rntuple_v1-0-0-0.root")
     with uproot.open(filename) as f:
         obj = f["ntuple"]
 
-        arrays = obj.arrays()
+        arrays = obj.arrays(backend = backend,
+                            use_GDS = GDS)
 
         min_value = -2.0
         max_value = 3.0
@@ -39,25 +44,25 @@ def test_custom_floats():
         assert entry.trunc16 == truncate_float(true_value, 16)
         assert entry.trunc24 == truncate_float(true_value, 24)
         assert entry.trunc31 == truncate_float(true_value, 31)
-        assert np.isclose(
+        assert library.isclose(
             entry.quant1, quantize_float(true_value, 1, min_value, max_value)
         )
-        assert np.isclose(
+        assert library.isclose(
             entry.quant8, quantize_float(true_value, 8, min_value, max_value)
         )
-        assert np.isclose(
+        assert library.isclose(
             entry.quant16, quantize_float(true_value, 16, min_value, max_value)
         )
-        assert np.isclose(
+        assert library.isclose(
             entry.quant20, quantize_float(true_value, 20, min_value, max_value)
         )
-        assert np.isclose(
+        assert library.isclose(
             entry.quant24, quantize_float(true_value, 24, min_value, max_value)
         )
-        assert np.isclose(
+        assert library.isclose(
             entry.quant25, quantize_float(true_value, 25, min_value, max_value)
         )
-        assert np.isclose(
+        assert library.isclose(
             entry.quant32, quantize_float(true_value, 32, min_value, max_value)
         )
 
@@ -68,25 +73,25 @@ def test_custom_floats():
         assert entry.trunc24 == truncate_float(true_value, 24)
         assert entry.trunc31 == truncate_float(true_value, 31)
         true_value = 1.6666666
-        assert np.isclose(
+        assert library.isclose(
             entry.quant1, quantize_float(true_value, 1, min_value, max_value)
         )
-        assert np.isclose(
+        assert library.isclose(
             entry.quant8, quantize_float(true_value, 8, min_value, max_value)
         )
-        assert np.isclose(
+        assert library.isclose(
             entry.quant16, quantize_float(true_value, 16, min_value, max_value)
         )
-        assert np.isclose(
+        assert library.isclose(
             entry.quant20, quantize_float(true_value, 20, min_value, max_value)
         )
-        assert np.isclose(
+        assert library.isclose(
             entry.quant24, quantize_float(true_value, 24, min_value, max_value)
         )
-        assert np.isclose(
+        assert library.isclose(
             entry.quant25, quantize_float(true_value, 25, min_value, max_value)
         )
-        assert np.isclose(
+        assert library.isclose(
             entry.quant32, quantize_float(true_value, 32, min_value, max_value)
         )
 
@@ -96,27 +101,27 @@ def test_custom_floats():
         assert entry.trunc16 == truncate_float(true_value, 16)
         assert entry.trunc24 == truncate_float(true_value, 24)
         assert entry.trunc31 == truncate_float(true_value, 31)
-        assert np.isclose(
+        assert library.isclose(
             entry.quant1, quantize_float(true_value, 1, min_value, max_value)
         )
-        assert np.isclose(
+        assert library.isclose(
             entry.quant8, quantize_float(true_value, 8, min_value, max_value)
         )
-        assert np.isclose(
+        assert library.isclose(
             entry.quant16, quantize_float(true_value, 16, min_value, max_value)
         )
-        assert np.isclose(
+        assert library.isclose(
             entry.quant20, quantize_float(true_value, 20, min_value, max_value)
         )
-        assert np.isclose(
+        assert library.isclose(
             entry.quant24, quantize_float(true_value, 24, min_value, max_value)
         )
-        assert np.isclose(
+        assert library.isclose(
             entry.quant25,
             quantize_float(true_value, 25, min_value, max_value),
             atol=2e-07,
         )
-        assert np.isclose(
+        assert library.isclose(
             entry.quant32, quantize_float(true_value, 32, min_value, max_value)
         )
 
@@ -126,30 +131,30 @@ def test_custom_floats():
         assert entry.trunc16 == truncate_float(true_value, 16)
         assert entry.trunc24 == truncate_float(true_value, 24)
         assert entry.trunc31 == truncate_float(true_value, 31)
-        assert np.isclose(
+        assert library.isclose(
             entry.quant1, quantize_float(true_value, 1, min_value, max_value)
         )
-        assert np.isclose(
+        assert library.isclose(
             entry.quant8, quantize_float(true_value, 8, min_value, max_value)
         )
-        assert np.isclose(
+        assert library.isclose(
             entry.quant16, quantize_float(true_value, 16, min_value, max_value)
         )
-        assert np.isclose(
+        assert library.isclose(
             entry.quant20, quantize_float(true_value, 20, min_value, max_value)
         )
-        assert np.isclose(
+        assert library.isclose(
             entry.quant24, quantize_float(true_value, 24, min_value, max_value)
         )
-        assert np.isclose(
+        assert library.isclose(
             entry.quant25, quantize_float(true_value, 25, min_value, max_value)
         )
-        assert np.isclose(
+        assert library.isclose(
             entry.quant32, quantize_float(true_value, 32, min_value, max_value)
         )
 
-
-def test_multiple_representations():
+@pytest.mark.parametrize("backend,GDS,library", [("cpu", False, numpy), ("cuda", True, cupy)])
+def test_multiple_representations(backend, GDS, library):
     filename = skhep_testdata.data_path(
         "test_multiple_representations_rntuple_v1-0-0-0.root"
     )
@@ -162,6 +167,7 @@ def test_multiple_representations():
         assert obj.page_link_list[1][0].suppressed
         assert not obj.page_link_list[2][0].suppressed
 
-        arrays = obj.arrays()
+        arrays = obj.arrays(backend = backend,
+                            use_GDS = GDS)
 
-        assert np.allclose(arrays.real, [1, 2, 3])
+        assert library.allclose(arrays.real, library.array([1, 2, 3]))

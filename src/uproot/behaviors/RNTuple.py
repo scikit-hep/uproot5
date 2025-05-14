@@ -820,9 +820,11 @@ class HasFields(Mapping):
         target_cols = []
         container_dict = {}
         _recursive_find(form, target_cols)
+
         for key in target_cols:
             if "column" in key and "union" not in key:
                 key_nr = int(key.split("-")[1])
+
                 dtype_byte = self.ntuple.column_records[key_nr].type
 
                 content = self.ntuple.read_col_pages(
@@ -831,6 +833,7 @@ class HasFields(Mapping):
                     dtype_byte=dtype_byte,
                     pad_missing_element=True,
                 )
+                
                 if "cardinality" in key:
                     content = numpy.diff(content)
                 if dtype_byte == uproot.const.rntuple_col_type_to_num_dict["switch"]:
@@ -849,10 +852,12 @@ class HasFields(Mapping):
                     container_dict[f"{key}-index"] = optional_index
                     container_dict[f"{key}-union-index"] = kindex
                     container_dict[f"{key}-union-tags"] = tags
+
                 else:
                     # don't distinguish data and offsets
                     container_dict[f"{key}-data"] = content
                     container_dict[f"{key}-offsets"] = content
+        
         cluster_offset = cluster_starts[start_cluster_idx]
         entry_start -= cluster_offset
         entry_stop -= cluster_offset
@@ -960,8 +965,9 @@ class HasFields(Mapping):
         # Only read columns mentioned in the awkward form
         target_cols = []
         container_dict = {}
+        
         _recursive_find(form, target_cols)
-    
+
         #####
         # Read and decompress all columns' data
         clusters_datas = self.ntuple.GPU_read_clusters(
@@ -982,6 +988,7 @@ class HasFields(Mapping):
         for key in target_cols:
             if "column" in key and "union" not in key:
                 key_nr = int(key.split("-")[1])
+
                 dtype_byte = self.ntuple.column_records[key_nr].type
                 content = content_dict[key_nr]
 
@@ -1001,9 +1008,9 @@ class HasFields(Mapping):
                         )
                     else:
                         optional_index = numpy.arange(len(kindex), dtype=numpy.int64)
-                    container_dict[f"{key}-index"] = optional_index
-                    container_dict[f"{key}-union-index"] = kindex
-                    container_dict[f"{key}-union-tags"] = tags
+                    container_dict[f"{key}-index"] = cp.array(optional_index)
+                    container_dict[f"{key}-union-index"] = cp.array(kindex)
+                    container_dict[f"{key}-union-tags"] = cp.array(tags)
                 else:
                     # don't distinguish data and offsets
                     container_dict[f"{key}-data"] = content
@@ -1011,6 +1018,7 @@ class HasFields(Mapping):
         cluster_offset = cluster_starts[start_cluster_idx]
         entry_start -= cluster_offset
         entry_stop -= cluster_offset
+        
         arrays = uproot.extras.awkward().from_buffers(
             form,
             cluster_num_entries,
@@ -1158,7 +1166,7 @@ class HasFields(Mapping):
         )
         # TODO: This can be done more efficiently
         for start in range(0, self.num_entries, step_size):
-            yield self.arrays(
+            yield self._arrays(
                 filter_name=filter_name,
                 filter_typename=filter_typename,
                 filter_field=filter_field,
