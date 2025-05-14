@@ -5,6 +5,7 @@ import pytest
 
 import numpy
 import cupy
+
 ak = pytest.importorskip("awkward")
 
 
@@ -19,7 +20,10 @@ def physlite_file():
         ), "EventData is not an RNTuple"
         yield f["EventData"]  # keeps file open
 
-@pytest.mark.parametrize("backend,GDS,library", [("cpu", False, numpy), ("cuda", True, cupy)])
+
+@pytest.mark.parametrize(
+    "backend,GDS,library", [("cpu", False, numpy), ("cuda", True, cupy)]
+)
 def test_analysis_muons_kinematics(physlite_file, backend, GDS, library):
     """Test that kinematic variables of AnalysisMuons can be read and match expected length."""
     cols = [
@@ -32,8 +36,7 @@ def test_analysis_muons_kinematics(physlite_file, backend, GDS, library):
     arrays = {}
     for col in cols:
         assert col in physlite_file.keys(), f"Column '{col}' not found"
-        arrays[col] = physlite_file[col].array(backend = backend,
-                                               use_GDS = GDS)
+        arrays[col] = physlite_file[col].array(backend=backend, use_GDS=GDS)
 
     # Check same structure, number of total muons, and values
     n_expected_muons = 88
@@ -49,7 +52,10 @@ def test_analysis_muons_kinematics(physlite_file, backend, GDS, library):
             library.round(ak.mean(arr), 2) == expected_means[i]
         ), f"{col} mean value does not match the expected one"
 
-@pytest.mark.parametrize("backend,GDS,library", [("cpu", False, numpy), ("cuda", True, cupy)])
+
+@pytest.mark.parametrize(
+    "backend,GDS,library", [("cpu", False, numpy), ("cuda", True, cupy)]
+)
 def test_event_info(physlite_file, backend, GDS, library):
     """Test that eventInfo variables can be read and match expected first event."""
     cols = [
@@ -61,8 +67,7 @@ def test_event_info(physlite_file, backend, GDS, library):
     first_event = {}
     for col in cols:
         assert col in physlite_file.keys(), f"Column '{col}' not found"
-        first_event[col] = physlite_file[col].array(backend = backend,
-                                                    use_GDS = GDS)[0]
+        first_event[col] = physlite_file[col].array(backend=backend, use_GDS=GDS)[0]
 
     # Check first event values
     # expected event info values: event number, pile-up, lumiBlock
@@ -73,7 +78,10 @@ def test_event_info(physlite_file, backend, GDS, library):
             value == expected_values[i]
         ), f"First event {col} doest not match the expected value"
 
-@pytest.mark.parametrize("backend,GDS,library", [("cpu", False, numpy), ("cuda", True, cupy)])
+
+@pytest.mark.parametrize(
+    "backend,GDS,library", [("cpu", False, numpy), ("cuda", True, cupy)]
+)
 def test_truth_muon_containers(physlite_file, backend, GDS, library):
     """Test that truth muon variables can be read and match expected values."""
     cols = [
@@ -86,8 +94,7 @@ def test_truth_muon_containers(physlite_file, backend, GDS, library):
     arrays = {}
     for col in cols:
         assert col in physlite_file.keys(), f"Column '{col}' not found"
-        temp = physlite_file[col].array(backend = backend,
-                                        use_GDS = GDS)
+        temp = physlite_file[col].array(backend=backend, use_GDS=GDS)
         arrays[col] = temp
 
     # Check values
@@ -102,5 +109,7 @@ def test_truth_muon_containers(physlite_file, backend, GDS, library):
         ak.flatten(arrays["TruthMuonsAuxDyn:m"])[0], mass_evt_0
     ), "Truth mass of first event does not match expected value"
     assert library.all(
-        library.isin(ak.to_numpy(ak.flatten(arrays["TruthMuonsAuxDyn:pdgId"])), mu_pdgid)
+        library.isin(
+            ak.to_numpy(ak.flatten(arrays["TruthMuonsAuxDyn:pdgId"])), mu_pdgid
+        )
     ), "Retrieved pdgids are not 13/-13"

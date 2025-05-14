@@ -7,6 +7,7 @@ import uproot
 
 import numpy
 import cupy
+
 ak = pytest.importorskip("awkward")
 
 
@@ -26,21 +27,21 @@ def test_field_class():
         v = sub_sub_struct["v"]
         assert len(v) == 1
 
-@pytest.mark.parametrize("backend,GDS,library", [("cpu", False, numpy), ("cuda", True, cupy)])
+
+@pytest.mark.parametrize(
+    "backend,GDS,library", [("cpu", False, numpy), ("cuda", True, cupy)]
+)
 def test_array_methods(backend, GDS, library):
     filename = skhep_testdata.data_path(
         "Run2012BC_DoubleMuParked_Muons_1000evts_rntuple_v1-0-0-0.root"
     )
     with uproot.open(filename) as f:
         obj = f["Events"]
-        nMuon_array = obj["nMuon"].array(backend = backend,
-                                         use_GDS = GDS)
-        Muon_pt_array = obj["Muon_pt"].array(backend = backend,
-                                             use_GDS = GDS)
+        nMuon_array = obj["nMuon"].array(backend=backend, use_GDS=GDS)
+        Muon_pt_array = obj["Muon_pt"].array(backend=backend, use_GDS=GDS)
         assert ak.all(nMuon_array == library.array([len(l) for l in Muon_pt_array]))
 
-        nMuon_arrays = obj["nMuon"].arrays(backend = backend,
-                                           use_GDS = GDS)
+        nMuon_arrays = obj["nMuon"].arrays(backend=backend, use_GDS=GDS)
         assert len(nMuon_arrays.fields) == 1
         assert len(nMuon_arrays) == 1000
         assert ak.all(nMuon_arrays["nMuon"] == nMuon_array)

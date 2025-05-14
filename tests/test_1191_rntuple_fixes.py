@@ -7,11 +7,15 @@ import uproot
 
 import numpy
 import cupy
+
 ak = pytest.importorskip("awkward")
 
 from kvikio import CuFile
 
-@pytest.mark.parametrize("backend,GDS,library", [("cpu", False, numpy), ("cuda", True, cupy)])
+
+@pytest.mark.parametrize(
+    "backend,GDS,library", [("cpu", False, numpy), ("cuda", True, cupy)]
+)
 def test_schema_extension(backend, GDS, library):
     filename = skhep_testdata.data_path("test_extension_columns_rntuple_v1-0-0-0.root")
     with uproot.open(filename) as f:
@@ -24,8 +28,7 @@ def test_schema_extension(backend, GDS, library):
         assert obj.column_records[1].first_element_index == 200
         assert obj.column_records[2].first_element_index == 400
 
-        arrays = obj.arrays(backend = backend,
-                            use_GDS = GDS)
+        arrays = obj.arrays(backend=backend, use_GDS=GDS)
 
         assert len(arrays.float_field) == 600
         assert len(arrays.intvec_field) == 600
@@ -36,18 +39,25 @@ def test_schema_extension(backend, GDS, library):
         assert next(i for i, l in enumerate(arrays.float_field) if l != 0) == 200
         assert next(i for i, l in enumerate(arrays.intvec_field) if len(l) != 0) == 400
 
-@pytest.mark.parametrize("backend,GDS,library", [("cpu", False, numpy), ("cuda", True, cupy)])
+
+@pytest.mark.parametrize(
+    "backend,GDS,library", [("cpu", False, numpy), ("cuda", True, cupy)]
+)
 def test_rntuple_cardinality(backend, GDS, library):
     filename = skhep_testdata.data_path(
         "Run2012BC_DoubleMuParked_Muons_1000evts_rntuple_v1-0-0-0.root"
     )
     with uproot.open(filename) as f:
         obj = f["Events"]
-        arrays = obj.arrays(backend = backend,
-                            use_GDS = GDS)
-        assert ak.all(arrays["nMuon"] == library.array([len(l) for l in arrays["Muon_pt"]]))
+        arrays = obj.arrays(backend=backend, use_GDS=GDS)
+        assert ak.all(
+            arrays["nMuon"] == library.array([len(l) for l in arrays["Muon_pt"]])
+        )
 
-@pytest.mark.parametrize("backend,GDS,library", [("cpu", False, numpy), ("cuda", True, cupy)])
+
+@pytest.mark.parametrize(
+    "backend,GDS,library", [("cpu", False, numpy), ("cuda", True, cupy)]
+)
 def test_multiple_page_delta_encoding(backend, GDS, library):
     filename = skhep_testdata.data_path("test_index_multicluster_rntuple_v1-0-0-0.root")
     with uproot.open(filename) as f:
@@ -59,24 +69,24 @@ def test_multiple_page_delta_encoding(backend, GDS, library):
 
         if backend == "cuda":
             with CuFile(filename, "rb") as f:
-                col_clusterbuffers, futures = obj.GPU_read_col_cluster_pages(0,0,f)
+                col_clusterbuffers, futures = obj.GPU_read_col_cluster_pages(0, 0, f)
                 for future in futures:
                     future.get()
                 col_clusterbuffers._decompress()
                 data = obj.Deserialize_pages(col_clusterbuffers.data, 0, 0, [])
                 assert data[64] - data[63] == 2
-        
-            
 
-@pytest.mark.parametrize("backend,GDS,library", [("cpu", False, numpy), ("cuda", True, cupy)])
+
+@pytest.mark.parametrize(
+    "backend,GDS,library", [("cpu", False, numpy), ("cuda", True, cupy)]
+)
 def test_split_encoding(backend, GDS, library):
     filename = skhep_testdata.data_path(
         "Run2012BC_DoubleMuParked_Muons_1000evts_rntuple_v1-0-0-0.root"
     )
     with uproot.open(filename) as f:
         obj = f["Events"]
-        arrays = obj.arrays(backend = backend,
-                            use_GDS = GDS)
+        arrays = obj.arrays(backend=backend, use_GDS=GDS)
 
         expected_pt = library.array([10.763696670532227, 15.736522674560547])
         expected_charge = library.array([-1, -1])

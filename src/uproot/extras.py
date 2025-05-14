@@ -346,6 +346,7 @@ or
     else:
         return awkward_pandas
 
+
 def cupy():
     """
     Imports and returns ``cupy``.
@@ -355,11 +356,12 @@ def cupy():
     except ModuleNotFoundError as err:
         raise ModuleNotFoundError(
             """Cupy is required for GDS reading to work. Please install GDS dependencies with:
-    `python3 -m pip install uproot[GDS_cuX]` 
+    `python3 -m pip install uproot[GDS_cuX]`
 where X is the cuda major version on user's system (11 and 12 currently supported). Cuda major version can be checked by calling `nvidia-smi --version` or `nvcc --version` if available."""
         ) from err
     else:
         return cupy
+
 
 def kvikio():
     """
@@ -368,12 +370,14 @@ def kvikio():
     try:
         import kvikio
     except ModuleNotFoundError as err:
-        raise ModuleNotFoundError("""Kvikio is required for GDS reading to work. Please install GDS dependencies with:
-    `python3 -m pip install uproot[GDS_cuX]` 
+        raise ModuleNotFoundError(
+            """Kvikio is required for GDS reading to work. Please install GDS dependencies with:
+    `python3 -m pip install uproot[GDS_cuX]`
 where X is the cuda major version on user's system (11 and 12 currently supported). Cuda major version can be checked by calling `nvidia-smi --version` or `nvcc --version` if available."""
         ) from err
     else:
         return kvikio
+
 
 def kvikio_nvcomp_codec():
     """
@@ -382,11 +386,10 @@ def kvikio_nvcomp_codec():
     try:
         import kvikio.nvcomp_codec as kvikio_nvcomp_codec
     except ModuleNotFoundError as err:
-        raise ModuleNotFoundError("""Kvikio is required for GDS reading to work. Please install GDS dependencies with:
-    `python3 -m pip install uproot[GDS_cuX]` 
+        raise ModuleNotFoundError(
+            """Kvikio is required for GDS reading to work. Please install GDS dependencies with:
+    `python3 -m pip install uproot[GDS_cuX]`
 where X is the cuda major version on user's system (11 and 12 currently supported). Cuda major version can be checked by calling `nvidia-smi --version` or `nvcc --version` if available."""
         ) from err
     else:
         return kvikio_nvcomp_codec
-    
-        

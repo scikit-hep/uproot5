@@ -8,16 +8,19 @@ import uproot
 
 import numpy
 import cupy
+
 ak = pytest.importorskip("awkward")
 
-@pytest.mark.parametrize("backend,GDS,library", [("cpu", False, numpy), ("cuda", True, cupy)])
+
+@pytest.mark.parametrize(
+    "backend,GDS,library", [("cpu", False, numpy), ("cuda", True, cupy)]
+)
 def test_schema_extension(backend, GDS, library):
     filename = skhep_testdata.data_path("test_index_multicluster_rntuple_v1-0-0-0.root")
     with uproot.open(filename) as f:
         obj = f["ntuple"]
 
-        arrays = obj.arrays(backend = backend,
-                            use_GDS = GDS)
+        arrays = obj.arrays(backend=backend, use_GDS=GDS)
         int_vec_array = arrays["int_vector"]
 
         for j in range(2):

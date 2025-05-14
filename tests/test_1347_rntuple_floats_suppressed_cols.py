@@ -8,7 +8,9 @@ import uproot
 
 import numpy
 import cupy
+
 ak = pytest.importorskip("awkward")
+
 
 def truncate_float(value, bits):
     a = np.float32(value).view(np.uint32)
@@ -26,14 +28,16 @@ def quantize_float(value, bits, min, max):
     quantized_float = min + int_value * (max - min) / ((1 << bits) - 1)
     return quantized_float.astype(np.float32)
 
-@pytest.mark.parametrize("backend,GDS,library", [("cpu", False, numpy), ("cuda", True, cupy)])
+
+@pytest.mark.parametrize(
+    "backend,GDS,library", [("cpu", False, numpy), ("cuda", True, cupy)]
+)
 def test_custom_floats(backend, GDS, library):
     filename = skhep_testdata.data_path("test_float_types_rntuple_v1-0-0-0.root")
     with uproot.open(filename) as f:
         obj = f["ntuple"]
 
-        arrays = obj.arrays(backend = backend,
-                            use_GDS = GDS)
+        arrays = obj.arrays(backend=backend, use_GDS=GDS)
 
         min_value = -2.0
         max_value = 3.0
@@ -153,7 +157,10 @@ def test_custom_floats(backend, GDS, library):
             entry.quant32, quantize_float(true_value, 32, min_value, max_value)
         )
 
-@pytest.mark.parametrize("backend,GDS,library", [("cpu", False, numpy), ("cuda", True, cupy)])
+
+@pytest.mark.parametrize(
+    "backend,GDS,library", [("cpu", False, numpy), ("cuda", True, cupy)]
+)
 def test_multiple_representations(backend, GDS, library):
     filename = skhep_testdata.data_path(
         "test_multiple_representations_rntuple_v1-0-0-0.root"
@@ -167,7 +174,6 @@ def test_multiple_representations(backend, GDS, library):
         assert obj.page_link_list[1][0].suppressed
         assert not obj.page_link_list[2][0].suppressed
 
-        arrays = obj.arrays(backend = backend,
-                            use_GDS = GDS)
+        arrays = obj.arrays(backend=backend, use_GDS=GDS)
 
         assert library.allclose(arrays.real, library.array([1, 2, 3]))

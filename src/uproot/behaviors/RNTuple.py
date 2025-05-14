@@ -24,6 +24,7 @@ import uproot.language.python
 import uproot.source.chunk
 from uproot._util import no_filter, unset
 
+
 def iterate(
     files,
     expressions=None,  # TODO: Not implemented yet
@@ -635,50 +636,52 @@ class HasFields(Mapping):
         """
         if use_GDS == False:
             return self._arrays(
-                        expressions,
-                        cut,
-                        filter_name=filter_name,
-                        filter_typename=filter_typename,
-                        filter_field=filter_field,
-                        aliases=aliases,  # TODO: Not implemented yet
-                        language=language,  # TODO: Not implemented yet
-                        entry_start=entry_start,
-                        entry_stop=entry_stop,
-                        decompression_executor=decompression_executor,  # TODO: Not implemented yet
-                        array_cache=array_cache,  # TODO: Not implemented yet
-                        library=library,  # TODO: Not implemented yet
-                        backend=backend,  # TODO: Not Implemented yet
-                        ak_add_doc=ak_add_doc,
-                        how=how,
-                        # For compatibility reasons we also accepts kwargs meant for TTrees
-                        interpretation_executor=interpretation_executor,
-                        filter_branch=filter_branch,
-                    )
-            
+                expressions,
+                cut,
+                filter_name=filter_name,
+                filter_typename=filter_typename,
+                filter_field=filter_field,
+                aliases=aliases,  # TODO: Not implemented yet
+                language=language,  # TODO: Not implemented yet
+                entry_start=entry_start,
+                entry_stop=entry_stop,
+                decompression_executor=decompression_executor,  # TODO: Not implemented yet
+                array_cache=array_cache,  # TODO: Not implemented yet
+                library=library,  # TODO: Not implemented yet
+                backend=backend,  # TODO: Not Implemented yet
+                ak_add_doc=ak_add_doc,
+                how=how,
+                # For compatibility reasons we also accepts kwargs meant for TTrees
+                interpretation_executor=interpretation_executor,
+                filter_branch=filter_branch,
+            )
+
         elif use_GDS == True and backend == "cuda":
             return self._arrays_GDS(
-                        expressions,
-                        cut,
-                        filter_name=filter_name,
-                        filter_typename=filter_typename,
-                        filter_field=filter_field,
-                        aliases=aliases,  # TODO: Not implemented yet
-                        language=language,  # TODO: Not implemented yet
-                        entry_start=entry_start,
-                        entry_stop=entry_stop,
-                        decompression_executor=decompression_executor,  # TODO: Not implemented yet
-                        array_cache=array_cache,  # TODO: Not implemented yet
-                        library=library,  # TODO: Not implemented yet
-                        backend=backend,  # TODO: Not Implemented yet
-                        ak_add_doc=ak_add_doc,
-                        how=how,
-                        # For compatibility reasons we also accepts kwargs meant for TTrees
-                        interpretation_executor=interpretation_executor,
-                        filter_branch=filter_branch,
-                    )
+                expressions,
+                cut,
+                filter_name=filter_name,
+                filter_typename=filter_typename,
+                filter_field=filter_field,
+                aliases=aliases,  # TODO: Not implemented yet
+                language=language,  # TODO: Not implemented yet
+                entry_start=entry_start,
+                entry_stop=entry_stop,
+                decompression_executor=decompression_executor,  # TODO: Not implemented yet
+                array_cache=array_cache,  # TODO: Not implemented yet
+                library=library,  # TODO: Not implemented yet
+                backend=backend,  # TODO: Not Implemented yet
+                ak_add_doc=ak_add_doc,
+                how=how,
+                # For compatibility reasons we also accepts kwargs meant for TTrees
+                interpretation_executor=interpretation_executor,
+                filter_branch=filter_branch,
+            )
 
         elif use_GDS == True and backend != "cuda":
-            raise NotImplementedError("Backend {} GDS support not implemented.".format(backend))
+            raise NotImplementedError(
+                f"Backend {backend} GDS support not implemented."
+            )
 
     def _arrays(
         self,
@@ -826,7 +829,7 @@ class HasFields(Mapping):
                     dtype_byte=dtype_byte,
                     pad_missing_element=True,
                 )
-                
+
                 if "cardinality" in key:
                     content = numpy.diff(content)
                 if dtype_byte == uproot.const.rntuple_col_type_to_num_dict["switch"]:
@@ -850,7 +853,7 @@ class HasFields(Mapping):
                     # don't distinguish data and offsets
                     container_dict[f"{key}-data"] = content
                     container_dict[f"{key}-offsets"] = content
-        
+
         cluster_offset = cluster_starts[start_cluster_idx]
         entry_start -= cluster_offset
         entry_stop -= cluster_offset
@@ -883,7 +886,7 @@ class HasFields(Mapping):
 
         return arrays
 
-    def _arrays_GDS(        
+    def _arrays_GDS(
         self,
         expressions=None,  # TODO: Not implemented yet
         cut=None,  # TODO: Not implemented yet
@@ -905,7 +908,6 @@ class HasFields(Mapping):
         interpretation_executor=None,
         filter_branch=unset,
     ):
-
         """
         Current GDS support is limited to nvidia GPUs. The python library kvikIO is
         a required dependency for Uproot GDS reading which can be installed by
@@ -923,7 +925,7 @@ class HasFields(Mapping):
         """
         # GDS Depdencies
         cupy = uproot.extras.cupy()
-        
+
         # This temporarily provides basic functionality while expressions are properly implemented
         if expressions is not None:
             if filter_name == no_filter:
@@ -932,7 +934,7 @@ class HasFields(Mapping):
                 raise ValueError(
                     "Expressions are not supported yet. They are currently equivalent to filter_name."
                 )
-                
+
         #####
         # Find clusters to read that contain data from entry_start to entry_stop
         entry_start, entry_stop = (
@@ -957,26 +959,24 @@ class HasFields(Mapping):
             filter_field=filter_field,
             filter_branch=filter_branch,
         )
-    
+
         # Only read columns mentioned in the awkward form
         target_cols = []
         container_dict = {}
-        
+
         _recursive_find(form, target_cols)
 
         #####
         # Read and decompress all columns' data
         clusters_datas = self.ntuple.GPU_read_clusters(
-                                           target_cols,
-                                           start_cluster_idx,
-                                           stop_cluster_idx)
+            target_cols, start_cluster_idx, stop_cluster_idx
+        )
         clusters_datas._decompress()
         #####
         # Deserialize decompressed datas
         content_dict = self.ntuple.Deserialize_decompressed_content(
-                                              start_cluster_idx,
-                                              stop_cluster_idx,
-                                              clusters_datas)
+            start_cluster_idx, stop_cluster_idx, clusters_datas
+        )
         #####
         # Reconstitute arrays to an awkward array
         container_dict = {}
@@ -1014,7 +1014,7 @@ class HasFields(Mapping):
         cluster_offset = cluster_starts[start_cluster_idx]
         entry_start -= cluster_offset
         entry_stop -= cluster_offset
-        
+
         arrays = uproot.extras.awkward().from_buffers(
             form,
             cluster_num_entries,

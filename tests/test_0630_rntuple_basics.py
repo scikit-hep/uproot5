@@ -13,7 +13,10 @@ import uproot
 
 pytest.importorskip("awkward")
 
-@pytest.mark.parametrize("backend,GDS,library", [("cpu", False, numpy), ("cuda", True, cupy)])
+
+@pytest.mark.parametrize(
+    "backend,GDS,library", [("cpu", False, numpy), ("cuda", True, cupy)]
+)
 def test_flat(backend, GDS, library):
     filename = skhep_testdata.data_path("test_int_float_rntuple_v1-0-0-0.root")
     with uproot.open(filename) as f:
@@ -24,32 +27,34 @@ def test_flat(backend, GDS, library):
             "float",
         ]
         assert R.header.checksum == R.footer.header_checksum
-        assert all(R.arrays(entry_stop=3,
-                            use_GDS = GDS,
-                            backend = backend)["one_integers"] == library.array([9, 8, 7]))
         assert all(
-            R.arrays("one_integers", entry_stop=3,
-                     use_GDS = GDS,
-                     backend = backend)["one_integers"]
+            R.arrays(entry_stop=3, use_GDS=GDS, backend=backend)["one_integers"]
             == library.array([9, 8, 7])
         )
         assert all(
-            R.arrays(entry_start=1, entry_stop=3,
-                     use_GDS = GDS,
-                     backend = backend)["one_integers"] == library.array([8, 7])
+            R.arrays("one_integers", entry_stop=3, use_GDS=GDS, backend=backend)[
+                "one_integers"
+            ]
+            == library.array([9, 8, 7])
+        )
+        assert all(
+            R.arrays(entry_start=1, entry_stop=3, use_GDS=GDS, backend=backend)[
+                "one_integers"
+            ]
+            == library.array([8, 7])
         )
 
     filename = skhep_testdata.data_path("test_int_5e4_rntuple_v1-0-0-0.root")
     with uproot.open(filename) as f:
         R = f["ntuple"]
         assert all(
-            R.arrays(entry_stop=3,
-                     use_GDS = GDS,
-                     backend = backend)["one_integers"] == library.array([50000, 49999, 49998])
+            R.arrays(entry_stop=3, use_GDS=GDS, backend=backend)["one_integers"]
+            == library.array([50000, 49999, 49998])
         )
-        assert all(R.arrays(entry_start=-3,
-                            use_GDS = GDS,
-                            backend = backend)["one_integers"] == library.array([3, 2, 1]))
+        assert all(
+            R.arrays(entry_start=-3, use_GDS=GDS, backend=backend)["one_integers"]
+            == library.array([3, 2, 1])
+        )
 
 
 def test_jagged():
