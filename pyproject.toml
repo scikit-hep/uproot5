@@ -5,6 +5,42 @@ requires = [
   "hatch-vcs"
 ]
 
+[dependency-groups]
+dev = [
+  {include-group = "extra"},
+  {include-group = "test"}
+]
+extra = [
+  "boost_histogram>=0.13",
+  "dask-awkward>=2025.2.0",
+  "dask[array,distributed]",
+  "hist>=1.2",
+  "pandas",
+  "awkward-pandas"
+]
+test = [
+  "aiohttp",
+  "deflate",
+  "fsspec-xrootd>=0.5.0",
+  "isal",
+  "minio",
+  "paramiko",
+  "pytest-rerunfailures",
+  "rangehttpserver",
+  "requests",
+  "s3fs",
+  {include-group = "test-core"}
+]
+test-core = [
+  "pytest-timeout",
+  "pytest>=6",
+  "scikit-hep-testdata"
+]
+test-pyodide = [
+  "pytest-pyodide; python_version >='3.11'",
+  {include-group = "test-core"}
+]
+
 [lint.mccabe]
 max-complexity = 100
 
@@ -43,7 +79,7 @@ dependencies = [
   "numpy",
   "fsspec",
   "packaging",
-  "typing_extensions>=4.1.0; python_version < \"3.11\""
+  "typing_extensions>=4.1.0; python_version < '3.11'"
 ]
 description = "ROOT I/O in pure Python and NumPy."
 dynamic = [
@@ -71,27 +107,6 @@ dev = [
 ]
 http = ["aiohttp"]
 s3 = ["s3fs"]
-test = [
-  "isal",
-  "deflate",
-  "minio",
-  "aiohttp",
-  "fsspec-xrootd>=0.5.0",
-  "s3fs",
-  "paramiko",
-  "pytest>=6",
-  "pytest-timeout",
-  "pytest-rerunfailures",
-  "requests",
-  "scikit-hep-testdata",
-  "rangehttpserver"
-]
-test-pyodide = [
-  "pytest>=6",
-  "pytest-pyodide",
-  "pytest-timeout",
-  "scikit-hep-testdata"
-]
 xrootd = ["fsspec-xrootd>=0.5.0"]
 
 [project.urls]
