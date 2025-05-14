@@ -16,16 +16,9 @@ import uproot
 import uproot.behaviors.RNTuple
 import uproot.const
 
-try:
-    import functools
-    import operator
-    from dataclasses import dataclass, field
-
-    import cupy as cp
-    from kvikio import CuFile, defaults
-    from kvikio.nvcomp_codec import NvCompBatchCodec
-except ImportError:
-    pass
+import functools
+import operator
+from dataclasses import dataclass, field
 
 # https://github.com/root-project/root/blob/8cd9eed6f3a32e55ef1f0f1df8e5462e753c735d/tree/ntuple/v7/doc/BinaryFormatSpecification.md#anchor-schema
 _rntuple_anchor_format = struct.Struct(">HHHHQQQQQQQ")
@@ -763,7 +756,8 @@ in file {self.file.file_path}"""
         cluster_range = range(start_cluster_idx, stop_cluster_idx)
         clusters_datas = Cluster_Refs()
         #Open filehandle and read columns for clusters
-        with CuFile(self.file.source.file_path, "rb") as filehandle:
+        kvikio = uproot.extras.kvikio()
+        with kvikio.CuFile(self.file.source.file_path, "rb") as filehandle:
             futures = []
             # Iterate through each cluster
             for cluster_i in cluster_range:
@@ -779,9 +773,9 @@ in file {self.file.file_path}"""
                                 )
                             )
                             futures.extend(future)
-                            colrefs_cluster.add_Col(Col_ClusterBuffers)
+                            colrefs_cluster._add_Col(Col_ClusterBuffers)
 
-                clusters_datas.add_cluster(colrefs_cluster)
+                clusters_datas._add_cluster(colrefs_cluster)
         
             for future in futures:
                 future.get()
@@ -789,6 +783,7 @@ in file {self.file.file_path}"""
 
     def GPU_read_col_cluster_pages(self, ncol, cluster_i, filehandle, debug=False):
         # Get cluster and pages metadatas
+        cupy = uproot.extras.cupy()
         linklist = self.page_link_list[cluster_i]
         ncol_orig = ncol
         if ncol < len(linklist):
@@ -822,7 +817,7 @@ in file {self.file.file_path}"""
             dtype = numpy.dtype(dtype_str)
 
 
-        full_output_buffer = cp.empty(total_len, dtype = dtype)    
+        full_output_buffer = cupy.empty(total_len, dtype = dtype)    
 
         nbits = (
             self.column_records[ncol].nbits
@@ -861,7 +856,7 @@ in file {self.file.file_path}"""
 
             # If compressed, skip 9 byte header
             if isCompressed:
-                comp_buff = cp.empty(n_bytes - 9, dtype="b")
+                comp_buff = cupy.empty(n_bytes - 9, dtype="b")
                 fut = filehandle.pread(
                     comp_buff, size=int(n_bytes - 9), file_offset=int(loc.offset + 9)
                 )
@@ -873,8 +868,8 @@ in file {self.file.file_path}"""
                     out_buff, size=int(n_bytes), file_offset=int(loc.offset)
                 )
 
-            Cluster_Contents.add_page(comp_buff)
-            Cluster_Contents.add_output(out_buff)
+            Cluster_Contents._add_page(comp_buff)
+            Cluster_Contents._add_output(out_buff)
 
             futures.append(fut)
             tracker = tracker_end
@@ -883,6 +878,7 @@ in file {self.file.file_path}"""
 
     def Deserialize_pages(self, cluster_buffer, ncol, cluster_i, arrays):
         # Get pagelist and metadatas
+        cupy = uproot.extras.cupy()
         linklist = self.page_link_list[cluster_i]
         if ncol < len(linklist):
             if linklist[ncol].suppressed:
@@ -934,7 +930,7 @@ in file {self.file.file_path}"""
     
             if delta:
                 cluster_buffer[tracker] -= cumsum
-                cumsum += cp.sum(cluster_buffer[tracker:tracker_end])
+                cumsum += cupy.sum(cluster_buffer[tracker:tracker_end])
             tracker = tracker_end
     
         if index:
@@ -942,16 +938,16 @@ in file {self.file.file_path}"""
         if zigzag:
             cluster_buffer = _from_zigzag(cluster_buffer)
         elif delta:
-            cluster_buffer = cp.cumsum(cluster_buffer)
+            cluster_buffer = cupy.cumsum(cluster_buffer)
         elif dtype_str == "real32trunc":
-            cluster_buffer = cluster_buffer.view(cp.float32)
+            cluster_buffer = cluster_buffer.view(cupy.float32)
         elif dtype_str == "real32quant" and ncol < len(self.column_records):
             min_value = self.column_records[ncol].min_value
             max_value = self.column_records[ncol].max_value
-            cluster_buffer = min_value + cluster_buffer.astype(cp.float32) * (max_value - min_value) / (
+            cluster_buffer = min_value + cluster_buffer.astype(cupy.float32) * (max_value - min_value) / (
                 (1 << nbits) - 1
             )
-            cluster_buffer = cluster_buffer.astype(cp.float32)
+            cluster_buffer = cluster_buffer.astype(cupy.float32)
         
         arrays.append(cluster_buffer)
         return(cluster_buffer)
@@ -960,14 +956,14 @@ in file {self.file.file_path}"""
     def Deserialize_decompressed_content(self,
                                      start_cluster_idx, stop_cluster_idx,
                                      clusters_datas):
-    
+        cupy = uproot.extras.cupy()
         cluster_range = range(start_cluster_idx, stop_cluster_idx)
         n_clusters = stop_cluster_idx - start_cluster_idx
         col_arrays = {} # collect content for each col
         for key_nr in clusters_datas.columns:
             key_nr = int(key_nr)
             # Get uncompressed array for key for all clusters
-            col_decompressed_buffers = clusters_datas.grab_ColOutput(key_nr)
+            col_decompressed_buffers = clusters_datas._grab_ColOutput(key_nr)
 
             dtype_byte = self.ntuple.column_records[key_nr].type
             arrays = []
@@ -993,11 +989,11 @@ in file {self.file.file_path}"""
                 # Remove the first element from every sub-array except for the first one:
                 arrays = [arrays[0]] + [arr[1:] for arr in arrays[1:]]
             
-            res = cp.concatenate(arrays, axis=0)
+            res = cupy.concatenate(arrays, axis=0)
             del arrays
             if True:
                 first_element_index = self.column_records[ncol].first_element_index
-                res = cp.pad(res, (first_element_index, 0))
+                res = cupy.pad(res, (first_element_index, 0))
 
             col_arrays[key_nr] = res
 
@@ -1006,25 +1002,26 @@ in file {self.file.file_path}"""
     def Deserialize_page_decompressed_buffer(
         self, destination, desc, dtype_str, dtype, nbits, split
     ):
+        cupy = uproot.extras.cupy()
         context = {}
         # bool in RNTuple is always stored as bits
         isbit = dtype_str == "bit"
         num_elements = len(destination)
         
         if split:
-            content = cp.copy(destination).view(cp.uint8)
+            content = cupy.copy(destination).view(cupy.uint8)
             length = content.shape[0]
             if nbits == 16:
                 # AAAAABBBBB needs to become
                 # ABABABABAB
-                res = cp.empty(length, cp.uint8)
+                res = cupy.empty(length, cupy.uint8)
                 res[0::2] = content[length * 0 // 2 : length * 1 // 2]
                 res[1::2] = content[length * 1 // 2 : length * 2 // 2]
 
             elif nbits == 32:
                 # AAAAABBBBBCCCCCDDDDD needs to become
                 # ABCDABCDABCDABCDABCD
-                res = cp.empty(length, cp.uint8)
+                res = cupy.empty(length, cupy.uint8)
                 res[0::4] = content[length * 0 // 4 : length * 1 // 4]
                 res[1::4] = content[length * 1 // 4 : length * 2 // 4]
                 res[2::4] = content[length * 2 // 4 : length * 3 // 4]
@@ -1033,7 +1030,7 @@ in file {self.file.file_path}"""
             elif nbits == 64:
                 # AAAAABBBBBCCCCCDDDDDEEEEEFFFFFGGGGGHHHHH needs to become
                 # ABCDEFGHABCDEFGHABCDEFGHABCDEFGHABCDEFGH
-                res = cp.empty(length, cp.uint8)
+                res = cupy.empty(length, cupy.uint8)
                 res[0::8] = content[length * 0 // 8 : length * 1 // 8]
                 res[1::8] = content[length * 1 // 8 : length * 2 // 8]
                 res[2::8] = content[length * 2 // 8 : length * 3 // 8]
@@ -1046,25 +1043,13 @@ in file {self.file.file_path}"""
             content = res.view(dtype)
         
         if isbit:
-            content = cp.unpackbits(destination.view(dtype=cp.uint8), bitorder="little")
+            content = cupy.unpackbits(destination.view(dtype=cupy.uint8), bitorder="little")
         elif dtype_str in ("real32trunc", "real32quant"):
             if nbits == 32:
-                content = cp.copy(destination).view(cp.uint32)
-            # elif nbits % 8 == 0:
-            #     new_content = cp.zeros((num_elements, 4), cp.uint8)
-            #     nbytes = nbits // 8
-            #     new_content[:, :nbytes] = content.reshape(-1, nbytes)
-            #     content = new_content.view(cp.uint32).reshape(-1)
-    
-    
-            #     new_content = numpy.zeros((num_elements, 4), numpy.uint8)
-            #     nbytes = nbits // 8
-            #     new_content[:, :nbytes] = content.reshape(-1, nbytes)
-            #     content = new_content.view(numpy.uint32).reshape(-1)
-                
+                content = cupy.copy(destination).view(cupy.uint32)
             else:
-                content = cp.copy(destination).view(cp.uint8)
-                content = extract_bits_cupy(content, nbits)
+                content = cupy.copy(destination)
+                content = _extract_bits_cupy(content, nbits)
             if dtype_str == "real32trunc":
                 content <<= 32 - nbits
 
@@ -1077,21 +1062,22 @@ in file {self.file.file_path}"""
 
 
 
-def extract_bits_cupy(packed, nbits):
-    packed = packed.view(dtype=cp.uint32)
+def _extract_bits_cupy(packed, nbits):
+    cupy = uproot.extras.cupy()
+    packed = packed.view(dtype=cupy.uint32)
 
     total_bits = packed.size * 32
     n_values = total_bits // nbits
-    result = cp.empty(n_values, dtype=cp.uint32)
+    result = cupy.empty(n_values, dtype=cupy.uint32)
 
     # Indices into packed array
-    bit_positions = cp.arange(n_values, dtype=cp.uint32) * nbits
+    bit_positions = cupy.arange(n_values, dtype=cupy.uint32) * nbits
     word_idx = bit_positions // 32
     offset = bit_positions % 32
 
     # Read bits from packed words
     current_word = packed[word_idx]
-    next_word = packed[word_idx + 1] if nbits > 1 else cp.zeros_like(current_word)
+    next_word = packed[word_idx + 1] if nbits > 1 else cupy.zeros_like(current_word)
 
     # Handle bit overflow (i.e., bits span two words)
     mask = (1 << nbits) - 1
@@ -1102,7 +1088,7 @@ def extract_bits_cupy(packed, nbits):
     first_part = (current_word >> offset) & mask
     second_part = ((next_word << bits_left) & mask)
 
-    result = cp.where(needs_second_word, first_part | second_part, first_part)
+    result = cupy.where(needs_second_word, first_part | second_part, first_part)
     return result
 
 
@@ -1582,11 +1568,12 @@ class RField(uproot.behaviors.RNTuple.HasFields):
 
 # No cupy version of numpy.insert() provided
 def _cupy_insert0(arr):
+    cupy = uproot.extras.cupy()
     # Intended for flat cupy arrays
     array_len = arr.shape[0]
     array_dtype = arr.dtype
-    out_arr = cp.empty(array_len + 1, dtype=array_dtype)
-    cp.copyto(out_arr[1:], arr)
+    out_arr = cupy.empty(array_len + 1, dtype=array_dtype)
+    cupy.copyto(out_arr[1:], arr)
     out_arr[0] = 0
     return out_arr
 
@@ -1602,22 +1589,23 @@ class ColBuffers_Cluster:
     """
 
     key: str
-    data: cp.ndarray
+    data: cupy.ndarray
     isCompressed: bool
     algorithm: str
     compression_level: int
-    pages: list[cp.ndarray] = field(default_factory=list)
-    output: list[cp.ndarray] = field(default_factory=list)
+    pages: list[cupy.ndarray] = field(default_factory=list)
+    output: list[cupy.ndarray] = field(default_factory=list)
 
-    def add_page(self, page: cp.ndarray):
+    def _add_page(self, page: cupy.ndarray):
         self.pages.append(page)
 
-    def add_output(self, buffer: cp.ndarray):
+    def _add_output(self, buffer: cupy.ndarray):
         self.output.append(buffer)
 
-    def decompress(self):
+    def _decompress(self):
         if self.isCompressed and self.algorithm != None:
-            codec = NvCompBatchCodec(self.algorithm)
+            kvikio_nvcomp_codec = uproot.extras.kvikio_nvcomp_codec()
+            codec = kvikio_nvcomp_codec.NvCompBatchCodec(self.algorithm)
             codec.decode_batch(self.pages, self.output)
         
 
@@ -1632,14 +1620,14 @@ class ColRefs_Cluster:
 
     cluster_i: int
     columns: list[str] = field(default_factory=list)
-    data_dict: dict[str: list[cp.ndarray]] = field(default_factory=dict)
-    data_dict_comp: dict[str: list[cp.ndarray]] = field(default_factory=dict)
-    data_dict_uncomp: dict[str: list[cp.ndarray]] = field(default_factory=dict)
+    data_dict: dict[str: list[cupy.ndarray]] = field(default_factory=dict)
+    data_dict_comp: dict[str: list[cupy.ndarray]] = field(default_factory=dict)
+    data_dict_uncomp: dict[str: list[cupy.ndarray]] = field(default_factory=dict)
     colbuffers_cluster: list[ColBuffers_Cluster] = field(default_factory = list)
     algorithms: dict[str: str] = field(default_factory=dict)
 
 
-    def add_Col(self, ColBuffers_Cluster):
+    def _add_Col(self, ColBuffers_Cluster):
         self.colbuffers_cluster.append(ColBuffers_Cluster)
         key = ColBuffers_Cluster.key
         self.columns.append(key)
@@ -1650,7 +1638,7 @@ class ColRefs_Cluster:
         else:
             self.data_dict_uncomp[key] = ColBuffers_Cluster
 
-    def decompress(self):
+    def _decompress(self):
         to_decompress = {}
         target = {}
         # organize data by compression algorithm
@@ -1665,7 +1653,8 @@ class ColRefs_Cluster:
 
         # Batch decompress
         for algorithm in to_decompress.keys():
-            codec = NvCompBatchCodec(algorithm)
+            kvikio_nvcomp_codec = uproot.extras.kvikio_nvcomp_codec()
+            codec = kvikio_nvcomp_codec.NvCompBatchCodec(algorithm)
             codec.decode_batch(to_decompress[algorithm], target[algorithm])
             
 
@@ -1681,7 +1670,7 @@ class Cluster_Refs:
     columns: list[str] = field(default_factory=list)
     refs: dict[int: ColRefs_Cluster] = field(default_factory=dict)
 
-    def add_cluster(self, Cluster):
+    def _add_cluster(self, Cluster):
         for nCol in Cluster.columns:
             if nCol not in self.columns:
                 self.columns.append(nCol)
@@ -1691,7 +1680,7 @@ class Cluster_Refs:
         self.clusters.append(cluster_i)
         self.refs[cluster_i] = Cluster
 
-    def grab_ColOutput(self, nCol):
+    def _grab_ColOutput(self, nCol):
         output_list = []
         for cluster in self.refs.values():
             try:
@@ -1702,7 +1691,7 @@ class Cluster_Refs:
 
         return output_list
 
-    def decompress(self):
+    def _decompress(self):
         to_decompress = {}
         target = {}
         # organize data by compression algorithm
@@ -1718,8 +1707,9 @@ class Cluster_Refs:
         
         # Batch decompress
         for algorithm in to_decompress.keys():
-                codec = NvCompBatchCodec(algorithm)
-                codec.decode_batch(to_decompress[algorithm], target[algorithm])   
+            kvikio_nvcomp_codec = uproot.extras.kvikio_nvcomp_codec()
+            codec = kvikio_nvcomp_codec.NvCompBatchCodec(algorithm)
+            codec.decode_batch(to_decompress[algorithm], target[algorithm])   
         
 
 

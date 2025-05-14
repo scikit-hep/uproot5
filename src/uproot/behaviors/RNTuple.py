@@ -24,13 +24,6 @@ import uproot.language.python
 import uproot.source.chunk
 from uproot._util import no_filter, unset
 
-# GDS Depdencies
-try:
-    import cupy as cp
-except ImportError:
-    pass
-
-
 def iterate(
     files,
     expressions=None,  # TODO: Not implemented yet
@@ -685,7 +678,7 @@ class HasFields(Mapping):
                     )
 
         elif use_GDS == True and backend != "cuda":
-            raise NotImplementedError("Backend {} GDS support not implemented.")
+            raise NotImplementedError("Backend {} GDS support not implemented.".format(backend))
 
     def _arrays(
         self,
@@ -916,7 +909,7 @@ class HasFields(Mapping):
         """
         Current GDS support is limited to nvidia GPUs. The python library kvikIO is
         a required dependency for Uproot GDS reading which can be installed by
-        calling pip install uproot[GDS_cux] where x corresponds to the major cuda
+        calling pip install uproot[GDS_cuX] where X corresponds to the major cuda
         version available on the user's system.
         Args:
             columns (list of str): Names of ``RFields`` or
@@ -928,6 +921,9 @@ class HasFields(Mapping):
                 :ref:`uproot.behaviors.TTree.TTree.num_entries`. If negative,
                 count from the end, like a Python slice.
         """
+        # GDS Depdencies
+        cupy = uproot.extras.cupy()
+        
         # This temporarily provides basic functionality while expressions are properly implemented
         if expressions is not None:
             if filter_name == no_filter:
@@ -974,7 +970,7 @@ class HasFields(Mapping):
                                            target_cols,
                                            start_cluster_idx,
                                            stop_cluster_idx)
-        clusters_datas.decompress()
+        clusters_datas._decompress()
         #####
         # Deserialize decompressed datas
         content_dict = self.ntuple.Deserialize_decompressed_content(
@@ -993,7 +989,7 @@ class HasFields(Mapping):
                 content = content_dict[key_nr]
 
                 if "cardinality" in key:
-                    content = cp.diff(content)
+                    content = cupy.diff(content)
 
                 if dtype_byte == uproot.const.rntuple_col_type_to_num_dict["switch"]:
                     kindex, tags = _split_switch_bits(content)
@@ -1008,9 +1004,9 @@ class HasFields(Mapping):
                         )
                     else:
                         optional_index = numpy.arange(len(kindex), dtype=numpy.int64)
-                    container_dict[f"{key}-index"] = cp.array(optional_index)
-                    container_dict[f"{key}-union-index"] = cp.array(kindex)
-                    container_dict[f"{key}-union-tags"] = cp.array(tags)
+                    container_dict[f"{key}-index"] = cupy.array(optional_index)
+                    container_dict[f"{key}-union-index"] = cupy.array(kindex)
+                    container_dict[f"{key}-union-tags"] = cupy.array(tags)
                 else:
                     # don't distinguish data and offsets
                     container_dict[f"{key}-data"] = content

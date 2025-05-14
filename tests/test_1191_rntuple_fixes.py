@@ -62,7 +62,7 @@ def test_multiple_page_delta_encoding(backend, GDS, library):
                 col_clusterbuffers, futures = obj.GPU_read_col_cluster_pages(0,0,f)
                 for future in futures:
                     future.get()
-                col_clusterbuffers.decompress()
+                col_clusterbuffers._decompress()
                 data = obj.Deserialize_pages(col_clusterbuffers.data, 0, 0, [])
                 assert data[64] - data[63] == 2
         
