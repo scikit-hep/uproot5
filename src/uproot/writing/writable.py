@@ -1348,7 +1348,7 @@ in file {self.file_path} in directory {self.path}"""
         self,
         name,
         ak_form_or_data,
-        title="",
+        description="",
     ):
         """
         Args:
@@ -1357,7 +1357,7 @@ in file {self.file_path} in directory {self.path}"""
                 and type specification for the fields. If a RecordForm is provided,
                 the RNTuple will be empty. If a RecordArray is provided, the RNTuple
                 will be initialized with the input data.
-            title (str): Title for the new RNTuple.
+            description (str): Description for the new RNTuple.
 
         Creates an empty RNTuple in this directory.
         """
@@ -1366,11 +1366,14 @@ in file {self.file_path} in directory {self.path}"""
 
         # TODO: Think of a better alternative to this
         if isinstance(ak_form_or_data, uproot.extras.awkward().Array):
-            ntuple = self.mkrntuple(name, ak_form_or_data.layout.form, title)
+            ntuple = self.mkrntuple(name, ak_form_or_data.layout.form, description)
             ntuple.extend(ak_form_or_data)
             return ntuple
 
         # The rest assumes that ak_form_or_data is a RecordForm
+
+        if description == "" and "__doc__" in ak_form_or_data.parameters:
+            description = ak_form_or_data.parameters["__doc__"]
 
         try:
             at = name.rindex("/")
@@ -1389,7 +1392,7 @@ in file {self.file_path} in directory {self.path}"""
             directory._cascading.add_rntuple(
                 directory._file.sink,
                 treename,
-                title,
+                description,
                 ak_form_or_data,
             ),
         )

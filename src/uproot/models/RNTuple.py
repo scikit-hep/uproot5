@@ -400,7 +400,7 @@ in file {self.file.file_path}"""
             parameters=parameters,
         )
 
-    def col_form(self, field_id):
+    def col_form(self, field_id, extra_parameters=None):
         """
         Args:
             field_id (int): The field id.
@@ -428,7 +428,10 @@ in file {self.file.file_path}"""
         if len(rel_crs) == 1:  # base case
             cardinality = "RNTupleCardinality" in self.field_records[field_id].type_name
             return self.base_col_form(
-                rel_crs[0], rel_crs[0].idx, cardinality=cardinality
+                rel_crs[0],
+                rel_crs[0].idx,
+                parameters=extra_parameters,
+                cardinality=cardinality,
             )
         elif (
             len(rel_crs) == 2
@@ -439,17 +442,24 @@ in file {self.file.file_path}"""
                 rel_crs[1], rel_crs[1].idx, parameters={"__array__": "char"}
             )
             form_key = f"column-{rel_crs[0].idx}"
+            parameters = {"__array__": "string"}
+            if extra_parameters is not None:
+                parameters.update(extra_parameters)
             return ak.forms.ListOffsetForm(
-                "i64", inner, form_key=form_key, parameters={"__array__": "string"}
+                "i64", inner, form_key=form_key, parameters=parameters
             )
         else:
             raise (RuntimeError(f"Missing special case: {field_id}"))
 
-    def field_form(self, this_id, keys):
+    def field_form(self, this_id, keys, ak_add_doc=False):
         """
         Args:
             this_id (int): The field id.
             keys (list): The list of keys to search for.
+            ak_add_doc (bool | dict ): If True and ``library="ak"``, add the RField ``name``
+                to the Awkward ``__doc__`` parameter of the array.
+                if dict = {key:value} and ``library="ak"``, add the RField ``value`` to the
+                Awkward ``key`` parameter of the array.
 
         Returns an Awkward Form describing the field.
         """
@@ -458,6 +468,15 @@ in file {self.file.file_path}"""
         field_records = self.field_records
         this_record = field_records[this_id]
         structural_role = this_record.struct_role
+
+        parameters = None
+        if isinstance(ak_add_doc, bool) and ak_add_doc and this_record.field_desc != "":
+            parameters = {"__doc__": this_record.field_desc}
+        elif isinstance(ak_add_doc, dict):
+            parameters = {
+                key: self.ntuple.all_fields[this_id].__getattribute__(value)
+                for key, value in ak_add_doc.items()
+            }
         if (
             structural_role == uproot.const.RNTupleFieldRole.LEAF
             and this_record.repetition == 0
@@ -472,17 +491,19 @@ in file {self.file.file_path}"""
                 this_id = self._related_ids[tmp_id][0]
             # base case of recursion
             # n.b. the split may happen in column
-            return self.col_form(this_id)
+            return self.col_form(this_id, extra_parameters=parameters)
         elif structural_role == uproot.const.RNTupleFieldRole.LEAF:
             if this_id in self._related_ids:
                 # std::array has only one subfield
                 child_id = self._related_ids[this_id][0]
-                inner = self.field_form(child_id, keys)
+                inner = self.field_form(child_id, keys, ak_add_doc=ak_add_doc)
             else:
                 # std::bitset has no subfields, so we use it directly
                 inner = self.col_form(this_id)
             keyname = f"RegularForm-{this_id}"
-            return ak.forms.RegularForm(inner, this_record.repetition, form_key=keyname)
+            return ak.forms.RegularForm(
+                inner, this_record.repetition, form_key=keyname, parameters=parameters
+            )
         elif structural_role == uproot.const.RNTupleFieldRole.COLLECTION:
             if this_id not in self._related_ids or len(self._related_ids[this_id]) != 1:
                 keyname = f"vector-{this_id}"
@@ -492,11 +513,15 @@ in file {self.file.file_path}"""
                 namelist = []
                 for i in newids:
                     if any(key.startswith(self.all_fields[i].path) for key in keys):
-                        recordlist.append(self.field_form(i, keys))
+                        recordlist.append(
+                            self.field_form(i, keys, ak_add_doc=ak_add_doc)
+                        )
                         namelist.append(field_records[i].field_name)
                 if all(name == f"_{i}" for i, name in enumerate(namelist)):
                     namelist = None
-                return ak.forms.RecordForm(recordlist, namelist, form_key="whatever")
+                return ak.forms.RecordForm(
+                    recordlist, namelist, form_key="whatever", parameters=parameters
+                )
             cfid = this_id
             if self.field_records[cfid].source_field_id is not None:
                 cfid = self.field_records[cfid].source_field_id
@@ -513,8 +538,10 @@ in file {self.file.file_path}"""
             #  this only has one child
             if this_id in self._related_ids:
                 child_id = self._related_ids[this_id][0]
-            inner = self.field_form(child_id, keys)
-            return ak.forms.ListOffsetForm("i64", inner, form_key=keyname)
+            inner = self.field_form(child_id, keys, ak_add_doc=ak_add_doc)
+            return ak.forms.ListOffsetForm(
+                "i64", inner, form_key=keyname, parameters=parameters
+            )
         elif structural_role == uproot.const.RNTupleFieldRole.RECORD:
             newids = []
             if this_id in self._related_ids:
@@ -524,21 +551,27 @@ in file {self.file.file_path}"""
             namelist = []
             for i in newids:
                 if any(key.startswith(self.all_fields[i].path) for key in keys):
-                    recordlist.append(self.field_form(i, keys))
+                    recordlist.append(self.field_form(i, keys, ak_add_doc=ak_add_doc))
                     namelist.append(field_records[i].field_name)
             if all(name == f"_{i}" for i, name in enumerate(namelist)):
                 namelist = None
-            return ak.forms.RecordForm(recordlist, namelist, form_key="whatever")
+            return ak.forms.RecordForm(
+                recordlist, namelist, form_key="whatever", parameters=parameters
+            )
         elif structural_role == uproot.const.RNTupleFieldRole.VARIANT:
             keyname = self.col_form(this_id)
             newids = []
             if this_id in self._related_ids:
                 newids = self._related_ids[this_id]
-            recordlist = [self.field_form(i, keys) for i in newids]
+            recordlist = [
+                self.field_form(i, keys, ak_add_doc=ak_add_doc) for i in newids
+            ]
             inner = ak.forms.UnionForm(
                 "i8", "i64", recordlist, form_key=keyname + "-union"
             )
-            return ak.forms.IndexedOptionForm("i64", inner, form_key=keyname)
+            return ak.forms.IndexedOptionForm(
+                "i64", inner, form_key=keyname, parameters=parameters
+            )
         elif structural_role == uproot.const.RNTupleFieldRole.STREAMER:
             raise NotImplementedError(
                 f"Unsplit fields are not supported. {this_record}"
@@ -1105,6 +1138,13 @@ class RField(uproot.behaviors.RNTuple.HasFields):
         Name of the ``RField``.
         """
         return self._ntuple.field_records[self._fid].field_name
+
+    @property
+    def description(self):
+        """
+        Description of the ``RField``.
+        """
+        return self._ntuple.field_records[self._fid].field_desc
 
     @property
     def typename(self):

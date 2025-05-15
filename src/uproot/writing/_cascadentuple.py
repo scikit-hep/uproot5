@@ -287,7 +287,7 @@ class NTuple_Header(CascadeLeaf):
         )
 
     def _build_field_col_records(
-        self, akform, field_name=None, parent_fid=None, add_field=True
+        self, akform, field_name=None, parent_fid=None, add_field=True, description=""
     ):
         field_id = len(self._field_records)
         if parent_fid is None:
@@ -295,6 +295,8 @@ class NTuple_Header(CascadeLeaf):
         if field_name is None:
             field_name = f"_{field_id}"
         self._ak_node_count += 1
+        if "__doc__" in akform.parameters:
+            description = akform.parameters["__doc__"]
         if isinstance(akform, awkward.forms.NumpyForm) and akform.inner_shape == ():
             type_name = _cpp_typename(akform)
             field = NTuple_Field_Description(
@@ -302,6 +304,7 @@ class NTuple_Header(CascadeLeaf):
                 uproot.const.RNTupleFieldRole.LEAF,
                 field_name,
                 type_name,
+                field_description=description,
             )
             if add_field:
                 self._field_records.append(field)
@@ -335,6 +338,7 @@ class NTuple_Header(CascadeLeaf):
                     type_name,
                     flags=repetitive_flag,
                     repetition=arr_size,
+                    field_description=description,
                 )
                 self._field_records.append(field)
             ak_primitive = akform.primitive
@@ -354,6 +358,7 @@ class NTuple_Header(CascadeLeaf):
                 field_role,
                 field_name,
                 type_name,
+                field_description=description,
             )
             self._field_records.append(field)
             ak_offset = akform.offsets
@@ -368,6 +373,7 @@ class NTuple_Header(CascadeLeaf):
                 parent_fid=field_id,
                 add_field=field_role == uproot.const.RNTupleFieldRole.COLLECTION,
                 field_name="_0",
+                description=description,
             )
         elif isinstance(akform, awkward.forms.ListForm):
             type_name = _cpp_typename(akform)
@@ -380,6 +386,7 @@ class NTuple_Header(CascadeLeaf):
                 field_role,
                 field_name,
                 type_name,
+                field_description=description,
             )
             self._field_records.append(field)
             # They are always converted to ListOffsetArrays with Int64 offsets
@@ -394,6 +401,7 @@ class NTuple_Header(CascadeLeaf):
                 parent_fid=field_id,
                 add_field=field_role == uproot.const.RNTupleFieldRole.COLLECTION,
                 field_name="_0",
+                description=description,
             )
         elif isinstance(akform, awkward.forms.RecordForm):
             type_name = _cpp_typename(akform)
@@ -402,6 +410,7 @@ class NTuple_Header(CascadeLeaf):
                 uproot.const.RNTupleFieldRole.RECORD,
                 field_name,
                 type_name,
+                field_description=description,
             )
             self._field_records.append(field)
             for i, subakform in enumerate(akform.contents):
@@ -421,12 +430,14 @@ class NTuple_Header(CascadeLeaf):
                 type_name,
                 flags=uproot.const.RNTupleFieldFlags.REPETITIVE,
                 repetition=akform.size,
+                field_description=description,
             )
             self._field_records.append(field)
             self._build_field_col_records(
                 akform.content,
                 parent_fid=field_id,
                 field_name="_0",
+                description=description,
             )
         elif isinstance(akform, awkward.forms.IndexedOptionForm):
             type_name = _cpp_typename(akform)
@@ -435,6 +446,7 @@ class NTuple_Header(CascadeLeaf):
                 uproot.const.RNTupleFieldRole.COLLECTION,
                 field_name,
                 type_name,
+                field_description=description,
             )
             self._field_records.append(field)
             ak_index = akform.index
@@ -448,6 +460,7 @@ class NTuple_Header(CascadeLeaf):
                 akform.content,
                 parent_fid=field_id,
                 field_name="_0",
+                description=description,
             )
         elif isinstance(akform, awkward.forms.UnionForm):
             type_name = _cpp_typename(akform)
@@ -456,6 +469,7 @@ class NTuple_Header(CascadeLeaf):
                 uproot.const.RNTupleFieldRole.VARIANT,
                 field_name,
                 type_name,
+                field_description=description,
             )
             self._field_records.append(field)
             type_num = uproot.const.rntuple_col_type_to_num_dict["switch"]
@@ -476,6 +490,7 @@ class NTuple_Header(CascadeLeaf):
                 akform.content,
                 parent_fid=parent_fid,
                 field_name=field_name,
+                description=description,
             )
         else:
             raise NotImplementedError(f"Form type {type(akform)} cannot be written yet")
