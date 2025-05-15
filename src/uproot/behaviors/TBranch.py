@@ -3096,8 +3096,6 @@ def _ranges_or_baskets_to_arrays(
         ):
             branchid_to_branch[cache_key]._awkward_check(interpretation)
 
-    hasbranches._file.source.chunks(ranges, notifications=notifications)
-
     def replace(ranges_or_baskets, original_index, basket):
         branch, basket_num, range_or_basket = ranges_or_baskets[original_index]
         ranges_or_baskets[original_index] = branch, basket_num, basket
@@ -3175,6 +3173,13 @@ def _ranges_or_baskets_to_arrays(
             notifications.put(sys.exc_info())
         else:
             notifications.put(None)
+
+    if len(arrays) == len(branchid_interpretation):
+        # all arrays are already in the cache
+        return
+
+    # Request all chunks and then poll notifications queue until we have all the arrays we expect
+    hasbranches._file.source.chunks(ranges, notifications=notifications)
 
     while len(arrays) < len(branchid_interpretation):
         obj = notifications.get()
