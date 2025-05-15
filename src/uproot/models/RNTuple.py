@@ -61,7 +61,7 @@ def _from_zigzag(n):
 
 def _envelop_header(chunk, cursor, context):
     env_data = cursor.field(chunk, _rntuple_env_header_format, context)
-    env_type_id = env_data & 0xFFFF
+    env_type_id = uproot.const.RNTupleEnvelopeType(env_data & 0xFFFF)
     env_length = env_data >> 16
     return {"env_type_id": env_type_id, "env_length": env_length}
 
@@ -811,7 +811,7 @@ class LocatorReader:
         out = MetaData("Locator")
         out.num_bytes = cursor.field(chunk, _rntuple_locator_size_format, context)
         if out.num_bytes < 0:
-            out.type = -out.num_bytes >> 24
+            out.type = uproot.const.RNTupleLocatorType(-out.num_bytes >> 24)
             if out.type == uproot.const.RNTupleLocatorType.LARGE:
                 out.num_bytes = cursor.field(
                     chunk, _rntuple_large_locator_size_format, context
@@ -899,23 +899,25 @@ class FieldRecordReader:
             out.struct_role,
             out.flags,
         ) = cursor.fields(chunk, _rntuple_field_description_format, context)
+        out.struct_role = uproot.const.RNTupleFieldRole(out.struct_role)
+        out.flags = uproot.const.RNTupleFieldFlags(out.flags)
         out.field_name, out.type_name, out.type_alias, out.field_desc = (
             cursor.rntuple_string(chunk, context) for _ in range(4)
         )
 
-        if out.flags & uproot.const.RNTupleFieldFlag.REPETITIVE:
+        if out.flags & uproot.const.RNTupleFieldFlags.REPETITIVE:
             out.repetition = cursor.field(chunk, _rntuple_repetition_format, context)
         else:
             out.repetition = 0
 
-        if out.flags & uproot.const.RNTupleFieldFlag.PROJECTED:
+        if out.flags & uproot.const.RNTupleFieldFlags.PROJECTED:
             out.source_field_id = cursor.field(
                 chunk, _rntuple_source_field_id_format, context
             )
         else:
             out.source_field_id = None
 
-        if out.flags & uproot.const.RNTupleFieldFlag.CHECKSUM:
+        if out.flags & uproot.const.RNTupleFieldFlags.CHECKSUM:
             out.checksum = cursor.field(
                 chunk, _rntuple_root_streamer_checksum_format, context
             )
@@ -932,13 +934,14 @@ class ColumnRecordReader:
         out.type, out.nbits, out.field_id, out.flags, out.repr_idx = cursor.fields(
             chunk, _rntuple_column_record_format, context
         )
-        if out.flags & uproot.const.RNTupleColumnFlag.DEFERRED:
+        out.flags = uproot.const.RNTupleColumnFlags(out.flags)
+        if out.flags & uproot.const.RNTupleColumnFlags.DEFERRED:
             out.first_element_index = cursor.field(
                 chunk, _rntuple_first_element_index_format, context
             )
         else:
             out.first_element_index = 0
-        if out.flags & uproot.const.RNTupleColumnFlag.RANGE:
+        if out.flags & uproot.const.RNTupleColumnFlags.RANGE:
             out.min_value, out.max_value = cursor.fields(
                 chunk, _rntuple_column_range_format, context
             )
@@ -966,6 +969,7 @@ class ExtraTypeInfoReader:
         out.content_id, out.type_ver = cursor.fields(
             chunk, _rntuple_extra_type_info_format, context
         )
+        out.content_id = uproot.const.RNTupleExtraTypeIdentifier(out.content_id)
         out.type_name = cursor.rntuple_string(chunk, context)
         return out
 
@@ -1017,9 +1021,9 @@ class ClusterSummaryReader:
         out.num_first_entry, out.num_entries = cursor.fields(
             chunk, _rntuple_cluster_summary_format, context
         )
-        out.flags = out.num_entries >> 56
+        out.flags = uproot.const.RNTupleClusterFlags(out.num_entries >> 56)
         out.num_entries &= 0xFFFFFFFFFFFFFF
-        if out.flags & uproot.const.RNTupleClusterFlag.SHARDED:
+        if out.flags & uproot.const.RNTupleClusterFlags.SHARDED:
             raise NotImplementedError("Sharded clusters are not supported.")
         return out
 

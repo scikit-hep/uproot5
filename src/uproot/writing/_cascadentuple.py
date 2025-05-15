@@ -199,7 +199,7 @@ class NTuple_Field_Description:
         type_name,
         field_version=0,
         type_version=0,
-        flags=0,
+        flags=uproot.const.RNTupleFieldFlags.NOFLAG,
         type_alias="",
         field_description="",
         repetition=None,
@@ -238,7 +238,7 @@ class NTuple_Field_Description:
             ]
         )
         additional_bytes = b""
-        if self.flags & uproot.const.RNTupleFieldFlag.REPETITIVE:
+        if self.flags & uproot.const.RNTupleFieldFlags.REPETITIVE:
             additional_bytes += _rntuple_repetition_format.pack(self.repetition)
         return b"".join([header_bytes, string_bytes, additional_bytes])
 
@@ -323,7 +323,9 @@ class NTuple_Header(CascadeLeaf):
                     field_name = "_0"
                     reg_akform = reg_akform.content
                 repetitive_flag = (
-                    0 if arr_size is None else uproot.const.RNTupleFieldFlag.REPETITIVE
+                    uproot.const.RNTupleFieldFlags.NOFLAG
+                    if arr_size is None
+                    else uproot.const.RNTupleFieldFlags.REPETITIVE
                 )
                 type_name = _cpp_typename(reg_akform)
                 field = NTuple_Field_Description(
@@ -417,7 +419,7 @@ class NTuple_Header(CascadeLeaf):
                 field_role,
                 field_name,
                 type_name,
-                flags=uproot.const.RNTupleFieldFlag.REPETITIVE,
+                flags=uproot.const.RNTupleFieldFlags.REPETITIVE,
                 repetition=akform.size,
             )
             self._field_records.append(field)
