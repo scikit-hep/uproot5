@@ -5,7 +5,7 @@ This module defines integer constants used by serialization and deserialization 
 """
 from __future__ import annotations
 
-from enum import IntEnum
+from enum import IntFlag
 
 import numpy
 
@@ -184,8 +184,8 @@ rntuple_col_num_to_size_dict = {
     0x19: 64,
     0x1A: 32,
     0x1B: 64,
-    0x1C: 31,  # variable from 10 to 31
-    0x1D: 32,  # variable from 1 to 32
+    0x1C: 32,  # from 10 to 31 in storage, but 32 in memory
+    0x1D: 32,  # from 1 to 32 in storage, but 32 in memory
 }
 rntuple_col_type_to_num_dict = {
     "bit": 0x00,
@@ -253,19 +253,19 @@ rntuple_custom_float_types = (
 )
 
 
-class RNTupleLocatorType(IntEnum):
+class RNTupleLocatorType(IntFlag):
     STANDARD = 0x00
     LARGE = 0x01
 
 
-class RNTupleEnvelopeType(IntEnum):
+class RNTupleEnvelopeType(IntFlag):
     RESERVED = 0x00
     HEADER = 0x01
     FOOTER = 0x02
     PAGELIST = 0x03
 
 
-class RNTupleFieldRole(IntEnum):
+class RNTupleFieldRole(IntFlag):
     LEAF = 0x00
     COLLECTION = 0x01
     RECORD = 0x02
@@ -273,20 +273,23 @@ class RNTupleFieldRole(IntEnum):
     STREAMER = 0x04
 
 
-class RNTupleFieldFlag(IntEnum):
+class RNTupleFieldFlags(IntFlag):
+    NOFLAG = 0x00
     REPETITIVE = 0x01
     PROJECTED = 0x02
     CHECKSUM = 0x04
 
 
-class RNTupleColumnFlag(IntEnum):
+class RNTupleColumnFlags(IntFlag):
+    NOFLAG = 0x00
     DEFERRED = 0x01
     RANGE = 0x02
 
 
-class RNTupleExtraTypeIdentifier(IntEnum):
+class RNTupleExtraTypeIdentifier(IntFlag):
     ROOT = 0x00
 
 
-class RNTupleClusterFlag(IntEnum):
+class RNTupleClusterFlags(IntFlag):
+    NOFLAG = 0x00
     SHARDED = 0x01
