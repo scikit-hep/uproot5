@@ -1406,7 +1406,10 @@ def _get_ttree_form(
     contents = []
     for key in common_keys:
         branch = ttree[key]
-        content_form = branch.interpretation.awkward_form(ttree.file)
+        if isinstance(branch, HasFields):
+            content_form = branch.to_akform().content(0)
+        else:
+            content_form = branch.interpretation.awkward_form(ttree.file)
         content_parameters = {}
         if isinstance(ak_add_doc, bool):
             if ak_add_doc:
