@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import Optional
-
 import uproot
 
 kvikio = uproot.extras.kvikio()
