@@ -1674,7 +1674,6 @@ class Cluster_Refs:
             colbuffer = cluster.data_dict[nCol].data
             output_list.append(colbuffer)
 
-
         return output_list
 
     def _decompress(self):

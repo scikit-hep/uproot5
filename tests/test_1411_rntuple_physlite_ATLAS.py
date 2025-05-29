@@ -108,7 +108,7 @@ def test_truth_muon_containers(physlite_file, backend, GDS, library):
     assert library.isclose(
         ak.flatten(arrays["TruthMuonsAuxDyn:m"])[0], mass_evt_0
     ), "Truth mass of first event does not match expected value"
-    
+
     if library == numpy:
         assert library.all(
             library.isin(
