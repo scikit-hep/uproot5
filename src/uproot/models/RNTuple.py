@@ -957,7 +957,6 @@ in file {self.file.file_path}"""
             key_nr = int(key_nr)
             # Get uncompressed array for key for all clusters
             col_decompressed_buffers = clusters_datas._grab_ColOutput(key_nr)
-
             dtype_byte = self.ntuple.column_records[key_nr].type
             arrays = []
             ncol = key_nr
@@ -1661,7 +1660,8 @@ class Cluster_Refs:
 
     def _add_cluster(self, Cluster):
         for nCol in Cluster.columns:
-            self.columns.append(nCol)
+            if nCol not in self.columns:
+                self.columns.append(nCol)
         # if self.columns == []:
         #     self.columns = Cluster.columns
         cluster_i = Cluster.cluster_i
@@ -1694,8 +1694,6 @@ class Cluster_Refs:
         for algorithm in to_decompress.keys():
             kvikio_nvcomp_codec = uproot.extras.kvikio_nvcomp_codec()
             codec = kvikio_nvcomp_codec.NvCompBatchCodec(algorithm)
-            print(to_decompress)
-            print(target)
             codec.decode_batch(to_decompress[algorithm], target[algorithm])
 
 
