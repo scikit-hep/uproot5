@@ -1,33 +1,39 @@
+from __future__ import annotations
+
+from typing import Optional
+
 import uproot
-from typing import Optional, Union
+
 kvikio = uproot.extras.kvikio()
 
-class Source_CuFile():
+
+class Source_CuFile:
     def __init__(self, file_path, method):
         self._file_path = file_path
         self._handle = kvikio.CuFile(file_path, method)
-    
+
         self._futures = []
         self._requested_chunk_sizes = []
         self._num_requested_bytes = 0
         self._num_requested_chunks = 0
-        
+
     def close(self):
         self._handle.close()
 
-    def pread(self,
-              buffer,
-              size: Optional[int] = None,
-              file_offset: int = 0,
-              task_size: Optional[int] = None):
+    def pread(
+        self,
+        buffer,
+        size: int | None = None,
+        file_offset: int = 0,
+        task_size: int | None = None,
+    ):
         self._num_requested_chunks += 1
         self._num_requested_bytes += size
         self._requested_chunk_sizes.append(size)
 
-        future = self._handle.pread(buffer,
-                                    size = size,
-                                    file_offset = file_offset,
-                                    task_size = task_size)
+        future = self._handle.pread(
+            buffer, size=size, file_offset=file_offset, task_size=task_size
+        )
         self._futures.append(future)
         return future
 
@@ -37,7 +43,7 @@ class Source_CuFile():
         """
         for future in self.futures:
             future.get()
-    
+
     @property
     def futures(self) -> list:
         """

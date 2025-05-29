@@ -765,11 +765,11 @@ in file {self.file.file_path}"""
                     key_nr = int(key.split("-")[1])
                     if key_nr not in colrefs_cluster.columns:
                         Col_ClusterBuffers = self.GPU_read_col_cluster_pages(
-                                key_nr, cluster_i, filehandle
-                            )
+                            key_nr, cluster_i, filehandle
+                        )
                         colrefs_cluster._add_Col(Col_ClusterBuffers)
             clusters_datas._add_cluster(colrefs_cluster)
-            
+
         filehandle.get_all()
         return clusters_datas
 
