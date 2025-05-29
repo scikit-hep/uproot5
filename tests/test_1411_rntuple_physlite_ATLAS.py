@@ -108,8 +108,16 @@ def test_truth_muon_containers(physlite_file, backend, GDS, library):
     assert library.isclose(
         ak.flatten(arrays["TruthMuonsAuxDyn:m"])[0], mass_evt_0
     ), "Truth mass of first event does not match expected value"
-    assert library.all(
-        library.isin(
-            ak.to_numpy(ak.flatten(arrays["TruthMuonsAuxDyn:pdgId"])), mu_pdgid
-        )
-    ), "Retrieved pdgids are not 13/-13"
+    
+    if library == numpy:
+        assert library.all(
+            library.isin(
+                ak.to_numpy(ak.flatten(arrays["TruthMuonsAuxDyn:pdgId"])), mu_pdgid
+            )
+        ), "Retrieved pdgids are not 13/-13"
+    elif library == cupy:
+        assert library.all(
+            library.isin(
+                ak.to_cupy(ak.flatten(arrays["TruthMuonsAuxDyn:pdgId"])), mu_pdgid
+            )
+        ), "Retrieved pdgids are not 13/-13"

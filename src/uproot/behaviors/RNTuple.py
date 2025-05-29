@@ -985,7 +985,7 @@ class HasFields(Mapping):
 
                 dtype_byte = self.ntuple.column_records[key_nr].type
                 content = content_dict[key_nr]
-
+                
                 if "cardinality" in key:
                     content = cupy.diff(content)
 

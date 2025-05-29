@@ -1050,7 +1050,7 @@ in file {self.file.file_path}"""
 
         # needed to chop off extra bits incase we used `unpackbits`
         try:
-            destination[:] = content[:num_elements].view(dtype)
+            destination[:] = content[:num_elements]
         except:
             pass
 
@@ -1661,8 +1661,7 @@ class Cluster_Refs:
 
     def _add_cluster(self, Cluster):
         for nCol in Cluster.columns:
-            if nCol not in self.columns:
-                self.columns.append(nCol)
+            self.columns.append(nCol)
         # if self.columns == []:
         #     self.columns = Cluster.columns
         cluster_i = Cluster.cluster_i
@@ -1672,11 +1671,9 @@ class Cluster_Refs:
     def _grab_ColOutput(self, nCol):
         output_list = []
         for cluster in self.refs.values():
-            try:
-                colbuffer = cluster.data_dict[nCol].data
-                output_list.append(colbuffer)
-            except:
-                pass
+            colbuffer = cluster.data_dict[nCol].data
+            output_list.append(colbuffer)
+
 
         return output_list
 
@@ -1698,6 +1695,8 @@ class Cluster_Refs:
         for algorithm in to_decompress.keys():
             kvikio_nvcomp_codec = uproot.extras.kvikio_nvcomp_codec()
             codec = kvikio_nvcomp_codec.NvCompBatchCodec(algorithm)
+            print(to_decompress)
+            print(target)
             codec.decode_batch(to_decompress[algorithm], target[algorithm])
 
 
