@@ -68,13 +68,12 @@ def test_multiple_page_delta_encoding(backend, GDS, library):
             assert data[64] - data[63] == 2
 
         if backend == "cuda":
-            with CuFile(filename, "rb") as f:
-                col_clusterbuffers, futures = obj.GPU_read_col_cluster_pages(0, 0, f)
-                for future in futures:
-                    future.get()
-                col_clusterbuffers._decompress()
-                data = obj.Deserialize_pages(col_clusterbuffers.data, 0, 0, [])
-                assert data[64] - data[63] == 2
+            filehandle = uproot.source.cufile_interface.Source_CuFile(filename, "rb")
+            col_clusterbuffers = obj.GPU_read_col_cluster_pages(0, 0, filehandle)
+            filehandle.get_all()
+            col_clusterbuffers._decompress()
+            data = obj.Deserialize_pages(col_clusterbuffers.data, 0, 0, [])
+            assert data[64] - data[63] == 2
 
 
 @pytest.mark.parametrize(

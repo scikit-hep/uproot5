@@ -16,6 +16,7 @@ import xxhash
 import uproot
 import uproot.behaviors.RNTuple
 import uproot.const
+from uproot.source.cufile_interface import Source_CuFile
 
 # https://github.com/root-project/root/blob/8cd9eed6f3a32e55ef1f0f1df8e5462e753c735d/tree/ntuple/v7/doc/BinaryFormatSpecification.md#anchor-schema
 _rntuple_anchor_format = struct.Struct(">HHHHQQQQQQQ")
@@ -754,28 +755,22 @@ in file {self.file.file_path}"""
         clusters_datas = Cluster_Refs()
         # Open filehandle and read columns for clusters
         kvikio = uproot.extras.kvikio()
-        with kvikio.CuFile(self.file.source.file_path, "rb") as filehandle:
-            futures = []
-            # Iterate through each cluster
-            for cluster_i in cluster_range:
-                colrefs_cluster = ColRefs_Cluster(cluster_i)
+        filehandle = Source_CuFile(self.file.source.file_path, "rb")
 
-                for key in columns:
-                    if "column" in key and "union" not in key:
-                        key_nr = int(key.split("-")[1])
-                        if key_nr not in colrefs_cluster.columns:
-                            (Col_ClusterBuffers, future) = (
-                                self.GPU_read_col_cluster_pages(
-                                    key_nr, cluster_i, filehandle
-                                )
+        # Iterate through each cluster
+        for cluster_i in cluster_range:
+            colrefs_cluster = ColRefs_Cluster(cluster_i)
+            for key in columns:
+                if "column" in key and "union" not in key:
+                    key_nr = int(key.split("-")[1])
+                    if key_nr not in colrefs_cluster.columns:
+                        Col_ClusterBuffers = self.GPU_read_col_cluster_pages(
+                                key_nr, cluster_i, filehandle
                             )
-                            futures.extend(future)
-                            colrefs_cluster._add_Col(Col_ClusterBuffers)
-
-                clusters_datas._add_cluster(colrefs_cluster)
-
-            for future in futures:
-                future.get()
+                        colrefs_cluster._add_Col(Col_ClusterBuffers)
+            clusters_datas._add_cluster(colrefs_cluster)
+            
+        filehandle.get_all()
         return clusters_datas
 
     def GPU_read_col_cluster_pages(self, ncol, cluster_i, filehandle, debug=False):
@@ -841,7 +836,6 @@ in file {self.file.file_path}"""
             compression_level,
         )
         tracker = 0
-        futures = []
         for page_desc in pagelist:
             num_elements = page_desc.num_elements
             loc = page_desc.locator
@@ -855,24 +849,23 @@ in file {self.file.file_path}"""
             # If compressed, skip 9 byte header
             if isCompressed:
                 comp_buff = cupy.empty(n_bytes - 9, dtype="b")
-                fut = filehandle.pread(
+                filehandle.pread(
                     comp_buff, size=int(n_bytes - 9), file_offset=int(loc.offset + 9)
                 )
 
             # If uncompressed, read directly into out_buff
             else:
                 comp_buff = None
-                fut = filehandle.pread(
+                filehandle.pread(
                     out_buff, size=int(n_bytes), file_offset=int(loc.offset)
                 )
 
             Cluster_Contents._add_page(comp_buff)
             Cluster_Contents._add_output(out_buff)
 
-            futures.append(fut)
             tracker = tracker_end
 
-        return (Cluster_Contents, futures)
+        return Cluster_Contents
 
     def Deserialize_pages(self, cluster_buffer, ncol, cluster_i, arrays):
         # Get pagelist and metadatas
