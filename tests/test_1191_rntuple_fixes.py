@@ -72,8 +72,9 @@ def test_multiple_page_delta_encoding(backend, GDS, library):
             col_clusterbuffers = obj.GPU_read_col_cluster_pages(0, 0, filehandle)
             filehandle.get_all()
             col_clusterbuffers._decompress()
-            data = obj.Deserialize_pages(col_clusterbuffers.data, 0, 0, [])
-            assert data[64] - data[63] == 2
+            data = []
+            obj.Deserialize_pages(col_clusterbuffers.data, 0, 0, data)
+            assert data[0][64] - data[0][63] == 2
 
 
 @pytest.mark.parametrize(

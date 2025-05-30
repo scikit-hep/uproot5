@@ -912,14 +912,77 @@ class HasFields(Mapping):
         calling pip install uproot[GDS_cuX] where X corresponds to the major cuda
         version available on the user's system.
         Args:
-            columns (list of str): Names of ``RFields`` or
-                aliases to convert to arrays.
+            expressions (None, str, or list of str): Names of ``RFields`` or
+                aliases to convert to arrays or mathematical expressions of them.
+                Uses the ``language`` to evaluate. If None, all ``RFields``
+                selected by the filters are included. (Not implemented yet.)
+            cut (None or str): If not None, this expression filters all of the
+                ``expressions``. (Not implemented yet.)
+            filter_name (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
+                filter to select ``RFields`` by name.
+            filter_typename (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
+                filter to select ``RFields`` by type.
+            filter_branch (None or function of :doc:`uproot.models.RNTuple.RField` \u2192 bool, or None): A
+                filter to select ``RFields`` using the full
+                :doc:`uproot.models.RNTuple.RField` object. If the function
+                returns False or None, the ``RField`` is excluded; if the function
+                returns True, it is included.
+            aliases (None or dict of str \u2192 str): Mathematical expressions that
+                can be used in ``expressions`` or other aliases.
+                Uses the ``language`` engine to evaluate. (Not implemented yet.)
+            language (:doc:`uproot.language.Language`): Language used to interpret
+                the ``expressions`` and ``aliases``. (Not implemented yet.)
             entry_start (None or int): The first entry to include. If None, start
                 at zero. If negative, count from the end, like a Python slice.
             entry_stop (None or int): The first entry to exclude (i.e. one greater
                 than the last entry to include). If None, stop at
-                :ref:`uproot.behaviors.TTree.TTree.num_entries`. If negative,
+                :ref:`uproot.behaviors.RNTuple.RNTuple.num_entries`. If negative,
                 count from the end, like a Python slice.
+            decompression_executor (None or Executor with a ``submit`` method): The
+                executor that is used to decompress ``RPages``; if None, the
+                file's :ref:`uproot.reading.ReadOnlyFile.decompression_executor`
+                is used. (Not implemented yet.)
+            array_cache ("inherit", None, MutableMapping, or memory size): Cache of arrays;
+                if "inherit", use the file's cache; if None, do not use a cache;
+                if a memory size, create a new cache of this size. (Not implemented yet.)
+            library (str or :doc:`uproot.interpretation.library.Library`): The library
+                that is used to represent arrays. Options are ``"np"`` for NumPy,
+                ``"ak"`` for Awkward Array, and ``"pd"`` for Pandas. (Not implemented yet.)
+            backend (str): The backend output Awkward Array will use.
+            use_GDS (bool): If True and ``backend="cuda"`` will use kvikIO bindings
+                to CuFile to provide direct memory access (DMA) transfers between GPU
+                memory and storage on GDS compatible systems. KvikIO bindings to nvcomp
+                decompress data buffers in GPU memory.
+            ak_add_doc (bool | dict ): If True and ``library="ak"``, add the RField ``name``
+                to the Awkward ``__doc__`` parameter of the array.
+                if dict = {key:value} and ``library="ak"``, add the RField ``value`` to the
+                Awkward ``key`` parameter of the array.
+            how (None, str, or container type): Library-dependent instructions
+                for grouping. The only recognized container types are ``tuple``,
+                ``list``, and ``dict``. Note that the container *type itself*
+                must be passed as ``how``, not an instance of that type (i.e.
+                ``how=tuple``, not ``how=()``).
+            interpretation_executor (None): This argument is not used and is only included for now
+                for compatibility with software that was used for :doc:`uproot.behaviors.TBranch.TBranch`. This argument should not be used
+                and will be removed in a future version.
+            filter_branch (None or function of :doc:`uproot.models.RNTuple.RField` \u2192 bool): An alias for ``filter_field`` included
+                for compatibility with software that was used for :doc:`uproot.behaviors.TBranch.TBranch`. This argument should not be used
+                and will be removed in a future version.
+
+        Returns a group of arrays from the ``RNTuple``.
+
+        For example:
+
+        .. code-block:: python
+
+            >>> my_ntuple.arrays()
+            <Array [{my_vector: [1, 2]}, {...}] type='2 * {my_vector: var * int64}'>
+
+        See also :ref:`uproot.behaviors.RNTuple.HasFields.array` to read a single
+        ``RField`` as an array.
+
+        See also :ref:`uproot.behaviors.RNTuple.HasFields.iterate` to iterate over
+        the array in contiguous ranges of entries.
         """
         # GDS Depdencies
         cupy = uproot.extras.cupy()
@@ -973,7 +1036,7 @@ class HasFields(Mapping):
         #####
         # Deserialize decompressed datas
         content_dict = self.ntuple.Deserialize_decompressed_content(
-            start_cluster_idx, stop_cluster_idx, clusters_datas
+            clusters_datas, start_cluster_idx, stop_cluster_idx 
         )
         #####
         # Reconstitute arrays to an awkward array

@@ -646,7 +646,7 @@ in file {self.file.file_path}"""
             if dtype_str == "real32trunc":
                 content <<= 32 - nbits
 
-        # needed to chop off extra bits incase we used `unpackbits`
+        # needed to chop off extra bits incase we used `unpackbits`estination
         destination[:] = content[:num_elements]
 
     def read_col_pages(
@@ -751,6 +751,22 @@ in file {self.file.file_path}"""
         return res
 
     def GPU_read_clusters(self, columns, start_cluster_idx, stop_cluster_idx):
+        """
+        Args:
+            columns (list): The target columns to read.
+            start_cluster_idx (int): The first cluster index containing entries 
+            in the range requested.
+            stop_cluster_idx (int): The last cluster index containing entries 
+            in the range requested.
+
+        Returns a Cluster_Refs containing ColRefs_Cluster for each cluster. Each
+        ColRefs_Cluster contains all ColBuffers_Cluster for each column in 
+        columns. Each ColBuffers_Cluster contains the page buffers, decompression
+        target buffers, and compression metadata for a column in a given cluster.
+
+        The Cluster_Refs object contains all information needed for and performs
+        decompression in parallel over all compressed buffers.
+        """
         cluster_range = range(start_cluster_idx, stop_cluster_idx)
         clusters_datas = Cluster_Refs()
         # Open filehandle and read columns for clusters
@@ -773,7 +789,17 @@ in file {self.file.file_path}"""
         filehandle.get_all()
         return clusters_datas
 
-    def GPU_read_col_cluster_pages(self, ncol, cluster_i, filehandle, debug=False):
+    def GPU_read_col_cluster_pages(self, ncol, cluster_i, filehandle):
+        """
+        Args:
+            ncol (int): The target column's key number.
+            cluster_i (int): The cluster to read column data from.
+            filehandle (uproot.source.cufile_interface.Source_CuFile): CuFile 
+            filehandle interface which performs CuFile API calls.
+
+        Returns a ColBuffers_Cluster containing raw page buffers, decompression
+        target buffers, and compression metadata.
+        """
         # Get cluster and pages metadatas
         cupy = uproot.extras.cupy()
         linklist = self.page_link_list[cluster_i]
@@ -867,7 +893,74 @@ in file {self.file.file_path}"""
 
         return Cluster_Contents
 
+    def Deserialize_decompressed_content(
+        self, clusters_datas, start_cluster_idx, stop_cluster_idx
+    ):
+        """
+        Args:
+            clusters_datas (Cluster_Refs): The target column's key number.
+            start_cluster_idx (int): The first cluster index containing entries 
+            in the range requested.
+            stop_cluster_idx (int): The last cluster index containing entries 
+            in the range requested.
+
+        Returns a dictionary containing contiguous buffers of deserialized data
+        across requested clusters organized by column key.
+        """
+        cupy = uproot.extras.cupy()
+        cluster_range = range(start_cluster_idx, stop_cluster_idx)
+        n_clusters = stop_cluster_idx - start_cluster_idx
+        col_arrays = {}  # collect content for each col
+        for key_nr in clusters_datas.columns:
+            key_nr = int(key_nr)
+            # Get uncompressed array for key for all clusters
+            col_decompressed_buffers = clusters_datas._grab_ColOutput(key_nr)
+            dtype_byte = self.ntuple.column_records[key_nr].type
+            arrays = []
+            ncol = key_nr
+
+            for cluster_i in cluster_range:
+                # Get decompressed buffer corresponding to cluster i
+                cluster_buffer = col_decompressed_buffers[cluster_i]
+
+                self.Deserialize_pages(cluster_buffer, ncol, cluster_i, arrays)
+
+            if dtype_byte in uproot.const.rntuple_delta_types:
+                # Extract the last offset values:
+                last_elements = [
+                    arr[-1].get() for arr in arrays[:-1]
+                ]  # First value always zero, therefore skip first arr.
+                # Compute cumulative sum using itertools.accumulate:
+                last_offsets = numpy.cumsum(last_elements)
+
+                # Add the offsets to each array
+                for i in range(1, len(arrays)):
+                    arrays[i] += last_offsets[i - 1]
+                # Remove the first element from every sub-array except for the first one:
+                arrays = [arrays[0]] + [arr[1:] for arr in arrays[1:]]
+
+            res = cupy.concatenate(arrays, axis=0)
+            del arrays
+            if True:
+                first_element_index = self.column_records[ncol].first_element_index
+                res = cupy.pad(res, (first_element_index, 0))
+
+            col_arrays[key_nr] = res
+
+        return col_arrays
+
     def Deserialize_pages(self, cluster_buffer, ncol, cluster_i, arrays):
+        """
+        Args:
+            cluster_buffer (cupy.ndarray): Buffer to deserialize.
+            ncol (int): The column's key number cluster_buffer originates from.
+            cluster_i (int): The cluster cluster_buffer originates from.
+            arrays (list): Container for storing results of deserialization 
+            across clusters.
+
+        Returns nothing. Appends deserialized data buffer for ncol from cluster_i
+        to arrays.
+        """
         # Get pagelist and metadatas
         cupy = uproot.extras.cupy()
         linklist = self.page_link_list[cluster_i]
@@ -937,56 +1030,22 @@ in file {self.file.file_path}"""
             cluster_buffer = cluster_buffer.astype(cupy.float32)
 
         arrays.append(cluster_buffer)
-        return cluster_buffer
-
-    def Deserialize_decompressed_content(
-        self, start_cluster_idx, stop_cluster_idx, clusters_datas
-    ):
-        cupy = uproot.extras.cupy()
-        cluster_range = range(start_cluster_idx, stop_cluster_idx)
-        n_clusters = stop_cluster_idx - start_cluster_idx
-        col_arrays = {}  # collect content for each col
-        for key_nr in clusters_datas.columns:
-            key_nr = int(key_nr)
-            # Get uncompressed array for key for all clusters
-            col_decompressed_buffers = clusters_datas._grab_ColOutput(key_nr)
-            dtype_byte = self.ntuple.column_records[key_nr].type
-            arrays = []
-            ncol = key_nr
-
-            for cluster_i in cluster_range:
-                # Get decompressed buffer corresponding to cluster i
-                cluster_buffer = col_decompressed_buffers[cluster_i]
-
-                self.Deserialize_pages(cluster_buffer, ncol, cluster_i, arrays)
-
-            if dtype_byte in uproot.const.rntuple_delta_types:
-                # Extract the last offset values:
-                last_elements = [
-                    arr[-1].get() for arr in arrays[:-1]
-                ]  # First value always zero, therefore skip first arr.
-                # Compute cumulative sum using itertools.accumulate:
-                last_offsets = numpy.cumsum(last_elements)
-
-                # Add the offsets to each array
-                for i in range(1, len(arrays)):
-                    arrays[i] += last_offsets[i - 1]
-                # Remove the first element from every sub-array except for the first one:
-                arrays = [arrays[0]] + [arr[1:] for arr in arrays[1:]]
-
-            res = cupy.concatenate(arrays, axis=0)
-            del arrays
-            if True:
-                first_element_index = self.column_records[ncol].first_element_index
-                res = cupy.pad(res, (first_element_index, 0))
-
-            col_arrays[key_nr] = res
-
-        return col_arrays
 
     def Deserialize_page_decompressed_buffer(
         self, destination, desc, dtype_str, dtype, nbits, split
     ):
+        """
+        Args:
+            destination (cupy.ndarray): The array to fill.
+            desc (:doc:`uproot.models.RNTuple.MetaData`): The page description.
+            dtype_str (str): The data type as a string.
+            dtype (cupy.dtype): The data type.
+            nbits (int): The number of bits.
+            split (bool): Whether the data is split.
+
+        Returns nothing. Edits destination buffer in-place with deserialized
+        data.
+        """
         cupy = uproot.extras.cupy()
         context = {}
         # bool in RNTuple is always stored as bits
@@ -1036,7 +1095,7 @@ in file {self.file.file_path}"""
                 content = cupy.copy(destination).view(cupy.uint32)
             else:
                 content = cupy.copy(destination)
-                content = _extract_bits_cupy(content, nbits)
+                content = _extract_bits(content, nbits)
             if dtype_str == "real32trunc":
                 content <<= 32 - nbits
 
@@ -1047,22 +1106,30 @@ in file {self.file.file_path}"""
             pass
 
 
-def _extract_bits_cupy(packed, nbits):
+def _extract_bits(packed, nbits):
+    """
+    Args:
+        packed (cupy.ndarray): The array to fill.
+        nbits (int): The bit width of original truncated data.
+        
+    Returns cupy.ndarray of unpacked data.
+    """
     cupy = uproot.extras.cupy()
-    packed = packed.view(dtype=cupy.uint32)
+    library = cupy.get_array_module(packed)
+    packed = packed.view(dtype=library.uint32)
 
     total_bits = packed.size * 32
     n_values = total_bits // nbits
-    result = cupy.empty(n_values, dtype=cupy.uint32)
+    result = library.empty(n_values, dtype=library.uint32)
 
     # Indices into packed array
-    bit_positions = cupy.arange(n_values, dtype=cupy.uint32) * nbits
+    bit_positions = library.arange(n_values, dtype=library.uint32) * nbits
     word_idx = bit_positions // 32
     offset = bit_positions % 32
 
     # Read bits from packed words
     current_word = packed[word_idx]
-    next_word = packed[word_idx + 1] if nbits > 1 else cupy.zeros_like(current_word)
+    next_word = packed[word_idx + 1] if nbits > 1 else library.zeros_like(current_word)
 
     # Handle bit overflow (i.e., bits span two words)
     mask = (1 << nbits) - 1
@@ -1073,7 +1140,7 @@ def _extract_bits_cupy(packed, nbits):
     first_part = (current_word >> offset) & mask
     second_part = (next_word << bits_left) & mask
 
-    result = cupy.where(needs_second_word, first_part | second_part, first_part)
+    result = library.where(needs_second_word, first_part | second_part, first_part)
     return result
 
 
