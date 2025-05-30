@@ -754,13 +754,13 @@ in file {self.file.file_path}"""
         """
         Args:
             columns (list): The target columns to read.
-            start_cluster_idx (int): The first cluster index containing entries 
+            start_cluster_idx (int): The first cluster index containing entries
             in the range requested.
-            stop_cluster_idx (int): The last cluster index containing entries 
+            stop_cluster_idx (int): The last cluster index containing entries
             in the range requested.
 
         Returns a Cluster_Refs containing ColRefs_Cluster for each cluster. Each
-        ColRefs_Cluster contains all ColBuffers_Cluster for each column in 
+        ColRefs_Cluster contains all ColBuffers_Cluster for each column in
         columns. Each ColBuffers_Cluster contains the page buffers, decompression
         target buffers, and compression metadata for a column in a given cluster.
 
@@ -794,7 +794,7 @@ in file {self.file.file_path}"""
         Args:
             ncol (int): The target column's key number.
             cluster_i (int): The cluster to read column data from.
-            filehandle (uproot.source.cufile_interface.Source_CuFile): CuFile 
+            filehandle (uproot.source.cufile_interface.Source_CuFile): CuFile
             filehandle interface which performs CuFile API calls.
 
         Returns a ColBuffers_Cluster containing raw page buffers, decompression
@@ -899,9 +899,9 @@ in file {self.file.file_path}"""
         """
         Args:
             clusters_datas (Cluster_Refs): The target column's key number.
-            start_cluster_idx (int): The first cluster index containing entries 
+            start_cluster_idx (int): The first cluster index containing entries
             in the range requested.
-            stop_cluster_idx (int): The last cluster index containing entries 
+            stop_cluster_idx (int): The last cluster index containing entries
             in the range requested.
 
         Returns a dictionary containing contiguous buffers of deserialized data
@@ -955,7 +955,7 @@ in file {self.file.file_path}"""
             cluster_buffer (cupy.ndarray): Buffer to deserialize.
             ncol (int): The column's key number cluster_buffer originates from.
             cluster_i (int): The cluster cluster_buffer originates from.
-            arrays (list): Container for storing results of deserialization 
+            arrays (list): Container for storing results of deserialization
             across clusters.
 
         Returns nothing. Appends deserialized data buffer for ncol from cluster_i
@@ -1111,7 +1111,7 @@ def _extract_bits(packed, nbits):
     Args:
         packed (cupy.ndarray): The array to fill.
         nbits (int): The bit width of original truncated data.
-        
+
     Returns cupy.ndarray of unpacked data.
     """
     cupy = uproot.extras.cupy()

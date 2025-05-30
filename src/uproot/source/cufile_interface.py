@@ -9,14 +9,15 @@ class Source_CuFile:
     """
     Class for physically reading and writing data from a file using kvikio bindings
     to CuFile API.
-    
+
     Args:
         filepath (str): Path fo file.
         method (str): Method to open file with. e.g. "w", "r"
 
-    Provides a consistent interface to kvikio cufile API. Stores metadata of 
+    Provides a consistent interface to kvikio cufile API. Stores metadata of
     read requests.
     """
+
     def __init__(self, file_path, method):
         self._file_path = file_path
         self._handle = kvikio.CuFile(file_path, method)

@@ -1036,7 +1036,7 @@ class HasFields(Mapping):
         #####
         # Deserialize decompressed datas
         content_dict = self.ntuple.Deserialize_decompressed_content(
-            clusters_datas, start_cluster_idx, stop_cluster_idx 
+            clusters_datas, start_cluster_idx, stop_cluster_idx
         )
         #####
         # Reconstitute arrays to an awkward array
