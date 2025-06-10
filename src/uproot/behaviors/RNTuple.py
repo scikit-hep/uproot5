@@ -634,7 +634,7 @@ class HasFields(Mapping):
         See also :ref:`uproot.behaviors.RNTuple.HasFields.iterate` to iterate over
         the array in contiguous ranges of entries.
         """
-        if use_GDS == False:
+        if not use_GDS:
             return self._arrays(
                 expressions,
                 cut,
@@ -656,7 +656,7 @@ class HasFields(Mapping):
                 filter_branch=filter_branch,
             )
 
-        elif use_GDS == True and backend == "cuda":
+        elif use_GDS and backend == "cuda":
             return self._arrays_GDS(
                 expressions,
                 cut,
@@ -678,7 +678,7 @@ class HasFields(Mapping):
                 filter_branch=filter_branch,
             )
 
-        elif use_GDS == True and backend != "cuda":
+        elif use_GDS and backend != "cuda":
             raise NotImplementedError(f"Backend {backend} GDS support not implemented.")
 
     def _arrays(
@@ -1053,7 +1053,7 @@ class HasFields(Mapping):
                     content = cupy.diff(content)
 
                 if dtype_byte == uproot.const.rntuple_col_type_to_num_dict["switch"]:
-                    kindex, tags = _split_switch_bits(content)
+                    kindex, tags = uproot.models.RNTuple._split_switch_bits(content)
                     # Find invalid variants and adjust buffers accordingly
                     invalid = numpy.flatnonzero(tags == -1)
                     if len(invalid) > 0:
@@ -2034,9 +2034,8 @@ def _regularize_step_size(ntuple, akform, step_size, entry_start, entry_stop):
 def _recursive_find(form, res):
     ak = uproot.extras.awkward()
 
-    if hasattr(form, "form_key"):
-        if form.form_key not in res:
-            res.append(form.form_key)
+    if hasattr(form, "form_key") and form.form_key not in res:
+        res.append(form.form_key)
     if hasattr(form, "contents"):
         for c in form.contents:
             _recursive_find(c, res)

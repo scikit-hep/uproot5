@@ -29,6 +29,7 @@ test = [
   "rangehttpserver",
   "requests",
   "s3fs",
+  "kvikio-cu12>=25.02.01",
   {include-group = "test-core"}
 ]
 test-core = [
@@ -96,14 +97,6 @@ GDS_cu11 = [
 ]
 GDS_cu12 = [
   "kvikio-cu12>=25.02.01"
-]
-dev = [
-  "boost_histogram>=0.13",
-  "dask-awkward>=2025.2.0",
-  "dask[array,distributed]",
-  "hist>=1.2",
-  "pandas",
-  "awkward-pandas"
 ]
 http = ["aiohttp"]
 s3 = ["s3fs"]

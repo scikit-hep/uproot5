@@ -2,8 +2,6 @@ from __future__ import annotations
 
 import uproot
 
-kvikio = uproot.extras.kvikio()
-
 
 class Source_CuFile:
     """
@@ -19,6 +17,7 @@ class Source_CuFile:
     """
 
     def __init__(self, file_path, method):
+        kvikio = uproot.extras.kvikio()
         self._file_path = file_path
         self._handle = kvikio.CuFile(file_path, method)
 
