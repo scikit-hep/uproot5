@@ -47,6 +47,13 @@ data = ak.Array(
     }
 )
 
+data.layout.parameters["__doc__"] = "This is the top record array"
+data.layout.contents[0].parameters["__doc__"] = "This is a boolean"
+data.layout.contents[10].content.parameters["__doc__"] = "This is an struct record"
+data.layout.contents[10].content.contents[0].parameters[
+    "__doc__"
+] = "This is a subfield"
+
 
 def test_writing_and_reading(tmp_path):
     filepath = os.path.join(tmp_path, "test.root")
@@ -131,3 +138,34 @@ def test_writing_then_reading_with_ROOT(tmp_path, capfd):
         in out
     )
     assert "* Field 17           : list_array (std::vector<std::int64_t>)" in out
+
+
+def test_field_descriptions(tmp_path):
+    filepath = os.path.join(tmp_path, "test.root")
+
+    with uproot.recreate(filepath) as file:
+        obj = file.mkrntuple("ntuple", data)  # test inputting the data directly
+        obj.extend(data)
+
+    with uproot.recreate(filepath) as file:
+        obj = file.mkrntuple("ntuple", data.layout.form)
+        obj.extend(data)
+        obj.extend(data)  # test multiple cluster groups
+
+    obj = uproot.open(filepath)["ntuple"]
+    arrays = obj.arrays(ak_add_doc=True)
+
+    assert arrays.layout.parameters["__doc__"] == "This is the top record array"
+    assert arrays.layout.contents[0].parameters["__doc__"] == "This is a boolean"
+    assert (
+        arrays.layout.contents[10].content.parameters["__doc__"]
+        == "This is an struct record"
+    )
+    assert (
+        arrays.layout.contents[10].content.contents[0].parameters["__doc__"]
+        == "This is a subfield"
+    )
+
+    arrays = obj.arrays(ak_add_doc={"typename": "typename"})
+
+    assert arrays.layout.contents[0].parameters["typename"] == "bool"
