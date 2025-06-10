@@ -17,6 +17,8 @@ from kvikio import CuFile
     "backend,GDS,library", [("cpu", False, numpy), ("cuda", True, cupy)]
 )
 def test_schema_extension(backend, GDS, library):
+    if GDS and cupy.cuda.runtime.driverGetVersion() == 0:
+        pytest.skip("No available CUDA driver.")
     filename = skhep_testdata.data_path("test_extension_columns_rntuple_v1-0-0-0.root")
     with uproot.open(filename) as f:
         obj = f["ntuple"]
@@ -44,6 +46,8 @@ def test_schema_extension(backend, GDS, library):
     "backend,GDS,library", [("cpu", False, numpy), ("cuda", True, cupy)]
 )
 def test_rntuple_cardinality(backend, GDS, library):
+    if GDS and cupy.cuda.runtime.driverGetVersion() == 0:
+        pytest.skip("No available CUDA driver.")
     filename = skhep_testdata.data_path(
         "Run2012BC_DoubleMuParked_Muons_1000evts_rntuple_v1-0-0-0.root"
     )
@@ -59,6 +63,8 @@ def test_rntuple_cardinality(backend, GDS, library):
     "backend,GDS,library", [("cpu", False, numpy), ("cuda", True, cupy)]
 )
 def test_multiple_page_delta_encoding(backend, GDS, library):
+    if GDS and cupy.cuda.runtime.driverGetVersion() == 0:
+        pytest.skip("No available CUDA driver.")
     filename = skhep_testdata.data_path("test_index_multicluster_rntuple_v1-0-0-0.root")
     with uproot.open(filename) as f:
         obj = f["ntuple"]
@@ -81,6 +87,8 @@ def test_multiple_page_delta_encoding(backend, GDS, library):
     "backend,GDS,library", [("cpu", False, numpy), ("cuda", True, cupy)]
 )
 def test_split_encoding(backend, GDS, library):
+    if GDS and cupy.cuda.runtime.driverGetVersion() == 0:
+        pytest.skip("No available CUDA driver.")
     filename = skhep_testdata.data_path(
         "Run2012BC_DoubleMuParked_Muons_1000evts_rntuple_v1-0-0-0.root"
     )

@@ -32,6 +32,8 @@ def test_field_class():
     "backend,GDS,library", [("cpu", False, numpy), ("cuda", True, cupy)]
 )
 def test_array_methods(backend, GDS, library):
+    if GDS and cupy.cuda.runtime.driverGetVersion() == 0:
+        pytest.skip("No available CUDA driver.")
     filename = skhep_testdata.data_path(
         "Run2012BC_DoubleMuParked_Muons_1000evts_rntuple_v1-0-0-0.root"
     )

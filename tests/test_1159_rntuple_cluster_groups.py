@@ -14,6 +14,8 @@ ak = pytest.importorskip("awkward")
     "backend,GDS,library", [("cpu", False, numpy), ("cuda", True, cupy)]
 )
 def test_multiple_cluster_groups(backend, GDS, library):
+    if GDS and cupy.cuda.runtime.driverGetVersion() == 0:
+        pytest.skip("No available CUDA driver.")
     filename = skhep_testdata.data_path(
         "test_multiple_cluster_groups_rntuple_v1-0-0-0.root"
     )

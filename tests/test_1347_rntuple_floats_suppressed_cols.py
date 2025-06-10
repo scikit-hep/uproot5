@@ -33,6 +33,8 @@ def quantize_float(value, bits, min, max):
     "backend,GDS,library", [("cpu", False, numpy), ("cuda", True, cupy)]
 )
 def test_custom_floats(backend, GDS, library):
+    if GDS and cupy.cuda.runtime.driverGetVersion() == 0:
+        pytest.skip("No available CUDA driver.")
     filename = skhep_testdata.data_path("test_float_types_rntuple_v1-0-0-0.root")
     with uproot.open(filename) as f:
         obj = f["ntuple"]
@@ -162,6 +164,8 @@ def test_custom_floats(backend, GDS, library):
     "backend,GDS,library", [("cpu", False, numpy), ("cuda", True, cupy)]
 )
 def test_multiple_representations(backend, GDS, library):
+    if GDS and cupy.cuda.runtime.driverGetVersion() == 0:
+        pytest.skip("No available CUDA driver.")
     filename = skhep_testdata.data_path(
         "test_multiple_representations_rntuple_v1-0-0-0.root"
     )
