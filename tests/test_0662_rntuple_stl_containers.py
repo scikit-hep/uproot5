@@ -5,6 +5,7 @@ import queue
 import sys
 
 import numpy
+
 try:
     import cupy
 except ImportError:

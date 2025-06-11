@@ -4,11 +4,12 @@ import pytest
 
 
 import numpy
+
 try:
     import cupy
 except ImportError:
     cupy = None
-    
+
 ak = pytest.importorskip("awkward")
 
 
@@ -25,11 +26,18 @@ def physlite_file():
 
 
 @pytest.mark.parametrize(
-    "backend,GDS,library", [("cpu", False, numpy),
-                            pytest.param(
-                            "cuda", True, cupy, marks = pytest.mark.skipif(cupy is None, reason = "could not import 'cupy': No module named 'cupy'")
-                            ),
-                           ]
+    "backend,GDS,library",
+    [
+        ("cpu", False, numpy),
+        pytest.param(
+            "cuda",
+            True,
+            cupy,
+            marks=pytest.mark.skipif(
+                cupy is None, reason="could not import 'cupy': No module named 'cupy'"
+            ),
+        ),
+    ],
 )
 def test_analysis_muons_kinematics(physlite_file, backend, GDS, library):
     if GDS and cupy.cuda.runtime.driverGetVersion() == 0:
@@ -63,11 +71,18 @@ def test_analysis_muons_kinematics(physlite_file, backend, GDS, library):
 
 
 @pytest.mark.parametrize(
-    "backend,GDS,library", [("cpu", False, numpy),
-                            pytest.param(
-                            "cuda", True, cupy, marks = pytest.mark.skipif(cupy is None, reason = "could not import 'cupy': No module named 'cupy'")
-                            ),
-                           ]
+    "backend,GDS,library",
+    [
+        ("cpu", False, numpy),
+        pytest.param(
+            "cuda",
+            True,
+            cupy,
+            marks=pytest.mark.skipif(
+                cupy is None, reason="could not import 'cupy': No module named 'cupy'"
+            ),
+        ),
+    ],
 )
 def test_event_info(physlite_file, backend, GDS, library):
     if GDS and cupy.cuda.runtime.driverGetVersion() == 0:
@@ -95,11 +110,18 @@ def test_event_info(physlite_file, backend, GDS, library):
 
 
 @pytest.mark.parametrize(
-    "backend,GDS,library", [("cpu", False, numpy),
-                            pytest.param(
-                            "cuda", True, cupy, marks = pytest.mark.skipif(cupy is None, reason = "could not import 'cupy': No module named 'cupy'")
-                            ),
-                           ]
+    "backend,GDS,library",
+    [
+        ("cpu", False, numpy),
+        pytest.param(
+            "cuda",
+            True,
+            cupy,
+            marks=pytest.mark.skipif(
+                cupy is None, reason="could not import 'cupy': No module named 'cupy'"
+            ),
+        ),
+    ],
 )
 def test_truth_muon_containers(physlite_file, backend, GDS, library):
     if GDS and cupy.cuda.runtime.driverGetVersion() == 0:

@@ -7,11 +7,12 @@ import numpy as np
 import uproot
 
 import numpy
+
 try:
     import cupy
 except ImportError:
     cupy = None
-    
+
 ak = pytest.importorskip("awkward")
 
 
@@ -33,11 +34,18 @@ def quantize_float(value, bits, min, max):
 
 
 @pytest.mark.parametrize(
-    "backend,GDS,library", [("cpu", False, numpy),
-                            pytest.param(
-                            "cuda", True, cupy, marks = pytest.mark.skipif(cupy is None, reason = "could not import 'cupy': No module named 'cupy'")
-                            ),
-                           ]
+    "backend,GDS,library",
+    [
+        ("cpu", False, numpy),
+        pytest.param(
+            "cuda",
+            True,
+            cupy,
+            marks=pytest.mark.skipif(
+                cupy is None, reason="could not import 'cupy': No module named 'cupy'"
+            ),
+        ),
+    ],
 )
 def test_custom_floats(backend, GDS, library):
     if GDS and cupy.cuda.runtime.driverGetVersion() == 0:
@@ -168,11 +176,18 @@ def test_custom_floats(backend, GDS, library):
 
 
 @pytest.mark.parametrize(
-    "backend,GDS,library", [("cpu", False, numpy),
-                            pytest.param(
-                            "cuda", True, cupy, marks = pytest.mark.skipif(cupy is None, reason = "could not import 'cupy': No module named 'cupy'")
-                            ),
-                           ]
+    "backend,GDS,library",
+    [
+        ("cpu", False, numpy),
+        pytest.param(
+            "cuda",
+            True,
+            cupy,
+            marks=pytest.mark.skipif(
+                cupy is None, reason="could not import 'cupy': No module named 'cupy'"
+            ),
+        ),
+    ],
 )
 def test_multiple_representations(backend, GDS, library):
     if GDS and cupy.cuda.runtime.driverGetVersion() == 0:

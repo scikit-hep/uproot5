@@ -5,6 +5,7 @@ import skhep_testdata
 import uproot
 
 import numpy
+
 try:
     import cupy
 except ImportError:
@@ -13,11 +14,18 @@ ak = pytest.importorskip("awkward")
 
 
 @pytest.mark.parametrize(
-    "backend,GDS,library", [("cpu", False, numpy),
-                            pytest.param(
-                            "cuda", True, cupy, marks = pytest.mark.skipif(cupy is None, reason = "could not import 'cupy': No module named 'cupy'")
-                            ),
-                           ]
+    "backend,GDS,library",
+    [
+        ("cpu", False, numpy),
+        pytest.param(
+            "cuda",
+            True,
+            cupy,
+            marks=pytest.mark.skipif(
+                cupy is None, reason="could not import 'cupy': No module named 'cupy'"
+            ),
+        ),
+    ],
 )
 def test_atomic(backend, GDS, library):
     if GDS and cupy.cuda.runtime.driverGetVersion() == 0:
@@ -32,11 +40,18 @@ def test_atomic(backend, GDS, library):
 
 
 @pytest.mark.parametrize(
-    "backend,GDS,library", [("cpu", False, numpy),
-                            pytest.param(
-                            "cuda", True, cupy, marks = pytest.mark.skipif(cupy is None, reason = "could not import 'cupy': No module named 'cupy'")
-                            ),
-                           ]
+    "backend,GDS,library",
+    [
+        ("cpu", False, numpy),
+        pytest.param(
+            "cuda",
+            True,
+            cupy,
+            marks=pytest.mark.skipif(
+                cupy is None, reason="could not import 'cupy': No module named 'cupy'"
+            ),
+        ),
+    ],
 )
 def test_bitset(backend, GDS, library):
     if GDS and cupy.cuda.runtime.driverGetVersion() == 0:
@@ -102,11 +117,18 @@ def test_bitset(backend, GDS, library):
 
 
 @pytest.mark.parametrize(
-    "backend,GDS,library", [("cpu", False, numpy),
-                            pytest.param(
-                            "cuda", True, cupy, marks = pytest.mark.skipif(cupy is None, reason = "could not import 'cupy': No module named 'cupy'")
-                            ),
-                           ]
+    "backend,GDS,library",
+    [
+        ("cpu", False, numpy),
+        pytest.param(
+            "cuda",
+            True,
+            cupy,
+            marks=pytest.mark.skipif(
+                cupy is None, reason="could not import 'cupy': No module named 'cupy'"
+            ),
+        ),
+    ],
 )
 def test_empty_struct(backend, GDS, library):
     if GDS and cupy.cuda.runtime.driverGetVersion() == 0:
