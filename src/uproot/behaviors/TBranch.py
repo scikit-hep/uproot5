@@ -1965,7 +1965,9 @@ class TBranch(HasBranches):
         """
         if self._cache_key is None:
             sep = ":" if isinstance(self._parent, uproot.behaviors.TTree.TTree) else "/"
-            self._cache_key = f"{self.parent.cache_key}{sep}{self.name}({self.index})"
+            self._cache_key = (
+                f"{self.parent.cache_key}{sep}{self.name}({self.member('fOffset')})"
+            )
         return self._cache_key
 
     @property
