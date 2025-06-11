@@ -2923,7 +2923,7 @@ def _regularize_expressions(
             ):
                 _regularize_expression(
                     hasbranches,
-                    language.getter_of(branchname),
+                    branchname,
                     keys,
                     aliases,
                     language,
