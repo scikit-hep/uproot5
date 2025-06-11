@@ -7,13 +7,19 @@ import numpy as np
 import uproot
 
 import numpy
-import cupy
-
+try:
+    import cupy
+except:
+    cupy = None
 ak = pytest.importorskip("awkward")
 
 
 @pytest.mark.parametrize(
-    "backend,GDS,library", [("cpu", False, numpy), ("cuda", True, cupy)]
+    "backend,GDS,library", [("cpu", False, numpy),
+                            pytest.param(
+                            "cuda", True, cupy, marks = pytest.mark.skipif(cupy is None, reason = "could not import 'cupy': No module named 'cupy'")
+                            ),
+                           ]
 )
 def test_schema_extension(backend, GDS, library):
     if GDS and cupy.cuda.runtime.driverGetVersion() == 0:

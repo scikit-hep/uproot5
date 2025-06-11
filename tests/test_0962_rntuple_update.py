@@ -5,11 +5,18 @@ import uproot
 import awkward as ak
 import skhep_testdata
 import numpy
-import cupy
+try:
+    import cupy
+except ImportError:
+    cupy = None
 
 
 @pytest.mark.parametrize(
-    "backend,GDS,library", [("cpu", False, numpy), ("cuda", True, cupy)]
+    "backend,GDS,library", [("cpu", False, numpy),
+                            pytest.param(
+                            "cuda", True, cupy, marks = pytest.mark.skipif(cupy is None, reason = "could not import 'cupy': No module named 'cupy'")
+                            ),
+                           ]
 )
 def test_new_support_RNTuple_split_int32_reading(backend, GDS, library):
     if GDS and cupy.cuda.runtime.driverGetVersion() == 0:
@@ -25,7 +32,11 @@ def test_new_support_RNTuple_split_int32_reading(backend, GDS, library):
 
 
 @pytest.mark.parametrize(
-    "backend,GDS,library", [("cpu", False, numpy), ("cuda", True, cupy)]
+    "backend,GDS,library", [("cpu", False, numpy),
+                            pytest.param(
+                            "cuda", True, cupy, marks = pytest.mark.skipif(cupy is None, reason = "could not import 'cupy': No module named 'cupy'")
+                            ),
+                           ]
 )
 def test_new_support_RNTuple_bit_bool_reading(backend, GDS, library):
     if GDS and cupy.cuda.runtime.driverGetVersion() == 0:
@@ -37,7 +48,11 @@ def test_new_support_RNTuple_bit_bool_reading(backend, GDS, library):
 
 
 @pytest.mark.parametrize(
-    "backend,GDS,library", [("cpu", False, numpy), ("cuda", True, cupy)]
+    "backend,GDS,library", [("cpu", False, numpy),
+                            pytest.param(
+                            "cuda", True, cupy, marks = pytest.mark.skipif(cupy is None, reason = "could not import 'cupy': No module named 'cupy'")
+                            ),
+                           ]
 )
 def test_new_support_RNTuple_split_int16_reading(backend, GDS, library):
     if GDS and cupy.cuda.runtime.driverGetVersion() == 0:

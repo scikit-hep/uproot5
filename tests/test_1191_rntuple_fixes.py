@@ -6,15 +6,20 @@ import skhep_testdata
 import uproot
 
 import numpy
-import cupy
+try:
+    import cupy
+except ImportError:
+    cupy = None
 
 ak = pytest.importorskip("awkward")
 
-from kvikio import CuFile
-
 
 @pytest.mark.parametrize(
-    "backend,GDS,library", [("cpu", False, numpy), ("cuda", True, cupy)]
+    "backend,GDS,library", [("cpu", False, numpy),
+                            pytest.param(
+                            "cuda", True, cupy, marks = pytest.mark.skipif(cupy is None, reason = "could not import 'cupy': No module named 'cupy'")
+                            ),
+                           ]
 )
 def test_schema_extension(backend, GDS, library):
     if GDS and cupy.cuda.runtime.driverGetVersion() == 0:
@@ -43,7 +48,11 @@ def test_schema_extension(backend, GDS, library):
 
 
 @pytest.mark.parametrize(
-    "backend,GDS,library", [("cpu", False, numpy), ("cuda", True, cupy)]
+    "backend,GDS,library", [("cpu", False, numpy),
+                            pytest.param(
+                            "cuda", True, cupy, marks = pytest.mark.skipif(cupy is None, reason = "could not import 'cupy': No module named 'cupy'")
+                            ),
+                           ]
 )
 def test_rntuple_cardinality(backend, GDS, library):
     if GDS and cupy.cuda.runtime.driverGetVersion() == 0:
@@ -60,7 +69,11 @@ def test_rntuple_cardinality(backend, GDS, library):
 
 
 @pytest.mark.parametrize(
-    "backend,GDS,library", [("cpu", False, numpy), ("cuda", True, cupy)]
+    "backend,GDS,library", [("cpu", False, numpy),
+                            pytest.param(
+                            "cuda", True, cupy, marks = pytest.mark.skipif(cupy is None, reason = "could not import 'cupy': No module named 'cupy'")
+                            ),
+                           ]
 )
 def test_multiple_page_delta_encoding(backend, GDS, library):
     if GDS and cupy.cuda.runtime.driverGetVersion() == 0:
@@ -84,7 +97,11 @@ def test_multiple_page_delta_encoding(backend, GDS, library):
 
 
 @pytest.mark.parametrize(
-    "backend,GDS,library", [("cpu", False, numpy), ("cuda", True, cupy)]
+    "backend,GDS,library", [("cpu", False, numpy),
+                            pytest.param(
+                            "cuda", True, cupy, marks = pytest.mark.skipif(cupy is None, reason = "could not import 'cupy': No module named 'cupy'")
+                            ),
+                           ]
 )
 def test_split_encoding(backend, GDS, library):
     if GDS and cupy.cuda.runtime.driverGetVersion() == 0:

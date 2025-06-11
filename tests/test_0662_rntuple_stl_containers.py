@@ -5,7 +5,10 @@ import queue
 import sys
 
 import numpy
-import cupy
+try:
+    import cupy
+except ImportError:
+    cupy = None
 import pytest
 import skhep_testdata
 
