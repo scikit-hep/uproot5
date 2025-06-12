@@ -2923,9 +2923,14 @@ def _regularize_expressions(
                     uproot.interpretation.grouped.AsGrouped,
                 ),
             ):
+                branchname_expression = (
+                    branchname
+                    if branchname.isalnum()
+                    else language.getter_of(branchname)
+                )
                 _regularize_expression(
                     hasbranches,
-                    branchname,
+                    branchname_expression,
                     keys,
                     aliases,
                     language,
