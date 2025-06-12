@@ -77,7 +77,7 @@ dependencies = [
   "awkward>=2.4.6",
   "cramjam>=2.5.0",
   "xxhash",
-  "numpy",
+  "numpy < 2.3",
   "fsspec",
   "packaging",
   "typing_extensions>=4.1.0; python_version < '3.11'"
