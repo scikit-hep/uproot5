@@ -1965,9 +1965,7 @@ class TBranch(HasBranches):
         """
         if self._cache_key is None:
             sep = ":" if isinstance(self._parent, uproot.behaviors.TTree.TTree) else "/"
-            self._cache_key = (
-                f"{self.parent.cache_key}{sep}{self.name}({self.member('fOffset')})"
-            )
+            self._cache_key = f"{self.parent.cache_key}{sep}{self.name}({self.index})"
         return self._cache_key
 
     @property
@@ -1979,11 +1977,10 @@ class TBranch(HasBranches):
         :ref:`uproot.behaviors.TBranch.TBranch.name` is not unique: the
         non-recursive index is always unique.
         """
-        for i, branch in enumerate(self.parent.branches):
-            if branch is self:
-                return i
-        else:
-            raise AssertionError
+        if not hasattr(self, "_index"):
+            for i, branch in enumerate(self.parent.branches):
+                branch._index = i
+        return self._index
 
     @property
     def interpretation(self):
