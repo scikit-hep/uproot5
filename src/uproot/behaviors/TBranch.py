@@ -1978,6 +1978,7 @@ class TBranch(HasBranches):
         non-recursive index is always unique.
         """
         if not hasattr(self, "_index"):
+            # cache index of all branches of the parent to avoid repeating this loop for other branches
             for i, branch in enumerate(self.parent.branches):
                 branch._index = i
         return self._index
