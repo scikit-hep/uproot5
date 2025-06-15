@@ -5,7 +5,7 @@ from AsCustom import (
     AsCustom,
     BaseReader,
     ReaderType,
-    gen_reader_config,
+    gen_tree_config,
     get_reader_instance,
     readers,
     reconstruct_array,
@@ -58,7 +58,7 @@ bes3_branch2types = {
 
 class Bes3TObjArrayReader(BaseReader):
     @classmethod
-    def gen_reader_config(
+    def gen_tree_config(
         cls,
         top_type_name: str,
         cls_streamer_info: dict,
@@ -85,7 +85,7 @@ class Bes3TObjArrayReader(BaseReader):
         sub_reader_config = []
         for s in all_streamer_info[obj_typename]:
             sub_reader_config.append(
-                gen_reader_config(s, all_streamer_info, item_path + f".{obj_typename}")
+                gen_tree_config(s, all_streamer_info, item_path + f".{obj_typename}")
             )
 
         return {
