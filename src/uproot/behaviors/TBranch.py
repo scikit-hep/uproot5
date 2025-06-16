@@ -17,6 +17,7 @@ import re
 import sys
 import threading
 from collections.abc import Iterable, Mapping, MutableMapping
+from keyword import iskeyword
 
 import numpy
 
@@ -2923,7 +2924,7 @@ def _regularize_expressions(
             ):
                 branchname_expression = (
                     branchname
-                    if branchname.isalnum()
+                    if branchname.isidentifier() and not iskeyword(branchname)
                     else language.getter_of(branchname)
                 )
                 _regularize_expression(
