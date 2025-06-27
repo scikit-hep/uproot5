@@ -1029,13 +1029,13 @@ class HasFields(Mapping):
 
         #####
         # Read and decompress all columns' data
-        clusters_datas = self.ntuple.GPU_read_clusters(
+        clusters_datas = self.ntuple.gpu_read_clusters(
             target_cols, start_cluster_idx, stop_cluster_idx
         )
         clusters_datas._decompress()
         #####
         # Deserialize decompressed datas
-        content_dict = self.ntuple.Deserialize_decompressed_content(
+        content_dict = self.ntuple.deserialize_decompressed_content(
             clusters_datas, start_cluster_idx, stop_cluster_idx
         )
         #####

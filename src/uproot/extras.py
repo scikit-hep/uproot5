@@ -381,7 +381,7 @@ where X is the cuda major version on user's system (11 and 12 currently supporte
 
 def kvikio_nvcomp_codec():
     """
-    Imports and returns ``kvikio``.
+    Imports and returns ``kvikio.nvcomp_codec`` which is not exposed by ``kvikio`` alone.
     """
     try:
         import kvikio.nvcomp_codec as kvikio_nvcomp_codec

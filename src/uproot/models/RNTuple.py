@@ -58,13 +58,11 @@ _rntuple_column_compression_settings_format = struct.Struct("<I")
 
 # https://github.com/root-project/root/blob/6dc4ff848329eaa3ca433985e709b12321098fe2/core/zip/inc/Compression.h#L93-L105
 compression_settings_dict = {
-    -1: "Inherit",
-    0: "UseGlobal",
-    1: "ZLIB",
-    2: "LZMA",
-    3: "deflate",
-    4: "LZ4",
-    5: "zstd",
+    uproot.const.kZLIB: "ZLIB",
+    uproot.const.kLZMA: "LZMA",
+    uproot.const.kOldCompressionAlgo: "deflate",
+    uproot.const.kLZ4: "LZ4",
+    uproot.const.kZSTD: "zstd",
 }
 
 
@@ -750,7 +748,7 @@ in file {self.file.file_path}"""
             res = res.astype(numpy.float32)
         return res
 
-    def GPU_read_clusters(self, columns, start_cluster_idx, stop_cluster_idx):
+    def gpu_read_clusters(self, columns, start_cluster_idx, stop_cluster_idx):
         """
         Args:
             columns (list): The target columns to read.
@@ -779,7 +777,7 @@ in file {self.file.file_path}"""
                 if "column" in key and "union" not in key:
                     key_nr = int(key.split("-")[1])
                     if key_nr not in colrefs_cluster.columns:
-                        Col_ClusterBuffers = self.GPU_read_col_cluster_pages(
+                        Col_ClusterBuffers = self.gpu_read_col_cluster_pages(
                             key_nr, cluster_i, filehandle
                         )
                         colrefs_cluster._add_Col(Col_ClusterBuffers)
@@ -788,7 +786,7 @@ in file {self.file.file_path}"""
         filehandle.get_all()
         return clusters_datas
 
-    def GPU_read_col_cluster_pages(self, ncol, cluster_i, filehandle):
+    def gpu_read_col_cluster_pages(self, ncol, cluster_i, filehandle):
         """
         Args:
             ncol (int): The target column's key number.
@@ -890,7 +888,7 @@ in file {self.file.file_path}"""
 
         return Cluster_Contents
 
-    def Deserialize_decompressed_content(
+    def deserialize_decompressed_content(
         self, clusters_datas, start_cluster_idx, stop_cluster_idx
     ):
         """
@@ -919,7 +917,7 @@ in file {self.file.file_path}"""
                 # Get decompressed buffer corresponding to cluster i
                 cluster_buffer = col_decompressed_buffers[cluster_i]
 
-                self.Deserialize_pages(cluster_buffer, ncol, cluster_i, arrays)
+                self.deserialize_pages(cluster_buffer, ncol, cluster_i, arrays)
 
             if dtype_byte in uproot.const.rntuple_delta_types:
                 # Extract the last offset values:
@@ -945,7 +943,7 @@ in file {self.file.file_path}"""
 
         return col_arrays
 
-    def Deserialize_pages(self, cluster_buffer, ncol, cluster_i, arrays):
+    def deserialize_pages(self, cluster_buffer, ncol, cluster_i, arrays):
         """
         Args:
             cluster_buffer (cupy.ndarray): Buffer to deserialize.
@@ -999,7 +997,7 @@ in file {self.file.file_path}"""
 
             # Get content associated with page
             page_buffer = cluster_buffer[tracker:tracker_end]
-            self.Deserialize_page_decompressed_buffer(
+            self.deserialize_page_decompressed_buffer(
                 page_buffer, page_desc, dtype_str, dtype, nbits, split
             )
             if delta:
@@ -1025,7 +1023,7 @@ in file {self.file.file_path}"""
 
         arrays.append(cluster_buffer)
 
-    def Deserialize_page_decompressed_buffer(
+    def deserialize_page_decompressed_buffer(
         self, destination, desc, dtype_str, dtype, nbits, split
     ):
         """
