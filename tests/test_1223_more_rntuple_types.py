@@ -85,6 +85,6 @@ def test_invalid_variant():
     with uproot.open(filename) as f:
         obj = f["ntuple"]
 
-        a = obj.arrays("variant")
+        a = obj.arrays("variant.*")
 
         assert a.variant.tolist() == [1, None, {"i": 2}]
