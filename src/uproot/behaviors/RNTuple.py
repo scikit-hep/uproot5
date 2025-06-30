@@ -771,30 +771,7 @@ class HasFields(Mapping):
                     dtype_byte=dtype_byte,
                     pad_missing_element=True,
                 )
-
-                if "cardinality" in key:
-                    content = numpy.diff(content)
-                if dtype_byte == uproot.const.rntuple_col_type_to_num_dict["switch"]:
-                    kindex, tags = uproot.models.RNTuple._split_switch_bits(content)
-                    # Find invalid variants and adjust buffers accordingly
-                    invalid = numpy.flatnonzero(tags == -1)
-                    if len(invalid) > 0:
-                        kindex = numpy.delete(kindex, invalid)
-                        tags = numpy.delete(tags, invalid)
-                        invalid -= numpy.arange(len(invalid))
-                        optional_index = numpy.insert(
-                            numpy.arange(len(kindex), dtype=numpy.int64), invalid, -1
-                        )
-                    else:
-                        optional_index = numpy.arange(len(kindex), dtype=numpy.int64)
-                    container_dict[f"{key}-index"] = optional_index
-                    container_dict[f"{key}-union-index"] = kindex
-                    container_dict[f"{key}-union-tags"] = tags
-
-                else:
-                    # don't distinguish data and offsets
-                    container_dict[f"{key}-data"] = content
-                    container_dict[f"{key}-offsets"] = content
+                _fill_container_dict(container_dict, content, key, dtype_byte)
 
         cluster_offset = cluster_starts[start_cluster_idx]
         entry_start -= cluster_offset
@@ -867,9 +844,6 @@ class HasFields(Mapping):
 
 
         """
-        # GDS Depdencies
-        cupy = uproot.extras.cupy()
-
         # This temporarily provides basic functionality while expressions are properly implemented
         if expressions is not None:
             if filter_name == no_filter:
@@ -931,30 +905,8 @@ class HasFields(Mapping):
 
                 dtype_byte = self.ntuple.column_records[key_nr].type
                 content = content_dict[key_nr]
+                _fill_container_dict(container_dict, content, key, dtype_byte)
 
-                if "cardinality" in key:
-                    content = cupy.diff(content)
-
-                if dtype_byte == uproot.const.rntuple_col_type_to_num_dict["switch"]:
-                    kindex, tags = uproot.models.RNTuple._split_switch_bits(content)
-                    # Find invalid variants and adjust buffers accordingly
-                    invalid = numpy.flatnonzero(tags == -1)
-                    if len(invalid) > 0:
-                        kindex = numpy.delete(kindex, invalid)
-                        tags = numpy.delete(tags, invalid)
-                        invalid -= numpy.arange(len(invalid))
-                        optional_index = numpy.insert(
-                            numpy.arange(len(kindex), dtype=numpy.int64), invalid, -1
-                        )
-                    else:
-                        optional_index = numpy.arange(len(kindex), dtype=numpy.int64)
-                    container_dict[f"{key}-index"] = cupy.array(optional_index)
-                    container_dict[f"{key}-union-index"] = cupy.array(kindex)
-                    container_dict[f"{key}-union-tags"] = cupy.array(tags)
-                else:
-                    # don't distinguish data and offsets
-                    container_dict[f"{key}-data"] = content
-                    container_dict[f"{key}-offsets"] = content
         cluster_offset = cluster_starts[start_cluster_idx]
         entry_start -= cluster_offset
         entry_stop -= cluster_offset
@@ -1924,3 +1876,33 @@ def _recursive_find(form, res):
             _recursive_find(c, res)
     if hasattr(form, "content") and issubclass(type(form.content), ak.forms.Form):
         _recursive_find(form.content, res)
+
+
+def _fill_container_dict(container_dict, content, key, dtype_byte):
+    array_library_string = uproot._util.get_array_library(content)
+
+    library = numpy if array_library_string == "numpy" else uproot.extras.cupy()
+
+    if "cardinality" in key:
+        content = library.diff(content)
+
+    if dtype_byte == uproot.const.rntuple_col_type_to_num_dict["switch"]:
+        kindex, tags = uproot.models.RNTuple._split_switch_bits(content)
+        # Find invalid variants and adjust buffers accordingly
+        invalid = numpy.flatnonzero(tags == -1)
+        if len(invalid) > 0:
+            kindex = numpy.delete(kindex, invalid)
+            tags = numpy.delete(tags, invalid)
+            invalid -= numpy.arange(len(invalid))
+            optional_index = numpy.insert(
+                numpy.arange(len(kindex), dtype=numpy.int64), invalid, -1
+            )
+        else:
+            optional_index = numpy.arange(len(kindex), dtype=numpy.int64)
+        container_dict[f"{key}-index"] = library.array(optional_index)
+        container_dict[f"{key}-union-index"] = library.array(kindex)
+        container_dict[f"{key}-union-tags"] = library.array(tags)
+    else:
+        # don't distinguish data and offsets
+        container_dict[f"{key}-data"] = content
+        container_dict[f"{key}-offsets"] = content

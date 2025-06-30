@@ -14,7 +14,7 @@ ak = pytest.importorskip("awkward")
 
 
 @pytest.mark.parametrize(
-    "backend,GDS,library",
+    ("backend", "GDS", "library"),
     [
         ("cuda", False, cupy),
         pytest.param(
@@ -40,7 +40,7 @@ def test_atomic(backend, GDS, library):
 
 
 @pytest.mark.parametrize(
-    "backend,GDS,library",
+    ("backend", "GDS", "library"),
     [
         ("cuda", False, cupy),
         pytest.param(
@@ -117,7 +117,7 @@ def test_bitset(backend, GDS, library):
 
 
 @pytest.mark.parametrize(
-    "backend,GDS,library",
+    ("backend", "GDS", "library"),
     [
         ("cuda", False, cupy),
         pytest.param(

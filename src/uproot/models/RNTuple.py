@@ -776,7 +776,7 @@ in file {self.file.file_path}"""
             for key in columns:
                 if "column" in key and "union" not in key:
                     key_nr = int(key.split("-")[1])
-                    if key_nr not in colrefs_cluster.columns:
+                    if key_nr not in colrefs_cluster.colbuffersclusters.keys():
                         Col_ClusterBuffers = self.gpu_read_col_cluster_pages(
                             key_nr, cluster_i, filehandle
                         )
@@ -1619,9 +1619,7 @@ def _cupy_insert0(arr):
     return out_arr
 
 
-# GDS Helper Dataclasses
-class cupy:  # to appease the linter
-    pass
+CupyArray = any
 
 
 @dataclasses.dataclass
@@ -1634,17 +1632,17 @@ class ColBuffersCluster:
     """
 
     key: str
-    data: cupy.ndarray  # Type: ignore
+    data: CupyArray  # Type: ignore
     isCompressed: bool
     algorithm: str
     compression_level: int
-    pages: list[cupy.ndarray] = dataclasses.field(default_factory=list)
-    output: list[cupy.ndarray] = dataclasses.field(default_factory=list)
+    pages: list[CupyArray] = dataclasses.field(default_factory=list)
+    output: list[CupyArray] = dataclasses.field(default_factory=list)
 
-    def _add_page(self, page: cupy.ndarray):
+    def _add_page(self, page: CupyArray):
         self.pages.append(page)
 
-    def _add_output(self, buffer: cupy.ndarray):
+    def _add_output(self, buffer: CupyArray):
         self.output.append(buffer)
 
     def _decompress(self):
@@ -1663,48 +1661,12 @@ class ColRefsCluster:
     """
 
     cluster_i: int
-    columns: list[str] = dataclasses.field(default_factory=list)
-    data_dict: dict[str : list[cupy.ndarray]] = dataclasses.field(default_factory=dict)
-    data_dict_comp: dict[str : list[cupy.ndarray]] = dataclasses.field(
+    colbuffersclusters: dict[str, ColBuffersCluster] = dataclasses.field(
         default_factory=dict
     )
-    data_dict_uncomp: dict[str : list[cupy.ndarray]] = dataclasses.field(
-        default_factory=dict
-    )
-    colbuffersclusters: list[ColBuffersCluster] = dataclasses.field(
-        default_factory=list
-    )
-    algorithms: dict[str:str] = dataclasses.field(default_factory=dict)
 
     def _add_Col(self, ColBuffersCluster):
-        self.colbuffersclusters.append(ColBuffersCluster)
-        key = ColBuffersCluster.key
-        self.columns.append(key)
-        self.data_dict[key] = ColBuffersCluster
-        self.algorithms[key] = ColBuffersCluster.algorithm
-        if ColBuffersCluster.isCompressed:
-            self.data_dict_comp[key] = ColBuffersCluster
-        else:
-            self.data_dict_uncomp[key] = ColBuffersCluster
-
-    def _decompress(self):
-        to_decompress = {}
-        target = {}
-        # organize data by compression algorithm
-        for colbuffers in self.colbuffersclusters:
-            if colbuffers.algorithm is not None:
-                if colbuffers.algorithm not in to_decompress.keys():
-                    to_decompress[colbuffers.algorithm] = []
-                    target[colbuffers.algorithm] = []
-                if colbuffers.isCompressed:
-                    to_decompress[colbuffers.algorithm].extend(colbuffers.pages)
-                    target[colbuffers.algorithm].extend(colbuffers.output)
-
-        # Batch decompress
-        for algorithm, batch in to_decompress.items():
-            kvikio_nvcomp_codec = uproot.extras.kvikio_nvcomp_codec()
-            codec = kvikio_nvcomp_codec.NvCompBatchCodec(algorithm)
-            codec.decode_batch(batch, target[algorithm])
+        self.colbuffersclusters[ColBuffersCluster.key] = ColBuffersCluster
 
 
 @dataclasses.dataclass
@@ -1715,20 +1677,18 @@ class ClusterRefs:
 
     clusters: [int] = dataclasses.field(default_factory=list)
     columns: list[str] = dataclasses.field(default_factory=list)
-    refs: dict[int:ColRefs_Cluster] = dataclasses.field(default_factory=dict)
+    refs: dict[int:ColRefsCluster] = dataclasses.field(default_factory=dict)
 
     def _add_cluster(self, Cluster):
-        for nCol in Cluster.columns:
+        for nCol in Cluster.colbuffersclusters.keys():
             if nCol not in self.columns:
                 self.columns.append(nCol)
-        cluster_i = Cluster.cluster_i
-        self.clusters.append(cluster_i)
-        self.refs[cluster_i] = Cluster
+        self.refs[Cluster.cluster_i] = Cluster
 
     def _grab_ColOutput(self, nCol):
         output_list = []
         for cluster in self.refs.values():
-            colbuffer = cluster.data_dict[nCol].data
+            colbuffer = cluster.colbuffersclusters[nCol].data
             output_list.append(colbuffer)
 
         return output_list
@@ -1738,7 +1698,7 @@ class ClusterRefs:
         target = {}
         # organize data by compression algorithm
         for cluster in self.refs.values():
-            for colbuffers in cluster.colbuffersclusters:
+            for colbuffers in cluster.colbuffersclusters.values():
                 if colbuffers.algorithm is not None:
                     if colbuffers.algorithm not in to_decompress.keys():
                         to_decompress[colbuffers.algorithm] = []
@@ -1752,6 +1712,17 @@ class ClusterRefs:
             kvikio_nvcomp_codec = uproot.extras.kvikio_nvcomp_codec()
             codec = kvikio_nvcomp_codec.NvCompBatchCodec(algorithm)
             codec.decode_batch(batch, target[algorithm])
+
+        # Clean up compressed buffers from memory after decompression
+        for cluster in self.refs.values():
+            for colbuffers in cluster.colbuffersclusters.values():
+                # Clear python references to GPU memory
+                del colbuffers.pages
+                colbuffers.pages = []
+                # Tell GPU to free unused memory blocks
+                cupy = uproot.extras.cupy()
+                mempool = cupy.get_default_memory_pool()
+                mempool.free_all_blocks()
 
 
 uproot.classes["ROOT::RNTuple"] = Model_ROOT_3a3a_RNTuple

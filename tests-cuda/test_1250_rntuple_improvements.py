@@ -15,7 +15,7 @@ ak = pytest.importorskip("awkward")
 
 
 @pytest.mark.parametrize(
-    "backend,GDS,library",
+    ("backend", "GDS", "library"),
     [
         ("cuda", False, cupy),
         pytest.param(

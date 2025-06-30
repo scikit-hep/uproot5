@@ -33,7 +33,7 @@ def quantize_float(value, bits, min, max):
 
 
 @pytest.mark.parametrize(
-    "backend,GDS,library",
+    ("backend", "GDS", "library"),
     [
         ("cuda", False, cupy),
         pytest.param(
@@ -175,7 +175,7 @@ def test_custom_floats(backend, GDS, library):
 
 
 @pytest.mark.parametrize(
-    "backend,GDS,library",
+    ("backend", "GDS", "library"),
     [
         ("cuda", False, cupy),
         pytest.param(

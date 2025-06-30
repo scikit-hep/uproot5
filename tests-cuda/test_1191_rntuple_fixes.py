@@ -15,7 +15,7 @@ ak = pytest.importorskip("awkward")
 
 
 @pytest.mark.parametrize(
-    "backend,GDS,library",
+    ("backend", "GDS", "library"),
     [
         ("cuda", False, cupy),
         pytest.param(
@@ -55,7 +55,7 @@ def test_schema_extension(backend, GDS, library):
 
 
 @pytest.mark.parametrize(
-    "backend,GDS,library",
+    ("backend", "GDS", "library"),
     [
         ("cuda", False, cupy),
         pytest.param(
@@ -83,7 +83,7 @@ def test_rntuple_cardinality(backend, GDS, library):
 
 
 @pytest.mark.parametrize(
-    "backend,GDS,library",
+    ("backend", "GDS", "library"),
     [
         ("cuda", False, cupy),
         pytest.param(
@@ -118,7 +118,7 @@ def test_multiple_page_delta_encoding(backend, GDS, library):
 
 
 @pytest.mark.parametrize(
-    "backend,GDS,library",
+    ("backend", "GDS", "library"),
     [
         ("cuda", False, cupy),
         pytest.param(

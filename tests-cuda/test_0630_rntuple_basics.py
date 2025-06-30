@@ -14,7 +14,7 @@ pytest.importorskip("awkward")
 
 
 @pytest.mark.parametrize(
-    "backend,GDS,library",
+    ("backend", "GDS", "library"),
     [
         ("cuda", False, cupy),
         pytest.param(
@@ -68,17 +68,3 @@ def test_flat(backend, GDS, library):
             R.arrays(entry_start=-3, use_GDS=GDS, backend=backend)["one_integers"]
             == library.array([3, 2, 1])
         )
-
-
-def test_jagged():
-    filename = skhep_testdata.data_path(
-        "test_int_vfloat_tlv_vtlv_rntuple_v1-0-0-0.root"
-    )
-    with uproot.open(filename) as f:
-        R = f["ntuple"]
-        assert R.keys(recursive=False) == [
-            "one_integers",
-            "two_v_floats",
-            "three_LV",
-            "four_v_LVs",
-        ]

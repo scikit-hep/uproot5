@@ -14,7 +14,7 @@ except ImportError:
 
 
 @pytest.mark.parametrize(
-    "backend,GDS,library",
+    ("backend", "GDS", "library"),
     [
         ("cuda", False, cupy),
         pytest.param(
@@ -41,7 +41,7 @@ def test_new_support_RNTuple_split_int32_reading(backend, GDS, library):
 
 
 @pytest.mark.parametrize(
-    "backend,GDS,library",
+    ("backend", "GDS", "library"),
     [
         ("cuda", False, cupy),
         pytest.param(
@@ -64,7 +64,7 @@ def test_new_support_RNTuple_bit_bool_reading(backend, GDS, library):
 
 
 @pytest.mark.parametrize(
-    "backend,GDS,library",
+    ("backend", "GDS", "library"),
     [
         ("cuda", False, cupy),
         pytest.param(

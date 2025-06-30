@@ -27,7 +27,7 @@ def physlite_file():
 
 
 @pytest.mark.parametrize(
-    "backend,GDS,library",
+    ("backend", "GDS", "library"),
     [
         ("cuda", False, cupy),
         pytest.param(
@@ -72,7 +72,7 @@ def test_analysis_muons_kinematics(physlite_file, backend, GDS, library):
 
 
 @pytest.mark.parametrize(
-    "backend,GDS,library",
+    ("backend", "GDS", "library"),
     [
         ("cuda", False, cupy),
         pytest.param(
@@ -111,7 +111,7 @@ def test_event_info(physlite_file, backend, GDS, library):
 
 
 @pytest.mark.parametrize(
-    "backend,GDS,library",
+    ("backend", "GDS", "library"),
     [
         ("cuda", False, cupy),
         pytest.param(

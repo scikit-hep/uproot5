@@ -1030,3 +1030,24 @@ class _Unset:
 
 
 unset = _Unset()
+
+
+def get_array_library(arr):
+    """
+    Determine if an array is a NumPy or CuPy ndarray, without importing CuPy.
+
+    Args:
+        arr: The array to check.
+
+    Returns:
+        String: 'numpy' if it's a NumPy array, 'cupy' if it's a CuPy array,
+        'unknown' otherwise.
+    """
+    module_name = type(arr).__module__
+
+    if module_name.startswith("numpy"):
+        return "numpy"
+    elif module_name.startswith("cupy"):
+        return "cupy"
+    else:
+        return "unknown"

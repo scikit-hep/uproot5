@@ -13,7 +13,7 @@ import uproot
 ak = pytest.importorskip("awkward")
 
 
-@pytest.mark.parametrize("backend,GDS,library", [("cuda", False, cupy)])
+@pytest.mark.parametrize(("backend", "GDS", "library"), [("cuda", False, cupy)])
 def test_rntuple_stl_containers(backend, GDS, library):
     filename = skhep_testdata.data_path("test_stl_containers_rntuple_v1-0-0-0.root")
     with uproot.open(filename) as f:
