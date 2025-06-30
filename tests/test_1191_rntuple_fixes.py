@@ -5,33 +5,8 @@ import skhep_testdata
 
 import uproot
 
-import numpy
 
-try:
-    import cupy
-except ImportError:
-    cupy = None
-
-ak = pytest.importorskip("awkward")
-
-
-@pytest.mark.parametrize(
-    "backend,GDS,library",
-    [
-        ("cpu", False, numpy),
-        pytest.param(
-            "cuda",
-            True,
-            cupy,
-            marks=pytest.mark.skipif(
-                cupy is None, reason="could not import 'cupy': No module named 'cupy'"
-            ),
-        ),
-    ],
-)
-def test_schema_extension(backend, GDS, library):
-    if GDS and cupy.cuda.runtime.driverGetVersion() == 0:
-        pytest.skip("No available CUDA driver.")
+def test_schema_extension():
     filename = skhep_testdata.data_path("test_extension_columns_rntuple_v1-0-0-0.root")
     with uproot.open(filename) as f:
         obj = f["ntuple"]
@@ -43,106 +18,46 @@ def test_schema_extension(backend, GDS, library):
         assert obj.column_records[1].first_element_index == 200
         assert obj.column_records[2].first_element_index == 400
 
-        arrays = obj.arrays(backend=backend, use_GDS=GDS)
+        arrays = obj.arrays()
 
         assert len(arrays.float_field) == 600
         assert len(arrays.intvec_field) == 600
 
-        assert ak.all(arrays.float_field[:200] == 0)
-        assert ak.all(len(l) == 0 for l in arrays.intvec_field[:400])
+        assert all(arrays.float_field[:200] == 0)
+        assert all(len(l) == 0 for l in arrays.intvec_field[:400])
 
         assert next(i for i, l in enumerate(arrays.float_field) if l != 0) == 200
         assert next(i for i, l in enumerate(arrays.intvec_field) if len(l) != 0) == 400
 
 
-@pytest.mark.parametrize(
-    "backend,GDS,library",
-    [
-        ("cpu", False, numpy),
-        pytest.param(
-            "cuda",
-            True,
-            cupy,
-            marks=pytest.mark.skipif(
-                cupy is None, reason="could not import 'cupy': No module named 'cupy'"
-            ),
-        ),
-    ],
-)
-def test_rntuple_cardinality(backend, GDS, library):
-    if GDS and cupy.cuda.runtime.driverGetVersion() == 0:
-        pytest.skip("No available CUDA driver.")
+def test_rntuple_cardinality():
     filename = skhep_testdata.data_path(
         "Run2012BC_DoubleMuParked_Muons_1000evts_rntuple_v1-0-0-0.root"
     )
     with uproot.open(filename) as f:
         obj = f["Events"]
-        arrays = obj.arrays(backend=backend, use_GDS=GDS)
-        assert ak.all(
-            arrays["nMuon"] == library.array([len(l) for l in arrays["Muon_pt"]])
-        )
+        arrays = obj.arrays()
+        assert arrays["nMuon"].tolist() == [len(l) for l in arrays["Muon_pt"]]
 
 
-@pytest.mark.parametrize(
-    "backend,GDS,library",
-    [
-        ("cpu", False, numpy),
-        pytest.param(
-            "cuda",
-            True,
-            cupy,
-            marks=pytest.mark.skipif(
-                cupy is None, reason="could not import 'cupy': No module named 'cupy'"
-            ),
-        ),
-    ],
-)
-def test_multiple_page_delta_encoding(backend, GDS, library):
-    if GDS and cupy.cuda.runtime.driverGetVersion() == 0:
-        pytest.skip("No available CUDA driver.")
+def test_multiple_page_delta_encoding():
     filename = skhep_testdata.data_path("test_index_multicluster_rntuple_v1-0-0-0.root")
     with uproot.open(filename) as f:
         obj = f["ntuple"]
-        if backend == "cpu":
-            data = obj.read_col_page(0, 0)
-            # first page has 64 elements, so this checks that data was stitched together correctly
-            assert data[64] - data[63] == 2
-
-        if backend == "cuda":
-            filehandle = uproot.source.cufile_interface.Source_CuFile(filename, "rb")
-            col_clusterbuffers = obj.gpu_read_col_cluster_pages(0, 0, filehandle)
-            filehandle.get_all()
-            col_clusterbuffers._decompress()
-            data = []
-            obj.deserialize_pages(col_clusterbuffers.data, 0, 0, data)
-            assert data[0][64] - data[0][63] == 2
+        data = obj.read_col_page(0, 0)
+        # first page has 64 elements, so this checks that data was stitched together correctly
+        assert data[64] - data[63] == 2
 
 
-@pytest.mark.parametrize(
-    "backend,GDS,library",
-    [
-        ("cpu", False, numpy),
-        pytest.param(
-            "cuda",
-            True,
-            cupy,
-            marks=pytest.mark.skipif(
-                cupy is None, reason="could not import 'cupy': No module named 'cupy'"
-            ),
-        ),
-    ],
-)
-def test_split_encoding(backend, GDS, library):
-    if GDS and cupy.cuda.runtime.driverGetVersion() == 0:
-        pytest.skip("No available CUDA driver.")
+def test_split_encoding():
     filename = skhep_testdata.data_path(
         "Run2012BC_DoubleMuParked_Muons_1000evts_rntuple_v1-0-0-0.root"
     )
     with uproot.open(filename) as f:
         obj = f["Events"]
-        arrays = obj.arrays(backend=backend, use_GDS=GDS)
+        arrays = obj.arrays()
 
-        expected_pt = library.array([10.763696670532227, 15.736522674560547])
-        expected_charge = library.array([-1, -1])
-        assert ak.all(arrays["Muon_pt"][0] == expected_pt)
-        assert ak.all(arrays["Muon_charge"][0] == expected_charge)
+        expected_pt = [10.763696670532227, 15.736522674560547]
+        expected_charge = [-1, -1]
+        assert arrays["Muon_pt"][0].tolist() == expected_pt
+        assert arrays["Muon_charge"][0].tolist() == expected_charge

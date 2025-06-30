@@ -1,42 +1,17 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot5/blob/main/LICENSE
 
-import pytest
 import skhep_testdata
 import numpy as np
 
 import uproot
 
-import numpy
 
-try:
-    import cupy
-except:
-    cupy = None
-ak = pytest.importorskip("awkward")
-
-
-@pytest.mark.parametrize(
-    "backend,GDS,library",
-    [
-        ("cpu", False, numpy),
-        pytest.param(
-            "cuda",
-            True,
-            cupy,
-            marks=pytest.mark.skipif(
-                cupy is None, reason="could not import 'cupy': No module named 'cupy'"
-            ),
-        ),
-    ],
-)
-def test_schema_extension(backend, GDS, library):
-    if GDS and cupy.cuda.runtime.driverGetVersion() == 0:
-        pytest.skip("No available CUDA driver.")
+def test_schema_extension():
     filename = skhep_testdata.data_path("test_index_multicluster_rntuple_v1-0-0-0.root")
     with uproot.open(filename) as f:
         obj = f["ntuple"]
 
-        arrays = obj.arrays(backend=backend, use_GDS=GDS)
+        arrays = obj.arrays()
         int_vec_array = arrays["int_vector"]
 
         for j in range(2):

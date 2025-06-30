@@ -3,7 +3,7 @@ from __future__ import annotations
 import uproot
 
 
-class Source_CuFile:
+class CuFileSource:
     """
     Class for physically reading and writing data from a file using kvikio bindings
     to CuFile API.

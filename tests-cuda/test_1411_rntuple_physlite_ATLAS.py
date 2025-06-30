@@ -1,7 +1,14 @@
 import skhep_testdata as skhtd
 import uproot
 import pytest
-import numpy as np
+
+
+import numpy
+
+try:
+    import cupy
+except ImportError:
+    cupy = None
 
 ak = pytest.importorskip("awkward")
 
@@ -18,7 +25,23 @@ def physlite_file():
         yield f["EventData"]  # keeps file open
 
 
-def test_analysis_muons_kinematics(physlite_file):
+@pytest.mark.parametrize(
+    "backend,GDS,library",
+    [
+        ("cuda", False, cupy),
+        pytest.param(
+            "cuda",
+            True,
+            cupy,
+            marks=pytest.mark.skipif(
+                cupy is None, reason="could not import 'cupy': No module named 'cupy'"
+            ),
+        ),
+    ],
+)
+def test_analysis_muons_kinematics(physlite_file, backend, GDS, library):
+    if GDS and cupy.cuda.runtime.driverGetVersion() == 0:
+        pytest.skip("No available CUDA driver.")
     """Test that kinematic variables of AnalysisMuons can be read and match expected length."""
     cols = [
         "AnalysisMuonsAuxDyn:pt",
@@ -30,7 +53,7 @@ def test_analysis_muons_kinematics(physlite_file):
     arrays = {}
     for col in cols:
         assert col in physlite_file.keys(), f"Column '{col}' not found"
-        arrays[col] = physlite_file[col].array()
+        arrays[col] = physlite_file[col].array(backend=backend, use_GDS=GDS)
 
     # Check same structure, number of total muons, and values
     n_expected_muons = 88
@@ -43,11 +66,27 @@ def test_analysis_muons_kinematics(physlite_file):
             len(ak.flatten(arr)) == n_expected_muons
         ), f"{col} does not match expected muon count"
         assert (
-            round(ak.mean(arr), 2) == expected_means[i]
+            library.round(ak.mean(arr), 2) == expected_means[i]
         ), f"{col} mean value does not match the expected one"
 
 
-def test_event_info(physlite_file):
+@pytest.mark.parametrize(
+    "backend,GDS,library",
+    [
+        ("cuda", False, cupy),
+        pytest.param(
+            "cuda",
+            True,
+            cupy,
+            marks=pytest.mark.skipif(
+                cupy is None, reason="could not import 'cupy': No module named 'cupy'"
+            ),
+        ),
+    ],
+)
+def test_event_info(physlite_file, backend, GDS, library):
+    if GDS and cupy.cuda.runtime.driverGetVersion() == 0:
+        pytest.skip("No available CUDA driver.")
     """Test that eventInfo variables can be read and match expected first event."""
     cols = [
         "EventInfoAuxDyn:eventNumber",
@@ -58,7 +97,7 @@ def test_event_info(physlite_file):
     first_event = {}
     for col in cols:
         assert col in physlite_file.keys(), f"Column '{col}' not found"
-        first_event[col] = physlite_file[col].array()[0]
+        first_event[col] = physlite_file[col].array(backend=backend, use_GDS=GDS)[0]
 
     # Check first event values
     # expected event info values: event number, pile-up, lumiBlock
@@ -70,7 +109,23 @@ def test_event_info(physlite_file):
         ), f"First event {col} doest not match the expected value"
 
 
-def test_truth_muon_containers(physlite_file):
+@pytest.mark.parametrize(
+    "backend,GDS,library",
+    [
+        ("cuda", False, cupy),
+        pytest.param(
+            "cuda",
+            True,
+            cupy,
+            marks=pytest.mark.skipif(
+                cupy is None, reason="could not import 'cupy': No module named 'cupy'"
+            ),
+        ),
+    ],
+)
+def test_truth_muon_containers(physlite_file, backend, GDS, library):
+    if GDS and cupy.cuda.runtime.driverGetVersion() == 0:
+        pytest.skip("No available CUDA driver.")
     """Test that truth muon variables can be read and match expected values."""
     cols = [
         "TruthMuons",  # AOD Container
@@ -82,19 +137,30 @@ def test_truth_muon_containers(physlite_file):
     arrays = {}
     for col in cols:
         assert col in physlite_file.keys(), f"Column '{col}' not found"
-        arrays[col] = physlite_file[col].array()
+        temp = physlite_file[col].array(backend=backend, use_GDS=GDS)
+        arrays[col] = temp
 
     # Check values
     mass_evt_0 = 105.7
     AOD_type = [":_0"]  # Uproot interpretation of AOD containers
-    mu_pdgid = [13, -13]
+    mu_pdgid = library.array([13, -13])
 
     assert (
         arrays["TruthMuons"].fields == AOD_type
     ), f"TruthMuons fields have changed, {arrays['TruthMuons'].fields} instead of {AOD_type}"
-    assert np.isclose(
+    assert library.isclose(
         ak.flatten(arrays["TruthMuonsAuxDyn:m"])[0], mass_evt_0
     ), "Truth mass of first event does not match expected value"
-    assert np.all(
-        np.isin(ak.to_numpy(ak.flatten(arrays["TruthMuonsAuxDyn:pdgId"])), mu_pdgid)
-    ), "Retrieved pdgids are not 13/-13"
+
+    if library == numpy:
+        assert library.all(
+            library.isin(
+                ak.to_numpy(ak.flatten(arrays["TruthMuonsAuxDyn:pdgId"])), mu_pdgid
+            )
+        ), "Retrieved pdgids are not 13/-13"
+    elif library == cupy:
+        assert library.all(
+            library.isin(
+                ak.to_cupy(ak.flatten(arrays["TruthMuonsAuxDyn:pdgId"])), mu_pdgid
+            )
+        ), "Retrieved pdgids are not 13/-13"

@@ -16,7 +16,7 @@ import xxhash
 import uproot
 import uproot.behaviors.RNTuple
 import uproot.const
-from uproot.source.cufile_interface import Source_CuFile
+from uproot.source.cufile_interface import CuFileSource
 
 # https://github.com/root-project/root/blob/8cd9eed6f3a32e55ef1f0f1df8e5462e753c735d/tree/ntuple/v7/doc/BinaryFormatSpecification.md#anchor-schema
 _rntuple_anchor_format = struct.Struct(">HHHHQQQQQQQ")
@@ -58,11 +58,11 @@ _rntuple_column_compression_settings_format = struct.Struct("<I")
 
 # https://github.com/root-project/root/blob/6dc4ff848329eaa3ca433985e709b12321098fe2/core/zip/inc/Compression.h#L93-L105
 compression_settings_dict = {
-    uproot.const.kZLIB: "ZLIB",
-    uproot.const.kLZMA: "LZMA",
-    uproot.const.kOldCompressionAlgo: "deflate",
-    uproot.const.kLZ4: "LZ4",
-    uproot.const.kZSTD: "zstd",
+    uproot.const.kZLIB: "ZLIB", # nvCOMP unsupported
+    uproot.const.kLZMA: "LZMA", # nvCOMP unsupported
+    uproot.const.kOldCompressionAlgo: "deflate", # nvCOMP support
+    uproot.const.kLZ4: "LZ4", # nvCOMP support
+    uproot.const.kZSTD: "zstd", # nvCOMP support
 }
 
 
@@ -757,22 +757,22 @@ in file {self.file.file_path}"""
             stop_cluster_idx (int): The last cluster index containing entries
             in the range requested.
 
-        Returns a Cluster_Refs containing ColRefs_Cluster for each cluster. Each
-        ColRefs_Cluster contains all ColBuffers_Cluster for each column in
-        columns. Each ColBuffers_Cluster contains the page buffers, decompression
+        Returns a ClusterRefs containing ColRefs_Cluster for each cluster. Each
+        ColRefs_Cluster contains all ColBuffersCluster for each column in
+        columns. Each ColBuffersCluster contains the page buffers, decompression
         target buffers, and compression metadata for a column in a given cluster.
 
-        The Cluster_Refs object contains all information needed for and performs
+        The ClusterRefs object contains all information needed for and performs
         decompression in parallel over all compressed buffers.
         """
         cluster_range = range(start_cluster_idx, stop_cluster_idx)
-        clusters_datas = Cluster_Refs()
+        clusters_datas = ClusterRefs()
         # Open filehandle and read columns for clusters
-        filehandle = Source_CuFile(self.file.source.file_path, "rb")
+        filehandle = CuFileSource(self.file.source.file_path, "rb")
 
         # Iterate through each cluster
         for cluster_i in cluster_range:
-            colrefs_cluster = ColRefs_Cluster(cluster_i)
+            colrefs_cluster = ColRefsCluster(cluster_i)
             for key in columns:
                 if "column" in key and "union" not in key:
                     key_nr = int(key.split("-")[1])
@@ -791,10 +791,10 @@ in file {self.file.file_path}"""
         Args:
             ncol (int): The target column's key number.
             cluster_i (int): The cluster to read column data from.
-            filehandle (uproot.source.cufile_interface.Source_CuFile): CuFile
+            filehandle (uproot.source.cufile_interface.CuFileSource): CuFile
             filehandle interface which performs CuFile API calls.
 
-        Returns a ColBuffers_Cluster containing raw page buffers, decompression
+        Returns a ColBuffersCluster containing raw page buffers, decompression
         target buffers, and compression metadata.
         """
         # Get cluster and pages metadatas
@@ -849,7 +849,7 @@ in file {self.file.file_path}"""
 
         isCompressed = total_bytes != total_len * dtype.itemsize
 
-        Cluster_Contents = ColBuffers_Cluster(
+        Cluster_Contents = ColBuffersCluster(
             ncol_orig,
             full_output_buffer,
             isCompressed,
@@ -893,7 +893,7 @@ in file {self.file.file_path}"""
     ):
         """
         Args:
-            clusters_datas (Cluster_Refs): The target column's key number.
+            clusters_datas (ClusterRefs): The target column's key number.
             start_cluster_idx (int): The first cluster index containing entries
             in the range requested.
             stop_cluster_idx (int): The last cluster index containing entries
@@ -1625,9 +1625,9 @@ class cupy:  # to appease the linter
 
 
 @dataclasses.dataclass
-class ColBuffers_Cluster:
+class ColBuffersCluster:
     """
-    A ColBuffers_Cluster contains the compressed and decompression target output
+    A ColBuffersCluster contains the compressed and decompression target output
     buffers for a particular column in a particular cluster of all pages. It
     contains pointers to portions of the cluster data which correspond to the
     different pages of that cluster.
@@ -1655,9 +1655,9 @@ class ColBuffers_Cluster:
 
 
 @dataclasses.dataclass
-class ColRefs_Cluster:
+class ColRefsCluster:
     """
-    A ColRefs_Cluster contains the ColBuffers_Cluster for all requested columns
+    A ColRefsCluster contains the ColBuffersCluster for all requested columns
     in a given cluster. Columns are separated by whether they are compressed or
     uncompressed. Compressed columns can be decompressed.
     """
@@ -1671,27 +1671,27 @@ class ColRefs_Cluster:
     data_dict_uncomp: dict[str : list[cupy.ndarray]] = dataclasses.field(
         default_factory=dict
     )
-    colbuffers_cluster: list[ColBuffers_Cluster] = dataclasses.field(
+    colbuffersclusters: list[ColBuffersCluster] = dataclasses.field(
         default_factory=list
     )
     algorithms: dict[str:str] = dataclasses.field(default_factory=dict)
 
-    def _add_Col(self, ColBuffers_Cluster):
-        self.colbuffers_cluster.append(ColBuffers_Cluster)
-        key = ColBuffers_Cluster.key
+    def _add_Col(self, ColBuffersCluster):
+        self.colbuffersclusters.append(ColBuffersCluster)
+        key = ColBuffersCluster.key
         self.columns.append(key)
-        self.data_dict[key] = ColBuffers_Cluster
-        self.algorithms[key] = ColBuffers_Cluster.algorithm
-        if ColBuffers_Cluster.isCompressed:
-            self.data_dict_comp[key] = ColBuffers_Cluster
+        self.data_dict[key] = ColBuffersCluster
+        self.algorithms[key] = ColBuffersCluster.algorithm
+        if ColBuffersCluster.isCompressed:
+            self.data_dict_comp[key] = ColBuffersCluster
         else:
-            self.data_dict_uncomp[key] = ColBuffers_Cluster
+            self.data_dict_uncomp[key] = ColBuffersCluster
 
     def _decompress(self):
         to_decompress = {}
         target = {}
         # organize data by compression algorithm
-        for colbuffers in self.colbuffers_cluster:
+        for colbuffers in self.colbuffersclusters:
             if colbuffers.algorithm is not None:
                 if colbuffers.algorithm not in to_decompress.keys():
                     to_decompress[colbuffers.algorithm] = []
@@ -1708,9 +1708,9 @@ class ColRefs_Cluster:
 
 
 @dataclasses.dataclass
-class Cluster_Refs:
+class ClusterRefs:
     """ "
-    A Cluster_refs contains the ColRefs_Cluster for multiple clusters.
+    A ClusterRefs contains the ColRefs_Cluster for multiple clusters.
     """
 
     clusters: [int] = dataclasses.field(default_factory=list)
@@ -1721,8 +1721,6 @@ class Cluster_Refs:
         for nCol in Cluster.columns:
             if nCol not in self.columns:
                 self.columns.append(nCol)
-        # if self.columns == []:
-        #     self.columns = Cluster.columns
         cluster_i = Cluster.cluster_i
         self.clusters.append(cluster_i)
         self.refs[cluster_i] = Cluster
@@ -1740,7 +1738,7 @@ class Cluster_Refs:
         target = {}
         # organize data by compression algorithm
         for cluster in self.refs.values():
-            for colbuffers in cluster.colbuffers_cluster:
+            for colbuffers in cluster.colbuffersclusters:
                 if colbuffers.algorithm is not None:
                     if colbuffers.algorithm not in to_decompress.keys():
                         to_decompress[colbuffers.algorithm] = []

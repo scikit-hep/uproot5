@@ -5,6 +5,11 @@ import queue
 import sys
 
 import numpy
+
+try:
+    import cupy
+except ImportError:
+    cupy = None
 import pytest
 import skhep_testdata
 
@@ -13,7 +18,8 @@ import uproot
 ak = pytest.importorskip("awkward")
 
 
-def test_rntuple_stl_containers():
+@pytest.mark.parametrize("backend,GDS,library", [("cuda", False, cupy)])
+def test_rntuple_stl_containers(backend, GDS, library):
     filename = skhep_testdata.data_path("test_stl_containers_rntuple_v1-0-0-0.root")
     with uproot.open(filename) as f:
         R = f["ntuple"]
@@ -32,7 +38,7 @@ def test_rntuple_stl_containers():
             "lorentz_vector",
             "array_lv",
         ]
-        r = R.arrays()
+        r = R.arrays(backend=backend, use_GDS=GDS)
         assert ak.all(r["string"] == ["one", "two", "three", "four", "five"])
 
         assert r["vector_int32"][0] == [1]
@@ -55,7 +61,7 @@ def test_rntuple_stl_containers():
         assert r["vector_variant_int64_string"][0][0] == "one"
         assert r["vector_variant_int64_string"][1][0] == "one"
         assert r["vector_variant_int64_string"][1][1] == 2
-        assert type(r["vector_variant_int64_string"][1][1]) == numpy.int64
+        assert r["vector_variant_int64_string"][1][1].dtype == cupy.int64
 
         assert r["tuple_int32_string"].tolist() == [
             (1, "one"),

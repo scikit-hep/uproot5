@@ -4,32 +4,9 @@ import pytest
 import skhep_testdata
 
 import uproot
-import numpy
-
-try:
-    import cupy
-except ImportError:
-    cupy = None
-ak = pytest.importorskip("awkward")
 
 
-@pytest.mark.parametrize(
-    "backend,GDS,library",
-    [
-        ("cpu", False, numpy),
-        pytest.param(
-            "cuda",
-            True,
-            cupy,
-            marks=pytest.mark.skipif(
-                cupy is None, reason="could not import 'cupy': No module named 'cupy'"
-            ),
-        ),
-    ],
-)
-def test_multiple_cluster_groups(backend, GDS, library):
-    if GDS and cupy.cuda.runtime.driverGetVersion() == 0:
-        pytest.skip("No available CUDA driver.")
+def test_multiple_cluster_groups():
     filename = skhep_testdata.data_path(
         "test_multiple_cluster_groups_rntuple_v1-0-0-0.root"
     )
@@ -44,9 +21,7 @@ def test_multiple_cluster_groups(backend, GDS, library):
 
         assert obj.num_entries == 1000
 
-        arrays = obj.arrays(backend=backend, use_GDS=GDS)
+        arrays = obj.arrays()
 
-        assert ak.all(arrays.one == library.array(list(range(1000))))
-        assert ak.all(
-            arrays.int_vector == library.array([[i, i + 1] for i in range(1000)])
-        )
+        assert arrays.one.tolist() == list(range(1000))
+        assert arrays.int_vector.tolist() == [[i, i + 1] for i in range(1000)]

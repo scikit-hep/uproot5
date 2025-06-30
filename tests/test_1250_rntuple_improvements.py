@@ -5,15 +5,6 @@ import skhep_testdata
 
 import uproot
 
-import numpy
-
-try:
-    import cupy
-except ImportError:
-    cupy = None
-
-ak = pytest.importorskip("awkward")
-
 
 def test_field_class():
     filename = skhep_testdata.data_path("test_nested_structs_rntuple_v1-0-0-0.root")
@@ -32,39 +23,22 @@ def test_field_class():
         assert len(v) == 1
 
 
-@pytest.mark.parametrize(
-    "backend,GDS,library",
-    [
-        ("cpu", False, numpy),
-        pytest.param(
-            "cuda",
-            True,
-            cupy,
-            marks=pytest.mark.skipif(
-                cupy is None, reason="could not import 'cupy': No module named 'cupy'"
-            ),
-        ),
-    ],
-)
-def test_array_methods(backend, GDS, library):
-    if GDS and cupy.cuda.runtime.driverGetVersion() == 0:
-        pytest.skip("No available CUDA driver.")
+def test_array_methods():
     filename = skhep_testdata.data_path(
         "Run2012BC_DoubleMuParked_Muons_1000evts_rntuple_v1-0-0-0.root"
     )
     with uproot.open(filename) as f:
         obj = f["Events"]
-        nMuon_array = obj["nMuon"].array(backend=backend, use_GDS=GDS)
-        Muon_pt_array = obj["Muon_pt"].array(backend=backend, use_GDS=GDS)
-        assert ak.all(nMuon_array == library.array([len(l) for l in Muon_pt_array]))
+        nMuon_array = obj["nMuon"].array()
+        Muon_pt_array = obj["Muon_pt"].array()
+        assert nMuon_array.tolist() == [len(l) for l in Muon_pt_array]
 
-        nMuon_arrays = obj["nMuon"].arrays(backend=backend, use_GDS=GDS)
+        nMuon_arrays = obj["nMuon"].arrays()
         assert len(nMuon_arrays.fields) == 1
         assert len(nMuon_arrays) == 1000
-        assert ak.all(nMuon_arrays["nMuon"] == nMuon_array)
+        assert nMuon_arrays["nMuon"].tolist() == nMuon_array.tolist()
 
 
-@pytest.mark.xfail(reason="Iterate tempermental - inaccurate for jagged branches")
 def test_iterate():
     filename = skhep_testdata.data_path(
         "Run2012BC_DoubleMuParked_Muons_1000evts_rntuple_v1-0-0-0.root"
