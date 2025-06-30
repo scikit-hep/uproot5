@@ -58,11 +58,11 @@ _rntuple_column_compression_settings_format = struct.Struct("<I")
 
 # https://github.com/root-project/root/blob/6dc4ff848329eaa3ca433985e709b12321098fe2/core/zip/inc/Compression.h#L93-L105
 compression_settings_dict = {
-    uproot.const.kZLIB: "ZLIB", # nvCOMP unsupported
-    uproot.const.kLZMA: "LZMA", # nvCOMP unsupported
-    uproot.const.kOldCompressionAlgo: "deflate", # nvCOMP support
-    uproot.const.kLZ4: "LZ4", # nvCOMP support
-    uproot.const.kZSTD: "zstd", # nvCOMP support
+    uproot.const.kZLIB: "ZLIB",  # nvCOMP unsupported
+    uproot.const.kLZMA: "LZMA",  # nvCOMP unsupported
+    uproot.const.kOldCompressionAlgo: "deflate",  # nvCOMP support
+    uproot.const.kLZ4: "LZ4",  # nvCOMP support
+    uproot.const.kZSTD: "zstd",  # nvCOMP support
 }
 
 

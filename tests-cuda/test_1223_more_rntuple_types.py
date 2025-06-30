@@ -1,10 +1,10 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot5/blob/main/LICENSE
+from __future__ import annotations
+
 import pytest
 import skhep_testdata
 
 import uproot
-
-import numpy
 
 try:
     import cupy
@@ -152,6 +152,6 @@ def test_invalid_variant():
     with uproot.open(filename) as f:
         obj = f["ntuple"]
 
-        a = obj.arrays("variant.*", backend = "cuda", use_GDS = False)
+        a = obj.arrays("variant.*", backend="cuda", use_GDS=False)
 
         assert a.variant.tolist() == [1, None, {"i": 2}]

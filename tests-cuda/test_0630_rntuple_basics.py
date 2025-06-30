@@ -1,10 +1,6 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot5/blob/main/LICENSE
+from __future__ import annotations
 
-import json
-import queue
-import sys
-
-import numpy
 import pytest
 import skhep_testdata
 

@@ -1,9 +1,10 @@
-import skhep_testdata as skhtd
-import uproot
-import pytest
-
+from __future__ import annotations
 
 import numpy
+import pytest
+import skhep_testdata as skhtd
+
+import uproot
 
 try:
     import cupy

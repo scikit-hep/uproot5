@@ -1,10 +1,5 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot5/blob/main/LICENSE
-
-import json
-import queue
-import sys
-
-import numpy
+from __future__ import annotations
 
 try:
     import cupy

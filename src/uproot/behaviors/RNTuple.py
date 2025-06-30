@@ -679,7 +679,9 @@ class HasFields(Mapping):
             )
 
         elif use_GDS and backend != "cuda":
-            raise NotImplementedError(f"Backend {backend} GDS support not implemented.".format(backend))
+            raise NotImplementedError(
+                f"Backend {backend} GDS support not implemented.".format(backend)
+            )
 
     def _arrays(
         self,
@@ -853,7 +855,7 @@ class HasFields(Mapping):
         a required dependency for Uproot GDS reading which can be installed by
         calling pip install uproot[GDS_cuX] where X corresponds to the major cuda
         version available on the user's system.
-        
+
         Returns a group of arrays from the ``RNTuple``.
 
         For example:
