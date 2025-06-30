@@ -141,6 +141,7 @@ xfail_strict = true
 [tool.ruff]
 exclude = [
   "tests/*.py",
+  "tests-cuda/*.py",
   "src/uproot/__init__.py",
   "docs-sphinx/*.py"
 ]
