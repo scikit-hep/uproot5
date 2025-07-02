@@ -81,7 +81,7 @@ def iterate(
         library (str or :doc:`uproot.interpretation.library.Library`): The library
             that is used to represent arrays. Options are ``"np"`` for NumPy,
             ``"ak"`` for Awkward Array, and ``"pd"`` for Pandas. (Not implemented yet.)
-        ak_add_doc (bool | dict ): If True and ``library="ak"``, add the RField ``name``
+        ak_add_doc (bool | dict ): If True and ``library="ak"``, add the RField ``description``
             to the Awkward ``__doc__`` parameter of the array.
             if dict = {key:value} and ``library="ak"``, add the RField ``value`` to the
             Awkward ``key`` parameter of the array.
@@ -251,7 +251,7 @@ def concatenate(
         library (str or :doc:`uproot.interpretation.library.Library`): The library
             that is used to represent arrays. Options are ``"np"`` for NumPy,
             ``"ak"`` for Awkward Array, and ``"pd"`` for Pandas. (Not implemented yet.)
-        ak_add_doc (bool | dict ): If True and ``library="ak"``, add the RField ``name``
+        ak_add_doc (bool | dict ): If True and ``library="ak"``, add the RField ``description``
             to the Awkward ``__doc__`` parameter of the array.
             if dict = {key:value} and ``library="ak"``, add the RField ``value`` to the
             Awkward ``key`` parameter of the array.
@@ -502,7 +502,7 @@ class HasFields(Mapping):
                 filter to select ``RFields`` using the full
                 :doc:`uproot.models.RNTuple.RField` object. The ``RField`` is
                 included if the function returns True, excluded if it returns False.
-            ak_add_doc (bool | dict ): If True and ``library="ak"``, add the RField ``name``
+            ak_add_doc (bool | dict ): If True and ``library="ak"``, add the RField ``description``
                 to the Awkward ``__doc__`` parameter of the array.
                 if dict = {key:value} and ``library="ak"``, add the RField ``value`` to the
                 Awkward ``key`` parameter of the array.
@@ -615,7 +615,7 @@ class HasFields(Mapping):
             library (str or :doc:`uproot.interpretation.library.Library`): The library
                 that is used to represent arrays. Options are ``"np"`` for NumPy,
                 ``"ak"`` for Awkward Array, and ``"pd"`` for Pandas. (Not implemented yet.)
-            ak_add_doc (bool | dict ): If True and ``library="ak"``, add the RField ``name``
+            ak_add_doc (bool | dict ): If True and ``library="ak"``, add the RField ``description``
                 to the Awkward ``__doc__`` parameter of the array.
                 if dict = {key:value} and ``library="ak"``, add the RField ``value`` to the
                 Awkward ``key`` parameter of the array.
@@ -816,7 +816,7 @@ class HasFields(Mapping):
             library (str or :doc:`uproot.interpretation.library.Library`): The library
                 that is used to represent arrays. Options are ``"np"`` for NumPy,
                 ``"ak"`` for Awkward Array, and ``"pd"`` for Pandas. (Not implemented yet.)
-            ak_add_doc (bool | dict ): If True and ``library="ak"``, add the RField ``name``
+            ak_add_doc (bool | dict ): If True and ``library="ak"``, add the RField ``description``
                 to the Awkward ``__doc__`` parameter of the array.
                 if dict = {key:value} and ``library="ak"``, add the RField ``value`` to the
                 Awkward ``key`` parameter of the array. (Not implemented yet.)

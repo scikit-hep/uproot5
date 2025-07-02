@@ -456,7 +456,7 @@ in file {self.file.file_path}"""
         Args:
             this_id (int): The field id.
             keys (list): The list of keys to search for.
-            ak_add_doc (bool | dict ): If True and ``library="ak"``, add the RField ``name``
+            ak_add_doc (bool | dict ): If True and ``library="ak"``, add the RField ``description``
                 to the Awkward ``__doc__`` parameter of the array.
                 if dict = {key:value} and ``library="ak"``, add the RField ``value`` to the
                 Awkward ``key`` parameter of the array.
@@ -1220,7 +1220,7 @@ class RField(uproot.behaviors.RNTuple.HasFields):
             library (str or :doc:`uproot.interpretation.library.Library`): The library
                 that is used to represent arrays. Options are ``"np"`` for NumPy,
                 ``"ak"`` for Awkward Array, and ``"pd"`` for Pandas.
-            ak_add_doc (bool | dict ): If True and ``library="ak"``, add the RField ``name``
+            ak_add_doc (bool | dict ): If True and ``library="ak"``, add the RField ``description``
                 to the Awkward ``__doc__`` parameter of the array.
                 if dict = {key:value} and ``library="ak"``, add the RField ``value`` to the
                 Awkward ``key`` parameter of the array.
