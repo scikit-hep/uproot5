@@ -627,67 +627,6 @@ class NTuple_EnvLink:
         return f"{type(self).__name__}({self.uncomp_size}, {self.locator})"
 
 
-class NTuple_PageListEnvelope:
-    def __init__(self, header_checksum, cluster_summaries, page_data):
-        self.header_checksum = header_checksum
-        self.cluster_summaries = cluster_summaries
-        self.page_data = page_data
-        self._checksum = None
-        assert len(cluster_summaries) == len(page_data)
-
-    def serialize(self):
-        # For now we, only support one cluster per page list envelope
-        nested_pagelist_rawbytes = _serialize_rntuple_list_frame(
-            [  # list of clusters
-                _serialize_rntuple_list_frame(
-                    [  # list of columns
-                        _serialize_rntuple_list_frame(
-                            [  # list of pages
-                                NTuple_PageDescription(page[1], page[0]) for page in col
-                            ],
-                            wrap=False,
-                            extra_payload=b"".join(
-                                [
-                                    _rntuple_column_element_offset_format.pack(
-                                        col[0][2]
-                                    ),
-                                    _rntuple_column_compression_settings_format.pack(
-                                        col[0][3]
-                                    ),
-                                ]
-                            ),
-                        )
-                        for col in cluster_page_locations
-                    ],
-                    rawinput=True,
-                    wrap=False,
-                )
-                for cluster_page_locations in self.page_data
-            ],
-            rawinput=True,
-            wrap=False,
-        )
-        out = [
-            _rntuple_checksum_format.pack(self.header_checksum),
-            _serialize_rntuple_list_frame(self.cluster_summaries),
-            nested_pagelist_rawbytes,
-        ]
-        payload = b"".join(out)
-
-        env_header = _serialize_envelope_header(
-            uproot.const.RNTupleEnvelopeType.PAGELIST,
-            len(payload)
-            + _rntuple_env_header_format.size
-            + _rntuple_checksum_format.size,
-        )
-        header_and_payload = b"".join([env_header, payload])
-        self._checksum = xxhash.xxh3_64_intdigest(header_and_payload)
-        checksum_bytes = _rntuple_checksum_format.pack(self._checksum)
-
-        final_bytes = b"".join([header_and_payload, checksum_bytes])
-        return final_bytes
-
-
 class NTuple_ClusterGroupRecord:
     def __init__(self, min_entry, entry_span, num_clusters, page_list_envlink):
         self.min_entry = min_entry
@@ -741,6 +680,72 @@ class NTuple_PageDescription:
 
     def __repr__(self):
         return f"{type(self).__name__}({self.num_entries}, {self.locator})"
+
+
+class NTuple_ColumnPageListDescription:
+    def __init__(self, pagelist, element_offset, compression_settings):
+        self.pagelist = pagelist
+        self.element_offset = element_offset
+        self.compression_settings = compression_settings
+
+    def serialize(self):
+        out = _serialize_rntuple_list_frame(
+            self.pagelist,
+            wrap=False,
+            extra_payload=b"".join(
+                [
+                    _rntuple_column_element_offset_format.pack(self.element_offset),
+                    _rntuple_column_compression_settings_format.pack(
+                        self.compression_settings
+                    ),
+                ]
+            ),
+        )
+        return out
+
+    def __repr__(self):
+        return f"{type(self).__name__}({self.pagelist}, {self.element_offset}, {self.compression_settings})"
+
+
+class NTuple_PageListEnvelope:
+    def __init__(self, header_checksum, cluster_summaries, cluster_list):
+        self.header_checksum = header_checksum
+        self.cluster_summaries = cluster_summaries
+        self.cluster_list = cluster_list
+        self._checksum = None
+        assert len(cluster_summaries) == len(cluster_list)
+
+    def serialize(self):
+        nested_pagelist_rawbytes = _serialize_rntuple_list_frame(
+            [
+                _serialize_rntuple_list_frame(
+                    cluster,
+                    wrap=False,
+                )
+                for cluster in self.cluster_list
+            ],
+            rawinput=True,
+            wrap=False,
+        )
+        out = [
+            _rntuple_checksum_format.pack(self.header_checksum),
+            _serialize_rntuple_list_frame(self.cluster_summaries),
+            nested_pagelist_rawbytes,
+        ]
+        payload = b"".join(out)
+
+        env_header = _serialize_envelope_header(
+            uproot.const.RNTupleEnvelopeType.PAGELIST,
+            len(payload)
+            + _rntuple_env_header_format.size
+            + _rntuple_checksum_format.size,
+        )
+        header_and_payload = b"".join([env_header, payload])
+        self._checksum = xxhash.xxh3_64_intdigest(header_and_payload)
+        checksum_bytes = _rntuple_checksum_format.pack(self._checksum)
+
+        final_bytes = b"".join([header_and_payload, checksum_bytes])
+        return final_bytes
 
 
 class NTuple_Anchor(CascadeLeaf):
@@ -960,21 +965,25 @@ class NTuple(CascadeNode):
                 deltas = numpy.array(col_data != -1, dtype=col_data.dtype)
                 col_data = numpy.cumsum(deltas)
             col_len = len(col_data.reshape(-1))
-            # TODO: when col_length is zero we can skip writing the page
-            # but other things need to be adjusted
             raw_data = col_data.reshape(-1).view("uint8")
             if col_data.dtype == numpy.dtype("bool"):
                 raw_data = numpy.packbits(raw_data, bitorder="little")
             uncompressed_bytes = len(raw_data)
-            # Need better logic to specify per-column/field compression
+            # TODO: need better logic to specify per-column/field compression
             compression = self._directory.freesegments.fileheader.compression
             raw_data = uproot.compression.compress(raw_data, compression)
-            page_key = self.add_rblob(sink, raw_data, uncompressed_bytes)
-            page_locator = NTuple_Locator(
-                len(raw_data), page_key.location + page_key.allocation
-            )
+            # TODO: need to add some logic for page splitting
+            pages = []
+            if col_len > 0:
+                page_key = self.add_rblob(sink, raw_data, uncompressed_bytes)
+                page_locator = NTuple_Locator(
+                    len(raw_data), page_key.location + page_key.allocation
+                )
+                pages.append(NTuple_PageDescription(col_len, page_locator))
             cluster_page_data.append(
-                [(page_locator, col_len, self._column_counts[idx], compression.code)]
+                NTuple_ColumnPageListDescription(
+                    pages, self._column_counts[idx], compression.code
+                )
             )
             self._column_counts[idx] += col_len
         page_data = [
@@ -999,7 +1008,7 @@ class NTuple(CascadeNode):
         pagelistenv_locator = NTuple_Locator(
             len(pagelistenv_rawdata),
             pagelistenv_key.location + pagelistenv_key.allocation,
-        )  # check
+        )
         pagelistenv_envlink = NTuple_EnvLink(
             len(pagelistenv_rawdata), pagelistenv_locator
         )
