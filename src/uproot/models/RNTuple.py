@@ -587,65 +587,11 @@ in file {self.file.file_path}"""
         content = cursor.array(
             decomp_chunk, num_elements_toread, dtype, context, move=False
         )
-
-        if split:
-            content = content.view(numpy.uint8)
-
-            if nbits == 16:
-                # AAAAABBBBB needs to become
-                # ABABABABAB
-                res = numpy.empty(len(content), numpy.uint8)
-                res[0::2] = content[len(res) * 0 // 2 : len(res) * 1 // 2]
-                res[1::2] = content[len(res) * 1 // 2 : len(res) * 2 // 2]
-
-            elif nbits == 32:
-                # AAAAABBBBBCCCCCDDDDD needs to become
-                # ABCDABCDABCDABCDABCD
-                res = numpy.empty(len(content), numpy.uint8)
-                res[0::4] = content[len(res) * 0 // 4 : len(res) * 1 // 4]
-                res[1::4] = content[len(res) * 1 // 4 : len(res) * 2 // 4]
-                res[2::4] = content[len(res) * 2 // 4 : len(res) * 3 // 4]
-                res[3::4] = content[len(res) * 3 // 4 : len(res) * 4 // 4]
-
-            elif nbits == 64:
-                # AAAAABBBBBCCCCCDDDDDEEEEEFFFFFGGGGGHHHHH needs to become
-                # ABCDEFGHABCDEFGHABCDEFGHABCDEFGHABCDEFGH
-                res = numpy.empty(len(content), numpy.uint8)
-                res[0::8] = content[len(res) * 0 // 8 : len(res) * 1 // 8]
-                res[1::8] = content[len(res) * 1 // 8 : len(res) * 2 // 8]
-                res[2::8] = content[len(res) * 2 // 8 : len(res) * 3 // 8]
-                res[3::8] = content[len(res) * 3 // 8 : len(res) * 4 // 8]
-                res[4::8] = content[len(res) * 4 // 8 : len(res) * 5 // 8]
-                res[5::8] = content[len(res) * 5 // 8 : len(res) * 6 // 8]
-                res[6::8] = content[len(res) * 6 // 8 : len(res) * 7 // 8]
-                res[7::8] = content[len(res) * 7 // 8 : len(res) * 8 // 8]
-
-            content = res.view(dtype)
-
-        if isbit:
-            content = numpy.unpackbits(
-                content.view(dtype=numpy.uint8), bitorder="little"
+        destination.view(dtype)[:num_elements_toread] = content[:num_elements_toread]
+        self.deserialize_page_decompressed_buffer(
+                destination, desc, dtype_str, dtype, nbits, split
             )
-        elif dtype_str in ("real32trunc", "real32quant"):
-            if nbits == 32:
-                content = content.view(numpy.uint32)
-            elif nbits % 8 == 0:
-                new_content = numpy.zeros((num_elements, 4), numpy.uint8)
-                nbytes = nbits // 8
-                new_content[:, :nbytes] = content.reshape(-1, nbytes)
-                content = new_content.view(numpy.uint32).reshape(-1)
-            else:
-                ak = uproot.extras.awkward()
-                vm = ak.forth.ForthMachine32(
-                    f"""input x output y uint32 {num_elements} x #{nbits}bit-> y"""
-                )
-                vm.run({"x": content})
-                content = vm["y"]
-            if dtype_str == "real32trunc":
-                content <<= 32 - nbits
-
-        # needed to chop off extra bits incase we used `unpackbits`
-        destination[:] = content[:num_elements]
+        
 
     def read_col_pages(
         self, ncol, cluster_range, dtype_byte, pad_missing_element=False
@@ -1038,8 +984,8 @@ in file {self.file.file_path}"""
         Returns nothing. Edits destination buffer in-place with deserialized
         data.
         """
-        cupy = uproot.extras.cupy()
-        library = cupy.get_array_module(destination)
+        array_library_string = uproot._util.get_array_library(destination)
+        library = numpy if array_library_string == "numpy" else uproot.extras.cupy()
 
         # bool in RNTuple is always stored as bits
         isbit = dtype_str == "bit"
@@ -1098,10 +1044,11 @@ in file {self.file.file_path}"""
 def _extract_bits(packed, nbits):
     """
     Args:
-        packed (library.ndarray): The array to fill.
-        nbits (int): The bit width of original truncated data.
+        packed (library.ndarray): The packed array of 32-bit integers.
+        nbits (int): The bit width of the original truncated data.
 
-    Returns library.ndarray of unpacked data.
+    Returns:
+        library.ndarray: The unpacked data.
     """
     cupy = uproot.extras.cupy()
     library = cupy.get_array_module(packed)
@@ -1116,19 +1063,23 @@ def _extract_bits(packed, nbits):
     word_idx = bit_positions // 32
     offset = bit_positions % 32
 
-    # Read bits from packed words
-    current_word = packed[word_idx]
-    next_word = packed[word_idx + 1] if nbits > 1 else library.zeros_like(current_word)
+    # Pad packed array by one element to avoid out-of-bounds access
+    packed_padded = library.concatenate([packed, library.zeros(1, dtype=library.uint32)])
 
-    # Handle bit overflow (i.e., bits span two words)
+    # Extract words
+    current_word = packed_padded[word_idx]
+    next_word = packed_padded[word_idx + 1]
+
+    # Compute bitmask and offsets
     mask = (1 << nbits) - 1
     bits_left = 32 - offset
     needs_second_word = offset + nbits > 32
 
-    # Extract bits
+    # Extract bits from current and next word
     first_part = (current_word >> offset) & mask
     second_part = (next_word << bits_left) & mask
 
+    # Combine parts where needed
     result = library.where(needs_second_word, first_part | second_part, first_part)
     return result
 
