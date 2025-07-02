@@ -919,6 +919,52 @@ Like the caches, the default values for the last two are global ``uproot.decompr
 
 If, however, you're working in an environment that puts limits on parallel processing (e.g. the CMS LPC or informal university computers), you may want to modify the defaults, either locally through a ``decompression_executor`` or ``interpretation_executor`` function parameter, or globally by replacing the global object.
 
+Reading RNTuples
+----------------
+
+TTree has been the default format to store large datasets in ROOT files for decades. However, it has slowly become outdated and is not optimized for modern systems. This is where the RNTuple format comes in. It is a modern serialization format that is designed with modern systems in mind and is planned to replace TTree in the coming years. `Version 1.0.0.0 <https://cds.cern.ch/record/2923186>`__ is out and will be supported "forever".
+
+RNTuples are much simpler than TTrees by design, and this time there is an official specification, which makes it much easier for third-party I/O packages like Uproot to support. Uproot already supports reading the full RNTuple specification, meaning that you can read any RNTuple you find in the wild. It also already supports writing a large part of the specification, and intends to support as much as it makes sense for data analysis.
+
+To ease the transition into RNTuples, we are designing the interface to match the one for TTrees as closely as possible. Many of the functionality explained in the previous subsections works in the same way. However, there the terminology is slightly different (e.g. "branch" becomes "field") and arguments may vary slightly, accordingly.
+
+Let's look at a few examples that illustrate how the RNTuple interface works.
+
+When inspecting a file, will have a clear indication that it contains an RNTuple.
+
+.. code-block:: python
+
+    >>> file = uproot.open("https://raw.githubusercontent.com/scikit-hep/scikit-hep-testdata/refs/heads/main/src/skhep_testdata/data/ntpl001_staff_rntuple_v1-0-0-0.root")
+    >>> file.classnames()
+    {'Staff;1': 'ROOT::RNTuple'}
+
+Inspecting the contents of an RNTuple is done in the same way.
+
+.. code-block:: python
+
+    >>> rntuple = uproot.open("https://raw.githubusercontent.com/scikit-hep/scikit-hep-testdata/refs/heads/main/src/skhep_testdata/data/ntpl001_staff_rntuple_v1-0-0-0.root:Staff")
+    >>> rntuple.keys()
+    ['Category', 'Flag', 'Age', 'Service', 'Children', 'Grade', 'Step', 'Hrweek', 'Cost', 'Division', 'Nation']
+    >>> rntuple.typenames()
+    {'Category': 'std::int32_t', 'Flag': 'std::uint32_t', 'Age': 'std::int32_t', 'Service': 'std::int32_t', 'Children': 'std::int32_t', 'Grade': 'std::int32_t', 'Step': 'std::int32_t',
+     'Hrweek': 'std::int32_t', 'Cost': 'std::int32_t', 'Division': 'std::string', 'Nation': 'std::string'}
+
+Reading the content of a single or multiple fields into an array also works very similarly.
+
+.. code-block:: python
+
+    >>> rntuple = uproot.open("https://raw.githubusercontent.com/scikit-hep/scikit-hep-testdata/refs/heads/main/src/skhep_testdata/data/ntpl001_staff_rntuple_v1-0-0-0.root:Staff")
+    >>> rntuple["Age"].array()
+    <Array [58, 63, 56, 61, 52, 60, ..., 51, 25, 35, 28, 43] type='3354 * int32'>
+    >>> rntuple.arrays(["Age", "Cost", "Nation"])
+    <Array [{Age: 58, Cost: 11975, ...}, ...] type='3354 * {Age: int32, Cost: i...'>
+    >>> rntuple.arrays(filter_field=lambda f: f.field_id % 2 == 1)
+    <Array [{Flag: 15, Service: 28, ...}, ...] type='3354 * {Flag: uint32, Serv...'>
+
+Note that for the last input we used the ``filter_field`` argument instead of ``filter_branch`` since the latter terminology doesn't apply to RNTuples.
+
+There are still significant work required to achieve feature-parity with TTrees, but all the basic functionality is already implemented. We will continue to make the transition to RNTuples as seamless as possible.
+
 Opening a file for writing
 --------------------------
 
@@ -1251,3 +1297,17 @@ In addition, each TBranch of the TTree can have a different compression setting:
     {'x': None, 'ny': None, 'y': ZLIB(4)}
 
 Changes to the compression setting only affect TBaskets written after the change (with :ref:`uproot.writing.writable.WritableTree.extend`; see above).
+
+Writing RNTuples
+----------------
+
+Just like with reading, writing RNTuples is similar to writing TTree objects. Since RNTuples are much simpler, we aim to be able to write almost any RNTuple that you might want.
+
+Here is an example of writing an RNTuple. Since TTree is still the default format for the near future, writing an RNTuple is a bit more verbose.
+
+.. code-block:: python
+
+    >>> file = uproot.recreate("example.root")
+    >>> data = {"my_int": [1,2], "my_vector": [[1,2], [3,4,5]]}
+    >>> rntuple = file.mkrntuple("my_rntuple", data)
+    >>> rntuple.extend(data) # Can be extended, just like TTrees
