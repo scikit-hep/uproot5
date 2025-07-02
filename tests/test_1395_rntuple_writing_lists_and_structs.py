@@ -169,3 +169,30 @@ def test_field_descriptions(tmp_path):
     arrays = obj.arrays(ak_add_doc={"typename": "typename"})
 
     assert arrays.layout.contents[0].parameters["typename"] == "bool"
+
+
+def test_writing_dict(tmp_path):
+    filepath = os.path.join(tmp_path, "test.root")
+
+    data = {
+        "bool": [True, False],
+        "int": [1, 2],
+        "float": [1.0, 2.0],
+        "string": ["hello", "world"],
+        "list": [[1, 2], [3, 4]],
+        "struct": [{"a": 1, "b": 2}, {"a": 3, "b": 4}],
+        "optional": [None, 1],
+        "union": [1, "hello"],
+        "optional_union": [None, 1],
+        "list_array": [[1, 2], [3, 4]],
+    }
+
+    with uproot.recreate(filepath) as file:
+        obj = file.mkrntuple("ntuple", data)
+        obj.extend(data)
+
+    obj = uproot.open(filepath)["ntuple"]
+    arrays = obj.arrays()
+
+    assert len(arrays) == 2 * len(data["bool"])
+    assert arrays["bool"].tolist() == data["bool"] + data["bool"]

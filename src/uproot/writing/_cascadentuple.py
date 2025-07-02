@@ -911,6 +911,12 @@ class NTuple(CascadeNode):
         4. Update anchor's foot metadata values in-place
         """
 
+        # TODO: Think of a better way to do this
+        if isinstance(data, dict):
+            data = awkward.Array(data)
+        elif not isinstance(data, awkward.Array):
+            raise TypeError("data must be an awkward.Array or a dict")
+
         if data.layout.form != self._header._akform:
             raise ValueError("data is not compatible with this RNTuple")
 
