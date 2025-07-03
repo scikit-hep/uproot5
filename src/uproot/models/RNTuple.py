@@ -1055,7 +1055,7 @@ def _extract_bits(packed, nbits):
     """
     array_library_string = uproot._util.get_array_library(content)
     library = numpy if array_library_string == "numpy" else uproot.extras.cupy()
-    
+
     packed = packed.view(dtype=library.uint32)
     total_bits = packed.size * 32
     n_values = total_bits // nbits
