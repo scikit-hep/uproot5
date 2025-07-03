@@ -815,9 +815,11 @@ in file {self.file.file_path}"""
 
             # If compressed, skip 9 byte header
             if isCompressed:
+                # If LZ4, page contains additional 8-byte checksum
+                offset = int(loc.offset+9) if algorithm_str != "LZ4" else int(loc.offset+9+8)
                 comp_buff = cupy.empty(n_bytes - 9, dtype="b")
                 filehandle.pread(
-                    comp_buff, size=int(n_bytes - 9), file_offset=int(loc.offset + 9)
+                    comp_buff, size=int(n_bytes - 9), file_offset=offset
                 )
 
             # If uncompressed, read directly into out_buff
@@ -834,7 +836,7 @@ in file {self.file.file_path}"""
 
         return Cluster_Contents
 
-    def deserialize_decompressed_content(
+    def gpu_deserialize_decompressed_content(
         self, clusters_datas, start_cluster_idx, stop_cluster_idx
     ):
         """
@@ -863,7 +865,7 @@ in file {self.file.file_path}"""
                 # Get decompressed buffer corresponding to cluster i
                 cluster_buffer = col_decompressed_buffers[cluster_i]
 
-                self.deserialize_pages(cluster_buffer, ncol, cluster_i, arrays)
+                self.gpu_deserialize_pages(cluster_buffer, ncol, cluster_i, arrays)
 
             if dtype_byte in uproot.const.rntuple_delta_types:
                 # Extract the last offset values:
@@ -889,7 +891,7 @@ in file {self.file.file_path}"""
 
         return col_arrays
 
-    def deserialize_pages(self, cluster_buffer, ncol, cluster_i, arrays):
+    def gpu_deserialize_pages(self, cluster_buffer, ncol, cluster_i, arrays):
         """
         Args:
             cluster_buffer (cupy.ndarray): Buffer to deserialize.

@@ -6,13 +6,9 @@ import skhep_testdata as skhtd
 
 import uproot
 
-try:
-    import cupy
-except ImportError:
-    cupy = None
-
 ak = pytest.importorskip("awkward")
-
+cupy = pytest.importorskip("cupy")
+pytestmark = pytest.mark.skipif(cupy.cuda.runtime.driverGetVersion() == 0, reason="No available CUDA driver.")
 
 @pytest.fixture
 def physlite_file():
@@ -30,19 +26,10 @@ def physlite_file():
     ("backend", "GDS", "library"),
     [
         ("cuda", False, cupy),
-        pytest.param(
-            "cuda",
-            True,
-            cupy,
-            marks=pytest.mark.skipif(
-                cupy is None, reason="could not import 'cupy': No module named 'cupy'"
-            ),
-        ),
+        ("cuda", True, cupy)
     ],
 )
 def test_analysis_muons_kinematics(physlite_file, backend, GDS, library):
-    if GDS and cupy.cuda.runtime.driverGetVersion() == 0:
-        pytest.skip("No available CUDA driver.")
     """Test that kinematic variables of AnalysisMuons can be read and match expected length."""
     cols = [
         "AnalysisMuonsAuxDyn:pt",
@@ -75,19 +62,10 @@ def test_analysis_muons_kinematics(physlite_file, backend, GDS, library):
     ("backend", "GDS", "library"),
     [
         ("cuda", False, cupy),
-        pytest.param(
-            "cuda",
-            True,
-            cupy,
-            marks=pytest.mark.skipif(
-                cupy is None, reason="could not import 'cupy': No module named 'cupy'"
-            ),
-        ),
+        ("cuda", True, cupy)
     ],
 )
 def test_event_info(physlite_file, backend, GDS, library):
-    if GDS and cupy.cuda.runtime.driverGetVersion() == 0:
-        pytest.skip("No available CUDA driver.")
     """Test that eventInfo variables can be read and match expected first event."""
     cols = [
         "EventInfoAuxDyn:eventNumber",
@@ -114,19 +92,10 @@ def test_event_info(physlite_file, backend, GDS, library):
     ("backend", "GDS", "library"),
     [
         ("cuda", False, cupy),
-        pytest.param(
-            "cuda",
-            True,
-            cupy,
-            marks=pytest.mark.skipif(
-                cupy is None, reason="could not import 'cupy': No module named 'cupy'"
-            ),
-        ),
+        ("cuda", True, cupy)
     ],
 )
 def test_truth_muon_containers(physlite_file, backend, GDS, library):
-    if GDS and cupy.cuda.runtime.driverGetVersion() == 0:
-        pytest.skip("No available CUDA driver.")
     """Test that truth muon variables can be read and match expected values."""
     cols = [
         "TruthMuons",  # AOD Container

@@ -39,7 +39,6 @@ def test_array_methods():
         assert nMuon_arrays["nMuon"].tolist() == nMuon_array.tolist()
 
 
-@pytest.mark.xfail(reason="Iterate tempermental - inaccurate for jagged branches")
 def test_iterate():
     filename = skhep_testdata.data_path(
         "Run2012BC_DoubleMuParked_Muons_1000evts_rntuple_v1-0-0-0.root"
@@ -56,15 +55,15 @@ def test_iterate():
 
         for i, arrays in enumerate(obj.iterate(step_size="10 kB")):
             if i == 0:
-                assert len(arrays) == 188
+                assert len(arrays) == 384
                 expected_pt = [10.763696670532227, 15.736522674560547]
                 expected_charge = [-1, -1]
                 assert arrays["Muon_pt"][0].tolist() == expected_pt
                 assert arrays["Muon_charge"][0].tolist() == expected_charge
-            elif i in (1, 2, 3, 4):
-                assert len(arrays) == 188
-            elif i == 5:
-                assert len(arrays) == 60
+            elif i == 1:
+                assert len(arrays) == 384
+            elif i == 2:
+                assert len(arrays) == 232
             else:
                 assert False
 

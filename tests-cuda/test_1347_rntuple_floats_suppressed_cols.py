@@ -7,13 +7,9 @@ import skhep_testdata
 
 import uproot
 
-try:
-    import cupy
-except ImportError:
-    cupy = None
-
 ak = pytest.importorskip("awkward")
-
+cupy = pytest.importorskip("cupy")
+pytestmark = pytest.mark.skipif(cupy.cuda.runtime.driverGetVersion() == 0, reason="No available CUDA driver.")
 
 def truncate_float(value, bits):
     a = np.float32(value).view(np.uint32)
@@ -36,19 +32,10 @@ def quantize_float(value, bits, min, max):
     ("backend", "GDS", "library"),
     [
         ("cuda", False, cupy),
-        pytest.param(
-            "cuda",
-            True,
-            cupy,
-            marks=pytest.mark.skipif(
-                cupy is None, reason="could not import 'cupy': No module named 'cupy'"
-            ),
-        ),
+        ("cuda", True, cupy)
     ],
 )
 def test_custom_floats(backend, GDS, library):
-    if GDS and cupy.cuda.runtime.driverGetVersion() == 0:
-        pytest.skip("No available CUDA driver.")
     filename = skhep_testdata.data_path("test_float_types_rntuple_v1-0-0-0.root")
     with uproot.open(filename) as f:
         obj = f["ntuple"]
@@ -178,19 +165,10 @@ def test_custom_floats(backend, GDS, library):
     ("backend", "GDS", "library"),
     [
         ("cuda", False, cupy),
-        pytest.param(
-            "cuda",
-            True,
-            cupy,
-            marks=pytest.mark.skipif(
-                cupy is None, reason="could not import 'cupy': No module named 'cupy'"
-            ),
-        ),
+        ("cuda", True, cupy)
     ],
 )
 def test_multiple_representations(backend, GDS, library):
-    if GDS and cupy.cuda.runtime.driverGetVersion() == 0:
-        pytest.skip("No available CUDA driver.")
     filename = skhep_testdata.data_path(
         "test_multiple_representations_rntuple_v1-0-0-0.root"
     )

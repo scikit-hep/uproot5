@@ -1,17 +1,14 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot5/blob/main/LICENSE
 from __future__ import annotations
 
-try:
-    import cupy
-except ImportError:
-    cupy = None
 import pytest
 import skhep_testdata
 
 import uproot
 
 ak = pytest.importorskip("awkward")
-
+cupy = pytest.importorskip("cupy")
+pytestmark = pytest.mark.skipif(cupy.cuda.runtime.driverGetVersion() == 0, reason="No available CUDA driver.")
 
 @pytest.mark.parametrize(("backend", "GDS", "library"), [("cuda", False, cupy)])
 def test_rntuple_stl_containers(backend, GDS, library):

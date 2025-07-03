@@ -1040,8 +1040,8 @@ def get_array_library(arr):
         arr: The array to check.
 
     Returns:
-        String: 'numpy' if it's a NumPy array, 'cupy' if it's a CuPy array,
-        'unknown' otherwise.
+        String: 'numpy' if it's a NumPy array, 'cupy' if it's a CuPy array, 
+        'awkward' if it's an Awkward array, and 'unknown' otherwise.
     """
     module_name = type(arr).__module__
 
@@ -1049,5 +1049,7 @@ def get_array_library(arr):
         return "numpy"
     elif module_name.startswith("cupy"):
         return "cupy"
+    elif module_name.startswith("awkward"):
+        return "awkward"
     else:
         return "unknown"

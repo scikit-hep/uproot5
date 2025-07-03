@@ -892,7 +892,7 @@ class HasFields(Mapping):
         clusters_datas._decompress()
         #####
         # Deserialize decompressed datas
-        content_dict = self.ntuple.deserialize_decompressed_content(
+        content_dict = self.ntuple.gpu_deserialize_decompressed_content(
             clusters_datas, start_cluster_idx, stop_cluster_idx
         )
         #####

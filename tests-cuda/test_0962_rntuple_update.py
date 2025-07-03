@@ -1,35 +1,23 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot5/blob/main/LICENSE
 from __future__ import annotations
 
-import awkward as ak
 import pytest
 import skhep_testdata
 
 import uproot
 
-try:
-    import cupy
-except ImportError:
-    cupy = None
-
+ak = pytest.importorskip("awkward")
+cupy = pytest.importorskip("cupy")
+pytestmark = pytest.mark.skipif(cupy.cuda.runtime.driverGetVersion() == 0, reason="No available CUDA driver.")
 
 @pytest.mark.parametrize(
     ("backend", "GDS", "library"),
     [
         ("cuda", False, cupy),
-        pytest.param(
-            "cuda",
-            True,
-            cupy,
-            marks=pytest.mark.skipif(
-                cupy is None, reason="could not import 'cupy': No module named 'cupy'"
-            ),
-        ),
+        ("cuda", True, cupy)
     ],
 )
 def test_new_support_RNTuple_split_int32_reading(backend, GDS, library):
-    if GDS and cupy.cuda.runtime.driverGetVersion() == 0:
-        pytest.skip("No available CUDA driver.")
     with uproot.open(
         skhep_testdata.data_path("test_int_5e4_rntuple_v1-0-0-0.root")
     ) as f:
@@ -44,19 +32,10 @@ def test_new_support_RNTuple_split_int32_reading(backend, GDS, library):
     ("backend", "GDS", "library"),
     [
         ("cuda", False, cupy),
-        pytest.param(
-            "cuda",
-            True,
-            cupy,
-            marks=pytest.mark.skipif(
-                cupy is None, reason="could not import 'cupy': No module named 'cupy'"
-            ),
-        ),
+        ("cuda", True, cupy)
     ],
 )
 def test_new_support_RNTuple_bit_bool_reading(backend, GDS, library):
-    if GDS and cupy.cuda.runtime.driverGetVersion() == 0:
-        pytest.skip("No available CUDA driver.")
     with uproot.open(skhep_testdata.data_path("test_bit_rntuple_v1-0-0-0.root")) as f:
         obj = f["ntuple"]
         df = obj.arrays(backend=backend, use_GDS=GDS)
@@ -67,19 +46,10 @@ def test_new_support_RNTuple_bit_bool_reading(backend, GDS, library):
     ("backend", "GDS", "library"),
     [
         ("cuda", False, cupy),
-        pytest.param(
-            "cuda",
-            True,
-            cupy,
-            marks=pytest.mark.skipif(
-                cupy is None, reason="could not import 'cupy': No module named 'cupy'"
-            ),
-        ),
+        ("cuda", True, cupy)
     ],
 )
 def test_new_support_RNTuple_split_int16_reading(backend, GDS, library):
-    if GDS and cupy.cuda.runtime.driverGetVersion() == 0:
-        pytest.skip("No available CUDA driver.")
     with uproot.open(
         skhep_testdata.data_path("test_int_multicluster_rntuple_v1-0-0-0.root")
     ) as f:

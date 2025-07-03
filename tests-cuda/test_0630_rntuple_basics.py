@@ -4,33 +4,20 @@ from __future__ import annotations
 import pytest
 import skhep_testdata
 
-try:
-    import cupy
-except ImportError:
-    cupy = None
 import uproot
 
-pytest.importorskip("awkward")
-
+ak = pytest.importorskip("awkward")
+cupy = pytest.importorskip("cupy")
+pytestmark = pytest.mark.skipif(cupy.cuda.runtime.driverGetVersion() == 0, reason="No available CUDA driver.")
 
 @pytest.mark.parametrize(
     ("backend", "GDS", "library"),
     [
         ("cuda", False, cupy),
-        pytest.param(
-            "cuda",
-            True,
-            cupy,
-            marks=pytest.mark.skipif(
-                cupy is None, reason="could not import 'cupy': No module named 'cupy'"
-            ),
-        ),
+        ("cuda", True, cupy)
     ],
 )
 def test_flat(backend, GDS, library):
-    if GDS and cupy.cuda.runtime.driverGetVersion() == 0:
-        pytest.skip("No available CUDA driver.")
-
     filename = skhep_testdata.data_path("test_int_float_rntuple_v1-0-0-0.root")
     with uproot.open(filename) as f:
         R = f["ntuple"]
