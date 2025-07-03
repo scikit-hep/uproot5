@@ -37,7 +37,7 @@ test-core = [
   "scikit-hep-testdata"
 ]
 test-gpu = [
-  'kvikio-cu12>=25.02.01; platform_system == "Linux" and python_version >= "3.10"',
+  "kvikio-cu12>=25.02.01",
   {include-group = "test-core"}
 ]
 test-pyodide = [
