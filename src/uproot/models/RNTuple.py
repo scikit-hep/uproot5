@@ -1053,7 +1053,7 @@ def _extract_bits(packed, nbits):
     Returns:
         library.ndarray: The unpacked data.
     """
-    array_library_string = uproot._util.get_array_library(content)
+    array_library_string = uproot._util.get_array_library(packed)
     library = numpy if array_library_string == "numpy" else uproot.extras.cupy()
 
     packed = packed.view(dtype=library.uint32)
