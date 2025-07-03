@@ -12,8 +12,8 @@ dev = [
 ]
 extra = [
   "boost_histogram>=0.13",
-  "dask-awkward>=2025.2.0",
-  "dask[array,distributed] !=2025.4.0",
+  "dask-awkward>=2025.5.0",
+  "dask[array,distributed]",
   "hist>=1.2",
   "pandas",
   "awkward-pandas"
