@@ -8,7 +8,10 @@ import uproot
 
 ak = pytest.importorskip("awkward")
 cupy = pytest.importorskip("cupy")
-pytestmark = pytest.mark.skipif(cupy.cuda.runtime.driverGetVersion() == 0, reason="No available CUDA driver.")
+pytestmark = pytest.mark.skipif(
+    cupy.cuda.runtime.driverGetVersion() == 0, reason="No available CUDA driver."
+)
+
 
 @pytest.mark.parametrize(("backend", "GDS", "library"), [("cuda", False, cupy)])
 def test_rntuple_stl_containers(backend, GDS, library):

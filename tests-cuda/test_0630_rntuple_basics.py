@@ -8,14 +8,14 @@ import uproot
 
 ak = pytest.importorskip("awkward")
 cupy = pytest.importorskip("cupy")
-pytestmark = pytest.mark.skipif(cupy.cuda.runtime.driverGetVersion() == 0, reason="No available CUDA driver.")
+pytestmark = pytest.mark.skipif(
+    cupy.cuda.runtime.driverGetVersion() == 0, reason="No available CUDA driver."
+)
+
 
 @pytest.mark.parametrize(
     ("backend", "GDS", "library"),
-    [
-        ("cuda", False, cupy),
-        ("cuda", True, cupy)
-    ],
+    [("cuda", False, cupy), ("cuda", True, cupy)],
 )
 def test_flat(backend, GDS, library):
     filename = skhep_testdata.data_path("test_int_float_rntuple_v1-0-0-0.root")

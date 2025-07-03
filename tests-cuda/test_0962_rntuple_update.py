@@ -8,14 +8,14 @@ import uproot
 
 ak = pytest.importorskip("awkward")
 cupy = pytest.importorskip("cupy")
-pytestmark = pytest.mark.skipif(cupy.cuda.runtime.driverGetVersion() == 0, reason="No available CUDA driver.")
+pytestmark = pytest.mark.skipif(
+    cupy.cuda.runtime.driverGetVersion() == 0, reason="No available CUDA driver."
+)
+
 
 @pytest.mark.parametrize(
     ("backend", "GDS", "library"),
-    [
-        ("cuda", False, cupy),
-        ("cuda", True, cupy)
-    ],
+    [("cuda", False, cupy), ("cuda", True, cupy)],
 )
 def test_new_support_RNTuple_split_int32_reading(backend, GDS, library):
     with uproot.open(
@@ -30,10 +30,7 @@ def test_new_support_RNTuple_split_int32_reading(backend, GDS, library):
 
 @pytest.mark.parametrize(
     ("backend", "GDS", "library"),
-    [
-        ("cuda", False, cupy),
-        ("cuda", True, cupy)
-    ],
+    [("cuda", False, cupy), ("cuda", True, cupy)],
 )
 def test_new_support_RNTuple_bit_bool_reading(backend, GDS, library):
     with uproot.open(skhep_testdata.data_path("test_bit_rntuple_v1-0-0-0.root")) as f:
@@ -44,10 +41,7 @@ def test_new_support_RNTuple_bit_bool_reading(backend, GDS, library):
 
 @pytest.mark.parametrize(
     ("backend", "GDS", "library"),
-    [
-        ("cuda", False, cupy),
-        ("cuda", True, cupy)
-    ],
+    [("cuda", False, cupy), ("cuda", True, cupy)],
 )
 def test_new_support_RNTuple_split_int16_reading(backend, GDS, library):
     with uproot.open(

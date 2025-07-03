@@ -8,14 +8,14 @@ import uproot
 
 ak = pytest.importorskip("awkward")
 cupy = pytest.importorskip("cupy")
-pytestmark = pytest.mark.skipif(cupy.cuda.runtime.driverGetVersion() == 0, reason="No available CUDA driver.")
+pytestmark = pytest.mark.skipif(
+    cupy.cuda.runtime.driverGetVersion() == 0, reason="No available CUDA driver."
+)
+
 
 @pytest.mark.parametrize(
     ("backend", "GDS", "library"),
-    [
-        ("cuda", False, cupy),
-        ("cuda", True, cupy)
-    ],
+    [("cuda", False, cupy), ("cuda", True, cupy)],
 )
 def test_multiple_cluster_groups(backend, GDS, library):
     filename = skhep_testdata.data_path(

@@ -8,7 +8,10 @@ import uproot
 
 ak = pytest.importorskip("awkward")
 cupy = pytest.importorskip("cupy")
-pytestmark = pytest.mark.skipif(cupy.cuda.runtime.driverGetVersion() == 0, reason="No available CUDA driver.")
+pytestmark = pytest.mark.skipif(
+    cupy.cuda.runtime.driverGetVersion() == 0, reason="No available CUDA driver."
+)
+
 
 @pytest.fixture
 def physlite_file():
@@ -24,10 +27,7 @@ def physlite_file():
 
 @pytest.mark.parametrize(
     ("backend", "GDS", "library"),
-    [
-        ("cuda", False, cupy),
-        ("cuda", True, cupy)
-    ],
+    [("cuda", False, cupy), ("cuda", True, cupy)],
 )
 def test_analysis_muons_kinematics(physlite_file, backend, GDS, library):
     """Test that kinematic variables of AnalysisMuons can be read and match expected length."""
@@ -60,10 +60,7 @@ def test_analysis_muons_kinematics(physlite_file, backend, GDS, library):
 
 @pytest.mark.parametrize(
     ("backend", "GDS", "library"),
-    [
-        ("cuda", False, cupy),
-        ("cuda", True, cupy)
-    ],
+    [("cuda", False, cupy), ("cuda", True, cupy)],
 )
 def test_event_info(physlite_file, backend, GDS, library):
     """Test that eventInfo variables can be read and match expected first event."""
@@ -90,10 +87,7 @@ def test_event_info(physlite_file, backend, GDS, library):
 
 @pytest.mark.parametrize(
     ("backend", "GDS", "library"),
-    [
-        ("cuda", False, cupy),
-        ("cuda", True, cupy)
-    ],
+    [("cuda", False, cupy), ("cuda", True, cupy)],
 )
 def test_truth_muon_containers(physlite_file, backend, GDS, library):
     """Test that truth muon variables can be read and match expected values."""

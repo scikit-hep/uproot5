@@ -1040,7 +1040,7 @@ def get_array_library(arr):
         arr: The array to check.
 
     Returns:
-        String: 'numpy' if it's a NumPy array, 'cupy' if it's a CuPy array, 
+        String: 'numpy' if it's a NumPy array, 'cupy' if it's a CuPy array,
         'awkward' if it's an Awkward array, and 'unknown' otherwise.
     """
     module_name = type(arr).__module__

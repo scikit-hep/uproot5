@@ -589,9 +589,8 @@ in file {self.file.file_path}"""
         )
         destination.view(dtype)[:num_elements_toread] = content[:num_elements_toread]
         self.deserialize_page_decompressed_buffer(
-                destination, desc, dtype_str, dtype, nbits, split
-            )
-        
+            destination, desc, dtype_str, dtype, nbits, split
+        )
 
     def read_col_pages(
         self, ncol, cluster_range, dtype_byte, pad_missing_element=False
@@ -816,11 +815,13 @@ in file {self.file.file_path}"""
             # If compressed, skip 9 byte header
             if isCompressed:
                 # If LZ4, page contains additional 8-byte checksum
-                offset = int(loc.offset+9) if algorithm_str != "LZ4" else int(loc.offset+9+8)
-                comp_buff = cupy.empty(n_bytes - 9, dtype="b")
-                filehandle.pread(
-                    comp_buff, size=int(n_bytes - 9), file_offset=offset
+                offset = (
+                    int(loc.offset + 9)
+                    if algorithm_str != "LZ4"
+                    else int(loc.offset + 9 + 8)
                 )
+                comp_buff = cupy.empty(n_bytes - 9, dtype="b")
+                filehandle.pread(comp_buff, size=int(n_bytes - 9), file_offset=offset)
 
             # If uncompressed, read directly into out_buff
             else:
@@ -1066,7 +1067,9 @@ def _extract_bits(packed, nbits):
     offset = bit_positions % 32
 
     # Pad packed array by one element to avoid out-of-bounds access
-    packed_padded = library.concatenate([packed, library.zeros(1, dtype=library.uint32)])
+    packed_padded = library.concatenate(
+        [packed, library.zeros(1, dtype=library.uint32)]
+    )
 
     # Extract words
     current_word = packed_padded[word_idx]
