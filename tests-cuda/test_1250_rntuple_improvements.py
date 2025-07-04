@@ -1,45 +1,49 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot5/blob/main/LICENSE
+from __future__ import annotations
 
 import pytest
 import skhep_testdata
 
 import uproot
 
-
-def test_field_class():
-    filename = skhep_testdata.data_path("test_nested_structs_rntuple_v1-0-0-0.root")
-    with uproot.open(filename) as f:
-        obj = f["ntuple"]
-        my_struct = obj["my_struct"]
-        assert len(my_struct) == 2
-
-        sub_struct = my_struct["sub_struct"]
-        assert len(my_struct) == 2
-
-        sub_sub_struct = sub_struct["sub_sub_struct"]
-        assert len(sub_sub_struct) == 2
-
-        v = sub_sub_struct["v"]
-        assert len(v) == 1
+ak = pytest.importorskip("awkward")
+cupy = pytest.importorskip("cupy")
+pytestmark = pytest.mark.skipif(
+    cupy.cuda.runtime.driverGetVersion() == 0, reason="No available CUDA driver."
+)
 
 
-def test_array_methods():
+@pytest.mark.parametrize(
+    ("backend", "GDS", "library"),
+    [
+        ("cuda", False, cupy),
+        ("cuda", True, cupy),
+    ],
+)
+def test_array_methods(backend, GDS, library):
     filename = skhep_testdata.data_path(
         "Run2012BC_DoubleMuParked_Muons_1000evts_rntuple_v1-0-0-0.root"
     )
     with uproot.open(filename) as f:
         obj = f["Events"]
-        nMuon_array = obj["nMuon"].array()
-        Muon_pt_array = obj["Muon_pt"].array()
-        assert nMuon_array.tolist() == [len(l) for l in Muon_pt_array]
+        nMuon_array = obj["nMuon"].array(backend=backend, use_GDS=GDS)
+        Muon_pt_array = obj["Muon_pt"].array(backend=backend, use_GDS=GDS)
+        assert ak.all(nMuon_array == library.array([len(l) for l in Muon_pt_array]))
 
-        nMuon_arrays = obj["nMuon"].arrays()
+        nMuon_arrays = obj["nMuon"].arrays(backend=backend, use_GDS=GDS)
         assert len(nMuon_arrays.fields) == 1
         assert len(nMuon_arrays) == 1000
-        assert nMuon_arrays["nMuon"].tolist() == nMuon_array.tolist()
+        assert ak.all(nMuon_arrays["nMuon"] == nMuon_array)
 
 
-def test_iterate():
+@pytest.mark.parametrize(
+    ("backend", "GDS", "library"),
+    [
+        ("cuda", False, cupy),
+        ("cuda", True, cupy),
+    ],
+)
+def test_iterate(backend, GDS, library):
     filename = skhep_testdata.data_path(
         "Run2012BC_DoubleMuParked_Muons_1000evts_rntuple_v1-0-0-0.root"
     )

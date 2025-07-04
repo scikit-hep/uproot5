@@ -345,3 +345,51 @@ or
         ) from err
     else:
         return awkward_pandas
+
+
+def cupy():
+    """
+    Imports and returns ``cupy``.
+    """
+    try:
+        import cupy
+    except ModuleNotFoundError as err:
+        raise ModuleNotFoundError(
+            """Cupy is required for GDS reading to work. Please install GDS dependencies with:
+    `python3 -m pip install uproot[GDS_cuX]`
+where X is the cuda major version on user's system (11 and 12 currently supported). Cuda major version can be checked by calling `nvidia-smi --version` or `nvcc --version` if available."""
+        ) from err
+    else:
+        return cupy
+
+
+def kvikio():
+    """
+    Imports and returns ``kvikio``.
+    """
+    try:
+        import kvikio
+    except ModuleNotFoundError as err:
+        raise ModuleNotFoundError(
+            """Kvikio is required for GDS reading to work. Please install GDS dependencies with:
+    `python3 -m pip install uproot[GDS_cuX]`
+where X is the cuda major version on user's system (11 and 12 currently supported). Cuda major version can be checked by calling `nvidia-smi --version` or `nvcc --version` if available."""
+        ) from err
+    else:
+        return kvikio
+
+
+def kvikio_nvcomp_codec():
+    """
+    Imports and returns ``kvikio.nvcomp_codec`` which is not exposed by ``kvikio`` alone.
+    """
+    try:
+        import kvikio.nvcomp_codec as kvikio_nvcomp_codec
+    except ModuleNotFoundError as err:
+        raise ModuleNotFoundError(
+            """Kvikio is required for GDS reading to work. Please install GDS dependencies with:
+    `python3 -m pip install uproot[GDS_cuX]`
+where X is the cuda major version on user's system (11 and 12 currently supported). Cuda major version can be checked by calling `nvidia-smi --version` or `nvcc --version` if available."""
+        ) from err
+    else:
+        return kvikio_nvcomp_codec
