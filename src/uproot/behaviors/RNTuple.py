@@ -38,7 +38,7 @@ def iterate(
     step_size="100 MB",
     decompression_executor=None,  # TODO: Not implemented yet
     library="ak",  # TODO: Not implemented yet
-    ak_add_doc=False,  # TODO: Not implemented yet
+    ak_add_doc=False,
     how=None,
     report=False,  # TODO: Not implemented yet
     allow_missing=False,  # TODO: Not implemented yet
@@ -81,7 +81,7 @@ def iterate(
         library (str or :doc:`uproot.interpretation.library.Library`): The library
             that is used to represent arrays. Options are ``"np"`` for NumPy,
             ``"ak"`` for Awkward Array, and ``"pd"`` for Pandas. (Not implemented yet.)
-        ak_add_doc (bool | dict ): If True and ``library="ak"``, add the RField ``name``
+        ak_add_doc (bool | dict ): If True and ``library="ak"``, add the RField ``description``
             to the Awkward ``__doc__`` parameter of the array.
             if dict = {key:value} and ``library="ak"``, add the RField ``value`` to the
             Awkward ``key`` parameter of the array.
@@ -207,7 +207,7 @@ def concatenate(
     entry_stop=None,
     decompression_executor=None,  # TODO: Not implemented yet
     library="ak",  # TODO: Not implemented yet
-    ak_add_doc=False,  # TODO: Not implemented yet
+    ak_add_doc=False,
     how=None,
     allow_missing=False,
     # For compatibility reasons we also accepts kwargs meant for TTrees
@@ -251,7 +251,7 @@ def concatenate(
         library (str or :doc:`uproot.interpretation.library.Library`): The library
             that is used to represent arrays. Options are ``"np"`` for NumPy,
             ``"ak"`` for Awkward Array, and ``"pd"`` for Pandas. (Not implemented yet.)
-        ak_add_doc (bool | dict ): If True and ``library="ak"``, add the RField ``name``
+        ak_add_doc (bool | dict ): If True and ``library="ak"``, add the RField ``description``
             to the Awkward ``__doc__`` parameter of the array.
             if dict = {key:value} and ``library="ak"``, add the RField ``value`` to the
             Awkward ``key`` parameter of the array.
@@ -488,6 +488,7 @@ class HasFields(Mapping):
         filter_name=no_filter,
         filter_typename=no_filter,
         filter_field=no_filter,
+        ak_add_doc=False,
         # For compatibility reasons we also accepts kwargs meant for TTrees
         filter_branch=unset,
     ):
@@ -501,6 +502,10 @@ class HasFields(Mapping):
                 filter to select ``RFields`` using the full
                 :doc:`uproot.models.RNTuple.RField` object. The ``RField`` is
                 included if the function returns True, excluded if it returns False.
+            ak_add_doc (bool | dict ): If True and ``library="ak"``, add the RField ``description``
+                to the Awkward ``__doc__`` parameter of the array.
+                if dict = {key:value} and ``library="ak"``, add the RField ``value`` to the
+                Awkward ``key`` parameter of the array.
             filter_branch (None or function of :doc:`uproot.models.RNTuple.RField` \u2192 bool): An alias for ``filter_field`` included
                 for compatibility with software that was used for :doc:`uproot.behaviors.TBranch.TBranch`. This argument should not be used
                 and will be removed in a future version.
@@ -524,7 +529,9 @@ class HasFields(Mapping):
                 # the field needs to be in the keys or be a parent of a field in the keys
                 if any(key.startswith(field.name) for key in keys):
                     top_names.append(field.name)
-                    record_list.append(rntuple.field_form(field.field_id, keys))
+                    record_list.append(
+                        rntuple.field_form(field.field_id, keys, ak_add_doc=ak_add_doc)
+                    )
         else:
             # Always use the full path for keys
             # Also include the field itself
@@ -532,9 +539,21 @@ class HasFields(Mapping):
             # The field needs to be in the keys or be a parent of a field in the keys
             if any(key.startswith(self.path) for key in keys):
                 top_names.append(self.name)
-                record_list.append(rntuple.field_form(self.field_id, keys))
+                record_list.append(
+                    rntuple.field_form(self.field_id, keys, ak_add_doc=ak_add_doc)
+                )
 
-        form = ak.forms.RecordForm(record_list, top_names, form_key="toplevel")
+        parameters = None
+        if isinstance(ak_add_doc, bool) and ak_add_doc and self.description != "":
+            parameters = {"__doc__": self.description}
+        elif isinstance(ak_add_doc, dict) and self is not rntuple:
+            parameters = {
+                key: self.__getattribute__(value) for key, value in ak_add_doc.items()
+            }
+
+        form = ak.forms.RecordForm(
+            record_list, top_names, form_key="toplevel", parameters=parameters
+        )
         return form
 
     def arrays(
@@ -603,7 +622,7 @@ class HasFields(Mapping):
                 to CuFile to provide direct memory access (DMA) transfers between GPU
                 memory and storage. KvikIO bindings to nvcomp decompress data
                 buffers.
-            ak_add_doc (bool | dict ): If True and ``library="ak"``, add the RField ``name``
+            ak_add_doc (bool | dict ): If True and ``library="ak"``, add the RField ``description``
                 to the Awkward ``__doc__`` parameter of the array.
                 if dict = {key:value} and ``library="ak"``, add the RField ``value`` to the
                 Awkward ``key`` parameter of the array.
@@ -752,6 +771,7 @@ class HasFields(Mapping):
             filter_typename=filter_typename,
             filter_field=filter_field,
             filter_branch=filter_branch,
+            ak_add_doc=ak_add_doc,
         )
 
         # only read columns mentioned in the awkward form
@@ -949,7 +969,7 @@ class HasFields(Mapping):
         step_size="100 MB",
         decompression_executor=None,  # TODO: Not implemented yet
         library="ak",  # TODO: Not implemented yet
-        ak_add_doc=False,  # TODO: Not implemented yet
+        ak_add_doc=False,
         how=None,
         report=False,  # TODO: Not implemented yet
         # For compatibility reasons we also accepts kwargs meant for TTrees
@@ -995,7 +1015,7 @@ class HasFields(Mapping):
             library (str or :doc:`uproot.interpretation.library.Library`): The library
                 that is used to represent arrays. Options are ``"np"`` for NumPy,
                 ``"ak"`` for Awkward Array, and ``"pd"`` for Pandas. (Not implemented yet.)
-            ak_add_doc (bool | dict ): If True and ``library="ak"``, add the RField ``name``
+            ak_add_doc (bool | dict ): If True and ``library="ak"``, add the RField ``description``
                 to the Awkward ``__doc__`` parameter of the array.
                 if dict = {key:value} and ``library="ak"``, add the RField ``value`` to the
                 Awkward ``key`` parameter of the array. (Not implemented yet.)
@@ -1051,6 +1071,7 @@ class HasFields(Mapping):
             filter_typename=filter_typename,
             filter_field=filter_field,
             filter_branch=filter_branch,
+            ak_add_doc=ak_add_doc,
         )
 
         step_size = _regularize_step_size(
@@ -1765,6 +1786,13 @@ class RNTuple(HasFields):
         Name of the ``RNTuple``.
         """
         return self.header.ntuple_name
+
+    @property
+    def description(self):
+        """
+        Description of the ``RNTuple``.
+        """
+        return self.header.ntuple_description
 
     @property
     def object_path(self):

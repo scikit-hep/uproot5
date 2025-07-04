@@ -72,7 +72,7 @@ def _from_zigzag(n):
 
 def _envelop_header(chunk, cursor, context):
     env_data = cursor.field(chunk, _rntuple_env_header_format, context)
-    env_type_id = env_data & 0xFFFF
+    env_type_id = uproot.const.RNTupleEnvelopeType(env_data & 0xFFFF)
     env_length = env_data >> 16
     return {"env_type_id": env_type_id, "env_length": env_length}
 
@@ -411,7 +411,7 @@ in file {self.file.file_path}"""
             parameters=parameters,
         )
 
-    def col_form(self, field_id):
+    def col_form(self, field_id, extra_parameters=None):
         """
         Args:
             field_id (int): The field id.
@@ -439,7 +439,10 @@ in file {self.file.file_path}"""
         if len(rel_crs) == 1:  # base case
             cardinality = "RNTupleCardinality" in self.field_records[field_id].type_name
             return self.base_col_form(
-                rel_crs[0], rel_crs[0].idx, cardinality=cardinality
+                rel_crs[0],
+                rel_crs[0].idx,
+                parameters=extra_parameters,
+                cardinality=cardinality,
             )
         elif (
             len(rel_crs) == 2
@@ -450,17 +453,24 @@ in file {self.file.file_path}"""
                 rel_crs[1], rel_crs[1].idx, parameters={"__array__": "char"}
             )
             form_key = f"column-{rel_crs[0].idx}"
+            parameters = {"__array__": "string"}
+            if extra_parameters is not None:
+                parameters.update(extra_parameters)
             return ak.forms.ListOffsetForm(
-                "i64", inner, form_key=form_key, parameters={"__array__": "string"}
+                "i64", inner, form_key=form_key, parameters=parameters
             )
         else:
             raise (RuntimeError(f"Missing special case: {field_id}"))
 
-    def field_form(self, this_id, keys):
+    def field_form(self, this_id, keys, ak_add_doc=False):
         """
         Args:
             this_id (int): The field id.
             keys (list): The list of keys to search for.
+            ak_add_doc (bool | dict ): If True and ``library="ak"``, add the RField ``description``
+                to the Awkward ``__doc__`` parameter of the array.
+                if dict = {key:value} and ``library="ak"``, add the RField ``value`` to the
+                Awkward ``key`` parameter of the array.
 
         Returns an Awkward Form describing the field.
         """
@@ -469,6 +479,15 @@ in file {self.file.file_path}"""
         field_records = self.field_records
         this_record = field_records[this_id]
         structural_role = this_record.struct_role
+
+        parameters = None
+        if isinstance(ak_add_doc, bool) and ak_add_doc and this_record.field_desc != "":
+            parameters = {"__doc__": this_record.field_desc}
+        elif isinstance(ak_add_doc, dict):
+            parameters = {
+                key: self.ntuple.all_fields[this_id].__getattribute__(value)
+                for key, value in ak_add_doc.items()
+            }
         if (
             structural_role == uproot.const.RNTupleFieldRole.LEAF
             and this_record.repetition == 0
@@ -483,17 +502,19 @@ in file {self.file.file_path}"""
                 this_id = self._related_ids[tmp_id][0]
             # base case of recursion
             # n.b. the split may happen in column
-            return self.col_form(this_id)
+            return self.col_form(this_id, extra_parameters=parameters)
         elif structural_role == uproot.const.RNTupleFieldRole.LEAF:
             if this_id in self._related_ids:
                 # std::array has only one subfield
                 child_id = self._related_ids[this_id][0]
-                inner = self.field_form(child_id, keys)
+                inner = self.field_form(child_id, keys, ak_add_doc=ak_add_doc)
             else:
                 # std::bitset has no subfields, so we use it directly
                 inner = self.col_form(this_id)
             keyname = f"RegularForm-{this_id}"
-            return ak.forms.RegularForm(inner, this_record.repetition, form_key=keyname)
+            return ak.forms.RegularForm(
+                inner, this_record.repetition, form_key=keyname, parameters=parameters
+            )
         elif structural_role == uproot.const.RNTupleFieldRole.COLLECTION:
             if this_id not in self._related_ids or len(self._related_ids[this_id]) != 1:
                 keyname = f"vector-{this_id}"
@@ -503,11 +524,15 @@ in file {self.file.file_path}"""
                 namelist = []
                 for i in newids:
                     if any(key.startswith(self.all_fields[i].path) for key in keys):
-                        recordlist.append(self.field_form(i, keys))
+                        recordlist.append(
+                            self.field_form(i, keys, ak_add_doc=ak_add_doc)
+                        )
                         namelist.append(field_records[i].field_name)
                 if all(name == f"_{i}" for i, name in enumerate(namelist)):
                     namelist = None
-                return ak.forms.RecordForm(recordlist, namelist, form_key="whatever")
+                return ak.forms.RecordForm(
+                    recordlist, namelist, form_key="whatever", parameters=parameters
+                )
             cfid = this_id
             if self.field_records[cfid].source_field_id is not None:
                 cfid = self.field_records[cfid].source_field_id
@@ -524,8 +549,10 @@ in file {self.file.file_path}"""
             #  this only has one child
             if this_id in self._related_ids:
                 child_id = self._related_ids[this_id][0]
-            inner = self.field_form(child_id, keys)
-            return ak.forms.ListOffsetForm("i64", inner, form_key=keyname)
+            inner = self.field_form(child_id, keys, ak_add_doc=ak_add_doc)
+            return ak.forms.ListOffsetForm(
+                "i64", inner, form_key=keyname, parameters=parameters
+            )
         elif structural_role == uproot.const.RNTupleFieldRole.RECORD:
             newids = []
             if this_id in self._related_ids:
@@ -535,21 +562,27 @@ in file {self.file.file_path}"""
             namelist = []
             for i in newids:
                 if any(key.startswith(self.all_fields[i].path) for key in keys):
-                    recordlist.append(self.field_form(i, keys))
+                    recordlist.append(self.field_form(i, keys, ak_add_doc=ak_add_doc))
                     namelist.append(field_records[i].field_name)
             if all(name == f"_{i}" for i, name in enumerate(namelist)):
                 namelist = None
-            return ak.forms.RecordForm(recordlist, namelist, form_key="whatever")
+            return ak.forms.RecordForm(
+                recordlist, namelist, form_key="whatever", parameters=parameters
+            )
         elif structural_role == uproot.const.RNTupleFieldRole.VARIANT:
             keyname = self.col_form(this_id)
             newids = []
             if this_id in self._related_ids:
                 newids = self._related_ids[this_id]
-            recordlist = [self.field_form(i, keys) for i in newids]
+            recordlist = [
+                self.field_form(i, keys, ak_add_doc=ak_add_doc) for i in newids
+            ]
             inner = ak.forms.UnionForm(
                 "i8", "i64", recordlist, form_key=keyname + "-union"
             )
-            return ak.forms.IndexedOptionForm("i64", inner, form_key=keyname)
+            return ak.forms.IndexedOptionForm(
+                "i64", inner, form_key=keyname, parameters=parameters
+            )
         elif structural_role == uproot.const.RNTupleFieldRole.STREAMER:
             raise NotImplementedError(
                 f"Unsplit fields are not supported. {this_record}"
@@ -1162,7 +1195,7 @@ class LocatorReader:
         out = MetaData("Locator")
         out.num_bytes = cursor.field(chunk, _rntuple_locator_size_format, context)
         if out.num_bytes < 0:
-            out.type = -out.num_bytes >> 24
+            out.type = uproot.const.RNTupleLocatorType(-out.num_bytes >> 24)
             if out.type == uproot.const.RNTupleLocatorType.LARGE:
                 out.num_bytes = cursor.field(
                     chunk, _rntuple_large_locator_size_format, context
@@ -1249,23 +1282,25 @@ class FieldRecordReader:
             out.struct_role,
             out.flags,
         ) = cursor.fields(chunk, _rntuple_field_description_format, context)
+        out.struct_role = uproot.const.RNTupleFieldRole(out.struct_role)
+        out.flags = uproot.const.RNTupleFieldFlags(out.flags)
         out.field_name, out.type_name, out.type_alias, out.field_desc = (
             cursor.rntuple_string(chunk, context) for _ in range(4)
         )
 
-        if out.flags & uproot.const.RNTupleFieldFlag.REPETITIVE:
+        if out.flags & uproot.const.RNTupleFieldFlags.REPETITIVE:
             out.repetition = cursor.field(chunk, _rntuple_repetition_format, context)
         else:
             out.repetition = 0
 
-        if out.flags & uproot.const.RNTupleFieldFlag.PROJECTED:
+        if out.flags & uproot.const.RNTupleFieldFlags.PROJECTED:
             out.source_field_id = cursor.field(
                 chunk, _rntuple_source_field_id_format, context
             )
         else:
             out.source_field_id = None
 
-        if out.flags & uproot.const.RNTupleFieldFlag.CHECKSUM:
+        if out.flags & uproot.const.RNTupleFieldFlags.CHECKSUM:
             out.checksum = cursor.field(
                 chunk, _rntuple_root_streamer_checksum_format, context
             )
@@ -1282,13 +1317,14 @@ class ColumnRecordReader:
         out.type, out.nbits, out.field_id, out.flags, out.repr_idx = cursor.fields(
             chunk, _rntuple_column_record_format, context
         )
-        if out.flags & uproot.const.RNTupleColumnFlag.DEFERRED:
+        out.flags = uproot.const.RNTupleColumnFlags(out.flags)
+        if out.flags & uproot.const.RNTupleColumnFlags.DEFERRED:
             out.first_element_index = cursor.field(
                 chunk, _rntuple_first_element_index_format, context
             )
         else:
             out.first_element_index = 0
-        if out.flags & uproot.const.RNTupleColumnFlag.RANGE:
+        if out.flags & uproot.const.RNTupleColumnFlags.RANGE:
             out.min_value, out.max_value = cursor.fields(
                 chunk, _rntuple_column_range_format, context
             )
@@ -1316,6 +1352,7 @@ class ExtraTypeInfoReader:
         out.content_id, out.type_ver = cursor.fields(
             chunk, _rntuple_extra_type_info_format, context
         )
+        out.content_id = uproot.const.RNTupleExtraTypeIdentifier(out.content_id)
         out.type_name = cursor.rntuple_string(chunk, context)
         return out
 
@@ -1367,9 +1404,9 @@ class ClusterSummaryReader:
         out.num_first_entry, out.num_entries = cursor.fields(
             chunk, _rntuple_cluster_summary_format, context
         )
-        out.flags = out.num_entries >> 56
+        out.flags = uproot.const.RNTupleClusterFlags(out.num_entries >> 56)
         out.num_entries &= 0xFFFFFFFFFFFFFF
-        if out.flags & uproot.const.RNTupleClusterFlag.SHARDED:
+        if out.flags & uproot.const.RNTupleClusterFlags.SHARDED:
             raise NotImplementedError("Sharded clusters are not supported.")
         return out
 
@@ -1453,6 +1490,13 @@ class RField(uproot.behaviors.RNTuple.HasFields):
         return self._ntuple.field_records[self._fid].field_name
 
     @property
+    def description(self):
+        """
+        Description of the ``RField``.
+        """
+        return self._ntuple.field_records[self._fid].field_desc
+
+    @property
     def typename(self):
         """
         The C++ typename of the ``RField``.
@@ -1528,7 +1572,7 @@ class RField(uproot.behaviors.RNTuple.HasFields):
             library (str or :doc:`uproot.interpretation.library.Library`): The library
                 that is used to represent arrays. Options are ``"np"`` for NumPy,
                 ``"ak"`` for Awkward Array, and ``"pd"`` for Pandas.
-            ak_add_doc (bool | dict ): If True and ``library="ak"``, add the RField ``name``
+            ak_add_doc (bool | dict ): If True and ``library="ak"``, add the RField ``description``
                 to the Awkward ``__doc__`` parameter of the array.
                 if dict = {key:value} and ``library="ak"``, add the RField ``value`` to the
                 Awkward ``key`` parameter of the array.
