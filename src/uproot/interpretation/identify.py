@@ -16,10 +16,29 @@ from __future__ import annotations
 import ast
 import numbers
 import re
+import warnings
 
 import numpy
 
 import uproot
+
+_custom_interpretations = {}
+
+
+def register_interpretation(cls):
+    """
+    Register a custom interpretation class.
+
+    Args:
+        cls (type): A subclass of :doc:`uproot.interpretation.custom.CustomInterpretation`.
+
+    This method registers a custom interpretation class to be used in
+    :doc:`uproot.interpretation.identify.interpretation_of`.
+    """
+    key = cls.__name__
+    if key in _custom_interpretations:
+        warnings.warn(f"Overwriting existing custom interpretation{key}", stacklevel=2)
+    _custom_interpretations[key] = cls
 
 
 def _normalize_ftype(fType):
@@ -312,6 +331,21 @@ def interpretation_of(branch, context, simplify=True):
     If no interpretation can be found, it raises
     :doc:`uproot.interpretation.identify.UnknownInterpretation`.
     """
+    # Match custom interpretations
+    matched_custom_interpretations = [
+        cls
+        for cls in _custom_interpretations.values()
+        if cls.match_branch(branch, context, simplify)
+    ]
+
+    assert (
+        len(matched_custom_interpretations) <= 1
+    ), "Multiple custom interpretations matched, uproot cannot determine which one to use!"
+
+    if len(matched_custom_interpretations) == 1:
+        return matched_custom_interpretations[0](branch, context, simplify)
+
+    # Original interpretation logic
     if len(branch.branches) != 0:
         if branch.top_level and branch.has_member("fClassName"):
             typename = str(branch.member("fClassName"))
