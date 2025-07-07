@@ -924,9 +924,9 @@ Reading RNTuples
 
 TTree has been the default format to store large datasets in ROOT files for decades. However, it has slowly become outdated and is not optimized for modern systems. This is where the RNTuple format comes in. It is a modern serialization format that is designed with modern systems in mind and is planned to replace TTree in the coming years. `Version 1.0.0.0 <https://cds.cern.ch/record/2923186>`__ is out and will be supported "forever".
 
-RNTuples are much simpler than TTrees by design, and this time there is an official specification, which makes it much easier for third-party I/O packages like Uproot to support. Uproot already supports reading the full RNTuple specification, meaning that you can read any RNTuple you find in the wild. It also already supports writing a large part of the specification, and intends to support as much as it makes sense for data analysis.
+RNTuples are deliberately simpler than TTrees by design. For the first time, there’s an official specification, making it much easier for third-party I/O tools like Uproot to support it. Uproot already supports reading the full RNTuple specification, meaning that you can read any RNTuple you find in the wild. It also already supports writing a large part of the specification, and intends to support as much as it makes sense for data analysis.
 
-To ease the transition into RNTuples, we are designing the interface to match the one for TTrees as closely as possible. Many of the functionality explained in the previous subsections works in the same way. However, there the terminology is slightly different (e.g. "branch" becomes "field") and arguments may vary slightly, accordingly.
+To ease the transition into RNTuples, we are designing the interface to closely match the existing TTree interface. Many of the functionality explained in the previous subsections works in the same way. However, there the terminology is slightly different (e.g. "branch" becomes "field") and arguments may vary slightly, accordingly.
 
 Let's look at a few examples that illustrate how the RNTuple interface works.
 
