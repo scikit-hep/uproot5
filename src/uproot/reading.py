@@ -2083,7 +2083,7 @@ class ReadOnlyDirectory(Mapping):
                             last = step
                             step = step[head]
                             if isinstance(step, uproot.behaviors.TBranch.HasBranches):
-                                return step["/".join([tail] + items[i + 1 :])]
+                                return step["/".join([tail, *items[i + 1 :]])]
                             else:
                                 raise uproot.KeyInFileError(
                                     where,
