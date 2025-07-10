@@ -7,7 +7,7 @@ from utils import run_test_in_pyodide
 
 # Taken from test_0610_awkward_form.py
 @run_test_in_pyodide(test_file="uproot-HZZ-objects.root")
-def test_awkward_array_tvector2_array_forth():
+def test_awkward_array_tvector2_array_forth(selenium):
     import uproot
 
     awk_data = None
