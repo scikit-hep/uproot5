@@ -313,7 +313,7 @@ def file_object_path_split(urlpath: str) -> tuple[str, str | None]:
 
     separator = "::"
     parts = urlpath.split(separator)
-    object_regex = re.compile(r"(.+\.root):(.*$)")
+    object_regex = re.compile(r"(.+\.root):(.*$)", re.IGNORECASE)
     for i, part in enumerate(reversed(parts)):
         match = object_regex.match(part)
         if match:
