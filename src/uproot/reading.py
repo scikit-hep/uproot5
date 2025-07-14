@@ -2098,14 +2098,20 @@ class ReadOnlyDirectory(Mapping):
                             last = step
                             step = step[item]
 
-                    elif isinstance(step, uproot.behaviors.TBranch.HasBranches):
+                    elif isinstance(
+                        step,
+                        (
+                            uproot.behaviors.TBranch.HasBranches,
+                            uproot.behaviors.RNTuple.HasFields,
+                        ),
+                    ):
                         return step["/".join(items[i:])]
 
                     else:
                         raise uproot.KeyInFileError(
                             where,
                             because="/".join(items[:i])
-                            + " is not a TDirectory, TTree, or TBranch",
+                            + " is not a TDirectory, TTree, TBranch, RNTuple, or RField",
                             keys=[key.fName for key in last._keys],
                             file_path=self._file.file_path,
                         )
