@@ -2088,7 +2088,7 @@ class ReadOnlyDirectory(Mapping):
                                 raise uproot.KeyInFileError(
                                     where,
                                     because=repr(head)
-                                    + " is not a TDirectory, TTree, or TBranch",
+                                    + " is not a TDirectory, TTree, TBranch, RNTuple, or RField",
                                     keys=[key.fName for key in last._keys],
                                     file_path=self._file.file_path,
                                 )
