@@ -129,7 +129,6 @@ in file {self.file.file_path}"""
         self._field_names = None
         self._column_records = None
         self._alias_column_records = None
-        self._alias_columns_dict_ = None
         self._related_ids_ = None
         self._column_records_dict_ = None
         self._num_entries = None
@@ -267,14 +266,6 @@ in file {self.file.file_path}"""
                 self.footer.extension_links.alias_column_records
             )
         return self._alias_column_records
-
-    @property
-    def _alias_columns_dict(self):
-        if self._alias_columns_dict_ is None:
-            self._alias_columns_dict_ = {
-                el.field_id: el.physical_id for el in self.alias_column_records
-            }
-        return self._alias_columns_dict_
 
     @property
     def _column_records_dict(self):
