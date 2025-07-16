@@ -44,20 +44,27 @@ def test_keys(tmp_path):
     assert len(obj) == 5
     assert len(obj.keys(recursive=False)) == 5
 
-    assert len(obj.keys()) == 29
-    assert len(obj.keys(full_paths=False)) == 29
-    assert len(obj.keys(full_paths=False, ignore_duplicates=True)) == 16
+    assert len(obj.keys(include_hidden=True)) == 29
+    assert len(obj.keys(full_paths=False, include_hidden=True)) == 29
+    assert (
+        len(obj.keys(full_paths=False, ignore_duplicates=True, include_hidden=True))
+        == 16
+    )
+
+    assert len(obj.keys()) == 22
+    assert len(obj.keys(full_paths=False)) == 22
+    assert len(obj.keys(full_paths=False, ignore_duplicates=True)) == 13
 
     assert len(obj.keys(filter_name="x")) == 4
     assert len(obj.keys(filter_name="z")) == 2
     assert len(obj.keys(filter_name="do*")) == 1
 
-    assert len(obj.keys(filter_typename="std::int*_t")) == 16
+    assert len(obj.keys(filter_typename="std::int*_t")) == 13
 
     assert len(obj.keys(filter_field=lambda f: f.name == "up")) == 1
 
     assert obj["struct1"].keys() == ["x", "y"]
-    assert len(obj["struct4"].keys()) == 12
+    assert len(obj["struct4"].keys()) == 8
 
 
 def test_getitem(tmp_path):
