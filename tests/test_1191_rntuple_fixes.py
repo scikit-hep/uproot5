@@ -44,7 +44,8 @@ def test_multiple_page_delta_encoding():
     filename = skhep_testdata.data_path("test_index_multicluster_rntuple_v1-0-0-0.root")
     with uproot.open(filename) as f:
         obj = f["ntuple"]
-        data = obj.read_col_page(0, 0)
+        field_metadata = obj.get_field_metadata(0)
+        data = obj.read_col_page(0, 0, field_metadata)
         # first page has 64 elements, so this checks that data was stitched together correctly
         assert data[64] - data[63] == 2
 
