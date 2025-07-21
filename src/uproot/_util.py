@@ -324,7 +324,9 @@ def file_object_path_split(urlpath: str) -> tuple[str, str | None]:
             break
         match_with_extra = object_regex_with_extra.match(part)
         if match_with_extra:
-            obj = re.sub(r"/+", "/", match_with_extra.group(2).strip().lstrip("/")).rstrip("/")
+            obj = re.sub(
+                r"/+", "/", match_with_extra.group(2).strip().lstrip("/")
+            ).rstrip("/")
             parts[-i - 1] = match_with_extra.group(1)
             break
 
