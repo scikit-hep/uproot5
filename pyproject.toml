@@ -21,7 +21,7 @@ extra = [
 test = [
   "aiohttp",
   "deflate",
-  "fsspec-xrootd>=0.5.0,!=2025.7.0",
+  "fsspec-xrootd>=0.5.0",
   "isal",
   "minio",
   "paramiko",
@@ -81,7 +81,7 @@ dependencies = [
   "cramjam>=2.5.0",
   "xxhash",
   "numpy",
-  "fsspec",
+  "fsspec!=2025.7.0",
   "packaging",
   "typing_extensions>=4.1.0; python_version < '3.11'"
 ]
