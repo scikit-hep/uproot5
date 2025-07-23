@@ -98,14 +98,14 @@ def test_read_rntuple(selenium):
 
 # Taken from test_0034_generic_objects_in_ttrees.py
 @pytest.mark.network
-@run_test_in_pyodide(packages=["requests"])
+@run_test_in_pyodide(packages=["aiohttp", "requests"])
 def test_read_ttree_http(selenium):
     import awkward
 
     import uproot
 
     with uproot.open(
-        "https://github.com/scikit-hep/scikit-hep-testdata/raw/main/src/skhep_testdata/data/uproot-stl_containers.root",
+        "https://cors.scikit-hep.org/?http://raw.githubusercontent.com/scikit-hep/scikit-hep-testdata/main/src/skhep_testdata/data/uproot-stl_containers.root",
         handler=uproot.source.http.HTTPSource,
     )["tree"] as tree:
         assert awkward.to_list(tree["vector_int32"].array(library="ak")) == [
@@ -119,12 +119,12 @@ def test_read_ttree_http(selenium):
 
 # Taken from test_1191_rntuple_fixes.py
 @pytest.mark.network
-@run_test_in_pyodide(packages=["requests"])
+@run_test_in_pyodide(packages=["aiohttp", "requests"])
 def test_read_rntuple_http(selenium):
     import uproot
 
     with uproot.open(
-        "https://github.com/scikit-hep/scikit-hep-testdata/raw/main/src/skhep_testdata/data/Run2012BC_DoubleMuParked_Muons_1000evts_rntuple_v1-0-0-0.root",
+        "https://cors.scikit-hep.org/?http://raw.githubusercontent.com/scikit-hep/scikit-hep-testdata/main/src/skhep_testdata/data/Run2012BC_DoubleMuParked_Muons_1000evts_rntuple_v1-0-0-0.root",
         handler=uproot.source.http.HTTPSource,
     ) as f:
         obj = f["Events"]
