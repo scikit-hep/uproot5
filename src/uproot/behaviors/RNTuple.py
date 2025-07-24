@@ -721,9 +721,7 @@ class HasFields(Mapping):
                     content = content_dict[key_nr]
                 elif interpreter == "gpu" and backend != "cuda":
                     raise NotImplementedError(
-                        f"Backend {backend} GDS support not implemented.".format(
-                            backend
-                        )
+                        f"Backend {backend} GDS support not implemented."
                     )
                 dtype_byte = self.ntuple.column_records[key_nr].type
                 _fill_container_dict(container_dict, content, key, dtype_byte)
