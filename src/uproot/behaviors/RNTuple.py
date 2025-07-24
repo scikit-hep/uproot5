@@ -719,7 +719,7 @@ class HasFields(Mapping):
                     )
                 elif interpreter == "gpu" and backend == "cuda":
                     content = content_dict[key_nr]
-                elif interpreter == "gpu" and backend != "cuda":
+                elif interpreter == "gpu":
                     raise NotImplementedError(
                         f"Backend {backend} GDS support not implemented."
                     )
