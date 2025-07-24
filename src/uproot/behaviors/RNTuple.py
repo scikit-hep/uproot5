@@ -625,7 +625,7 @@ class HasFields(Mapping):
             interpreter (str): If "cpu" will use cpu to interpret raw data. If "gpu" and
                 ``backend="cuda"`` will use KvikIO bindings to CuFile and nvCOMP to
                 interpret raw data on gpu if available.
-            ak_add_doc (bool | dict ): If True and ``library="ak"``, add the RField ``name``
+            ak_add_doc (bool | dict ): If True and ``library="ak"``, add the RField ``description``
                 to the Awkward ``__doc__`` parameter of the array.
                 if dict = {key:value} and ``library="ak"``, add the RField ``value`` to the
                 Awkward ``key`` parameter of the array.
