@@ -73,7 +73,7 @@ def test_writable(tmp_path):
 
 def test_ROOT(tmp_path, capfd):
     ROOT = pytest.importorskip("ROOT")
-    if ROOT.gROOT.GetVersionInt() < 63500:
+    if ROOT.gROOT.GetVersionInt() < 63400:
         pytest.skip("ROOT version does not support RNTuple v1.0.0.0")
 
     filepath = os.path.join(tmp_path, "test.root")
@@ -87,7 +87,10 @@ def test_ROOT(tmp_path, capfd):
             ["one", "two"],
         )
         file.mkrntuple("ntuple", akform)
-    RT = ROOT.Experimental.RNTupleReader.Open("ntuple", filepath)
+    if ROOT.gROOT.GetVersionInt() < 63600:
+        RT = ROOT.Experimental.RNTupleReader.Open("ntuple", filepath)
+    else:
+        RT = ROOT.RNTupleReader.Open("ntuple", filepath)
     RT.PrintInfo()
     out = capfd.readouterr().out
     assert "* Field 1   : one (double)" in out
