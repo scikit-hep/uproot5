@@ -129,7 +129,6 @@ in file {self.file.file_path}"""
         self._field_names = None
         self._column_records = None
         self._alias_column_records = None
-        self._alias_columns_dict_ = None
         self._related_ids_ = None
         self._column_records_dict_ = None
         self._num_entries = None
@@ -269,14 +268,6 @@ in file {self.file.file_path}"""
         return self._alias_column_records
 
     @property
-    def _alias_columns_dict(self):
-        if self._alias_columns_dict_ is None:
-            self._alias_columns_dict_ = {
-                el.field_id: el.physical_id for el in self.alias_column_records
-            }
-        return self._alias_columns_dict_
-
-    @property
     def _column_records_dict(self):
         if self._column_records_dict_ is None:
             self._column_records_dict_ = {}
@@ -382,23 +373,22 @@ in file {self.file.file_path}"""
 
         return self._page_list_envelopes
 
-    def base_col_form(self, cr, col_id, parameters=None, cardinality=False):
+    def base_col_form(self, cr, parameters=None, is_cardinality=False):
         """
         Args:
             cr (:doc:`uproot.models.RNTuple.MetaData`): The column record.
-            col_id (int): The column id.
             parameters (dict): The parameters to pass to the ``NumpyForm``.
-            cardinality (bool): Whether the column is a cardinality column.
+            is_cardinality (bool): Whether the column is a cardinality column.
 
         Returns an Awkward Form describing the column if applicable, or a form key otherwise.
         """
         ak = uproot.extras.awkward()
 
-        form_key = f"column-{col_id}" + ("-cardinality" if cardinality else "")
+        form_key = f"column-{cr.idx}" + ("-cardinality" if is_cardinality else "")
         dtype_byte = cr.type
         if dtype_byte == uproot.const.rntuple_col_type_to_num_dict["switch"]:
             return form_key
-        elif dtype_byte in uproot.const.rntuple_index_types and not cardinality:
+        elif dtype_byte in uproot.const.rntuple_index_types and not is_cardinality:
             return form_key
         dt_str = uproot.const.rntuple_col_num_to_dtype_dict[dtype_byte]
         if dt_str == "bit":
@@ -411,7 +401,7 @@ in file {self.file.file_path}"""
             parameters=parameters,
         )
 
-    def col_form(self, field_id, extra_parameters=None):
+    def col_form(self, field_id, extra_parameters=None, is_cardinality=False):
         """
         Args:
             field_id (int): The field id.
@@ -423,8 +413,6 @@ in file {self.file.file_path}"""
         cfid = field_id
         if self.field_records[cfid].source_field_id is not None:
             cfid = self.field_records[cfid].source_field_id
-        if cfid in self._alias_columns_dict:
-            cfid = self._alias_columns_dict[cfid]
         if cfid not in self._column_records_dict:
             raise (
                 RuntimeError(
@@ -437,21 +425,17 @@ in file {self.file.file_path}"""
         rel_crs = [c for c in rel_crs if c.repr_idx == 0]
 
         if len(rel_crs) == 1:  # base case
-            cardinality = "RNTupleCardinality" in self.field_records[field_id].type_name
             return self.base_col_form(
                 rel_crs[0],
-                rel_crs[0].idx,
                 parameters=extra_parameters,
-                cardinality=cardinality,
+                is_cardinality=is_cardinality,
             )
         elif (
             len(rel_crs) == 2
             and rel_crs[1].type == uproot.const.rntuple_col_type_to_num_dict["char"]
         ):
             # string field splits->2 in col records
-            inner = self.base_col_form(
-                rel_crs[1], rel_crs[1].idx, parameters={"__array__": "char"}
-            )
+            inner = self.base_col_form(rel_crs[1], parameters={"__array__": "char"})
             form_key = f"column-{rel_crs[0].idx}"
             parameters = {"__array__": "string"}
             if extra_parameters is not None:
@@ -492,17 +476,21 @@ in file {self.file.file_path}"""
             structural_role == uproot.const.RNTupleFieldRole.LEAF
             and this_record.repetition == 0
         ):
+            is_cardinality = "RNTupleCardinality" in this_record.type_name
+            if self.field_records[this_id].source_field_id is not None:
+                this_id = self.field_records[this_id].source_field_id
             # deal with std::atomic
             # they have no associated column, but exactly one subfield containing the underlying data
-            tmp_id = self._alias_columns_dict.get(this_id, this_id)
             if (
-                tmp_id not in self._column_records_dict
-                and len(self._related_ids[tmp_id]) == 1
+                this_id not in self._column_records_dict
+                and len(self._related_ids[this_id]) == 1
             ):
-                this_id = self._related_ids[tmp_id][0]
+                this_id = self._related_ids[this_id][0]
             # base case of recursion
             # n.b. the split may happen in column
-            return self.col_form(this_id, extra_parameters=parameters)
+            return self.col_form(
+                this_id, extra_parameters=parameters, is_cardinality=is_cardinality
+            )
         elif structural_role == uproot.const.RNTupleFieldRole.LEAF:
             if this_id in self._related_ids:
                 # std::array has only one subfield
@@ -523,7 +511,11 @@ in file {self.file.file_path}"""
                 recordlist = []
                 namelist = []
                 for i in newids:
-                    if any(key.startswith(self.all_fields[i].path) for key in keys):
+                    if any(
+                        key.startswith(f"{self.all_fields[i].path}.")
+                        or key == self.all_fields[i].path
+                        for key in keys
+                    ):
                         recordlist.append(
                             self.field_form(i, keys, ak_add_doc=ak_add_doc)
                         )
@@ -536,8 +528,6 @@ in file {self.file.file_path}"""
             cfid = this_id
             if self.field_records[cfid].source_field_id is not None:
                 cfid = self.field_records[cfid].source_field_id
-            if cfid in self._alias_columns_dict:
-                cfid = self._alias_columns_dict[cfid]
             if cfid not in self._column_records_dict:
                 raise (
                     RuntimeError(
@@ -561,7 +551,11 @@ in file {self.file.file_path}"""
             recordlist = []
             namelist = []
             for i in newids:
-                if any(key.startswith(self.all_fields[i].path) for key in keys):
+                if any(
+                    key.startswith(f"{self.all_fields[i].path}.")
+                    or key == self.all_fields[i].path
+                    for key in keys
+                ):
                     recordlist.append(self.field_form(i, keys, ak_add_doc=ak_add_doc))
                     namelist.append(field_records[i].field_name)
             if all(name == f"_{i}" for i, name in enumerate(namelist)):
