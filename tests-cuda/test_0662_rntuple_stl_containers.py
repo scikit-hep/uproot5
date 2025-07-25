@@ -13,8 +13,9 @@ pytestmark = pytest.mark.skipif(
 )
 
 
-@pytest.mark.parametrize(("backend", "GDS", "library"), [("cuda", False, cupy)])
-def test_rntuple_stl_containers(backend, GDS, library):
+# GPU Interpretation not yet supported
+@pytest.mark.parametrize(("backend", "interpreter", "library"), [("cuda", "cpu", cupy)])
+def test_rntuple_stl_containers(backend, interpreter, library):
     filename = skhep_testdata.data_path("test_stl_containers_rntuple_v1-0-0-0.root")
     with uproot.open(filename) as f:
         R = f["ntuple"]
@@ -33,7 +34,7 @@ def test_rntuple_stl_containers(backend, GDS, library):
             "lorentz_vector",
             "array_lv",
         ]
-        r = R.arrays(backend=backend, use_GDS=GDS)
+        r = R.arrays(backend=backend, interpreter=interpreter)
         assert ak.all(r["string"] == ["one", "two", "three", "four", "five"])
 
         assert r["vector_int32"][0] == [1]

@@ -14,29 +14,29 @@ pytestmark = pytest.mark.skipif(
 
 
 @pytest.mark.parametrize(
-    ("backend", "GDS", "library"),
-    [("cuda", False, cupy), ("cuda", True, cupy)],
+    ("backend", "interpreter", "library"),
+    [("cuda", "cpu", cupy), ("cuda", "gpu", cupy)],
 )
-def test_atomic(backend, GDS, library):
+def test_atomic(backend, interpreter, library):
     filename = skhep_testdata.data_path("test_atomic_bitset_rntuple_v1-0-0-0.root")
     with uproot.open(filename) as f:
         obj = f["ntuple"]
 
-        a = obj.arrays("atomic_int", backend=backend, use_GDS=GDS)
+        a = obj.arrays("atomic_int", backend=backend, interpreter=interpreter)
 
         assert ak.all(a.atomic_int == library.array([1, 2, 3]))
 
 
 @pytest.mark.parametrize(
-    ("backend", "GDS", "library"),
-    [("cuda", False, cupy), ("cuda", True, cupy)],
+    ("backend", "interpreter", "library"),
+    [("cuda", "cpu", cupy), ("cuda", "gpu", cupy)],
 )
-def test_bitset(backend, GDS, library):
+def test_bitset(backend, interpreter, library):
     filename = skhep_testdata.data_path("test_atomic_bitset_rntuple_v1-0-0-0.root")
     with uproot.open(filename) as f:
         obj = f["ntuple"]
 
-        a = obj.arrays("bitset", backend=backend, use_GDS=GDS)
+        a = obj.arrays("bitset", backend=backend, interpreter=interpreter)
 
         assert len(a.bitset) == 3
         assert len(a.bitset[0]) == 42
@@ -93,17 +93,17 @@ def test_bitset(backend, GDS, library):
 
 
 @pytest.mark.parametrize(
-    ("backend", "GDS", "library"),
-    [("cuda", False, cupy), ("cuda", True, cupy)],
+    ("backend", "interpreter", "library"),
+    [("cuda", "cpu", cupy), ("cuda", "gpu", cupy)],
 )
-def test_empty_struct(backend, GDS, library):
+def test_empty_struct(backend, interpreter, library):
     filename = skhep_testdata.data_path(
         "test_emptystruct_invalidvar_rntuple_v1-0-0-0.root"
     )
     with uproot.open(filename) as f:
         obj = f["ntuple"]
 
-        a = obj.arrays("empty_struct", backend=backend, use_GDS=GDS)
+        a = obj.arrays("empty_struct", backend=backend, interpreter=interpreter)
 
         assert a.empty_struct.tolist() == [(), (), ()]
 
@@ -117,6 +117,6 @@ def test_invalid_variant():
     with uproot.open(filename) as f:
         obj = f["ntuple"]
 
-        a = obj.arrays("variant.*", backend="cuda", use_GDS=False)
+        a = obj.arrays("variant.*", backend="cuda", interpreter="cpu")
 
         assert a.variant.tolist() == [1, None, {"i": 2}]
