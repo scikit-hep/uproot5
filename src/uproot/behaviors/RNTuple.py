@@ -460,6 +460,9 @@ class HasFields(Mapping):
                     for i, f in enumerate(rntuple.field_records)
                     if f.parent_field_id == self._fid and f.parent_field_id != i
                 ]
+                # If the child field is anonymous, we return the grandchildren
+                if len(fields) == 1 and fields[0].is_anonymous:
+                    fields = fields[0].fields
             self._fields = fields
         return self._fields
 
@@ -468,15 +471,21 @@ class HasFields(Mapping):
         """
         The full path of the field in the :doc:`uproot.models.RNTuple.RNTuple`. When it is
         the ``RNTuple`` itself, this is ``"."``.
+
+        Note that this is not the full path within the ROOT file.
         """
         if isinstance(self, uproot.behaviors.RNTuple.RNTuple):
             return "."
+        # For some anonymous fields, the path is not available
+        if self.is_anonymous:
+            return None
         if self._path is None:
             path = self.name
             parent = self.parent
             field = self
             while not isinstance(parent, uproot.behaviors.RNTuple.RNTuple):
-                path = f"{parent.name}.{path}"
+                if not parent.is_anonymous:
+                    path = f"{parent.name}.{path}"
                 field = parent
                 parent = field.parent
             self._path = path
@@ -519,7 +528,6 @@ class HasFields(Mapping):
             filter_typename=filter_typename,
             filter_field=filter_field,
             filter_branch=filter_branch,
-            include_hidden=True,
         )
         rntuple = self.ntuple
 
@@ -1103,7 +1111,6 @@ class HasFields(Mapping):
         recursive=True,
         full_paths=True,
         ignore_duplicates=False,
-        include_hidden=False,
         # For compatibility reasons we also accepts kwargs meant for TTrees
         filter_branch=unset,
     ):
@@ -1123,7 +1130,6 @@ class HasFields(Mapping):
                 with periods (``.``); otherwise, use the descendant's name as
                 the output name.
             ignore_duplicates (bool): If True, return a set of the keys; otherwise, return the full list of keys.
-            include_hidden (bool): If True, include hidden fields (starting with an underscore) in the output.
             filter_branch (None or function of :doc:`uproot.models.RNTuple.RField` \u2192 bool): An alias for ``filter_field`` included
                 for compatibility with software that was used for :doc:`uproot.behaviors.TBranch.TBranch`. This argument should not be used
                 and will be removed in a future version.
@@ -1138,7 +1144,6 @@ class HasFields(Mapping):
                 recursive=recursive,
                 full_paths=full_paths,
                 ignore_duplicates=ignore_duplicates,
-                include_hidden=include_hidden,
                 filter_branch=filter_branch,
             )
         )
@@ -1150,7 +1155,6 @@ class HasFields(Mapping):
         filter_typename=no_filter,
         filter_field=no_filter,
         recursive=True,
-        include_hidden=False,
         # For compatibility reasons we also accepts kwargs meant for TTrees
         filter_branch=unset,
     ):
@@ -1166,7 +1170,6 @@ class HasFields(Mapping):
                 included if the function returns True, excluded if it returns False.
             recursive (bool): If True, descend into any nested subfields.
                 If False, only return the names of the top fields.
-            include_hidden (bool): If True, include hidden fields (starting with an underscore) in the output.
             filter_branch (None or function of :doc:`uproot.models.RNTuple.RField` \u2192 bool): An alias for ``filter_field`` included
                 for compatibility with software that was used for :doc:`uproot.behaviors.TBranch.TBranch`. This argument should not be used
                 and will be removed in a future version.
@@ -1183,7 +1186,6 @@ class HasFields(Mapping):
                 filter_typename=filter_typename,
                 filter_field=filter_field,
                 recursive=recursive,
-                include_hidden=include_hidden,
                 filter_branch=filter_branch,
             )
         )
@@ -1196,7 +1198,6 @@ class HasFields(Mapping):
         filter_field=no_filter,
         recursive=True,
         full_paths=True,
-        include_hidden=False,
         # For compatibility reasons we also accepts kwargs meant for TTrees
         filter_branch=unset,
     ):
@@ -1215,7 +1216,6 @@ class HasFields(Mapping):
             full_paths (bool): If True, include the full path to each subfield
                 with periods (``.``); otherwise, use the descendant's name as
                 the output name.
-            include_hidden (bool): If True, include hidden fields (starting with an underscore) in the output.
             filter_branch (None or function of :doc:`uproot.models.RNTuple.RField` \u2192 bool): An alias for ``filter_field`` included
                 for compatibility with software that was used for :doc:`uproot.behaviors.TBranch.TBranch`. This argument should not be used
                 and will be removed in a future version.
@@ -1230,7 +1230,6 @@ class HasFields(Mapping):
                 filter_field=filter_field,
                 recursive=recursive,
                 full_paths=full_paths,
-                include_hidden=include_hidden,
                 filter_branch=filter_branch,
             )
         )
@@ -1243,7 +1242,6 @@ class HasFields(Mapping):
         filter_field=no_filter,
         recursive=True,
         full_paths=True,
-        include_hidden=False,
         # For compatibility reasons we also accepts kwargs meant for TTrees
         filter_branch=unset,
     ):
@@ -1262,7 +1260,6 @@ class HasFields(Mapping):
             full_paths (bool): If True, include the full path to each subfield
                 with periods (``.``); otherwise, use the descendant's name as
                 the output name.
-            include_hidden (bool): If True, include hidden fields (starting with an underscore) in the output.
             filter_branch (None or function of :doc:`uproot.models.RNTuple.RField` \u2192 bool): An alias for ``filter_field`` included
                 for compatibility with software that was used for :doc:`uproot.behaviors.TBranch.TBranch`. This argument should not be used
                 and will be removed in a future version.
@@ -1277,7 +1274,6 @@ class HasFields(Mapping):
                 filter_field=filter_field,
                 recursive=recursive,
                 full_paths=full_paths,
-                include_hidden=include_hidden,
                 filter_branch=filter_branch,
             )
         )
@@ -1291,7 +1287,6 @@ class HasFields(Mapping):
         recursive=True,
         full_paths=True,
         ignore_duplicates=False,
-        include_hidden=False,
         # For compatibility reasons we also accepts kwargs meant for TTrees
         filter_branch=unset,
     ):
@@ -1311,7 +1306,6 @@ class HasFields(Mapping):
                 with periods (``.``); otherwise, use the descendant's name as
                 the output name.
             ignore_duplicates (bool): If True, return a set of the keys; otherwise, return the full list of keys.
-            include_hidden (bool): If True, include hidden fields (starting with an underscore) in the output.
             filter_branch (None or function of :doc:`uproot.models.RNTuple.RField` \u2192 bool): An alias for ``filter_field`` included
                 for compatibility with software that was used for :doc:`uproot.behaviors.TBranch.TBranch`. This argument should not be used
                 and will be removed in a future version.
@@ -1326,7 +1320,6 @@ class HasFields(Mapping):
             recursive=recursive,
             full_paths=full_paths,
             ignore_duplicates=ignore_duplicates,
-            include_hidden=include_hidden,
             filter_branch=filter_branch,
         ):
             yield k
@@ -1338,7 +1331,6 @@ class HasFields(Mapping):
         filter_typename=no_filter,
         filter_field=no_filter,
         recursive=True,
-        include_hidden=False,
         # For compatibility reasons we also accepts kwargs meant for TTrees
         filter_branch=unset,
     ):
@@ -1354,7 +1346,6 @@ class HasFields(Mapping):
                 included if the function returns True, excluded if it returns False.
             recursive (bool): If True, descend into any nested subfields.
                 If False, only return the names of the top fields.
-            include_hidden (bool): If True, include hidden fields (starting with an underscore) in the output.
             filter_branch (None or function of :doc:`uproot.models.RNTuple.RField` \u2192 bool): An alias for ``filter_field`` included
                 for compatibility with software that was used for :doc:`uproot.behaviors.TBranch.TBranch`. This argument should not be used
                 and will be removed in a future version.
@@ -1371,7 +1362,6 @@ class HasFields(Mapping):
             filter_field=filter_field,
             recursive=recursive,
             full_paths=False,
-            include_hidden=include_hidden,
             filter_branch=filter_branch,
         ):
             yield v
@@ -1385,7 +1375,6 @@ class HasFields(Mapping):
         recursive=True,
         full_paths=True,
         ignore_duplicates=False,
-        include_hidden=False,
         # For compatibility reasons we also accepts kwargs meant for TTrees
         filter_branch=unset,
     ):
@@ -1405,7 +1394,6 @@ class HasFields(Mapping):
                 with periods (``.``); otherwise, use the descendant's name as
                 the output name.
             ignore_duplicates (bool): If True, return a set of the keys; otherwise, return the full list of keys.
-            include_hidden (bool): If True, include hidden fields (starting with an underscore) in the output.
             filter_branch (None or function of :doc:`uproot.models.RNTuple.RField` \u2192 bool): An alias for ``filter_field`` included
                 for compatibility with software that was used for :doc:`uproot.behaviors.TBranch.TBranch`. This argument should not be used
                 and will be removed in a future version.
@@ -1443,9 +1431,8 @@ class HasFields(Mapping):
                 )
                 and (filter_typename is no_filter or filter_typename(field.typename))
                 and (filter_field is no_filter or filter_field(field))
-                and (include_hidden or not field.name.startswith("_"))
             ):
-                if ignore_duplicates and field.name in keys_set:
+                if field.is_anonymous or (ignore_duplicates and field.name in keys_set):
                     pass
                 else:
                     keys_set.add(field.name)
@@ -1458,9 +1445,12 @@ class HasFields(Mapping):
                     filter_typename=filter_typename,
                     filter_field=filter_field,
                     full_paths=full_paths,
-                    include_hidden=include_hidden,
                 ):
-                    k2 = f"{field.name}.{k1}" if full_paths else k1
+                    k2 = (
+                        f"{field.name}.{k1}"
+                        if full_paths and not field.is_anonymous
+                        else k1
+                    )
                     if filter_name is no_filter or _filter_name_deep(
                         filter_name, self, v
                     ):
@@ -1478,7 +1468,6 @@ class HasFields(Mapping):
         filter_field=no_filter,
         recursive=True,
         full_paths=True,
-        include_hidden=False,
         # For compatibility reasons we also accepts kwargs meant for TTrees
         filter_branch=unset,
     ):
@@ -1497,7 +1486,6 @@ class HasFields(Mapping):
             full_paths (bool): If True, include the full path to each subfield
                 with periods (``.``); otherwise, use the descendant's name as
                 the output name.
-            include_hidden (bool): If True, include hidden fields (starting with an underscore) in the output.
             filter_branch (None or function of :doc:`uproot.models.RNTuple.RField` \u2192 bool): An alias for ``filter_field`` included
                 for compatibility with software that was used for :doc:`uproot.behaviors.TBranch.TBranch`. This argument should not be used
                 and will be removed in a future version.
@@ -1511,7 +1499,6 @@ class HasFields(Mapping):
             filter_field=filter_field,
             recursive=recursive,
             full_paths=full_paths,
-            include_hidden=include_hidden,
             filter_branch=filter_branch,
         ):
             yield k, v.typename
@@ -1642,7 +1629,7 @@ class HasFields(Mapping):
             except uproot.KeyInFileError:
                 raise uproot.KeyInFileError(
                     original_where,
-                    keys=self.keys(recursive=recursive, include_hidden=True),
+                    keys=self.keys(recursive=recursive),
                     file_path=self._file.file_path,  # TODO
                     object_path=self.object_path,  # TODO
                 ) from None
@@ -1655,7 +1642,7 @@ class HasFields(Mapping):
             else:
                 raise uproot.KeyInFileError(
                     original_where,
-                    keys=self.keys(recursive=recursive, include_hidden=True),
+                    keys=self.keys(recursive=recursive),
                     file_path=self._file.file_path,
                     object_path=self.object_path,
                 )
@@ -1663,7 +1650,7 @@ class HasFields(Mapping):
         else:
             raise uproot.KeyInFileError(
                 original_where,
-                keys=self.keys(recursive=recursive, include_hidden=True),
+                keys=self.keys(recursive=recursive),
                 file_path=self._file.file_path,
                 object_path=self.object_path,
             )

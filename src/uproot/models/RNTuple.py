@@ -511,10 +511,13 @@ in file {self.file.file_path}"""
                 recordlist = []
                 namelist = []
                 for i in newids:
-                    if any(
-                        key.startswith(f"{self.all_fields[i].path}.")
-                        or key == self.all_fields[i].path
-                        for key in keys
+                    if (
+                        any(
+                            key.startswith(f"{self.all_fields[i].path}.")
+                            or key == self.all_fields[i].path
+                            for key in keys
+                        )
+                        or self.all_fields[i].is_anonymous
                     ):
                         recordlist.append(
                             self.field_form(i, keys, ak_add_doc=ak_add_doc)
@@ -1469,6 +1472,7 @@ class RField(uproot.behaviors.RNTuple.HasFields):
         self._fields = None
         self._lookup = None
         self._path = None
+        self._is_anonymous = None
 
     def __repr__(self):
         if len(self) == 0:
@@ -1498,6 +1502,32 @@ class RField(uproot.behaviors.RNTuple.HasFields):
         return self._ntuple.field_records[self._fid].type_name
 
     @property
+    def record(self):
+        """
+        The field record of the ``RField``.
+        """
+        return self._ntuple.field_records[self._fid]
+
+    @property
+    def is_anonymous(self):
+        """
+        There are some anonymous fields in the RNTuple specification that we hide from the user
+        to simplify the interface. These are fields named `_0` that are children of a collection
+        or variant field. There are also fields named `:_i` (for `i=0,1,2,...`) that encode class
+        hierarchy.
+        """
+        if self._is_anonymous is None:
+            self._is_anonymous = not self.top_level and (
+                self.parent.record.struct_role
+                in (
+                    uproot.const.RNTupleFieldRole.COLLECTION,
+                    uproot.const.RNTupleFieldRole.VARIANT,
+                )
+                or self.parent.record.flags & uproot.const.RNTupleFieldFlags.REPETITIVE
+            )
+        return self._is_anonymous
+
+    @property
     def parent(self):
         """
         The parent of this ``RField``.
@@ -1513,6 +1543,7 @@ class RField(uproot.behaviors.RNTuple.HasFields):
         """
         Integer position of this ``RField`` in its parent's list of fields.
         """
+        # TODO: This needs to be optimized for performance
         for i, field in enumerate(self.parent.fields):
             if field is self:
                 return i
