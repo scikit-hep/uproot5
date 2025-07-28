@@ -6,6 +6,7 @@ This module defines a versionless model for ``ROOT::RNTuple``.
 from __future__ import annotations
 
 import dataclasses
+import re
 import struct
 import sys
 from collections import defaultdict
@@ -1473,6 +1474,7 @@ class RField(uproot.behaviors.RNTuple.HasFields):
         self._lookup = None
         self._path = None
         self._is_anonymous = None
+        self._is_ignored = None
 
     def __repr__(self):
         if len(self) == 0:
@@ -1513,8 +1515,7 @@ class RField(uproot.behaviors.RNTuple.HasFields):
         """
         There are some anonymous fields in the RNTuple specification that we hide from the user
         to simplify the interface. These are fields named `_0` that are children of a collection
-        or variant field. There are also fields named `:_i` (for `i=0,1,2,...`) that encode class
-        hierarchy.
+        or variant field.
         """
         if self._is_anonymous is None:
             self._is_anonymous = not self.top_level and (
@@ -1526,6 +1527,22 @@ class RField(uproot.behaviors.RNTuple.HasFields):
                 or self.parent.record.flags & uproot.const.RNTupleFieldFlags.REPETITIVE
             )
         return self._is_anonymous
+
+    @property
+    def is_ignored(self):
+        """
+        There are some fields in the RNTuple specification named `:_i` (for `i=0,1,2,...`)
+        that encode class hierarchy. These are not useful in Uproot, so they are ignored.
+        """
+        if self._is_ignored is None:
+            self._is_ignored = (
+                not self.top_level
+                and self.parent.record.struct_role
+                == uproot.const.RNTupleFieldRole.RECORD
+                and re.fullmatch(r":_[0-9]+", self.name) is not None
+            )
+
+        return self._is_ignored
 
     @property
     def parent(self):

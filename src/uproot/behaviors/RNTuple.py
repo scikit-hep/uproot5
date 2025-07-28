@@ -458,7 +458,9 @@ class HasFields(Mapping):
                 fields = [
                     rntuple.all_fields[i]
                     for i, f in enumerate(rntuple.field_records)
-                    if f.parent_field_id == self._fid and f.parent_field_id != i
+                    if f.parent_field_id == self._fid
+                    and f.parent_field_id != i
+                    and not rntuple.all_fields[i].is_ignored
                 ]
                 # If the child field is anonymous, we return the grandchildren
                 if len(fields) == 1 and fields[0].is_anonymous:
@@ -477,7 +479,7 @@ class HasFields(Mapping):
         if isinstance(self, uproot.behaviors.RNTuple.RNTuple):
             return "."
         # For some anonymous fields, the path is not available
-        if self.is_anonymous:
+        if self.is_anonymous or self.is_ignored:
             return None
         if self._path is None:
             path = self.name
@@ -1630,8 +1632,8 @@ class HasFields(Mapping):
                 raise uproot.KeyInFileError(
                     original_where,
                     keys=self.keys(recursive=recursive),
-                    file_path=self._file.file_path,  # TODO
-                    object_path=self.object_path,  # TODO
+                    file_path=self.ntuple.parent._file.file_path,
+                    object_path=self.path,
                 ) from None
             return this
 
@@ -1643,8 +1645,8 @@ class HasFields(Mapping):
                 raise uproot.KeyInFileError(
                     original_where,
                     keys=self.keys(recursive=recursive),
-                    file_path=self._file.file_path,
-                    object_path=self.object_path,
+                    file_path=self.ntuple.parent._file.file_path,
+                    object_path=self.path,
                 )
 
         else:
