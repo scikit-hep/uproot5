@@ -163,6 +163,13 @@ import pathlib
                 "Dir/Test",
             ),
         ),
+        (
+            "http://xcacheserver:8762//https://originserver:4212/path/file.root.1:CollectionTree",
+            (
+                "http://xcacheserver:8762//https://originserver:4212/path/file.root.1",
+                "CollectionTree",
+            ),
+        ),
     ],
 )
 def test_url_split(input_value, expected_output):
