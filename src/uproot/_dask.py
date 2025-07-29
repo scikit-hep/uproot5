@@ -1593,7 +1593,7 @@ which has {entry_stop} entries"""
                     partition_args.append((i, start, stop))
 
     if isinstance(ttrees[0], HasFields):
-        base_form = ttrees[0].to_akform(filter_name=common_keys)[0]
+        base_form, _ = ttrees[0].to_akform(filter_name=common_keys)
     else:
         base_form = _get_ttree_form(
             awkward, ttrees[0], common_keys, interp_options.get("ak_add_doc")

@@ -790,11 +790,16 @@ class HasFields(Mapping):
         # If we constructed some parent fields, we need to get back to the requested field
         if field_path is not None:
             for field in field_path[:-1]:
-                if field not in arrays.fields:
-                    # Awkward keys for tuples don't include the initial underscore
-                    arrays = arrays[field[1:]]
-                else:
+                if field in arrays.fields:
                     arrays = arrays[field]
+                # tuples are a trickier since indices no longer match
+                else:
+                    if field.isdigit() and arrays.fields == ["0"]:
+                        arrays = arrays["0"]
+                    else:
+                        raise AssertionError(
+                            "The array was not constructed correctly. Please report this issue."
+                        )
 
         # FIXME: This is not right, but it might temporarily work
         if library.name == "np":
