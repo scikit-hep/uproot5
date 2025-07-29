@@ -1543,7 +1543,7 @@ def _get_dak_array(
         entry_stop = ttree.num_entries
 
         if isinstance(ttree, HasFields):
-            akform = ttree.to_akform(filter_name=common_keys)
+            akform, _ = ttree.to_akform(filter_name=common_keys)
             ttree_step = _RNTuple_regularize_step_size(
                 ttree, akform, step_size, entry_start, entry_stop
             )
@@ -1593,7 +1593,7 @@ which has {entry_stop} entries"""
                     partition_args.append((i, start, stop))
 
     if isinstance(ttrees[0], HasFields):
-        base_form = ttrees[0].to_akform(filter_name=common_keys)
+        base_form = ttrees[0].to_akform(filter_name=common_keys)[0]
     else:
         base_form = _get_ttree_form(
             awkward, ttrees[0], common_keys, interp_options.get("ak_add_doc")

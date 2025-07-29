@@ -1637,14 +1637,18 @@ class RField(uproot.behaviors.RNTuple.HasFields):
         See also :ref:`uproot.behaviors.RNTuple.HasFields.arrays` to read
         multiple ``RFields`` into a group of arrays or an array-group.
         """
-        return self.arrays(
+        arrays = self.arrays(
             entry_start=entry_start,
             entry_stop=entry_stop,
             library=library,
             interpreter=interpreter,
             backend=backend,
             ak_add_doc=ak_add_doc,
-        )[self.name]
+        )
+        if self.name not in arrays.fields:
+            # Awkward keys for tuples don't include the initial underscore
+            return arrays[self.name[1:]]
+        return arrays[self.name]
 
 
 # No cupy version of numpy.insert() provided

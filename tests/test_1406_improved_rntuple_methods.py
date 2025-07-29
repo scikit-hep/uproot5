@@ -94,21 +94,22 @@ def test_to_akform(tmp_path):
 
     obj = uproot.open(filepath)["ntuple"]
 
-    akform = obj.to_akform()
+    akform, field_path = obj.to_akform()
     assert akform == data.layout.form
+    assert field_path is None
 
-    assert obj["struct1"].to_akform() == akform.select_columns("struct1")
-    assert obj["struct2"].to_akform() == akform.select_columns("struct2")
-    assert obj["struct3"].to_akform() == akform.select_columns("struct3")
-    assert obj["struct4"].to_akform() == akform.select_columns("struct4")
-    assert obj["struct5"].to_akform() == akform.select_columns("struct5")
+    assert obj["struct1"].to_akform() == (akform.select_columns("struct1"), ["struct1"])
+    assert obj["struct2"].to_akform() == (akform.select_columns("struct2"), ["struct2"])
+    assert obj["struct3"].to_akform() == (akform.select_columns("struct3"), ["struct3"])
+    assert obj["struct4"].to_akform() == (akform.select_columns("struct4"), ["struct4"])
+    assert obj["struct5"].to_akform() == (akform.select_columns("struct5"), ["struct5"])
 
-    assert obj["struct1"].to_akform(filter_name="x") == akform.select_columns(
+    assert obj["struct1"].to_akform(filter_name="x")[0] == akform.select_columns(
         ["struct1.x"]
     )
-    assert obj["struct3"].to_akform(filter_typename="double") == akform.select_columns(
-        ["struct3.t"]
-    )
+    assert obj["struct3"].to_akform(filter_typename="double")[
+        0
+    ] == akform.select_columns(["struct3.t"])
 
 
 def test_iterate_and_concatenate(tmp_path):
@@ -145,4 +146,4 @@ def test_array(tmp_path):
     obj = uproot.open(filepath)["ntuple"]
 
     assert obj["struct5._0"].array().tolist() == [1, 4]
-    # assert obj["struct6._0"].array().tolist() == [[1, 4], [7]] # TODO: Need to fix this
+    assert obj["struct6._0"].array().tolist() == [[1, 4], [7]]
