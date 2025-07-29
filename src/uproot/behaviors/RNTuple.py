@@ -462,8 +462,13 @@ class HasFields(Mapping):
                 fields = [
                     rntuple.all_fields[i]
                     for i, f in enumerate(rntuple.field_records)
-                    if f.parent_field_id == self._fid and f.parent_field_id != i
+                    if f.parent_field_id == self._fid
+                    and f.parent_field_id != i
+                    and not rntuple.all_fields[i].is_ignored
                 ]
+                # If the child field is anonymous, we return the grandchildren
+                if len(fields) == 1 and fields[0].is_anonymous:
+                    fields = fields[0].fields
             self._fields = fields
         return self._fields
 
@@ -472,15 +477,21 @@ class HasFields(Mapping):
         """
         The full path of the field in the :doc:`uproot.models.RNTuple.RNTuple`. When it is
         the ``RNTuple`` itself, this is ``"."``.
+
+        Note that this is not the full path within the ROOT file.
         """
         if isinstance(self, uproot.behaviors.RNTuple.RNTuple):
             return "."
+        # For some anonymous fields, the path is not available
+        if self.is_anonymous or self.is_ignored:
+            return None
         if self._path is None:
             path = self.name
             parent = self.parent
             field = self
             while not isinstance(parent, uproot.behaviors.RNTuple.RNTuple):
-                path = f"{parent.name}.{path}"
+                if not parent.is_anonymous:
+                    path = f"{parent.name}.{path}"
                 field = parent
                 parent = field.parent
             self._path = path
@@ -1241,7 +1252,7 @@ class HasFields(Mapping):
                 and (filter_typename is no_filter or filter_typename(field.typename))
                 and (filter_field is no_filter or filter_field(field))
             ):
-                if ignore_duplicates and field.name in keys_set:
+                if field.is_anonymous or (ignore_duplicates and field.name in keys_set):
                     pass
                 else:
                     keys_set.add(field.name)
@@ -1255,7 +1266,11 @@ class HasFields(Mapping):
                     filter_field=filter_field,
                     full_paths=full_paths,
                 ):
-                    k2 = f"{field.name}.{k1}" if full_paths else k1
+                    k2 = (
+                        f"{field.name}.{k1}"
+                        if full_paths and not field.is_anonymous
+                        else k1
+                    )
                     if filter_name is no_filter or _filter_name_deep(
                         filter_name, self, v
                     ):
@@ -1301,9 +1316,10 @@ class HasFields(Mapping):
         for k, v in self.iteritems(
             filter_name=filter_name,
             filter_typename=filter_typename,
-            filter_branch=filter_branch,
+            filter_field=filter_field,
             recursive=recursive,
             full_paths=full_paths,
+            filter_branch=filter_branch,
         ):
             yield k, v.typename
 
@@ -1434,8 +1450,8 @@ class HasFields(Mapping):
                 raise uproot.KeyInFileError(
                     original_where,
                     keys=self.keys(recursive=recursive),
-                    file_path=self._file.file_path,  # TODO
-                    object_path=self.object_path,  # TODO
+                    file_path=self.ntuple.parent._file.file_path,
+                    object_path=self.path,
                 ) from None
             return this
 
@@ -1447,8 +1463,8 @@ class HasFields(Mapping):
                 raise uproot.KeyInFileError(
                     original_where,
                     keys=self.keys(recursive=recursive),
-                    file_path=self._file.file_path,
-                    object_path=self.object_path,
+                    file_path=self.ntuple.parent._file.file_path,
+                    object_path=self.path,
                 )
 
         else:
@@ -1642,20 +1658,6 @@ def _filter_name_deep(filter_name, hasfields, field):
     if name != shallow and filter_name(name):
         return True
     return filter_name("." + name)
-
-
-def _keys_deep(hasbranches):
-    out = set()
-    for branch in hasbranches.itervalues(recursive=True):
-        name = branch.name
-        out.add(name)
-        while branch is not hasbranches:
-            branch = branch.parent  # noqa: PLW2901 (overwriting branch)
-            if branch is not hasbranches:
-                name = branch.name + "/" + name
-        out.add(name)
-        out.add("/" + name)
-    return out
 
 
 def _get_recursive(hasfields, where):

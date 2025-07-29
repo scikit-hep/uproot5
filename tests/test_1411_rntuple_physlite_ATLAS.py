@@ -86,7 +86,7 @@ def test_truth_muon_containers(physlite_file):
 
     # Check values
     mass_evt_0 = 105.7
-    AOD_type = [":_0"]  # Uproot interpretation of AOD containers
+    AOD_type = []  # C++ class definitions are ignored
     mu_pdgid = [13, -13]
 
     assert (
