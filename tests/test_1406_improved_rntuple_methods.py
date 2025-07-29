@@ -80,10 +80,10 @@ def test_getitem(tmp_path):
     assert obj["struct1"]["x"] is obj[r"struct1\x"]
 
     # Make sure it accesses the grandchildren field instead of the "real" _0
-    assert obj["struct5._0"].record.struct_role == uproot.const.RNTupleFieldRole.LEAF
-    assert obj["struct5._1"].record.struct_role == uproot.const.RNTupleFieldRole.LEAF
-    assert obj["struct5._2"].record.struct_role == uproot.const.RNTupleFieldRole.LEAF
-    assert obj["struct6._0"].record.struct_role == uproot.const.RNTupleFieldRole.LEAF
+    assert obj["struct5.0"].record.struct_role == uproot.const.RNTupleFieldRole.LEAF
+    assert obj["struct5.1"].record.struct_role == uproot.const.RNTupleFieldRole.LEAF
+    assert obj["struct5.2"].record.struct_role == uproot.const.RNTupleFieldRole.LEAF
+    assert obj["struct6.0"].record.struct_role == uproot.const.RNTupleFieldRole.LEAF
 
 
 def test_to_akform(tmp_path):
@@ -145,5 +145,5 @@ def test_array(tmp_path):
 
     obj = uproot.open(filepath)["ntuple"]
 
-    assert obj["struct5._0"].array().tolist() == [1, 4]
-    assert obj["struct6._0"].array().tolist() == [[1, 4], [7]]
+    assert obj["struct5.0"].array().tolist() == [1, 4]
+    assert obj["struct6.0"].array().tolist() == [[1, 4], [7]]
