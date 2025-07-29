@@ -531,7 +531,10 @@ class HasFields(Mapping):
         if self is rntuple:
             for field in self.fields:
                 # the field needs to be in the keys or be a parent of a field in the keys
-                if any(key.startswith(field.name) for key in keys):
+                if any(
+                    key.startswith(f"{field.name}.") or key == field.name
+                    for key in keys
+                ):
                     top_names.append(field.name)
                     record_list.append(
                         rntuple.field_form(field.field_id, keys, ak_add_doc=ak_add_doc)
@@ -541,7 +544,7 @@ class HasFields(Mapping):
             # Also include the field itself
             keys = [self.path] + [f"{self.path}.{k}" for k in keys]
             # The field needs to be in the keys or be a parent of a field in the keys
-            if any(key.startswith(self.path) for key in keys):
+            if any(key.startswith(f"{self.path}.") or key == self.path for key in keys):
                 top_names.append(self.name)
                 record_list.append(
                     rntuple.field_form(self.field_id, keys, ak_add_doc=ak_add_doc)
