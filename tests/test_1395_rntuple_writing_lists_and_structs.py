@@ -94,6 +94,8 @@ def test_writing_and_reading(tmp_path):
 
 def test_writing_then_reading_with_ROOT(tmp_path, capfd):
     ROOT = pytest.importorskip("ROOT")
+    if ROOT.gROOT.GetVersionInt() < 63400:
+        pytest.skip("ROOT version does not support RNTuple v1.0.0.0")
 
     filepath = os.path.join(tmp_path, "test.root")
 
@@ -102,7 +104,10 @@ def test_writing_then_reading_with_ROOT(tmp_path, capfd):
         obj.extend(data)
         obj.extend(data)  # test multiple cluster groups
 
-    RT = ROOT.Experimental.RNTupleReader.Open("ntuple", filepath)
+    if ROOT.gROOT.GetVersionInt() < 63600:
+        RT = ROOT.Experimental.RNTupleReader.Open("ntuple", filepath)
+    else:
+        RT = ROOT.RNTupleReader.Open("ntuple", filepath)
     RT.PrintInfo()
     RT.Show(0)
     RT.Show(2)
