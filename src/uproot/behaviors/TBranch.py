@@ -25,7 +25,7 @@ import uproot
 import uproot.interpretation.grouped
 import uproot.language.python
 import uproot.source.chunk
-from uproot._util import no_filter
+from uproot._util import get_ttree_form, no_filter
 
 np_uint8 = numpy.dtype("u1")
 
@@ -727,6 +727,143 @@ class HasBranches(Mapping):
                 interp = interp[: interpretation_width - 3] + "..."
 
             stream.write(formatter.format(name, typename, interp).rstrip(" ") + "\n")
+
+    def virtual_arrays(
+        self,
+        *,
+        filter_name=no_filter,
+        filter_typename=no_filter,
+        filter_branch=no_filter,
+        aliases=None,
+        recursive=True,
+        full_paths=True,
+        ignore_duplicates=False,
+        language=uproot.language.python.python_language,
+        entry_start=None,
+        entry_stop=None,
+        decompression_executor=None,
+        interpretation_executor=None,
+        array_cache="inherit",
+        ak_add_doc=False,
+        access_log=None,
+    ):
+        """
+        Args:
+            filter_name (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
+                filter to select ``TBranches`` by name.
+            filter_typename (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
+                filter to select ``TBranches`` by type.
+            filter_branch (None or function of :doc:`uproot.behaviors.TBranch.TBranch` \u2192 bool, :doc:`uproot.interpretation.Interpretation`, or None): A
+                filter to select ``TBranches`` using the full
+                :doc:`uproot.behaviors.TBranch.TBranch` object. If the function
+                returns False or None, the ``TBranch`` is excluded; if the function
+                returns True, it is included with its standard
+                :ref:`uproot.behaviors.TBranch.TBranch.interpretation`; if an
+                :doc:`uproot.interpretation.Interpretation`, this interpretation
+                overrules the standard one.
+            aliases (None or dict of str \u2192 str): Mathematical expressions that
+                can be used in ``expressions`` or other aliases (without cycles).
+                Uses the ``language`` engine to evaluate. If None, only the
+                :ref:`uproot.behaviors.TBranch.TBranch.aliases` are available.
+            recursive (bool): If True, descend into any nested subbranches.
+                If False, only return the names of branches directly accessible
+                under this object.
+            full_paths (bool): If True, include the full path to each subbranch
+                with slashes (``/``); otherwise, use the descendant's name as
+                the output name.
+            ignore_duplicates (bool): If True, return a set of the keys; otherwise, return the full list of keys.
+            language (:doc:`uproot.language.Language`): Language used to interpret
+                the ``expressions`` and ``aliases``.
+            entry_start (None or int): The first entry to include. If None, start
+                at zero. If negative, count from the end, like a Python slice.
+            entry_stop (None or int): The first entry to exclude (i.e. one greater
+                than the last entry to include). If None, stop at
+                :ref:`uproot.behaviors.TTree.TTree.num_entries`. If negative,
+                count from the end, like a Python slice.
+            decompression_executor (None or Executor with a ``submit`` method): The
+                executor that is used to decompress ``TBaskets``; if None, the
+                file's :ref:`uproot.reading.ReadOnlyFile.decompression_executor`
+                is used.
+            interpretation_executor (None or Executor with a ``submit`` method): The
+                executor that is used to interpret uncompressed ``TBasket`` data as
+                arrays; if None, the file's :ref:`uproot.reading.ReadOnlyFile.interpretation_executor`
+                is used.
+            array_cache ("inherit", None, MutableMapping, or memory size): Cache of arrays;
+                if "inherit", use the file's cache; if None, do not use a cache;
+                if a memory size, create a new cache of this size.
+            ak_add_doc (bool | dict ): If True, add the TBranch ``title``
+                to the Awkward ``__doc__`` parameter of the array.
+                if dict = {key:value}, add the TBranch ``value`` to the
+                Awkward ``key`` parameter of the array.
+            access_log (None or object with a ``__iadd__`` method): If an access_log is
+                provided, e.g. a list, all materializations of the virtual arrays are
+                tracked inside this reference.
+
+
+        Returns a group of virtual arrays from the ``TTree``. This method can only return Awkward Arrays.
+
+        For example:
+
+        .. code-block:: python
+
+            >>> my_tree.virtual_arrays()
+            <Array [{run: ??, ...}, ..., {run: ??, ...}] type='40 * {run: uint32, lumin...'>
+            >>> access_log = []
+            >>> array = my_tree.virtual_arrays(access_log=access_log)
+            >>> ak.materialize(array.Jet_pt)
+            >>> print(access_log)
+            [Accessed(branch='Jet_pt', buffer_key='<root>.Jet_pt-offsets'), Accessed(branch='Jet_pt', buffer_key='<root>.Jet_pt.content-data')]
+
+
+        See also :ref:`uproot.behaviors.TBranch.HasBranches.arrays` to iterate over
+        the array in contiguous ranges of entries.
+        """
+        from uproot._dask import FormMappingWithVirtualArrays
+
+        awkward = uproot.extras.awkward()
+
+        entry_start, entry_stop = _regularize_entries_start_stop(
+            self.num_entries, entry_start, entry_stop
+        )
+        decompression_executor, interpretation_executor = _regularize_executors(
+            decompression_executor, interpretation_executor, self._file
+        )
+        array_cache = _regularize_array_cache(array_cache, self._file)
+
+        keys = self.keys(
+            filter_name=filter_name,
+            filter_typename=filter_typename,
+            filter_branch=filter_branch,
+            recursive=recursive,
+            full_paths=full_paths,
+            ignore_duplicates=ignore_duplicates,
+        )
+
+        base_form = get_ttree_form(
+            self,
+            keys,
+            ak_add_doc,
+        )
+
+        expected_form, form_mapping_info = FormMappingWithVirtualArrays()(base_form)
+
+        # The buffer replacements of FormMappingInfoWithVirtualArrays are VirtualArrays
+        container = form_mapping_info.buffer_replacements(
+            self,
+            keys,
+            entry_start,
+            entry_stop,
+            decompression_executor,
+            interpretation_executor,
+            {"ak_add_doc": ak_add_doc, "access_log": access_log},
+        )
+        return awkward.from_buffers(
+            expected_form,
+            entry_stop - entry_start,
+            container,
+            behavior=form_mapping_info.behavior,
+            buffer_key=form_mapping_info.buffer_key,
+        )
 
     def arrays(
         self,
