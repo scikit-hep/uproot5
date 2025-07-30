@@ -22,7 +22,7 @@ import numpy
 
 import uproot
 
-_custom_interpretations = {}
+_registered_interpretations = set()
 
 
 def register_interpretation(cls):
@@ -35,10 +35,9 @@ def register_interpretation(cls):
     This method registers a custom interpretation class to be used in
     :doc:`uproot.interpretation.identify.interpretation_of`.
     """
-    key = cls.__name__
-    if key in _custom_interpretations:
-        warnings.warn(f"Overwriting existing custom interpretation{key}", stacklevel=2)
-    _custom_interpretations[key] = cls
+    if cls in _registered_interpretations:
+        warnings.warn(f"Overwriting existing custom interpretation {cls}", stacklevel=2)
+    _registered_interpretations.add(cls)
 
 
 def _normalize_ftype(fType):
@@ -334,13 +333,14 @@ def interpretation_of(branch, context, simplify=True):
     # Match custom interpretations
     matched_custom_interpretations = [
         cls
-        for cls in _custom_interpretations.values()
+        for cls in _registered_interpretations
         if cls.match_branch(branch, context, simplify)
     ]
 
     assert (
         len(matched_custom_interpretations) <= 1
-    ), "Multiple custom interpretations matched, uproot cannot determine which one to use!"
+    ), "Multiple custom interpretations matched, "
+    f"uproot cannot determine which one to use: {matched_custom_interpretations}"
 
     if len(matched_custom_interpretations) == 1:
         return matched_custom_interpretations[0](branch, context, simplify)
