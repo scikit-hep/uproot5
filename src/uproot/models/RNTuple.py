@@ -5,6 +5,8 @@ This module defines a versionless model for ``ROOT::RNTuple``.
 """
 from __future__ import annotations
 
+import dataclasses
+import re
 import struct
 import sys
 from collections import defaultdict
@@ -15,6 +17,7 @@ import xxhash
 import uproot
 import uproot.behaviors.RNTuple
 import uproot.const
+from uproot.source.cufile_interface import CuFileSource
 
 # https://github.com/root-project/root/blob/8cd9eed6f3a32e55ef1f0f1df8e5462e753c735d/tree/ntuple/v7/doc/BinaryFormatSpecification.md#anchor-schema
 _rntuple_anchor_format = struct.Struct(">HHHHQQQQQQQ")
@@ -54,6 +57,15 @@ _rntuple_page_num_elements_format = struct.Struct("<i")
 _rntuple_column_element_offset_format = struct.Struct("<q")
 _rntuple_column_compression_settings_format = struct.Struct("<I")
 
+# https://github.com/root-project/root/blob/6dc4ff848329eaa3ca433985e709b12321098fe2/core/zip/inc/Compression.h#L93-L105
+compression_settings_dict = {
+    uproot.const.kZLIB: "ZLIB",  # nvCOMP unsupported
+    uproot.const.kLZMA: "LZMA",  # nvCOMP unsupported
+    uproot.const.kOldCompressionAlgo: "deflate",  # nvCOMP support
+    uproot.const.kLZ4: "LZ4",  # nvCOMP support
+    uproot.const.kZSTD: "zstd",  # nvCOMP support
+}
+
 
 def _from_zigzag(n):
     return n >> 1 ^ -(n & 1)
@@ -61,7 +73,7 @@ def _from_zigzag(n):
 
 def _envelop_header(chunk, cursor, context):
     env_data = cursor.field(chunk, _rntuple_env_header_format, context)
-    env_type_id = env_data & 0xFFFF
+    env_type_id = uproot.const.RNTupleEnvelopeType(env_data & 0xFFFF)
     env_length = env_data >> 16
     return {"env_type_id": env_type_id, "env_length": env_length}
 
@@ -118,7 +130,6 @@ in file {self.file.file_path}"""
         self._field_names = None
         self._column_records = None
         self._alias_column_records = None
-        self._alias_columns_dict_ = None
         self._related_ids_ = None
         self._column_records_dict_ = None
         self._num_entries = None
@@ -258,14 +269,6 @@ in file {self.file.file_path}"""
         return self._alias_column_records
 
     @property
-    def _alias_columns_dict(self):
-        if self._alias_columns_dict_ is None:
-            self._alias_columns_dict_ = {
-                el.field_id: el.physical_id for el in self.alias_column_records
-            }
-        return self._alias_columns_dict_
-
-    @property
     def _column_records_dict(self):
         if self._column_records_dict_ is None:
             self._column_records_dict_ = {}
@@ -371,23 +374,22 @@ in file {self.file.file_path}"""
 
         return self._page_list_envelopes
 
-    def base_col_form(self, cr, col_id, parameters=None, cardinality=False):
+    def base_col_form(self, cr, parameters=None, is_cardinality=False):
         """
         Args:
             cr (:doc:`uproot.models.RNTuple.MetaData`): The column record.
-            col_id (int): The column id.
             parameters (dict): The parameters to pass to the ``NumpyForm``.
-            cardinality (bool): Whether the column is a cardinality column.
+            is_cardinality (bool): Whether the column is a cardinality column.
 
         Returns an Awkward Form describing the column if applicable, or a form key otherwise.
         """
         ak = uproot.extras.awkward()
 
-        form_key = f"column-{col_id}" + ("-cardinality" if cardinality else "")
+        form_key = f"column-{cr.idx}" + ("-cardinality" if is_cardinality else "")
         dtype_byte = cr.type
         if dtype_byte == uproot.const.rntuple_col_type_to_num_dict["switch"]:
             return form_key
-        elif dtype_byte in uproot.const.rntuple_index_types and not cardinality:
+        elif dtype_byte in uproot.const.rntuple_index_types and not is_cardinality:
             return form_key
         dt_str = uproot.const.rntuple_col_num_to_dtype_dict[dtype_byte]
         if dt_str == "bit":
@@ -400,7 +402,7 @@ in file {self.file.file_path}"""
             parameters=parameters,
         )
 
-    def col_form(self, field_id):
+    def col_form(self, field_id, extra_parameters=None, is_cardinality=False):
         """
         Args:
             field_id (int): The field id.
@@ -412,8 +414,6 @@ in file {self.file.file_path}"""
         cfid = field_id
         if self.field_records[cfid].source_field_id is not None:
             cfid = self.field_records[cfid].source_field_id
-        if cfid in self._alias_columns_dict:
-            cfid = self._alias_columns_dict[cfid]
         if cfid not in self._column_records_dict:
             raise (
                 RuntimeError(
@@ -426,30 +426,36 @@ in file {self.file.file_path}"""
         rel_crs = [c for c in rel_crs if c.repr_idx == 0]
 
         if len(rel_crs) == 1:  # base case
-            cardinality = "RNTupleCardinality" in self.field_records[field_id].type_name
             return self.base_col_form(
-                rel_crs[0], rel_crs[0].idx, cardinality=cardinality
+                rel_crs[0],
+                parameters=extra_parameters,
+                is_cardinality=is_cardinality,
             )
         elif (
             len(rel_crs) == 2
             and rel_crs[1].type == uproot.const.rntuple_col_type_to_num_dict["char"]
         ):
             # string field splits->2 in col records
-            inner = self.base_col_form(
-                rel_crs[1], rel_crs[1].idx, parameters={"__array__": "char"}
-            )
+            inner = self.base_col_form(rel_crs[1], parameters={"__array__": "char"})
             form_key = f"column-{rel_crs[0].idx}"
+            parameters = {"__array__": "string"}
+            if extra_parameters is not None:
+                parameters.update(extra_parameters)
             return ak.forms.ListOffsetForm(
-                "i64", inner, form_key=form_key, parameters={"__array__": "string"}
+                "i64", inner, form_key=form_key, parameters=parameters
             )
         else:
             raise (RuntimeError(f"Missing special case: {field_id}"))
 
-    def field_form(self, this_id, keys):
+    def field_form(self, this_id, keys, ak_add_doc=False):
         """
         Args:
             this_id (int): The field id.
             keys (list): The list of keys to search for.
+            ak_add_doc (bool | dict ): If True and ``library="ak"``, add the RField ``description``
+                to the Awkward ``__doc__`` parameter of the array.
+                if dict = {key:value} and ``library="ak"``, add the RField ``value`` to the
+                Awkward ``key`` parameter of the array.
 
         Returns an Awkward Form describing the field.
         """
@@ -458,31 +464,46 @@ in file {self.file.file_path}"""
         field_records = self.field_records
         this_record = field_records[this_id]
         structural_role = this_record.struct_role
+
+        parameters = None
+        if isinstance(ak_add_doc, bool) and ak_add_doc and this_record.field_desc != "":
+            parameters = {"__doc__": this_record.field_desc}
+        elif isinstance(ak_add_doc, dict):
+            parameters = {
+                key: self.ntuple.all_fields[this_id].__getattribute__(value)
+                for key, value in ak_add_doc.items()
+            }
         if (
             structural_role == uproot.const.RNTupleFieldRole.LEAF
             and this_record.repetition == 0
         ):
+            is_cardinality = "RNTupleCardinality" in this_record.type_name
+            if self.field_records[this_id].source_field_id is not None:
+                this_id = self.field_records[this_id].source_field_id
             # deal with std::atomic
             # they have no associated column, but exactly one subfield containing the underlying data
-            tmp_id = self._alias_columns_dict.get(this_id, this_id)
             if (
-                tmp_id not in self._column_records_dict
-                and len(self._related_ids[tmp_id]) == 1
+                this_id not in self._column_records_dict
+                and len(self._related_ids[this_id]) == 1
             ):
-                this_id = self._related_ids[tmp_id][0]
+                this_id = self._related_ids[this_id][0]
             # base case of recursion
             # n.b. the split may happen in column
-            return self.col_form(this_id)
+            return self.col_form(
+                this_id, extra_parameters=parameters, is_cardinality=is_cardinality
+            )
         elif structural_role == uproot.const.RNTupleFieldRole.LEAF:
             if this_id in self._related_ids:
                 # std::array has only one subfield
                 child_id = self._related_ids[this_id][0]
-                inner = self.field_form(child_id, keys)
+                inner = self.field_form(child_id, keys, ak_add_doc=ak_add_doc)
             else:
                 # std::bitset has no subfields, so we use it directly
                 inner = self.col_form(this_id)
             keyname = f"RegularForm-{this_id}"
-            return ak.forms.RegularForm(inner, this_record.repetition, form_key=keyname)
+            return ak.forms.RegularForm(
+                inner, this_record.repetition, form_key=keyname, parameters=parameters
+            )
         elif structural_role == uproot.const.RNTupleFieldRole.COLLECTION:
             if this_id not in self._related_ids or len(self._related_ids[this_id]) != 1:
                 keyname = f"vector-{this_id}"
@@ -491,17 +512,26 @@ in file {self.file.file_path}"""
                 recordlist = []
                 namelist = []
                 for i in newids:
-                    if any(key.startswith(self.all_fields[i].path) for key in keys):
-                        recordlist.append(self.field_form(i, keys))
+                    if (
+                        any(
+                            key.startswith(f"{self.all_fields[i].path}.")
+                            or key == self.all_fields[i].path
+                            for key in keys
+                        )
+                        or self.all_fields[i].is_anonymous
+                    ):
+                        recordlist.append(
+                            self.field_form(i, keys, ak_add_doc=ak_add_doc)
+                        )
                         namelist.append(field_records[i].field_name)
                 if all(name == f"_{i}" for i, name in enumerate(namelist)):
                     namelist = None
-                return ak.forms.RecordForm(recordlist, namelist, form_key="whatever")
+                return ak.forms.RecordForm(
+                    recordlist, namelist, form_key="whatever", parameters=parameters
+                )
             cfid = this_id
             if self.field_records[cfid].source_field_id is not None:
                 cfid = self.field_records[cfid].source_field_id
-            if cfid in self._alias_columns_dict:
-                cfid = self._alias_columns_dict[cfid]
             if cfid not in self._column_records_dict:
                 raise (
                     RuntimeError(
@@ -513,8 +543,10 @@ in file {self.file.file_path}"""
             #  this only has one child
             if this_id in self._related_ids:
                 child_id = self._related_ids[this_id][0]
-            inner = self.field_form(child_id, keys)
-            return ak.forms.ListOffsetForm("i64", inner, form_key=keyname)
+            inner = self.field_form(child_id, keys, ak_add_doc=ak_add_doc)
+            return ak.forms.ListOffsetForm(
+                "i64", inner, form_key=keyname, parameters=parameters
+            )
         elif structural_role == uproot.const.RNTupleFieldRole.RECORD:
             newids = []
             if this_id in self._related_ids:
@@ -523,22 +555,32 @@ in file {self.file.file_path}"""
             recordlist = []
             namelist = []
             for i in newids:
-                if any(key.startswith(self.all_fields[i].path) for key in keys):
-                    recordlist.append(self.field_form(i, keys))
+                if any(
+                    key.startswith(f"{self.all_fields[i].path}.")
+                    or key == self.all_fields[i].path
+                    for key in keys
+                ):
+                    recordlist.append(self.field_form(i, keys, ak_add_doc=ak_add_doc))
                     namelist.append(field_records[i].field_name)
-            if all(name == f"_{i}" for i, name in enumerate(namelist)):
+            if all(re.fullmatch(r"_[0-9]+", name) is not None for name in namelist):
                 namelist = None
-            return ak.forms.RecordForm(recordlist, namelist, form_key="whatever")
+            return ak.forms.RecordForm(
+                recordlist, namelist, form_key="whatever", parameters=parameters
+            )
         elif structural_role == uproot.const.RNTupleFieldRole.VARIANT:
             keyname = self.col_form(this_id)
             newids = []
             if this_id in self._related_ids:
                 newids = self._related_ids[this_id]
-            recordlist = [self.field_form(i, keys) for i in newids]
+            recordlist = [
+                self.field_form(i, keys, ak_add_doc=ak_add_doc) for i in newids
+            ]
             inner = ak.forms.UnionForm(
                 "i8", "i64", recordlist, form_key=keyname + "-union"
             )
-            return ak.forms.IndexedOptionForm("i64", inner, form_key=keyname)
+            return ak.forms.IndexedOptionForm(
+                "i64", inner, form_key=keyname, parameters=parameters
+            )
         elif structural_role == uproot.const.RNTupleFieldRole.STREAMER:
             raise NotImplementedError(
                 f"Unsplit fields are not supported. {this_record}"
@@ -547,139 +589,66 @@ in file {self.file.file_path}"""
             # everything should recurse above this branch
             raise AssertionError("this should be unreachable")
 
-    def read_pagedesc(self, destination, desc, dtype_str, dtype, nbits, split):
+    def read_pagedesc(self, destination, desc, field_metadata):
         """
         Args:
             destination (numpy.ndarray): The array to fill.
             desc (:doc:`uproot.models.RNTuple.MetaData`): The page description.
-            dtype_str (str): The data type as a string.
-            dtype (numpy.dtype): The data type.
-            nbits (int): The number of bits.
-            split (bool): Whether the data is split.
+            field_metadata (:doc:`uproot.models.RNTuple.FieldClusterMetadata`):
+                The metadata needed to deserialize destination.
 
         Fills the destination array with the data from the page.
         """
         loc = desc.locator
         context = {}
-        # bool in RNTuple is always stored as bits
-        isbit = dtype_str == "bit"
         num_elements = len(destination)
-        if isbit:
+        # Pages storing bits, real32trunc, and real32quant need num_elements
+        # corrected
+        if field_metadata.isbit:
             num_elements_toread = int(numpy.ceil(num_elements / 8))
-        elif dtype_str in ("real32trunc", "real32quant"):
-            num_elements_toread = int(numpy.ceil((num_elements * 4 * nbits) / 32))
-            dtype = numpy.dtype("uint8")
+        elif field_metadata.dtype_str in ("real32trunc", "real32quant"):
+            num_elements_toread = int(
+                numpy.ceil((num_elements * 4 * field_metadata.nbits) / 32)
+            )
         else:
             num_elements_toread = num_elements
-        uncomp_size = num_elements_toread * dtype.itemsize
+
+        uncomp_size = num_elements_toread * field_metadata.dtype_toread.itemsize
         decomp_chunk, cursor = self.read_locator(loc, uncomp_size, context)
         content = cursor.array(
-            decomp_chunk, num_elements_toread, dtype, context, move=False
+            decomp_chunk,
+            num_elements_toread,
+            field_metadata.dtype_toread,
+            context,
+            move=False,
         )
+        destination.view(field_metadata.dtype_toread)[:num_elements_toread] = content[
+            :num_elements_toread
+        ]
+        self.deserialize_page_decompressed_buffer(destination, field_metadata)
 
-        if split:
-            content = content.view(numpy.uint8)
-
-            if nbits == 16:
-                # AAAAABBBBB needs to become
-                # ABABABABAB
-                res = numpy.empty(len(content), numpy.uint8)
-                res[0::2] = content[len(res) * 0 // 2 : len(res) * 1 // 2]
-                res[1::2] = content[len(res) * 1 // 2 : len(res) * 2 // 2]
-
-            elif nbits == 32:
-                # AAAAABBBBBCCCCCDDDDD needs to become
-                # ABCDABCDABCDABCDABCD
-                res = numpy.empty(len(content), numpy.uint8)
-                res[0::4] = content[len(res) * 0 // 4 : len(res) * 1 // 4]
-                res[1::4] = content[len(res) * 1 // 4 : len(res) * 2 // 4]
-                res[2::4] = content[len(res) * 2 // 4 : len(res) * 3 // 4]
-                res[3::4] = content[len(res) * 3 // 4 : len(res) * 4 // 4]
-
-            elif nbits == 64:
-                # AAAAABBBBBCCCCCDDDDDEEEEEFFFFFGGGGGHHHHH needs to become
-                # ABCDEFGHABCDEFGHABCDEFGHABCDEFGHABCDEFGH
-                res = numpy.empty(len(content), numpy.uint8)
-                res[0::8] = content[len(res) * 0 // 8 : len(res) * 1 // 8]
-                res[1::8] = content[len(res) * 1 // 8 : len(res) * 2 // 8]
-                res[2::8] = content[len(res) * 2 // 8 : len(res) * 3 // 8]
-                res[3::8] = content[len(res) * 3 // 8 : len(res) * 4 // 8]
-                res[4::8] = content[len(res) * 4 // 8 : len(res) * 5 // 8]
-                res[5::8] = content[len(res) * 5 // 8 : len(res) * 6 // 8]
-                res[6::8] = content[len(res) * 6 // 8 : len(res) * 7 // 8]
-                res[7::8] = content[len(res) * 7 // 8 : len(res) * 8 // 8]
-
-            content = res.view(dtype)
-
-        if isbit:
-            content = numpy.unpackbits(
-                content.view(dtype=numpy.uint8), bitorder="little"
-            )
-        elif dtype_str in ("real32trunc", "real32quant"):
-            if nbits == 32:
-                content = content.view(numpy.uint32)
-            elif nbits % 8 == 0:
-                new_content = numpy.zeros((num_elements, 4), numpy.uint8)
-                nbytes = nbits // 8
-                new_content[:, :nbytes] = content.reshape(-1, nbytes)
-                content = new_content.view(numpy.uint32).reshape(-1)
-            else:
-                ak = uproot.extras.awkward()
-                vm = ak.forth.ForthMachine32(
-                    f"""input x output y uint32 {num_elements} x #{nbits}bit-> y"""
-                )
-                vm.run({"x": content})
-                content = vm["y"]
-            if dtype_str == "real32trunc":
-                content <<= 32 - nbits
-
-        # needed to chop off extra bits incase we used `unpackbits`
-        destination[:] = content[:num_elements]
-
-    def read_col_pages(
-        self, ncol, cluster_range, dtype_byte, pad_missing_element=False
-    ):
+    def read_col_pages(self, ncol, cluster_range, pad_missing_element=False):
         """
         Args:
             ncol (int): The column id.
             cluster_range (range): The range of cluster indices.
-            dtype_byte (int): The data type.
             pad_missing_element (bool): Whether to pad the missing elements.
 
         Returns a numpy array with the data from the column.
         """
-        arrays = [self.read_col_page(ncol, i) for i in cluster_range]
+        field_metadata = self.get_field_metadata(ncol)
+        arrays = [self.read_col_page(ncol, i, field_metadata) for i in cluster_range]
+        res = self.combine_cluster_arrays(arrays, field_metadata, pad_missing_element)
 
-        # Check if column stores offset values
-        if dtype_byte in uproot.const.rntuple_index_types:
-            # Extract the last offset values:
-            last_elements = [
-                (arr[-1] if len(arr) > 0 else numpy.zeros((), dtype=arr.dtype))
-                for arr in arrays[:-1]
-            ]  # First value always zero, therefore skip first arr.
-            last_offsets = numpy.cumsum(last_elements)
-            for i in range(1, len(arrays)):
-                arrays[i] += last_offsets[i - 1]
-
-        res = numpy.concatenate(arrays, axis=0)
-
-        # No longer needed; free memory
-        del arrays
-
-        dtype_byte = self.column_records[ncol].type
-        if dtype_byte in uproot.const.rntuple_index_types:
-            res = numpy.insert(res, 0, 0)  # for offsets
-
-        if pad_missing_element:
-            first_element_index = self.column_records[ncol].first_element_index
-            res = numpy.pad(res, (first_element_index, 0))
         return res
 
-    def read_col_page(self, ncol, cluster_i):
+    def read_col_page(self, ncol, cluster_i, field_metadata):
         """
         Args:
             ncol (int): The column id.
             cluster_i (int): The cluster index.
+            field_metadata (:doc:`uproot.models.RNTuple.FieldClusterMetadata`):
+                The metadata needed to read the field's pages.
 
         Returns a numpy array with the data from the column.
         """
@@ -688,10 +657,346 @@ in file {self.file.file_path}"""
         if ncol < len(linklist) and linklist[ncol].suppressed:
             rel_crs = self._column_records_dict[self.column_records[ncol].field_id]
             ncol = next(cr.idx for cr in rel_crs if not linklist[cr.idx].suppressed)
-        pagelist = linklist[ncol].pages if ncol < len(linklist) else []
+            field_metadata = self.get_field_metadata(
+                ncol
+            )  # Update metadata if suppressed
+        pagelist = (
+            linklist[field_metadata.ncol].pages
+            if field_metadata.ncol < len(linklist)
+            else []
+        )
+        total_len = numpy.sum([desc.num_elements for desc in pagelist], dtype=int)
+        res = numpy.empty(total_len, field_metadata.dtype)
+
+        tracker = 0
+        cumsum = 0
+        for page_desc in pagelist:
+            n_elements = page_desc.num_elements
+            tracker_end = tracker + n_elements
+            self.read_pagedesc(
+                res[tracker:tracker_end],
+                page_desc,
+                field_metadata,
+            )
+            if field_metadata.delta:
+                res[tracker] -= cumsum
+                cumsum += numpy.sum(res[tracker:tracker_end])
+            tracker = tracker_end
+
+        res = self.post_process(res, field_metadata)
+        return res
+
+    def gpu_read_clusters(self, fields, start_cluster_idx, stop_cluster_idx):
+        """
+        Args:
+            fields (list: str): The target fields to read.
+            start_cluster_idx (int): The first cluster index containing entries
+            in the range requested.
+            stop_cluster_idx (int): The last cluster index containing entries
+            in the range requested.
+
+        Returns a ClusterRefs containing FieldRefsCluster for each cluster. Each
+        FieldRefsCluster contains all FieldPayload objects for each field in
+        fields. Each FieldPayload contains the page buffers, decompression
+        target buffers, and compression metadata for a field in a given cluster.
+        """
+        cluster_range = range(start_cluster_idx, stop_cluster_idx)
+        clusters_datas = ClusterRefs()
+        filehandle = CuFileSource(self.file.source.file_path, "rb")
+
+        # Iterate through each cluster
+        for cluster_i in cluster_range:
+            colrefs_cluster = FieldRefsCluster(cluster_i)
+            for key in fields:
+                if "column" in key and "union" not in key:
+                    ncol = int(key.split("-")[1])
+                    field_metadata = self.get_field_metadata(ncol)
+                    if ncol not in colrefs_cluster.fieldpayloads.keys():
+                        Col_ClusterBuffers = self.gpu_read_col_cluster_pages(
+                            ncol, cluster_i, filehandle, field_metadata
+                        )
+                        colrefs_cluster._add_field(Col_ClusterBuffers)
+            clusters_datas._add_cluster(colrefs_cluster)
+
+        filehandle.get_all()
+        return clusters_datas
+
+    def gpu_read_col_cluster_pages(self, ncol, cluster_i, filehandle, field_metadata):
+        """
+        Args:
+            ncol (int): The target column's key number.
+            cluster_i (int): The cluster to read column data from.
+            filehandle (uproot.source.cufile_interface.CuFileSource): CuFile
+            filehandle interface which performs CuFile API calls.
+            field_metadata (:doc:`uproot.models.RNTuple.FieldClusterMetadata`):
+                The metadata needed to read the fields pages.
+
+        Returns a FieldPayload containing raw page buffers, decompression
+        target buffers, and compression metadata.
+        """
+        # Get cluster and pages metadatas
+        cupy = uproot.extras.cupy()
+        linklist = self.page_link_list[cluster_i]
+        ncol_orig = ncol
+        if ncol < len(linklist):
+            if linklist[ncol].suppressed:
+                rel_crs = self._column_records_dict[self.column_records[ncol].field_id]
+                ncol = next(cr.idx for cr in rel_crs if not linklist[cr.idx].suppressed)
+                field_metadata = self.get_field_metadata(ncol)
+            linklist_col = linklist[ncol]
+            pagelist = linklist_col.pages
+            compression = linklist_col.compression_settings
+            compression_level = compression % 100
+            algorithm = compression // 100
+            algorithm_str = compression_settings_dict[algorithm]
+        else:
+            pagelist = []
+            algorithm_str = None
+            compression_level = None
+
+        # Prepare full output buffer
+        total_len = numpy.sum([desc.num_elements for desc in pagelist], dtype=int)
+        full_output_buffer = cupy.empty(total_len, dtype=field_metadata.dtype)
+
+        # Check if field compressed/decompressed
+        if field_metadata.isbit:  # Need to correct length when dtype = bit
+            total_len = int(numpy.ceil(total_len / 8))
+        elif field_metadata.dtype_str in ("real32trunc", "real32quant"):
+            total_len = int(numpy.ceil((total_len * 4 * field_metadata.nbits) / 32))
+        total_raw_bytes = numpy.sum([desc.locator.num_bytes for desc in pagelist])
+        page_is_compressed = (
+            total_raw_bytes != total_len * field_metadata.dtype_toread.itemsize
+        )
+
+        cluster_contents = FieldPayload(
+            ncol_orig,
+            full_output_buffer,
+            page_is_compressed,
+            algorithm_str,
+            compression_level,
+        )
+        tracker = 0
+        for page_desc in pagelist:
+            num_elements = page_desc.num_elements
+            loc = page_desc.locator
+            n_bytes = loc.num_bytes
+            if field_metadata.isbit:  # Need to correct length when dtype = bit
+                num_elements = int(numpy.ceil(num_elements / 8))
+
+            tracker_end = tracker + num_elements
+            out_buff = full_output_buffer[tracker:tracker_end]
+
+            # If compressed, skip 9 byte header
+            if page_is_compressed:
+                # If LZ4, page contains additional 8-byte checksum
+                offset = (
+                    int(loc.offset + 9)
+                    if algorithm_str != "LZ4"
+                    else int(loc.offset + 9 + 8)
+                )
+                comp_buff = cupy.empty(n_bytes - 9, dtype="b")
+                filehandle.pread(comp_buff, size=int(n_bytes - 9), file_offset=offset)
+
+            # If uncompressed, read directly into out_buff
+            else:
+                comp_buff = None
+                filehandle.pread(
+                    out_buff, size=int(n_bytes), file_offset=int(loc.offset)
+                )
+
+            cluster_contents._add_page(comp_buff)
+            cluster_contents._add_output(out_buff)
+
+            tracker = tracker_end
+
+        return cluster_contents
+
+    def gpu_deserialize_decompressed_content(
+        self,
+        clusters_datas,
+        start_cluster_idx,
+        stop_cluster_idx,
+        pad_missing_element=False,
+    ):
+        """
+        Args:
+            clusters_datas (ClusterRefs): The target column's key number.
+            start_cluster_idx (int): The first cluster index containing entries
+            in the range requested.
+            stop_cluster_idx (int): The last cluster index containing entries
+            in the range requested.
+
+        Returns a dictionary containing contiguous buffers of deserialized data
+        across requested clusters organized by column key.
+        """
+        cluster_range = range(start_cluster_idx, stop_cluster_idx)
+
+        col_arrays = {}  # collect content for each col
+        for key_nr in clusters_datas.columns:
+            ncol = int(key_nr)
+            field_metadata = self.get_field_metadata(ncol)
+            # Get uncompressed array for key for all clusters
+            col_decompressed_buffers = clusters_datas._grab_field_output(ncol)
+            arrays = []
+            for cluster_i in cluster_range:
+                cluster_buffer = col_decompressed_buffers[cluster_i]
+                cluster_buffer = self.gpu_deserialize_pages(
+                    cluster_buffer, ncol, cluster_i, field_metadata
+                )
+                arrays.append(cluster_buffer)
+            res = self.combine_cluster_arrays(
+                arrays, field_metadata, pad_missing_element
+            )
+            col_arrays[key_nr] = res
+
+        return col_arrays
+
+    def gpu_deserialize_pages(self, cluster_buffer, ncol, cluster_i, field_metadata):
+        """
+        Args:
+            cluster_buffer (cupy.ndarray): Buffer to deserialize.
+            ncol (int): The column's key number cluster_buffer originates from.
+            cluster_i (int): The cluster cluster_buffer originates from.
+            field_metadata (:doc:`uproot.models.RNTuple.FieldClusterMetadata`):
+                The metadata needed to deserialize the field's pages.
+
+        Returns nothing. Appends deserialized data buffer for ncol from cluster_i
+        to arrays.
+        """
+        # Get pagelist and metadatas
+        cupy = uproot.extras.cupy()
+        linklist = self.page_link_list[cluster_i]
+        if ncol < len(linklist):
+            if linklist[ncol].suppressed:
+                rel_crs = self._column_records_dict[self.column_records[ncol].field_id]
+                ncol = next(cr.idx for cr in rel_crs if not linklist[cr.idx].suppressed)
+                field_metadata = self.get_field_metadata(ncol)
+            linklist_col = linklist[ncol]
+            pagelist = linklist_col.pages
+        else:
+            pagelist = []
+
+        # Begin looping through pages
+        tracker = 0
+        cumsum = 0
+        for page_desc in pagelist:
+            num_elements = page_desc.num_elements
+            tracker_end = tracker + num_elements
+            # Get content associated with page
+            page_buffer = cluster_buffer[tracker:tracker_end]
+            self.deserialize_page_decompressed_buffer(page_buffer, field_metadata)
+            if field_metadata.delta:
+                cluster_buffer[tracker] -= cumsum
+                cumsum += cupy.sum(cluster_buffer[tracker:tracker_end])
+            tracker = tracker_end
+
+        cluster_buffer = self.post_process(cluster_buffer, field_metadata)
+        return cluster_buffer
+
+    def post_process(self, buffer, field_metadata):
+        """
+        Args:
+            buffer (library.ndarray): The buffer to post-process.
+            field_metadata (:doc:`uproot.models.RNTuple.FieldClusterMetadata`):
+                The metadata needed to post_process buffer.
+
+        Returns post-processed buffer.
+        """
+        array_library_string = uproot._util.get_array_library(buffer)
+        library = numpy if array_library_string == "numpy" else uproot.extras.cupy()
+        if field_metadata.zigzag:
+            buffer = _from_zigzag(buffer)
+        elif field_metadata.delta:
+            buffer = library.cumsum(buffer)
+        elif field_metadata.dtype_str == "real32trunc":
+            buffer = buffer.view(library.float32)
+        elif field_metadata.dtype_str == "real32quant" and field_metadata.ncol < len(
+            self.column_records
+        ):
+            min_value = self.column_records[field_metadata.ncol].min_value
+            max_value = self.column_records[field_metadata.ncol].max_value
+            buffer = min_value + buffer.astype(library.float32) * (
+                max_value - min_value
+            ) / ((1 << field_metadata.nbits) - 1)
+            buffer = buffer.astype(library.float32)
+        return buffer
+
+    def deserialize_page_decompressed_buffer(self, destination, field_metadata):
+        """
+        Args:
+            destination (cupy.ndarray): The array to fill.
+            field_metadata (:doc:`uproot.models.RNTuple.FieldClusterMetadata`):
+                The metadata needed to deserialize destination.
+
+
+        Returns nothing. Edits destination buffer in-place with deserialized
+        data.
+        """
+        array_library_string = uproot._util.get_array_library(destination)
+        library = numpy if array_library_string == "numpy" else uproot.extras.cupy()
+        num_elements = len(destination)
+
+        content = library.copy(destination)
+        if field_metadata.split:
+            content = content.view(library.uint8)
+            length = content.shape[0]
+            if field_metadata.nbits == 16:
+                # AAAAABBBBB needs to become
+                # ABABABABAB
+                res = library.empty(length, library.uint8)
+                res[0::2] = content[length * 0 // 2 : length * 1 // 2]
+                res[1::2] = content[length * 1 // 2 : length * 2 // 2]
+
+            elif field_metadata.nbits == 32:
+                # AAAAABBBBBCCCCCDDDDD needs to become
+                # ABCDABCDABCDABCDABCD
+                res = library.empty(length, library.uint8)
+                res[0::4] = content[length * 0 // 4 : length * 1 // 4]
+                res[1::4] = content[length * 1 // 4 : length * 2 // 4]
+                res[2::4] = content[length * 2 // 4 : length * 3 // 4]
+                res[3::4] = content[length * 3 // 4 : length * 4 // 4]
+
+            elif field_metadata.nbits == 64:
+                # AAAAABBBBBCCCCCDDDDDEEEEEFFFFFGGGGGHHHHH needs to become
+                # ABCDEFGHABCDEFGHABCDEFGHABCDEFGHABCDEFGH
+                res = library.empty(length, library.uint8)
+                res[0::8] = content[length * 0 // 8 : length * 1 // 8]
+                res[1::8] = content[length * 1 // 8 : length * 2 // 8]
+                res[2::8] = content[length * 2 // 8 : length * 3 // 8]
+                res[3::8] = content[length * 3 // 8 : length * 4 // 8]
+                res[4::8] = content[length * 4 // 8 : length * 5 // 8]
+                res[5::8] = content[length * 5 // 8 : length * 6 // 8]
+                res[6::8] = content[length * 6 // 8 : length * 7 // 8]
+                res[7::8] = content[length * 7 // 8 : length * 8 // 8]
+            content = res.view(field_metadata.dtype)
+
+        if field_metadata.isbit:
+            content = library.unpackbits(
+                destination.view(dtype=library.uint8), bitorder="little"
+            )
+        elif field_metadata.dtype_str in ("real32trunc", "real32quant"):
+            if field_metadata.nbits == 32:
+                content = library.copy(destination).view(library.uint32)
+            else:
+                content = library.copy(destination)
+                content = _extract_bits(content, field_metadata.nbits)
+            if field_metadata.dtype_str == "real32trunc":
+                content <<= 32 - field_metadata.nbits
+
+        # needed to chop off extra bits incase we used `unpackbits`
+        destination[:] = content[:num_elements]
+
+    def get_field_metadata(self, ncol):
+        """
+        Args:
+            ncol (int): The column id.
+
+        Returns a uproot.models.RNTuple.FieldClusterMetadata which provides
+        metadata needed for processing payload data associated with column ncol.
+        """
         dtype_byte = self.column_records[ncol].type
         dtype_str = uproot.const.rntuple_col_num_to_dtype_dict[dtype_byte]
-        total_len = numpy.sum([desc.num_elements for desc in pagelist], dtype=int)
+        isbit = dtype_str == "bit"
         if dtype_str == "switch":
             dtype = numpy.dtype([("index", "int64"), ("tag", "int32")])
         elif dtype_str == "bit":
@@ -700,7 +1005,6 @@ in file {self.file.file_path}"""
             dtype = numpy.dtype("uint32")  # for easier bit manipulation
         else:
             dtype = numpy.dtype(dtype_str)
-        res = numpy.empty(total_len, dtype)
         split = dtype_byte in uproot.const.rntuple_split_types
         zigzag = dtype_byte in uproot.const.rntuple_zigzag_types
         delta = dtype_byte in uproot.const.rntuple_delta_types
@@ -709,33 +1013,109 @@ in file {self.file.file_path}"""
             if ncol < len(self.column_records)
             else uproot.const.rntuple_col_num_to_size_dict[dtype_byte]
         )
-        tracker = 0
-        cumsum = 0
-        for page_desc in pagelist:
-            n_elements = page_desc.num_elements
-            tracker_end = tracker + n_elements
-            self.read_pagedesc(
-                res[tracker:tracker_end], page_desc, dtype_str, dtype, nbits, split
-            )
-            if delta:
-                res[tracker] -= cumsum
-                cumsum += numpy.sum(res[tracker:tracker_end])
-            tracker = tracker_end
+        if dtype_str in ("real32trunc", "real32quant"):
+            dtype_toread = numpy.dtype("uint8")
+        else:
+            dtype_toread = dtype
+        field_metadata = FieldClusterMetadata(
+            ncol,
+            dtype_byte,
+            dtype_str,
+            dtype,
+            dtype_toread,
+            split,
+            zigzag,
+            delta,
+            isbit,
+            nbits,
+        )
+        return field_metadata
 
-        if zigzag:
-            res = _from_zigzag(res)
-        elif delta:
-            res = numpy.cumsum(res)
-        elif dtype_str == "real32trunc":
-            res = res.view(numpy.float32)
-        elif dtype_str == "real32quant" and ncol < len(self.column_records):
-            min_value = self.column_records[ncol].min_value
-            max_value = self.column_records[ncol].max_value
-            res = min_value + res.astype(numpy.float32) * (max_value - min_value) / (
-                (1 << nbits) - 1
-            )
-            res = res.astype(numpy.float32)
+    def combine_cluster_arrays(self, arrays, field_metadata, pad_missing_element):
+        """
+        Args:
+            arrays (list): A list of arrays to combine.
+            field_metadata (:doc:`uproot.models.RNTuple.FieldClusterMetadata`):
+                The metadata needed to combine arrays.
+            pad_missing_element (bool): Whether to pad for missing elements
+
+        Returns a field's page arrays concatenated todgether.
+        """
+        array_library_string = uproot._util.get_array_library(arrays[0])
+        library = numpy if array_library_string == "numpy" else uproot.extras.cupy()
+
+        # Check if column stores offset values
+        if field_metadata.dtype_byte in uproot.const.rntuple_index_types:
+            # Extract the last offset values:
+            last_elements = [
+                (arr[-1] if len(arr) > 0 else library.zeros((), dtype=arr.dtype))
+                for arr in arrays[:-1]
+            ]  # First value always zero, therefore skip first arr.
+            last_offsets = library.cumsum(library.array(last_elements))
+            for i in range(1, len(arrays)):
+                arrays[i] += last_offsets[i - 1]
+
+        res = library.concatenate(arrays, axis=0)
+
+        # No longer needed; free memory
+        del arrays
+
+        if field_metadata.dtype_byte in uproot.const.rntuple_index_types:
+            # for offsets
+            res = numpy.insert(res, 0, 0) if library == numpy else _cupy_insert0(res)
+
+        if pad_missing_element:
+            first_element_index = self.column_records[
+                field_metadata.ncol
+            ].first_element_index
+            res = numpy.pad(res, (first_element_index, 0))
+
         return res
+
+
+def _extract_bits(packed, nbits):
+    """
+    Args:
+        packed (library.ndarray): The packed array of 32-bit integers.
+        nbits (int): The bit width of the original truncated data.
+
+    Returns:
+        library.ndarray: The unpacked data.
+    """
+    array_library_string = uproot._util.get_array_library(packed)
+    library = numpy if array_library_string == "numpy" else uproot.extras.cupy()
+
+    packed = packed.view(dtype=library.uint32)
+    total_bits = packed.size * 32
+    n_values = total_bits // nbits
+    result = library.empty(n_values, dtype=library.uint32)
+
+    # Indices into packed array
+    bit_positions = library.arange(n_values, dtype=library.uint32) * nbits
+    word_idx = bit_positions // 32
+    offset = bit_positions % 32
+
+    # Pad packed array by one element to avoid out-of-bounds access
+    packed_padded = library.concatenate(
+        [packed, library.zeros(1, dtype=library.uint32)]
+    )
+
+    # Extract words
+    current_word = packed_padded[word_idx]
+    next_word = packed_padded[word_idx + 1]
+
+    # Compute bitmask and offsets
+    mask = (1 << nbits) - 1
+    bits_left = 32 - offset
+    needs_second_word = offset + nbits > 32
+
+    # Extract bits from current and next word
+    first_part = (current_word >> offset) & mask
+    second_part = (next_word << bits_left) & mask
+
+    # Combine parts where needed
+    result = library.where(needs_second_word, first_part | second_part, first_part)
+    return result
 
 
 # Supporting function and classes
@@ -811,7 +1191,7 @@ class LocatorReader:
         out = MetaData("Locator")
         out.num_bytes = cursor.field(chunk, _rntuple_locator_size_format, context)
         if out.num_bytes < 0:
-            out.type = -out.num_bytes >> 24
+            out.type = uproot.const.RNTupleLocatorType(-out.num_bytes >> 24)
             if out.type == uproot.const.RNTupleLocatorType.LARGE:
                 out.num_bytes = cursor.field(
                     chunk, _rntuple_large_locator_size_format, context
@@ -872,7 +1252,6 @@ class RecordFrameReader:
         return self.payload.read(chunk, local_cursor, context)
 
 
-# https://github.com/root-project/root/blob/8cd9eed6f3a32e55ef1f0f1df8e5462e753c735d/tree/ntuple/v7/doc/BinaryFormatSpecification.md#frames
 class ListFrameReader:
     def __init__(self, payload):
         self.payload = payload
@@ -899,23 +1278,25 @@ class FieldRecordReader:
             out.struct_role,
             out.flags,
         ) = cursor.fields(chunk, _rntuple_field_description_format, context)
+        out.struct_role = uproot.const.RNTupleFieldRole(out.struct_role)
+        out.flags = uproot.const.RNTupleFieldFlags(out.flags)
         out.field_name, out.type_name, out.type_alias, out.field_desc = (
             cursor.rntuple_string(chunk, context) for _ in range(4)
         )
 
-        if out.flags & uproot.const.RNTupleFieldFlag.REPETITIVE:
+        if out.flags & uproot.const.RNTupleFieldFlags.REPETITIVE:
             out.repetition = cursor.field(chunk, _rntuple_repetition_format, context)
         else:
             out.repetition = 0
 
-        if out.flags & uproot.const.RNTupleFieldFlag.PROJECTED:
+        if out.flags & uproot.const.RNTupleFieldFlags.PROJECTED:
             out.source_field_id = cursor.field(
                 chunk, _rntuple_source_field_id_format, context
             )
         else:
             out.source_field_id = None
 
-        if out.flags & uproot.const.RNTupleFieldFlag.CHECKSUM:
+        if out.flags & uproot.const.RNTupleFieldFlags.CHECKSUM:
             out.checksum = cursor.field(
                 chunk, _rntuple_root_streamer_checksum_format, context
             )
@@ -932,13 +1313,14 @@ class ColumnRecordReader:
         out.type, out.nbits, out.field_id, out.flags, out.repr_idx = cursor.fields(
             chunk, _rntuple_column_record_format, context
         )
-        if out.flags & uproot.const.RNTupleColumnFlag.DEFERRED:
+        out.flags = uproot.const.RNTupleColumnFlags(out.flags)
+        if out.flags & uproot.const.RNTupleColumnFlags.DEFERRED:
             out.first_element_index = cursor.field(
                 chunk, _rntuple_first_element_index_format, context
             )
         else:
             out.first_element_index = 0
-        if out.flags & uproot.const.RNTupleColumnFlag.RANGE:
+        if out.flags & uproot.const.RNTupleColumnFlags.RANGE:
             out.min_value, out.max_value = cursor.fields(
                 chunk, _rntuple_column_range_format, context
             )
@@ -966,6 +1348,7 @@ class ExtraTypeInfoReader:
         out.content_id, out.type_ver = cursor.fields(
             chunk, _rntuple_extra_type_info_format, context
         )
+        out.content_id = uproot.const.RNTupleExtraTypeIdentifier(out.content_id)
         out.type_name = cursor.rntuple_string(chunk, context)
         return out
 
@@ -1017,9 +1400,9 @@ class ClusterSummaryReader:
         out.num_first_entry, out.num_entries = cursor.fields(
             chunk, _rntuple_cluster_summary_format, context
         )
-        out.flags = out.num_entries >> 56
+        out.flags = uproot.const.RNTupleClusterFlags(out.num_entries >> 56)
         out.num_entries &= 0xFFFFFFFFFFFFFF
-        if out.flags & uproot.const.RNTupleClusterFlag.SHARDED:
+        if out.flags & uproot.const.RNTupleClusterFlags.SHARDED:
             raise NotImplementedError("Sharded clusters are not supported.")
         return out
 
@@ -1088,6 +1471,8 @@ class RField(uproot.behaviors.RNTuple.HasFields):
         self._fields = None
         self._lookup = None
         self._path = None
+        self._is_anonymous = None
+        self._is_ignored = None
 
     def __repr__(self):
         if len(self) == 0:
@@ -1100,7 +1485,22 @@ class RField(uproot.behaviors.RNTuple.HasFields):
         """
         Name of the ``RField``.
         """
-        return self._ntuple.field_records[self._fid].field_name
+        # We rename subfields of tuples to match Awkward
+        name = self._ntuple.field_records[self._fid].field_name
+        if (
+            not self.top_level
+            and self.parent.record.struct_role == uproot.const.RNTupleFieldRole.RECORD
+            and re.fullmatch(r"_[0-9]+", name) is not None
+        ):
+            name = name[1:]
+        return name
+
+    @property
+    def description(self):
+        """
+        Description of the ``RField``.
+        """
+        return self._ntuple.field_records[self._fid].field_desc
 
     @property
     def typename(self):
@@ -1108,6 +1508,47 @@ class RField(uproot.behaviors.RNTuple.HasFields):
         The C++ typename of the ``RField``.
         """
         return self._ntuple.field_records[self._fid].type_name
+
+    @property
+    def record(self):
+        """
+        The field record of the ``RField``.
+        """
+        return self._ntuple.field_records[self._fid]
+
+    @property
+    def is_anonymous(self):
+        """
+        There are some anonymous fields in the RNTuple specification that we hide from the user
+        to simplify the interface. These are fields named `_0` that are children of a collection
+        or variant field.
+        """
+        if self._is_anonymous is None:
+            self._is_anonymous = not self.top_level and (
+                self.parent.record.struct_role
+                in (
+                    uproot.const.RNTupleFieldRole.COLLECTION,
+                    uproot.const.RNTupleFieldRole.VARIANT,
+                )
+                or self.parent.record.flags & uproot.const.RNTupleFieldFlags.REPETITIVE
+            )
+        return self._is_anonymous
+
+    @property
+    def is_ignored(self):
+        """
+        There are some fields in the RNTuple specification named `:_i` (for `i=0,1,2,...`)
+        that encode class hierarchy. These are not useful in Uproot, so they are ignored.
+        """
+        if self._is_ignored is None:
+            self._is_ignored = (
+                not self.top_level
+                and self.parent.record.struct_role
+                == uproot.const.RNTupleFieldRole.RECORD
+                and re.fullmatch(r":_[0-9]+", self.name) is not None
+            )
+
+        return self._is_ignored
 
     @property
     def parent(self):
@@ -1125,6 +1566,7 @@ class RField(uproot.behaviors.RNTuple.HasFields):
         """
         Integer position of this ``RField`` in its parent's list of fields.
         """
+        # TODO: This needs to be optimized for performance
         for i, field in enumerate(self.parent.fields):
             if field is self:
                 return i
@@ -1153,6 +1595,8 @@ class RField(uproot.behaviors.RNTuple.HasFields):
         decompression_executor=None,  # TODO: Not implemented yet
         array_cache="inherit",  # TODO: Not implemented yet
         library="ak",
+        interpreter="cpu",
+        backend="cpu",
         ak_add_doc=False,
         # For compatibility reasons we also accepts kwargs meant for TTrees
         interpretation=None,
@@ -1176,7 +1620,7 @@ class RField(uproot.behaviors.RNTuple.HasFields):
             library (str or :doc:`uproot.interpretation.library.Library`): The library
                 that is used to represent arrays. Options are ``"np"`` for NumPy,
                 ``"ak"`` for Awkward Array, and ``"pd"`` for Pandas.
-            ak_add_doc (bool | dict ): If True and ``library="ak"``, add the RField ``name``
+            ak_add_doc (bool | dict ): If True and ``library="ak"``, add the RField ``description``
                 to the Awkward ``__doc__`` parameter of the array.
                 if dict = {key:value} and ``library="ak"``, add the RField ``value`` to the
                 Awkward ``key`` parameter of the array.
@@ -1201,12 +1645,161 @@ class RField(uproot.behaviors.RNTuple.HasFields):
         See also :ref:`uproot.behaviors.RNTuple.HasFields.arrays` to read
         multiple ``RFields`` into a group of arrays or an array-group.
         """
-        return self.arrays(
+        arrays = self.arrays(
             entry_start=entry_start,
             entry_stop=entry_stop,
             library=library,
+            interpreter=interpreter,
+            backend=backend,
             ak_add_doc=ak_add_doc,
-        )[self.name]
+        )
+        if self.name in arrays.fields:
+            arrays = arrays[self.name]
+        # tuples are a trickier since indices no longer match
+        else:
+            if self.name.isdigit() and arrays.fields == ["0"]:
+                arrays = arrays["0"]
+            else:
+                raise AssertionError(
+                    "The array was not constructed correctly. Please report this issue."
+                )
+        return arrays
+
+
+# No cupy version of numpy.insert() provided
+def _cupy_insert0(arr):
+    cupy = uproot.extras.cupy()
+    # Intended for flat cupy arrays
+    array_len = arr.shape[0]
+    array_dtype = arr.dtype
+    out_arr = cupy.empty(array_len + 1, dtype=array_dtype)
+    cupy.copyto(out_arr[1:], arr)
+    out_arr[0] = 0
+    return out_arr
+
+
+CupyArray = any
+
+
+@dataclasses.dataclass
+class FieldClusterMetadata:
+    """
+    A FieldClusterMetadata stores metadata for a given field within a cluster
+    needed to read, decompress, and deserialize the data.
+    """
+
+    ncol: int
+    dtype_byte: type
+    dtype_str: str
+    dtype: numpy.dtype
+    dtype_toread: numpy.dtype
+    split: bool
+    zigzag: bool
+    delta: bool
+    isbit: bool
+    nbits: int
+
+
+@dataclasses.dataclass
+class FieldPayload:
+    """
+    A FieldPayload contains the compressed and decompression target output
+    buffers for a particular column in a particular cluster of all pages. It
+    contains pointers to portions of the cluster data which correspond to the
+    different pages of that cluster.
+    """
+
+    key: str
+    data: CupyArray  # Type: ignore
+    page_is_compressed: bool
+    algorithm: str
+    compression_level: int
+    pages: list[CupyArray] = dataclasses.field(default_factory=list)
+    output: list[CupyArray] = dataclasses.field(default_factory=list)
+
+    def _add_page(self, page: CupyArray):
+        self.pages.append(page)
+
+    def _add_output(self, buffer: CupyArray):
+        self.output.append(buffer)
+
+    def _decompress(self):
+        if self.page_is_compressed and self.algorithm is not None:
+            kvikio_nvcomp_codec = uproot.extras.kvikio_nvcomp_codec()
+            codec = kvikio_nvcomp_codec.NvCompBatchCodec(self.algorithm)
+            codec.decode_batch(self.pages, self.output)
+
+
+@dataclasses.dataclass
+class FieldRefsCluster:
+    """
+    A FieldRefsCluster contains the FieldPayload for all requested fields
+    in a given cluster.
+    """
+
+    cluster_i: int
+    fieldpayloads: dict[str, FieldPayload] = dataclasses.field(default_factory=dict)
+
+    def _add_field(self, FieldPayload):
+        self.fieldpayloads[FieldPayload.key] = FieldPayload
+
+
+@dataclasses.dataclass
+class ClusterRefs:
+    """
+    A ClusterRefs contains the FieldRefsCluster for multiple clusters. It also
+    contains routines for steering and executing parallel decompression of
+    payload datas and for accessing field payload datas across multiple clusters.
+    """
+
+    clusters: [int] = dataclasses.field(default_factory=list)
+    columns: list[str] = dataclasses.field(default_factory=list)
+    refs: dict[int:FieldRefsCluster] = dataclasses.field(default_factory=dict)
+
+    def _add_cluster(self, Cluster):
+        for nCol in Cluster.fieldpayloads.keys():
+            if nCol not in self.columns:
+                self.columns.append(nCol)
+        self.refs[Cluster.cluster_i] = Cluster
+
+    def _grab_field_output(self, nCol):
+        output_list = []
+        for cluster in self.refs.values():
+            colbuffer = cluster.fieldpayloads[nCol].data
+            output_list.append(colbuffer)
+
+        return output_list
+
+    def _decompress(self):
+        to_decompress = {}
+        target = {}
+        # organize data by compression algorithm
+        for cluster in self.refs.values():
+            for fieldpayload in cluster.fieldpayloads.values():
+                if fieldpayload.algorithm is not None:
+                    if fieldpayload.algorithm not in to_decompress.keys():
+                        to_decompress[fieldpayload.algorithm] = []
+                        target[fieldpayload.algorithm] = []
+                    if fieldpayload.page_is_compressed:
+                        to_decompress[fieldpayload.algorithm].extend(fieldpayload.pages)
+                        target[fieldpayload.algorithm].extend(fieldpayload.output)
+
+        # Batch decompress
+        kvikio_nvcomp_codec = uproot.extras.kvikio_nvcomp_codec()
+        for algorithm, batch in to_decompress.items():
+            codec = kvikio_nvcomp_codec.NvCompBatchCodec(algorithm)
+            codec.decode_batch(batch, target[algorithm])
+
+        # Clean up compressed buffers from memory after decompression
+        for cluster in self.refs.values():
+            for fieldpayload in cluster.fieldpayloads.values():
+                # Clear python references to GPU memory
+                del fieldpayload.pages
+                fieldpayload.pages = []
+                # Tell GPU to free unused memory blocks
+                cupy = uproot.extras.cupy()
+                mempool = cupy.get_default_memory_pool()
+                mempool.free_all_blocks()
 
 
 uproot.classes["ROOT::RNTuple"] = Model_ROOT_3a3a_RNTuple

@@ -7,10 +7,13 @@
 [![Continuous integration tests](https://github.com/scikit-hep/uproot5/actions/workflows/build-test.yml/badge.svg)](https://github.com/scikit-hep/uproot5/actions)
 
 [![Scikit-HEP](https://scikit-hep.org/assets/images/Scikit--HEP-Project-blue.svg)](https://scikit-hep.org/)
-[![NSF-1836650](https://img.shields.io/badge/NSF-1836650-blue.svg)](https://nsf.gov/awardsearch/showAward?AWD_ID=1836650)
 [![DOI 10.5281/zenodo.4340632](https://zenodo.org/badge/DOI/10.5281/zenodo.4340632.svg)](https://doi.org/10.5281/zenodo.4340632)
 [![Documentation](https://img.shields.io/badge/docs-online-success)](https://uproot.readthedocs.io/)
 [![Gitter](https://img.shields.io/badge/chat-online-success)](https://gitter.im/Scikit-HEP/uproot)
+
+[![NSF-1836650](https://img.shields.io/badge/NSF-1836650-blue.svg)](https://nsf.gov/awardsearch/showAward?AWD_ID=1836650)
+[![NSF-2121686](https://img.shields.io/badge/NSF-2121686-blue.svg)](https://nsf.gov/awardsearch/showAward?AWD_ID=2121686)
+[![NSF-2323298](https://img.shields.io/badge/NSF-2323298-blue.svg)](https://nsf.gov/awardsearch/showAward?AWD_ID=2323298)
 
 Uproot is a library for reading and writing [ROOT files](https://root.cern/) in pure Python and NumPy.
 
@@ -195,6 +198,8 @@ Thanks especially to the gracious help of Uproot contributors (including the [or
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/rossodisera"><img src="https://avatars.githubusercontent.com/u/46961664?v=4?s=100" width="100px;" alt="Andrea Serafini"/><br /><sub><b>Andrea Serafini</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot5/commits?author=rossodisera" title="Code">💻</a></td>
       <td align="center" valign="top" width="14.28%"><a href="http://www.ariostas.com"><img src="https://avatars.githubusercontent.com/u/7596837?v=4?s=100" width="100px;" alt="Andres Rios Tascon"/><br /><sub><b>Andres Rios Tascon</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot5/commits?author=ariostas" title="Code">💻</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/ikrommyd"><img src="https://avatars.githubusercontent.com/u/82155404?v=4?s=100" width="100px;" alt="Iason Krommydas"/><br /><sub><b>Iason Krommydas</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot5/commits?author=ikrommyd" title="Code">💻</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/fstrug"><img src="https://avatars.githubusercontent.com/u/84533949?v=4?s=100" width="100px;" alt="fstrug"/><br /><sub><b>fstrug</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot5/commits?author=fstrug" title="Code">💻</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/zlmarshall"><img src="https://avatars.githubusercontent.com/u/10702398?v=4?s=100" width="100px;" alt="Zach Marshall"/><br /><sub><b>Zach Marshall</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot5/commits?author=zlmarshall" title="Code">💻</a></td>
     </tr>
   </tbody>
 </table>
