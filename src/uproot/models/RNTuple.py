@@ -562,7 +562,7 @@ in file {self.file.file_path}"""
                 ):
                     recordlist.append(self.field_form(i, keys, ak_add_doc=ak_add_doc))
                     namelist.append(field_records[i].field_name)
-            if all(name == f"_{i}" for i, name in enumerate(namelist)):
+            if all(re.fullmatch(r"_[0-9]+", name) is not None for name in namelist):
                 namelist = None
             return ak.forms.RecordForm(
                 recordlist, namelist, form_key="whatever", parameters=parameters
@@ -1485,7 +1485,15 @@ class RField(uproot.behaviors.RNTuple.HasFields):
         """
         Name of the ``RField``.
         """
-        return self._ntuple.field_records[self._fid].field_name
+        # We rename subfields of tuples to match Awkward
+        name = self._ntuple.field_records[self._fid].field_name
+        if (
+            not self.top_level
+            and self.parent.record.struct_role == uproot.const.RNTupleFieldRole.RECORD
+            and re.fullmatch(r"_[0-9]+", name) is not None
+        ):
+            name = name[1:]
+        return name
 
     @property
     def description(self):
@@ -1637,14 +1645,25 @@ class RField(uproot.behaviors.RNTuple.HasFields):
         See also :ref:`uproot.behaviors.RNTuple.HasFields.arrays` to read
         multiple ``RFields`` into a group of arrays or an array-group.
         """
-        return self.arrays(
+        arrays = self.arrays(
             entry_start=entry_start,
             entry_stop=entry_stop,
             library=library,
             interpreter=interpreter,
             backend=backend,
             ak_add_doc=ak_add_doc,
-        )[self.name]
+        )
+        if self.name in arrays.fields:
+            arrays = arrays[self.name]
+        # tuples are a trickier since indices no longer match
+        else:
+            if self.name.isdigit() and arrays.fields == ["0"]:
+                arrays = arrays["0"]
+            else:
+                raise AssertionError(
+                    "The array was not constructed correctly. Please report this issue."
+                )
+        return arrays
 
 
 # No cupy version of numpy.insert() provided
