@@ -42,8 +42,9 @@ class CustomInterpretation(uproot.interpretation.Interpretation):
         self._context = context
         self._simplify = simplify
 
+    @classmethod
     def match_branch(
-        self,
+        cls,
         branch: uproot.behaviors.TBranch.TBranch,
         context: dict,
         simplify: bool,
@@ -112,13 +113,13 @@ class CustomInterpretation(uproot.interpretation.Interpretation):
         relative_entry_start = entry_start - basket_entry_starts[basket_start_idx]
         relative_entry_stop = entry_stop - basket_entry_starts[basket_start_idx]
 
-        if isinstance(arr_to_concat, awkward.Array):
+        if isinstance(arr_to_concat[0], awkward.Array):
             tot_array = awkward.concatenate(arr_to_concat)
             return tot_array[relative_entry_start:relative_entry_stop]
-        elif isinstance(arr_to_concat, numpy.ndarray):
+        elif isinstance(arr_to_concat[0], numpy.ndarray):
             tot_array = numpy.concatenate(arr_to_concat)
             return tot_array[relative_entry_start:relative_entry_stop]
-        elif isinstance(arr_to_concat, pandas.DataFrame):
+        elif isinstance(arr_to_concat[0], pandas.DataFrame):
             tot_array = pandas.concat(arr_to_concat, ignore_index=True)
             return tot_array.iloc[relative_entry_start:relative_entry_stop]
         else:
