@@ -107,3 +107,17 @@ def test_unregister():
     with uproot.open(skhep_testdata.data_path("uproot-mc10events.root")) as f:
         br = f["Events/Info/evtNum"]
         assert not isinstance(br.interpretation, AsUint32)
+
+
+def test_AsBinary():
+    from uproot.interpretation.custom import AsBinary
+
+    with uproot.open(skhep_testdata.data_path("uproot-mc10events.root")) as f:
+        br = f["Events/Info/evtNum"]
+
+        data_np_arr = br.array(library="np")
+        bin_ak_arr = br.array(interpretation=AsBinary())
+        bin_np_arr = br.array(interpretation=AsBinary(), library="np")
+
+        assert numpy.all(data_np_arr == bin_np_arr.view(">u4").flatten())
+        assert numpy.all(data_np_arr == bin_ak_arr.to_numpy().view(">u4").flatten())
