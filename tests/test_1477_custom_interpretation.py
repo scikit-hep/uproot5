@@ -49,10 +49,10 @@ uproot.register_interpretation(AsUint32)
 
 def test_registration_and_use():
     with uproot.open(skhep_testdata.data_path("uproot-mc10events.root")) as f:
-        br2 = f["Events/Info/evtNum"]
-        assert isinstance(br2.interpretation, AsUint32)
+        br = f["Events/Info/evtNum"]
+        assert isinstance(br.interpretation, AsUint32)
 
-        evtNum_ak = br2.array()
+        evtNum_ak = br.array()
         assert evtNum_ak.tolist() == [
             135353219,
             135353222,
@@ -66,11 +66,11 @@ def test_registration_and_use():
             135353256,
         ]
 
-        evtNum_np = br2.array(library="np")
+        evtNum_np = br.array(library="np")
         assert isinstance(evtNum_np, numpy.ndarray)
         assert numpy.all(evtNum_np == evtNum_ak)
 
-        evtNum_pd = br2.array(library="pd")
+        evtNum_pd = br.array(library="pd")
         assert isinstance(evtNum_pd, pandas.Series)
         assert numpy.all(evtNum_pd.values == evtNum_np)
 
@@ -85,7 +85,9 @@ def test_repeated_register():
 
 def test_entry_range():
     with uproot.open(skhep_testdata.data_path("uproot-mc10events.root")) as f:
-        br = f["Events/Info/runNum"]
+        br = f["Events/Info/evtNum"]
+        assert isinstance(br.interpretation, AsUint32)
+
         runNo_custom = br.array(entry_start=0, entry_stop=6)
         assert len(runNo_custom) == 6
 
@@ -94,3 +96,14 @@ def test_entry_range():
 
         runNo_custom = br.array(entry_start=0, entry_stop=10)
         assert len(runNo_custom) == 10
+
+
+def test_unregister():
+    with uproot.open(skhep_testdata.data_path("uproot-mc10events.root")) as f:
+        br = f["Events/Info/evtNum"]
+        assert isinstance(br.interpretation, AsUint32)
+
+    uproot.unregister_interpretation(AsUint32)
+    with uproot.open(skhep_testdata.data_path("uproot-mc10events.root")) as f:
+        br = f["Events/Info/evtNum"]
+        assert not isinstance(br.interpretation, AsUint32)

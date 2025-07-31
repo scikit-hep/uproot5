@@ -40,6 +40,19 @@ def register_interpretation(cls):
     _registered_interpretations.add(cls)
 
 
+def unregister_interpretation(cls):
+    """
+    Unregister a custom interpretation class.
+
+    Args:
+        cls (type): A subclass of :doc:`uproot.interpretation.custom.CustomInterpretation`.
+
+    This method removes a custom interpretation class from the registry.
+    """
+    if cls in _registered_interpretations:
+        _registered_interpretations.remove(cls)
+
+
 def _normalize_ftype(fType):
     if fType is not None and uproot.const.kOffsetL < fType < uproot.const.kOffsetP:
         return fType - uproot.const.kOffsetL
