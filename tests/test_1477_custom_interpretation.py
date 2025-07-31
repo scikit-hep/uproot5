@@ -9,8 +9,8 @@ import skhep_testdata
 import uproot
 import uproot.interpretation.custom
 
-awkward = uproot.extras.awkward()
-pandas = uproot.extras.pandas()
+awkward = pytest.importorskip("awkward")
+pandas = pytest.importorskip("pandas")
 
 
 class AsUint32(uproot.interpretation.custom.CustomInterpretation):
