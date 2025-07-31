@@ -15,9 +15,6 @@ import uproot.behaviors.TBranch
 import uproot.extras
 import uproot.interpretation
 
-awkward = uproot.extras.awkward()
-pandas = uproot.extras.pandas()
-
 
 class CustomInterpretation(uproot.interpretation.Interpretation):
     def __init__(
@@ -97,9 +94,6 @@ class CustomInterpretation(uproot.interpretation.Interpretation):
         """
         Concatenate the arrays from the baskets and return the final array.
         """
-
-        awkward = uproot.extras.awkward()
-
         basket_entry_starts = numpy.array(entry_offsets[:-1])
         basket_entry_stops = numpy.array(entry_offsets[1:])
 
@@ -113,17 +107,21 @@ class CustomInterpretation(uproot.interpretation.Interpretation):
         relative_entry_start = entry_start - basket_entry_starts[basket_start_idx]
         relative_entry_stop = entry_stop - basket_entry_starts[basket_start_idx]
 
+        if isinstance(arr_to_concat[0], numpy.ndarray):
+            tot_array = numpy.concatenate(arr_to_concat)
+            return tot_array[relative_entry_start:relative_entry_stop]
+
+        awkward = uproot.extras.awkward()
         if isinstance(arr_to_concat[0], awkward.Array):
             tot_array = awkward.concatenate(arr_to_concat)
             return tot_array[relative_entry_start:relative_entry_stop]
-        elif isinstance(arr_to_concat[0], numpy.ndarray):
-            tot_array = numpy.concatenate(arr_to_concat)
-            return tot_array[relative_entry_start:relative_entry_stop]
-        elif isinstance(arr_to_concat[0], pandas.DataFrame):
+
+        pandas = uproot.extras.pandas()
+        if isinstance(arr_to_concat[0], pandas.Series):
             tot_array = pandas.concat(arr_to_concat, ignore_index=True)
             return tot_array.iloc[relative_entry_start:relative_entry_stop]
-        else:
-            raise TypeError(
-                f"Unsupported array type: {type(arr_to_concat)}. "
-                "Expected an Awkward Array, NumPy array, or Pandas DataFrame."
-            )
+
+        raise TypeError(
+            f"Unsupported array type: {type(arr_to_concat)}. "
+            "Expected an Awkward Array, NumPy array, or Pandas DataFrame."
+        )
