@@ -1,5 +1,7 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot5/blob/main/LICENSE
 
+import re
+
 import numpy
 import pytest
 import skhep_testdata
@@ -7,11 +9,14 @@ import skhep_testdata
 import uproot
 import uproot.interpretation.custom
 
+awkward = uproot.extras.awkward()
+pandas = uproot.extras.pandas()
 
-class AsBinary(uproot.interpretation.custom.CustomInterpretation):
+
+class AsUint32(uproot.interpretation.custom.CustomInterpretation):
     @classmethod
     def match_branch(cls, branch, context, simplify):
-        if branch.object_path == "/Events;1:Info/runNum":
+        if branch.object_path == "/Events;1:Info/evtNum":
             return True
 
     def basket_array(
@@ -25,40 +30,67 @@ class AsBinary(uproot.interpretation.custom.CustomInterpretation):
         library,
         interp_options,
     ):
-        return data.view(">u4")
+        np_data = data.view(">u4").astype("uint32")
+
+        if library.name == "np":
+            return np_data
+        elif library.name == "ak":
+            return awkward.from_numpy(np_data)
+        elif library.name == "pd":
+            return pandas.Series(np_data)
+        else:
+            raise ValueError(f"Unsupported library: {library.name}")
 
 
-uproot.register_interpretation(AsBinary)
+# During the test, registration can only be done once, since the
+# uproot will not be reloaded across tests.
+uproot.register_interpretation(AsUint32)
 
 
-def test_custom_interpretation():
+def test_registration_and_use():
     with uproot.open(skhep_testdata.data_path("uproot-mc10events.root")) as f:
-        runNo = f["Events/Info/runNum"].array()
+        br2 = f["Events/Info/evtNum"]
+        assert isinstance(br2.interpretation, AsUint32)
 
-    with uproot.open(skhep_testdata.data_path("uproot-mc10events.root")) as f:
-        br = f["Events/Info/runNum"]
-        assert isinstance(br.interpretation, AsBinary)
+        evtNum_ak = br2.array()
+        assert evtNum_ak.tolist() == [
+            135353219,
+            135353222,
+            135353225,
+            135353230,
+            135353239,
+            135353242,
+            135353244,
+            135353247,
+            135353252,
+            135353256,
+        ]
 
-        runNo_custom = br.array()
-        assert numpy.all(runNo_custom == runNo)
+        evtNum_np = br2.array(library="np")
+        assert isinstance(evtNum_np, numpy.ndarray)
+        assert numpy.all(evtNum_np == evtNum_ak)
 
-
-def test_custom_interpretation_entry_range():
-    with uproot.open(skhep_testdata.data_path("uproot-mc10events.root")) as f:
-        br = f["Events/Info/runNum"]
-        runNo_custom = br.array(entry_start=0, entry_stop=5)
-        assert len(runNo_custom) == 5
-
-        runNo_custom = br.array(entry_start=5, entry_stop=10)
-        assert len(runNo_custom) == 5
-
-        runNo_custom = br.array(entry_start=0, entry_stop=10)
-        assert len(runNo_custom) == 10
+        evtNum_pd = br2.array(library="pd")
+        assert isinstance(evtNum_pd, pandas.Series)
+        assert numpy.all(evtNum_pd.values == evtNum_np)
 
 
 def test_repeated_register():
     with pytest.warns(
         UserWarning,
-        match="Overwriting existing custom interpretation <class 'tests.test_1477_custom_interpretation.AsBinary'>",
+        match="Overwriting existing custom interpretation <class 'tests.test_1477_custom_interpretation.AsUint32'>",
     ):
-        uproot.register_interpretation(AsBinary)
+        uproot.register_interpretation(AsUint32)
+
+
+def test_entry_range():
+    with uproot.open(skhep_testdata.data_path("uproot-mc10events.root")) as f:
+        br = f["Events/Info/runNum"]
+        runNo_custom = br.array(entry_start=0, entry_stop=6)
+        assert len(runNo_custom) == 6
+
+        runNo_custom = br.array(entry_start=6, entry_stop=10)
+        assert len(runNo_custom) == 4
+
+        runNo_custom = br.array(entry_start=0, entry_stop=10)
+        assert len(runNo_custom) == 10
