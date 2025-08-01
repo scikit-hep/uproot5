@@ -1530,14 +1530,8 @@ class HasFields(Mapping):
         filter_typename=no_filter,
         filter_field=no_filter,
         recursive=True,
-        name_width=20,
-        typename_width=24,
-        path_width=30,
+        max_width=80,
         stream=sys.stdout,
-        # For compatibility reasons we also accepts kwargs meant for TTrees
-        full_paths=unset,
-        filter_branch=unset,
-        interpretation_width=unset,
     ):
         """
         Args:
@@ -1550,23 +1544,9 @@ class HasFields(Mapping):
                 :doc:`uproot.models.RNTuple.RField` object. The ``RField`` is
                 included if the function returns True, excluded if it returns False.
             recursive (bool): If True, recursively descend into subfields.
-            name_width (int): Number of characters to reserve for the ``TBranch``
-                names.
-            typename_width (int): Number of characters to reserve for the C++
-                typenames.
-            interpretation_width (int): Number of characters to reserve for the
-                :doc:`uproot.interpretation.Interpretation` displays.
+            max_width (int): Maximum number of characters to display in a line.
             stream (object with a ``write(str)`` method): Stream to write the
                 output to.
-            full_paths (None): This argument is not used and is only included for now
-                for compatibility with software that was used for :doc:`uproot.behaviors.TBranch.TBranch`. This argument should not be used
-                and will be removed in a future version.
-            filter_branch (None or function of :doc:`uproot.models.RNTuple.RField` \u2192 bool): An alias for ``filter_field`` included
-                for compatibility with software that was used for :doc:`uproot.behaviors.TBranch.TBranch`. This argument should not be used
-                and will be removed in a future version.
-            interpretation_width (None): This argument is not used and is only included for now
-                for compatibility with software that was used for :doc:`uproot.behaviors.TBranch.TBranch`. This argument should not be used
-                and will be removed in a future version.
 
         Interactively display the ``RFields``.
 
@@ -1575,54 +1555,46 @@ class HasFields(Mapping):
         .. code-block::
 
             >>> my_ntuple.show()
-            name                 | typename                 | path
-            ---------------------+--------------------------+-------------------------------
-            my_int               | std::int64_t             | my_int
-            my_vec               | std::vector<std::int6... | my_vec
-            _0                   | std::int64_t             | my_vec._0
+            my_ntuple (ROOT::RNTuple)
+            Description: The description of the ntuple
+            ├─ my_int (std::int64_t)
+            │  Description: The description of the field
+            ├─ jagged_list (std::vector<std::int64_t>)
+            ├─ nested_list (std::vector<std::vector<std::int64_t>>)
+            ├─ struct (MyStruct)
+            │  ├─ x (std::int64_t)
+            └─└─ y (std::int64_t)
         """
-        if name_width < 3:
-            raise ValueError("'name_width' must be at least 3")
-        if typename_width < 3:
-            raise ValueError("'typename_width' must be at least 3")
-        if path_width < 3:
-            raise ValueError("'path_width' must be at least 3")
+        elbow = "└─ "
+        pipe = "│  "
+        tee = "├─ "
+        blank = "   "
 
-        formatter = f"{{0:{name_width}.{name_width}}} | {{1:{typename_width}.{typename_width}}} | {{2:{path_width}.{path_width}}}"
+        def recursive_show(field, header="", first=True, last=True, recursive=True):
+            outstr = f"""{header}{"" if first else (elbow if last else tee)}{field.name} ({'ROOT::RNTuple' if isinstance(field, uproot.behaviors.RNTuple.RNTuple) else field.typename})"""
+            stream.write(outstr[:max_width] + "\n")
+            if field.description != "":
+                outstr = f"""{header}{'' if first else (blank if last else pipe)}Description: {field.description}"""
+                stream.write(outstr[:max_width] + "\n")
+            if len(field) > 0 and (recursive or first):
+                subfields = list(
+                    field.itervalues(
+                        filter_name=filter_name,
+                        filter_typename=filter_typename,
+                        filter_field=filter_field,
+                        recursive=False,
+                    )
+                )
+                for i, subfield in enumerate(subfields):
+                    recursive_show(
+                        subfield,
+                        header=f"{header}{'' if first else (blank if last else pipe)}",
+                        first=False,
+                        last=i == len(subfields) - 1,
+                        recursive=recursive,
+                    )
 
-        stream.write(formatter.format("name", "typename", "path"))
-        stream.write(
-            "\n"
-            + "-" * name_width
-            + "-+-"
-            + "-" * typename_width
-            + "-+-"
-            + "-" * path_width
-            + "\n"
-        )
-
-        if isinstance(self, uproot.models.RNTuple.RField):
-            stream.write(formatter.format(self.name, self.typename, self.path) + "\n")
-
-        for field in self.itervalues(
-            filter_name=filter_name,
-            filter_typename=filter_typename,
-            filter_field=filter_field,
-            recursive=recursive,
-            filter_branch=filter_branch,
-        ):
-            name = field.name
-            typename = field.typename
-            path = field.path
-
-            if len(name) > name_width:
-                name = name[: name_width - 3] + "..."
-            if len(typename) > typename_width:
-                typename = typename[: typename_width - 3] + "..."
-            if len(path) > path_width:
-                path = path[: path_width - 3] + "..."
-
-            stream.write(formatter.format(name, typename, path).rstrip(" ") + "\n")
+        recursive_show(self, recursive=recursive)
 
     @property
     def source(self) -> uproot.source.chunk.Source | None:
