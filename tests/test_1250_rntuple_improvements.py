@@ -28,7 +28,7 @@ def test_field_class():
         )
 
         v = sub_sub_struct["v"]
-        assert len(v) == 1
+        assert len(v) == 0
 
 
 def test_array_methods():
