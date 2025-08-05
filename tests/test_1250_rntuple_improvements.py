@@ -12,15 +12,23 @@ def test_field_class():
         obj = f["ntuple"]
         my_struct = obj["my_struct"]
         assert len(my_struct) == 2
+        assert my_struct is f["ntuple/my_struct"]
+        assert my_struct is f["ntuple"]["my_struct"]
 
         sub_struct = my_struct["sub_struct"]
         assert len(my_struct) == 2
+        assert sub_struct is f["ntuple/my_struct/sub_struct"]
+        assert sub_struct is f["ntuple"]["my_struct"]["sub_struct"]
 
         sub_sub_struct = sub_struct["sub_sub_struct"]
         assert len(sub_sub_struct) == 2
+        assert sub_sub_struct is f["ntuple/my_struct/sub_struct/sub_sub_struct"]
+        assert (
+            sub_sub_struct is f["ntuple"]["my_struct"]["sub_struct"]["sub_sub_struct"]
+        )
 
         v = sub_sub_struct["v"]
-        assert len(v) == 1
+        assert len(v) == 0
 
 
 def test_array_methods():
