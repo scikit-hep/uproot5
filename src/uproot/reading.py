@@ -555,10 +555,10 @@ class ReadOnlyFile(CommonFileMethods):
 
         import types
 
-        from rootfilespec.buffer import ReadBuffer
         from rootfilespec.bootstrap import ROOTFile
-        from rootfilespec.dynamic import streamerinfo_to_classes
+        from rootfilespec.buffer import ReadBuffer
         from rootfilespec.dispatch import DICTIONARY
+        from rootfilespec.dynamic import streamerinfo_to_classes
 
         initial_read_size = 512
         path = Path(file_path)
@@ -578,7 +578,7 @@ class ReadOnlyFile(CommonFileMethods):
                 msg = "Didn't find data in initial read buffer"
                 raise ValueError(msg)
 
-#            rootdir = file.get_TFile(fetch_cached).rootdir
+            #            rootdir = file.get_TFile(fetch_cached).rootdir
 
             # List to collect NotImplementedError messages
             failures: list[str] = []
@@ -2559,9 +2559,11 @@ class ReadOnlyKey:
             if re.match(r"(std\s*::\s*)?string", self._fClassName):
                 return cursor.string(chunk, context)
 
-            from rootfilespec.dispatch import DICTIONARY
-            from rootfilespec.bootstrap.uproot import UprootModelAdapter, create_adapter_class
+            from rootfilespec.bootstrap.uproot import (
+                create_adapter_class,
+            )
             from rootfilespec.buffer import ReadBuffer
+            from rootfilespec.dispatch import DICTIONARY
 
             try:
                 # construct a rootfilespec class from the dictionary
@@ -2569,14 +2571,16 @@ class ReadOnlyKey:
                 cls = DICTIONARY[fClassName]
 
                 # construct a ReadBuffer from the chunk data
-                buf = ReadBuffer(memoryview(chunk.raw_data), chunk.start, -start_cursor.origin)
+                buf = ReadBuffer(
+                    memoryview(chunk.raw_data), chunk.start, -start_cursor.origin
+                )
                 obj, buf = cls.read(buf)
 
                 # adapt the rootfilespec class to uproot's
                 uproot_cls = self._file.class_named(fClassName)
                 out = create_adapter_class(uproot_cls)
 
-            except KeyError as e:
+            except KeyError:
                 cls = self._file.class_named(self._fClassName)
                 out = cls.read(chunk, cursor, context, self._file, selffile, parent)
 
