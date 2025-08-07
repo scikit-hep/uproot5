@@ -2570,8 +2570,10 @@ class ReadOnlyKey:
 
                 if fClassName not in DICTIONARY:
                     cls = self._file.class_named(self._fClassName)
-                    return cls.read(chunk, cursor, context, self._file, selffile, parent)
-                
+                    return cls.read(
+                        chunk, cursor, context, self._file, selffile, parent
+                    )
+
                 cls = DICTIONARY[fClassName]
 
                 # construct a ReadBuffer from the chunk data
