@@ -2566,8 +2566,12 @@ class ReadOnlyKey:
             from rootfilespec.dispatch import DICTIONARY
 
             try:
-                # construct a rootfilespec class from the dictionary
                 fClassName = self._fClassName
+
+                if fClassName not in DICTIONARY:
+                    cls = self._file.class_named(self._fClassName)
+                    return cls.read(chunk, cursor, context, self._file, selffile, parent)
+                
                 cls = DICTIONARY[fClassName]
 
                 # construct a ReadBuffer from the chunk data
@@ -2576,13 +2580,9 @@ class ReadOnlyKey:
                 )
                 obj, buf = cls.read(buf)
 
-                # adapt the rootfilespec class to uproot's
                 uproot_cls = self._file.class_named(fClassName)
-                out = create_adapter_class(uproot_cls)
-
-            except KeyError:
-                cls = self._file.class_named(self._fClassName)
-                out = cls.read(chunk, cursor, context, self._file, selffile, parent)
+                AdapterClass = create_adapter_class(uproot_cls)
+                out = AdapterClass(obj)
 
             except uproot.deserialization.DeserializationError:
                 breadcrumbs = context.get("breadcrumbs")
