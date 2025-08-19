@@ -2568,11 +2568,11 @@ class ReadOnlyKey:
             try:
                 fClassName = self._fClassName
 
-                if fClassName not in DICTIONARY:
+                if fClassName not in DICTIONARY:                 
                     cls = self._file.class_named(self._fClassName)
                     return cls.read(
                         chunk, cursor, context, self._file, selffile, parent
-                    )
+                        )
 
                 cls = DICTIONARY[fClassName]
 
@@ -2583,8 +2583,12 @@ class ReadOnlyKey:
                 obj, buf = cls.read(buf)
 
                 uproot_cls = self._file.class_named(fClassName)
+                if len(uproot_cls.known_versions) > 0:
+                    uproot_cls = uproot_cls.class_of_version(max(uproot_cls.known_versions))
                 AdapterClass = create_adapter_class(uproot_cls)
                 out = AdapterClass(obj)
+
+                out._file = self._file
 
             except uproot.deserialization.DeserializationError:
                 breadcrumbs = context.get("breadcrumbs")
