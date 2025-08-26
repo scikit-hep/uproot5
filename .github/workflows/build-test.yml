@@ -27,7 +27,7 @@ jobs:
         shell: bash -l {0}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Get micromamba
         uses: mamba-org/setup-micromamba@v2
@@ -85,7 +85,7 @@ jobs:
     timeout-minutes: 30
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: actions/setup-python@v5
         with:
@@ -112,7 +112,7 @@ jobs:
     timeout-minutes: 30
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: actions/setup-python@v5
         with:
@@ -133,18 +133,18 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
-      PYODIDE_VERSION: 0.27.5
-      PYODIDE_BUILD_VERSION: 0.30.0
-      AWKWARD_VERSION: v2.7.4
+      PYODIDE_VERSION: 0.28.1
+      PYODIDE_BUILD_VERSION: 0.30.5
+      AWKWARD_VERSION: v2.8.5
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: '3.13'
 
       - uses: astral-sh/setup-uv@v6
 
@@ -183,16 +183,20 @@ jobs:
         uses: pyodide/pyodide-actions/install-browser@v2
         with:
           runner: selenium
-          browser: chrome
-          browser-version: 1446681
+          browser: chrome firefox
+          browser-version: latest
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Install dependencies
         run: uv pip install --system -e. --group=test-pyodide pyodide-py==$PYODIDE_VERSION
 
-      - name: Run pytest
+      - name: Run pytest (Chrome)
         run: |
           pytest -vv --dist-dir=./pyodide-dist/ --runner=selenium --runtime=chrome tests-wasm
+
+      - name: Run pytest (Firefox)
+        run: |
+          pytest -vv --dist-dir=./pyodide-dist/ --runner=selenium --runtime=firefox tests-wasm
 
   pass:
     if: always()

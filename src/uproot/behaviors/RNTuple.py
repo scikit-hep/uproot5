@@ -525,7 +525,9 @@ class HasFields(Mapping):
                 for compatibility with software that was used for :doc:`uproot.behaviors.TBranch.TBranch`. This argument should not be used
                 and will be removed in a future version.
 
-        Returns the an Awkward Form with the structure of the data in the ``RNTuple`` or ``RField``.
+        Returns a 2-tuple where the first entry is the Awkward Form with the structure of the data in the ``RNTuple`` or ``RField``,
+        and the second entry is the relative path of the requested RField. The second entry is needed in cases where the requested RField
+        is a subfield of a collection, which requires constructing the form with information about the parent field.
         """
         ak = uproot.extras.awkward()
 
@@ -540,6 +542,7 @@ class HasFields(Mapping):
         top_names = []
         record_list = []
         if self is rntuple:
+            field_path = None
             for field in self.fields:
                 # the field needs to be in the keys or be a parent of a field in the keys
                 if any(
@@ -551,14 +554,39 @@ class HasFields(Mapping):
                         rntuple.field_form(field.field_id, keys, ak_add_doc=ak_add_doc)
                     )
         else:
+            # If it is a subfield of a collection, we need to include the collection in the keys
+            path_keys = self.path.split(".")
+            top_collection = None
+            tmp_field = self.ntuple
+            field_path = [self.name]
+            for i, key in enumerate(path_keys):
+                tmp_field = tmp_field[key]
+                if (
+                    tmp_field.record.struct_role
+                    == uproot.const.RNTupleFieldRole.COLLECTION
+                ):
+                    top_collection = tmp_field
+                    field_path = path_keys[i:]
+                    break
             # Always use the full path for keys
             # Also include the field itself
             keys = [self.path] + [f"{self.path}.{k}" for k in keys]
-            # The field needs to be in the keys or be a parent of a field in the keys
-            if any(key.startswith(f"{self.path}.") or key == self.path for key in keys):
-                top_names.append(self.name)
+            if top_collection is None:
+                # The field needs to be in the keys or be a parent of a field in the keys
+                if any(
+                    key.startswith(f"{self.path}.") or key == self.path for key in keys
+                ):
+                    top_names.append(self.name)
+                    record_list.append(
+                        rntuple.field_form(self.field_id, keys, ak_add_doc=ak_add_doc)
+                    )
+            else:
+                keys += [top_collection.path]
+                top_names.append(top_collection.name)
                 record_list.append(
-                    rntuple.field_form(self.field_id, keys, ak_add_doc=ak_add_doc)
+                    rntuple.field_form(
+                        top_collection.field_id, keys, ak_add_doc=ak_add_doc
+                    )
                 )
 
         parameters = None
@@ -572,7 +600,7 @@ class HasFields(Mapping):
         form = ak.forms.RecordForm(
             record_list, top_names, form_key="toplevel", parameters=parameters
         )
-        return form
+        return (form, field_path)
 
     def arrays(
         self,
@@ -697,7 +725,7 @@ class HasFields(Mapping):
             [c.num_entries for c in clusters[start_cluster_idx:stop_cluster_idx]]
         )
 
-        form = self.to_akform(
+        form, field_path = self.to_akform(
             filter_name=filter_name,
             filter_typename=filter_typename,
             filter_field=filter_field,
@@ -754,6 +782,20 @@ class HasFields(Mapping):
         arrays = uproot.extras.awkward().to_backend(arrays, backend=backend)
         # no longer needed; save memory
         del container_dict
+
+        # If we constructed some parent fields, we need to get back to the requested field
+        if field_path is not None:
+            for field in field_path[:-1]:
+                if field in arrays.fields:
+                    arrays = arrays[field]
+                # tuples are a trickier since indices no longer match
+                else:
+                    if field.isdigit() and arrays.fields == ["0"]:
+                        arrays = arrays["0"]
+                    else:
+                        raise AssertionError(
+                            "The array was not constructed correctly. Please report this issue."
+                        )
 
         # FIXME: This is not right, but it might temporarily work
         if library.name == "np":
@@ -896,7 +938,7 @@ class HasFields(Mapping):
             )
         )
 
-        akform = self.to_akform(
+        akform, _ = self.to_akform(
             filter_name=filter_name,
             filter_typename=filter_typename,
             filter_field=filter_field,
@@ -1408,7 +1450,7 @@ class HasFields(Mapping):
             )
         )
 
-        akform = self.to_akform(
+        akform, _ = self.to_akform(
             filter_name=filter_name,
             filter_typename=filter_typename,
             filter_field=filter_field,
