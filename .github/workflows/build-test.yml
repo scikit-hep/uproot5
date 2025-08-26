@@ -35,6 +35,7 @@ jobs:
           environment-name: test-env
           init-shell: bash
           create-args: >-
+            --strict-channel-priority
             python=${{ matrix.python-version }}
 
       - uses: astral-sh/setup-uv@v6
