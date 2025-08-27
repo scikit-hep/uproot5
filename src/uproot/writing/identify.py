@@ -17,6 +17,7 @@ objects from Python builtins and other writable models.
 """
 from __future__ import annotations
 
+import warnings
 from collections.abc import Mapping
 
 import numpy
@@ -148,6 +149,13 @@ def add_to_directory(obj, name, directory, streamers):
             is_ttree = True
 
     if is_ttree:
+        warnings.warn(
+            "In February 2026, Uproot will default to writing RNTuples instead of TTrees. "
+            "You will need to use `mkttree` to create to explicitly create a TTree. "
+            "Please update your code accordingly.",
+            FutureWarning,
+            stacklevel=4,
+        )
         tree = directory.mktree(name, metadata)
         tree.extend(data)
 
