@@ -1539,7 +1539,7 @@ class RField(uproot.behaviors.RNTuple.HasFields):
                 or self.parent.record.flags & uproot.const.RNTupleFieldFlags.REPETITIVE
                 or (
                     self.parent.record.struct_role == uproot.const.RNTupleFieldRole.LEAF
-                    and "std::atomic" in self.parent.record.type_name
+                    and self.record.field_name == "_0"
                 )
             )
             field = self
