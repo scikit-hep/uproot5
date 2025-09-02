@@ -10,11 +10,19 @@ ak = pytest.importorskip("awkward")
 
 data = ak.Array(
     {
-        "union_with_struct": [
-            {"x": {"a": 1, "b": 1}},
-            {"x": "two"},
-            {"x": {"a": 3, "b": 3}},
-            {"x": "four"},
+        "union1": [
+            {"a": 1, "b": 1},
+            "two",
+            {"a": 3, "b": 3},
+            "four",
+            "five",
+        ],
+        "union2": [
+            {"a": 1, "b": 1},
+            {"a": 2, "b": 2, "c": 2},
+            {"a": 3, "b": 3},
+            {"a": 4, "b": 4, "c": 4},
+            "five",
         ],
     }
 )
