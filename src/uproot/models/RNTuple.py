@@ -555,10 +555,13 @@ in file {self.file.file_path}"""
             recordlist = []
             namelist = []
             for i in newids:
-                if any(
-                    key.startswith(f"{self.all_fields[i].path}.")
-                    or key == self.all_fields[i].path
-                    for key in keys
+                if (
+                    any(
+                        key.startswith(f"{self.all_fields[i].path}.")
+                        or key == self.all_fields[i].path
+                        for key in keys
+                    )
+                    or self.all_fields[i].is_anonymous
                 ):
                     recordlist.append(self.field_form(i, keys, ak_add_doc=ak_add_doc))
                     namelist.append(field_records[i].field_name)
@@ -1520,8 +1523,11 @@ class RField(uproot.behaviors.RNTuple.HasFields):
     def is_anonymous(self):
         """
         There are some anonymous fields in the RNTuple specification that we hide from the user
-        to simplify the interface. These are fields named `_0` that are children of a collection
-        or variant field.
+        to simplify the interface. These are fields named `_0` that are children of a collection,
+        variant, or atomic field.
+
+        All children fields of variants are ignored, since they cannot be accessed directly
+        in a consistent manner. They can only be accessed through the parent variant field.
         """
         if self._is_anonymous is None:
             self._is_anonymous = not self.top_level and (
@@ -1531,7 +1537,17 @@ class RField(uproot.behaviors.RNTuple.HasFields):
                     uproot.const.RNTupleFieldRole.VARIANT,
                 )
                 or self.parent.record.flags & uproot.const.RNTupleFieldFlags.REPETITIVE
+                or (
+                    self.parent.record.struct_role == uproot.const.RNTupleFieldRole.LEAF
+                    and "std::atomic" in self.parent.record.type_name
+                )
             )
+            field = self
+            while not field.top_level:
+                field = field.parent
+                if field.record.struct_role == uproot.const.RNTupleFieldRole.VARIANT:
+                    self._is_anonymous = True
+                    break
         return self._is_anonymous
 
     @property
