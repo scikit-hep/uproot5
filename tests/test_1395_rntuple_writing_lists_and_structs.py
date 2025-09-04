@@ -47,6 +47,13 @@ data = ak.Array(
     }
 )
 
+data.layout.parameters["__doc__"] = "This is the top record array"
+data.layout.contents[0].parameters["__doc__"] = "This is a boolean"
+data.layout.contents[10].content.parameters["__doc__"] = "This is an struct record"
+data.layout.contents[10].content.contents[0].parameters[
+    "__doc__"
+] = "This is a subfield"
+
 
 def test_writing_and_reading(tmp_path):
     filepath = os.path.join(tmp_path, "test.root")
@@ -87,6 +94,8 @@ def test_writing_and_reading(tmp_path):
 
 def test_writing_then_reading_with_ROOT(tmp_path, capfd):
     ROOT = pytest.importorskip("ROOT")
+    if ROOT.gROOT.GetVersionInt() < 63400:
+        pytest.skip("ROOT version does not support RNTuple v1.0.0.0")
 
     filepath = os.path.join(tmp_path, "test.root")
 
@@ -95,7 +104,10 @@ def test_writing_then_reading_with_ROOT(tmp_path, capfd):
         obj.extend(data)
         obj.extend(data)  # test multiple cluster groups
 
-    RT = ROOT.Experimental.RNTupleReader.Open("ntuple", filepath)
+    if ROOT.gROOT.GetVersionInt() < 63600:
+        RT = ROOT.Experimental.RNTupleReader.Open("ntuple", filepath)
+    else:
+        RT = ROOT.RNTupleReader.Open("ntuple", filepath)
     RT.PrintInfo()
     RT.Show(0)
     RT.Show(2)
@@ -131,3 +143,61 @@ def test_writing_then_reading_with_ROOT(tmp_path, capfd):
         in out
     )
     assert "* Field 17           : list_array (std::vector<std::int64_t>)" in out
+
+
+def test_field_descriptions(tmp_path):
+    filepath = os.path.join(tmp_path, "test.root")
+
+    with uproot.recreate(filepath) as file:
+        obj = file.mkrntuple("ntuple", data)  # test inputting the data directly
+        obj.extend(data)
+
+    with uproot.recreate(filepath) as file:
+        obj = file.mkrntuple("ntuple", data.layout.form)
+        obj.extend(data)
+        obj.extend(data)  # test multiple cluster groups
+
+    obj = uproot.open(filepath)["ntuple"]
+    arrays = obj.arrays(ak_add_doc=True)
+
+    assert arrays.layout.parameters["__doc__"] == "This is the top record array"
+    assert arrays.layout.contents[0].parameters["__doc__"] == "This is a boolean"
+    assert (
+        arrays.layout.contents[10].content.parameters["__doc__"]
+        == "This is an struct record"
+    )
+    assert (
+        arrays.layout.contents[10].content.contents[0].parameters["__doc__"]
+        == "This is a subfield"
+    )
+
+    arrays = obj.arrays(ak_add_doc={"typename": "typename"})
+
+    assert arrays.layout.contents[0].parameters["typename"] == "bool"
+
+
+def test_writing_dict(tmp_path):
+    filepath = os.path.join(tmp_path, "test.root")
+
+    data = {
+        "bool": [True, False],
+        "int": [1, 2],
+        "float": [1.0, 2.0],
+        "string": ["hello", "world"],
+        "list": [[1, 2], [3, 4]],
+        "struct": [{"a": 1, "b": 2}, {"a": 3, "b": 4}],
+        "optional": [None, 1],
+        "union": [1, "hello"],
+        "optional_union": [None, 1],
+        "list_array": [[1, 2], [3, 4]],
+    }
+
+    with uproot.recreate(filepath) as file:
+        obj = file.mkrntuple("ntuple", data)
+        obj.extend(data)
+
+    obj = uproot.open(filepath)["ntuple"]
+    arrays = obj.arrays()
+
+    assert len(arrays) == 2 * len(data["bool"])
+    assert arrays["bool"].tolist() == data["bool"] + data["bool"]

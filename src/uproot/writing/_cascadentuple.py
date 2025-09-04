@@ -93,11 +93,9 @@ def _cpp_typename(akform, subcall=False):
     elif isinstance(akform, (awkward.forms.ListOffsetForm, awkward.forms.ListForm)):
         content_typename = _cpp_typename(akform.content, subcall=True)
         typename = f"std::vector<{content_typename}>"
-        override_typename = akform.parameters.get("__array__", "")
-        if override_typename != "":
-            typename = (
-                f"std::{override_typename}"  # TODO: check if this could cause issues
-            )
+        # Check if it contains strings and fix the type
+        if akform.parameters.get("__array__", "") == "string":
+            typename = "std::string"
     elif isinstance(akform, awkward.forms.RecordForm):
         if akform.is_tuple:
             field_typenames = [_cpp_typename(t, subcall=True) for t in akform.contents]
@@ -139,7 +137,7 @@ class RBlob_Key(Key):
             String(None, ""),
             String(None, ""),
             0,
-            13,
+            0,
             location,
             created_on=created_on,
             big=big,
@@ -160,7 +158,6 @@ def _record_frame_wrap(payload, includeself=True):
 
 
 def _serialize_rntuple_list_frame(items, wrap=True, rawinput=False, extra_payload=None):
-    # when items is [], b'\xf4\xff\xff\xff\xff\xff\xff\xff\x00\x00\x00\x00'
     n_items = len(items)
     if wrap and rawinput:
         payload_bytes = b"".join([_record_frame_wrap(x) for x in items])
@@ -196,15 +193,15 @@ def _serialize_envelope_header(type, length):
 class NTuple_Field_Description:
     def __init__(
         self,
-        field_version,
-        type_version,
         parent_field_id,
         struct_role,
-        flags,
         field_name,
         type_name,
-        type_alias,
-        field_description,
+        field_version=0,
+        type_version=0,
+        flags=uproot.const.RNTupleFieldFlags.NOFLAG,
+        type_alias="",
+        field_description="",
         repetition=None,
     ):
         self.field_version = field_version
@@ -241,7 +238,7 @@ class NTuple_Field_Description:
             ]
         )
         additional_bytes = b""
-        if self.flags & uproot.const.RNTupleFieldFlag.REPETITIVE:
+        if self.flags & uproot.const.RNTupleFieldFlags.REPETITIVE:
             additional_bytes += _rntuple_repetition_format.pack(self.repetition)
         return b"".join([header_bytes, string_bytes, additional_bytes])
 
@@ -290,7 +287,7 @@ class NTuple_Header(CascadeLeaf):
         )
 
     def _build_field_col_records(
-        self, akform, field_name=None, parent_fid=None, add_field=True
+        self, akform, field_name=None, parent_fid=None, add_field=True, description=""
     ):
         field_id = len(self._field_records)
         if parent_fid is None:
@@ -298,18 +295,16 @@ class NTuple_Header(CascadeLeaf):
         if field_name is None:
             field_name = f"_{field_id}"
         self._ak_node_count += 1
+        if "__doc__" in akform.parameters:
+            description = akform.parameters["__doc__"]
         if isinstance(akform, awkward.forms.NumpyForm) and akform.inner_shape == ():
             type_name = _cpp_typename(akform)
             field = NTuple_Field_Description(
-                0,
-                0,
                 parent_fid,
                 uproot.const.RNTupleFieldRole.LEAF,
-                0,
                 field_name,
                 type_name,
-                "",
-                "",
+                field_description=description,
             )
             if add_field:
                 self._field_records.append(field)
@@ -331,20 +326,19 @@ class NTuple_Header(CascadeLeaf):
                     field_name = "_0"
                     reg_akform = reg_akform.content
                 repetitive_flag = (
-                    0 if arr_size is None else uproot.const.RNTupleFieldFlag.REPETITIVE
+                    uproot.const.RNTupleFieldFlags.NOFLAG
+                    if arr_size is None
+                    else uproot.const.RNTupleFieldFlags.REPETITIVE
                 )
                 type_name = _cpp_typename(reg_akform)
                 field = NTuple_Field_Description(
-                    0,
-                    0,
                     parent_fid,
                     uproot.const.RNTupleFieldRole.LEAF,
-                    repetitive_flag,
                     field_name,
                     type_name,
-                    "",
-                    "",
+                    flags=repetitive_flag,
                     repetition=arr_size,
+                    field_description=description,
                 )
                 self._field_records.append(field)
             ak_primitive = akform.primitive
@@ -360,15 +354,11 @@ class NTuple_Header(CascadeLeaf):
                 type_name = "std::string"
                 field_role = uproot.const.RNTupleFieldRole.LEAF
             field = NTuple_Field_Description(
-                0,
-                0,
                 parent_fid,
                 field_role,
-                0,
                 field_name,
                 type_name,
-                "",
-                "",
+                field_description=description,
             )
             self._field_records.append(field)
             ak_offset = akform.offsets
@@ -383,6 +373,7 @@ class NTuple_Header(CascadeLeaf):
                 parent_fid=field_id,
                 add_field=field_role == uproot.const.RNTupleFieldRole.COLLECTION,
                 field_name="_0",
+                description=description,
             )
         elif isinstance(akform, awkward.forms.ListForm):
             type_name = _cpp_typename(akform)
@@ -391,15 +382,11 @@ class NTuple_Header(CascadeLeaf):
                 type_name = "std::string"
                 field_role = uproot.const.RNTupleFieldRole.LEAF
             field = NTuple_Field_Description(
-                0,
-                0,
                 parent_fid,
                 field_role,
-                0,
                 field_name,
                 type_name,
-                "",
-                "",
+                field_description=description,
             )
             self._field_records.append(field)
             # They are always converted to ListOffsetArrays with Int64 offsets
@@ -414,19 +401,16 @@ class NTuple_Header(CascadeLeaf):
                 parent_fid=field_id,
                 add_field=field_role == uproot.const.RNTupleFieldRole.COLLECTION,
                 field_name="_0",
+                description=description,
             )
         elif isinstance(akform, awkward.forms.RecordForm):
             type_name = _cpp_typename(akform)
             field = NTuple_Field_Description(
-                0,
-                0,
                 parent_fid,
                 uproot.const.RNTupleFieldRole.RECORD,
-                0,
                 field_name,
                 type_name,
-                "",
-                "",
+                field_description=description,
             )
             self._field_records.append(field)
             for i, subakform in enumerate(akform.contents):
@@ -440,35 +424,29 @@ class NTuple_Header(CascadeLeaf):
             type_name = _cpp_typename(akform)
             field_role = uproot.const.RNTupleFieldRole.LEAF
             field = NTuple_Field_Description(
-                0,
-                0,
                 parent_fid,
                 field_role,
-                uproot.const.RNTupleFieldFlag.REPETITIVE,
                 field_name,
                 type_name,
-                "",
-                "",
+                flags=uproot.const.RNTupleFieldFlags.REPETITIVE,
                 repetition=akform.size,
+                field_description=description,
             )
             self._field_records.append(field)
             self._build_field_col_records(
                 akform.content,
                 parent_fid=field_id,
                 field_name="_0",
+                description=description,
             )
         elif isinstance(akform, awkward.forms.IndexedOptionForm):
             type_name = _cpp_typename(akform)
             field = NTuple_Field_Description(
-                0,
-                0,
                 parent_fid,
                 uproot.const.RNTupleFieldRole.COLLECTION,
-                0,
                 field_name,
                 type_name,
-                "",
-                "",
+                field_description=description,
             )
             self._field_records.append(field)
             ak_index = akform.index
@@ -482,19 +460,16 @@ class NTuple_Header(CascadeLeaf):
                 akform.content,
                 parent_fid=field_id,
                 field_name="_0",
+                description=description,
             )
         elif isinstance(akform, awkward.forms.UnionForm):
             type_name = _cpp_typename(akform)
             field = NTuple_Field_Description(
-                0,
-                0,
                 parent_fid,
                 uproot.const.RNTupleFieldRole.VARIANT,
-                0,
                 field_name,
                 type_name,
-                "",
-                "",
+                field_description=description,
             )
             self._field_records.append(field)
             type_num = uproot.const.rntuple_col_type_to_num_dict["switch"]
@@ -515,6 +490,7 @@ class NTuple_Header(CascadeLeaf):
                 akform.content,
                 parent_fid=parent_fid,
                 field_name=field_name,
+                description=description,
             )
         else:
             raise NotImplementedError(f"Form type {type(akform)} cannot be written yet")
@@ -651,67 +627,6 @@ class NTuple_EnvLink:
         return f"{type(self).__name__}({self.uncomp_size}, {self.locator})"
 
 
-class NTuple_PageListEnvelope:
-    def __init__(self, header_checksum, cluster_summaries, page_data):
-        self.header_checksum = header_checksum
-        self.cluster_summaries = cluster_summaries
-        self.page_data = page_data
-        self._checksum = None
-        assert len(cluster_summaries) == len(page_data)
-
-    def serialize(self):
-        # For now we, only support one cluster per page list envelope
-        nested_pagelist_rawbytes = _serialize_rntuple_list_frame(
-            [  # list of clusters
-                _serialize_rntuple_list_frame(
-                    [  # list of columns
-                        _serialize_rntuple_list_frame(
-                            [  # list of pages
-                                NTuple_PageDescription(page[1], page[0]) for page in col
-                            ],
-                            wrap=False,
-                            extra_payload=b"".join(
-                                [
-                                    _rntuple_column_element_offset_format.pack(
-                                        col[0][2]
-                                    ),
-                                    _rntuple_column_compression_settings_format.pack(
-                                        col[0][3]
-                                    ),
-                                ]
-                            ),
-                        )
-                        for col in cluster_page_locations
-                    ],
-                    rawinput=True,
-                    wrap=False,
-                )
-                for cluster_page_locations in self.page_data
-            ],
-            rawinput=True,
-            wrap=False,
-        )
-        out = [
-            _rntuple_checksum_format.pack(self.header_checksum),
-            _serialize_rntuple_list_frame(self.cluster_summaries),
-            nested_pagelist_rawbytes,
-        ]
-        payload = b"".join(out)
-
-        env_header = _serialize_envelope_header(
-            uproot.const.RNTupleEnvelopeType.PAGELIST,
-            len(payload)
-            + _rntuple_env_header_format.size
-            + _rntuple_checksum_format.size,
-        )
-        header_and_payload = b"".join([env_header, payload])
-        self._checksum = xxhash.xxh3_64_intdigest(header_and_payload)
-        checksum_bytes = _rntuple_checksum_format.pack(self._checksum)
-
-        final_bytes = b"".join([header_and_payload, checksum_bytes])
-        return final_bytes
-
-
 class NTuple_ClusterGroupRecord:
     def __init__(self, min_entry, entry_span, num_clusters, page_list_envlink):
         self.min_entry = min_entry
@@ -765,6 +680,72 @@ class NTuple_PageDescription:
 
     def __repr__(self):
         return f"{type(self).__name__}({self.num_entries}, {self.locator})"
+
+
+class NTuple_ColumnPageListDescription:
+    def __init__(self, pagelist, element_offset, compression_settings):
+        self.pagelist = pagelist
+        self.element_offset = element_offset
+        self.compression_settings = compression_settings
+
+    def serialize(self):
+        out = _serialize_rntuple_list_frame(
+            self.pagelist,
+            wrap=False,
+            extra_payload=b"".join(
+                [
+                    _rntuple_column_element_offset_format.pack(self.element_offset),
+                    _rntuple_column_compression_settings_format.pack(
+                        self.compression_settings
+                    ),
+                ]
+            ),
+        )
+        return out
+
+    def __repr__(self):
+        return f"{type(self).__name__}({self.pagelist}, {self.element_offset}, {self.compression_settings})"
+
+
+class NTuple_PageListEnvelope:
+    def __init__(self, header_checksum, cluster_summaries, cluster_list):
+        self.header_checksum = header_checksum
+        self.cluster_summaries = cluster_summaries
+        self.cluster_list = cluster_list
+        self._checksum = None
+        assert len(cluster_summaries) == len(cluster_list)
+
+    def serialize(self):
+        nested_pagelist_rawbytes = _serialize_rntuple_list_frame(
+            [
+                _serialize_rntuple_list_frame(
+                    cluster,
+                    wrap=False,
+                )
+                for cluster in self.cluster_list
+            ],
+            rawinput=True,
+            wrap=False,
+        )
+        out = [
+            _rntuple_checksum_format.pack(self.header_checksum),
+            _serialize_rntuple_list_frame(self.cluster_summaries),
+            nested_pagelist_rawbytes,
+        ]
+        payload = b"".join(out)
+
+        env_header = _serialize_envelope_header(
+            uproot.const.RNTupleEnvelopeType.PAGELIST,
+            len(payload)
+            + _rntuple_env_header_format.size
+            + _rntuple_checksum_format.size,
+        )
+        header_and_payload = b"".join([env_header, payload])
+        self._checksum = xxhash.xxh3_64_intdigest(header_and_payload)
+        checksum_bytes = _rntuple_checksum_format.pack(self._checksum)
+
+        final_bytes = b"".join([header_and_payload, checksum_bytes])
+        return final_bytes
 
 
 class NTuple_Anchor(CascadeLeaf):
@@ -935,6 +916,12 @@ class NTuple(CascadeNode):
         4. Update anchor's foot metadata values in-place
         """
 
+        # TODO: Think of a better way to do this
+        if isinstance(data, dict):
+            data = awkward.Array(data)
+        elif not isinstance(data, awkward.Array):
+            raise TypeError("data must be an awkward.Array or a dict")
+
         if data.layout.form != self._header._akform:
             raise ValueError("data is not compatible with this RNTuple")
 
@@ -978,21 +965,25 @@ class NTuple(CascadeNode):
                 deltas = numpy.array(col_data != -1, dtype=col_data.dtype)
                 col_data = numpy.cumsum(deltas)
             col_len = len(col_data.reshape(-1))
-            # TODO: when col_length is zero we can skip writing the page
-            # but other things need to be adjusted
             raw_data = col_data.reshape(-1).view("uint8")
             if col_data.dtype == numpy.dtype("bool"):
                 raw_data = numpy.packbits(raw_data, bitorder="little")
             uncompressed_bytes = len(raw_data)
-            # Need better logic to specify per-column/field compression
+            # TODO: need better logic to specify per-column/field compression
             compression = self._directory.freesegments.fileheader.compression
             raw_data = uproot.compression.compress(raw_data, compression)
-            page_key = self.add_rblob(sink, raw_data, uncompressed_bytes)
-            page_locator = NTuple_Locator(
-                len(raw_data), page_key.location + page_key.allocation
-            )
+            # TODO: need to add some logic for page splitting
+            pages = []
+            if col_len > 0:
+                page_key = self.add_rblob(sink, raw_data, uncompressed_bytes)
+                page_locator = NTuple_Locator(
+                    len(raw_data), page_key.location + page_key.allocation
+                )
+                pages.append(NTuple_PageDescription(col_len, page_locator))
             cluster_page_data.append(
-                [(page_locator, col_len, self._column_counts[idx], compression.code)]
+                NTuple_ColumnPageListDescription(
+                    pages, self._column_counts[idx], compression.code
+                )
             )
             self._column_counts[idx] += col_len
         page_data = [
@@ -1017,7 +1008,7 @@ class NTuple(CascadeNode):
         pagelistenv_locator = NTuple_Locator(
             len(pagelistenv_rawdata),
             pagelistenv_key.location + pagelistenv_key.allocation,
-        )  # check
+        )
         pagelistenv_envlink = NTuple_EnvLink(
             len(pagelistenv_rawdata), pagelistenv_locator
         )
@@ -1057,7 +1048,8 @@ class NTuple(CascadeNode):
         raw_data,
         uncompressed_bytes,
     ):
-        strings_size = 8  # TODO: What is this?
+        # The strings included with the RBlob ("RBlob", "", "")
+        strings_size = 8
 
         # Always use big files
         requested_bytes = (

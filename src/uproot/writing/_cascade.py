@@ -682,9 +682,7 @@ class FreeSegments(CascadeNode):
         for i in range(len(slices) - 1):
             if slices[i][1] == original_start and original_stop == slices[i + 1][0]:
                 # These two slices need to be merged, including the newly released interval.
-                return (
-                    slices[:i] + ((slices[i][0], slices[i + 1][1]),) + slices[i + 2 :]
-                )
+                return (*slices[:i], (slices[i][0], slices[i + 1][1]), *slices[i + 2 :])
 
         for i, (start, stop) in enumerate(slices):
             if original_start == stop:
@@ -1727,7 +1725,7 @@ class Directory(CascadeNode):
         tree.write_anew(sink)
         return tree
 
-    def add_rntuple(self, sink, name, title, akform, description=""):
+    def add_rntuple(self, sink, name, description, akform):
         import uproot.writing._cascadentuple
 
         anchor = uproot.writing._cascadentuple.NTuple_Anchor(

@@ -313,11 +313,11 @@ def file_object_path_split(urlpath: str) -> tuple[str, str | None]:
 
     separator = "::"
     parts = urlpath.split(separator)
-    object_regex = re.compile(r"(.+\.root):(.*$)")
+    object_regex = re.compile(r"(.+\.root(\.[0-9]+)?):(.*$)", re.IGNORECASE)
     for i, part in enumerate(reversed(parts)):
         match = object_regex.match(part)
         if match:
-            obj = re.sub(r"/+", "/", match.group(2).strip().lstrip("/")).rstrip("/")
+            obj = re.sub(r"/+", "/", match.group(3).strip().lstrip("/")).rstrip("/")
             parts[-i - 1] = match.group(1)
             break
 
@@ -1069,3 +1069,26 @@ class _Unset:
 
 
 unset = _Unset()
+
+
+def get_array_library(arr):
+    """
+    Determine if an array is a NumPy or CuPy ndarray, without importing CuPy.
+
+    Args:
+        arr: The array to check.
+
+    Returns:
+        String: 'numpy' if it's a NumPy array, 'cupy' if it's a CuPy array,
+        'awkward' if it's an Awkward array, and 'unknown' otherwise.
+    """
+    module_name = type(arr).__module__
+
+    if module_name.startswith("numpy"):
+        return "numpy"
+    elif module_name.startswith("cupy"):
+        return "cupy"
+    elif module_name.startswith("awkward"):
+        return "awkward"
+    else:
+        return "unknown"
