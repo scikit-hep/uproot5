@@ -44,6 +44,14 @@ data = ak.Array(
             ak.index.Index([1, 2, 4]),
             ak.contents.NumpyArray([0, 1, 2, 3, 4, 5]),
         ),
+        "indexed_option_array": ak.contents.IndexedOptionArray(
+            ak.index.Index([1, -1, 3]),
+            ak.contents.NumpyArray([0, 1, 2, 3, 4, 5]),
+        ),
+        "indexed_array": ak.contents.IndexedArray(
+            ak.index.Index([1, 0, 3]),
+            ak.contents.NumpyArray([0, 1, 2, 3, 4, 5]),
+        ),
     }
 )
 
@@ -71,7 +79,7 @@ def test_writing_and_reading(tmp_path):
     arrays = obj.arrays()
 
     for f in data.fields:
-        if f == "optional":
+        if f in ("optional", "indexed_option_array"):
             assert [t[0] if len(t) > 0 else None for t in arrays[f][:3]] == data[
                 f
             ].tolist()

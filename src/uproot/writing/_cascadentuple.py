@@ -111,7 +111,7 @@ def _cpp_typename(akform, subcall=False):
     elif isinstance(akform, awkward.forms.UnionForm):
         field_typenames = [_cpp_typename(t, subcall=True) for t in akform.contents]
         typename = f"std::variant<{','.join(field_typenames)}>"
-    elif isinstance(akform, awkward.forms.UnmaskedForm):
+    elif isinstance(akform, (awkward.forms.UnmaskedForm, awkward.forms.IndexedForm)):
         return _cpp_typename(akform.content, subcall=True)
     else:
         raise NotImplementedError(f"Form type {type(akform)} cannot be written yet")
@@ -484,7 +484,10 @@ class NTuple_Header(CascadeLeaf):
                     field_name=subfield_name,
                     parent_fid=field_id,
                 )
-        elif isinstance(akform, awkward.forms.UnmaskedForm):
+        elif isinstance(
+            akform, (awkward.forms.UnmaskedForm, awkward.forms.IndexedForm)
+        ):
+            # IndexedForms just get rearranged, so they are transparent
             # Do nothing
             self._build_field_col_records(
                 akform.content,
@@ -930,18 +933,24 @@ class NTuple(CascadeNode):
 
         cluster_page_data = []  # list of list of (locator, len, offset)
         data_buffers = awkward.to_buffers(data)[2]
-        for idx, key in enumerate(self._header._column_keys):
-            if "switch" in key:
+
+        # We need to modify make a few modifications since not everything directly translates to RNTuples
+        for key in list(data_buffers.keys()):
+            barekey = key.split("-")[0]
+            if "offset" in key:
+                # RNTuples don't store the first offset
+                data_buffers[key] = data_buffers[key][1:]
+            elif "index" in key and barekey + "-tags" in data_buffers:
+                # We group indices and tags into a single array
                 dtype = numpy.dtype([("index", "int64"), ("tag", "int32")])
-                indices = data_buffers[key.split("-")[0] + "-index"]
-                tags = data_buffers[key.split("-")[0] + "-tags"]
+                indices = data_buffers[barekey + "-index"]
+                tags = data_buffers[barekey + "-tags"]
                 switches = numpy.zeros(len(indices), dtype=dtype)
                 switches["index"] = indices
                 switches["tag"] = tags + 1
-                col_data = switches
-            elif "startstop" in key:
+                data_buffers[barekey + "-switch"] = switches
+            elif "start" in key:
                 # ListArrays need to be converted to ListOffsetArrays
-                barekey = key.split("-")[0]
                 starts = awkward.index.Index(data_buffers[f"{barekey}-starts"])
                 stops = awkward.index.Index(data_buffers[f"{barekey}-stops"])
                 next_barekey = f"node{int(barekey[4:])+1}"
@@ -953,17 +962,20 @@ class NTuple(CascadeNode):
                         starts, stops, content
                     ).to_ListOffsetArray64()
                 )[2]
+                data_buffers[f"{barekey}-startstop"] = tmp_buffers["node0-offsets"][1:]
                 data_buffers[f"{next_barekey}-data"] = tmp_buffers["node1-data"]
-                col_data = tmp_buffers["node0-offsets"][1:]
-                # no longer need the temporary data
-                del starts, stops, content, tmp_buffers
-            else:
-                col_data = data_buffers[key]
-            if "offsets" in key:
-                col_data = col_data[1:]
             elif "index" in key:
-                deltas = numpy.array(col_data != -1, dtype=col_data.dtype)
-                col_data = numpy.cumsum(deltas)
+                # We need to rearrange the data
+                next_barekey = f"node{int(barekey[4:])+1}"
+                index = data_buffers[key]
+                content = data_buffers[f"{next_barekey}-data"]
+                content = content[index[index >= 0]]  # Rearrange data
+                deltas = numpy.array(index >= 0, dtype=index.dtype)
+                data_buffers[key] = numpy.cumsum(deltas)
+                data_buffers[f"{next_barekey}-data"] = content
+
+        for idx, key in enumerate(self._header._column_keys):
+            col_data = data_buffers[key]
             col_len = len(col_data.reshape(-1))
             raw_data = col_data.reshape(-1).view("uint8")
             if col_data.dtype == numpy.dtype("bool"):
