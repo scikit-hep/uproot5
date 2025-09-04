@@ -1407,17 +1407,25 @@ def _get_ttree_form(
     for key in common_keys:
         branch = ttree[key]
         if isinstance(branch, HasFields):
-            content_form = branch.to_akform().content(0)
+            content_form = branch.to_akform()[0].content(0)
         else:
             content_form = branch.interpretation.awkward_form(ttree.file)
         content_parameters = {}
         if isinstance(ak_add_doc, bool):
             if ak_add_doc:
-                content_parameters["__doc__"] = branch.title
+                content_parameters["__doc__"] = (
+                    branch.description
+                    if isinstance(branch, HasFields)
+                    else branch.title
+                )
         elif isinstance(ak_add_doc, dict):
             content_parameters.update(
                 {
-                    key: branch.__getattribute__(value)
+                    key: branch.__getattribute__(
+                        "description"
+                        if isinstance(branch, HasFields) and value == "title"
+                        else value
+                    )
                     for key, value in ak_add_doc.items()
                 }
             )
@@ -1426,10 +1434,24 @@ def _get_ttree_form(
         contents.append(content_form)
 
     if isinstance(ak_add_doc, bool):
-        parameters = {"__doc__": ttree.title} if ak_add_doc else None
+        parameters = (
+            {
+                "__doc__": (
+                    ttree.description if isinstance(ttree, HasFields) else ttree.title
+                )
+            }
+            if ak_add_doc
+            else None
+        )
     elif isinstance(ak_add_doc, dict):
         parameters = (
-            {"__doc__": ttree.title} if "__doc__" in ak_add_doc.keys() else None
+            {
+                "__doc__": (
+                    ttree.description if isinstance(ttree, HasFields) else ttree.title
+                )
+            }
+            if "__doc__" in ak_add_doc.keys()
+            else None
         )
     else:
         parameters = None

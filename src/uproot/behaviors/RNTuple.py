@@ -1634,13 +1634,6 @@ class HasFields(Mapping):
             return self.ntuple._file.source
         return None
 
-    @property
-    def title(self):
-        """
-        Alias for ``name``. Returns the name of the ``RNTuple`` or ``RField``.
-        """
-        return self.name
-
 
 class RNTuple(HasFields):
     """
