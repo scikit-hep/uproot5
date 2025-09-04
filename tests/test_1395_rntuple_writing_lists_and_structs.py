@@ -45,11 +45,11 @@ data = ak.Array(
             ak.contents.NumpyArray([0, 1, 2, 3, 4, 5]),
         ),
         "indexed_option_array": ak.contents.IndexedOptionArray(
-            ak.index.Index([1, -1, 3]),
+            ak.index.Index([3, -1, 1]),
             ak.contents.NumpyArray([0, 1, 2, 3, 4, 5]),
         ),
         "indexed_array": ak.contents.IndexedArray(
-            ak.index.Index([1, 0, 3]),
+            ak.index.Index([3, 0, 1]),
             ak.contents.NumpyArray([0, 1, 2, 3, 4, 5]),
         ),
     }
