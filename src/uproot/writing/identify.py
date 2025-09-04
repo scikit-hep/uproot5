@@ -27,6 +27,9 @@ import uproot.extras
 import uproot.pyroot
 import uproot.writing._cascadetree
 
+# To keep track of whether we've warned about switching to writing RNTuple by default
+_warned_rntuple_by_default = False
+
 
 def add_to_directory(obj, name, directory, streamers):
     """
@@ -149,13 +152,16 @@ def add_to_directory(obj, name, directory, streamers):
             is_ttree = True
 
     if is_ttree:
-        warnings.warn(
-            "In February 2026, Uproot will default to writing RNTuples instead of TTrees. "
-            "You will need to use `mkttree` to create to explicitly create a TTree. "
-            "Please update your code accordingly.",
-            FutureWarning,
-            stacklevel=4,
-        )
+        global _warned_rntuple_by_default  # noqa: PLW0603
+        if not _warned_rntuple_by_default:
+            warnings.warn(
+                "Starting in version 5.7.0, Uproot will default to writing RNTuples instead of TTrees. "
+                "You will need to use `mktree` to create to explicitly create a TTree. "
+                "Please update your code accordingly.",
+                FutureWarning,
+                stacklevel=4,
+            )
+            _warned_rntuple_by_default = True
         tree = directory.mktree(name, metadata)
         tree.extend(data)
 
