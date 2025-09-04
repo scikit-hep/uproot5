@@ -1532,6 +1532,7 @@ class HasFields(Mapping):
         recursive=True,
         max_width=80,
         stream=sys.stdout,
+        **kwargs,
     ):
         """
         Args:
@@ -1563,7 +1564,13 @@ class HasFields(Mapping):
             ├─ nested_list (std::vector<std::vector<std::int64_t>>)
             ├─ struct (MyStruct)
             │  ├─ x (std::int64_t)
-            └─└─ y (std::int64_t)
+            │  └─ y (std::int64_t)
+            └─ other_struct (OtherStruct)
+                ├─ a (SubStruct)
+                │  Description: The description of the subfield
+                │  ├─ x (std::int64_t)
+                │  └─ y (std::int64_t)
+                └─ b (std::int64_t)
         """
         elbow = "└─ "
         pipe = "│  "
