@@ -100,17 +100,18 @@ public:
 };
 
 char* _uproot_TMessage_reallocate(char* buffer, size_t newsize, size_t oldsize) {
-    _Uproot_buffer_sizer* ptr = reinterpret_cast<_Uproot_buffer_sizer*>(
-        (void*)TPython::Eval("__import__('uproot').pyroot.pyroot_to_buffer.sizer")
-    );
+    std::any pyptr;
+    TPython::Exec("pyptr = __import__('uproot').pyroot.pyroot_to_buffer.sizer", &pyptr);
+    _Uproot_buffer_sizer* ptr = std::any_cast<_Uproot_buffer_sizer*>(pyptr);
     ptr->buffer = reinterpret_cast<size_t>(buffer);
     ptr->newsize = newsize;
     ptr->oldsize = oldsize;
 
     TPython::Exec("__import__('uproot').pyroot.pyroot_to_buffer.reallocate()");
 
-    TPyReturn out = TPython::Eval("__import__('uproot').pyroot.pyroot_to_buffer.buffer.ctypes.data");
-    return reinterpret_cast<char*>((size_t)out);
+    std::any out;
+    TPython::Exec("out = __import__('uproot').pyroot.pyroot_to_buffer.buffer.ctypes.data", &out);
+    return std::any_cast<char*>(out);
 }
 
 void _uproot_TMessage_SetBuffer(TMessage& message, void* buffer, UInt_t newsize) {

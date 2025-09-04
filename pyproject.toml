@@ -5,6 +5,46 @@ requires = [
   "hatch-vcs"
 ]
 
+[dependency-groups]
+dev = [
+  {include-group = "extra"},
+  {include-group = "test"}
+]
+extra = [
+  "boost_histogram>=0.13",
+  "dask-awkward>=2025.5.0",
+  "dask[array,distributed]",
+  "hist>=1.2",
+  "pandas",
+  "awkward-pandas"
+]
+test = [
+  "aiohttp",
+  "deflate",
+  "fsspec-xrootd>=0.5.0",
+  "isal",
+  "minio",
+  "paramiko",
+  "pytest-rerunfailures",
+  "rangehttpserver",
+  "requests",
+  "s3fs",
+  {include-group = "test-core"}
+]
+test-core = [
+  "pytest-timeout",
+  "pytest>=6",
+  "scikit-hep-testdata"
+]
+test-gpu = [
+  "kvikio-cu12>=25.02.01",
+  {include-group = "test-core"}
+]
+test-pyodide = [
+  "pytest-pyodide; python_version >='3.11'",
+  {include-group = "test-core"}
+]
+
 [lint.mccabe]
 max-complexity = 100
 
@@ -41,9 +81,9 @@ dependencies = [
   "cramjam>=2.5.0",
   "xxhash",
   "numpy",
-  "fsspec",
+  "fsspec!=2025.7.0",
   "packaging",
-  "typing_extensions>=4.1.0; python_version < \"3.11\""
+  "typing_extensions>=4.1.0; python_version < '3.11'"
 ]
 description = "ROOT I/O in pure Python and NumPy."
 dynamic = [
@@ -55,37 +95,14 @@ readme = "README.md"
 requires-python = ">=3.9"
 
 [project.optional-dependencies]
-dev = [
-  "boost_histogram>=0.13",
-  "dask-awkward>=2025.2.0",
-  "dask[array,distributed]",
-  "hist>=1.2",
-  "pandas",
-  "awkward-pandas"
+GDS_cu11 = [
+  "kvikio-cu11>=25.02.01"
+]
+GDS_cu12 = [
+  "kvikio-cu12>=25.02.01"
 ]
 http = ["aiohttp"]
 s3 = ["s3fs"]
-test = [
-  "isal",
-  "deflate",
-  "minio",
-  "aiohttp",
-  "fsspec-xrootd>=0.5.0",
-  "s3fs",
-  "paramiko",
-  "pytest>=6",
-  "pytest-timeout",
-  "pytest-rerunfailures",
-  "requests",
-  "scikit-hep-testdata",
-  "rangehttpserver"
-]
-test-pyodide = [
-  "pytest>=6",
-  "pytest-pyodide",
-  "pytest-timeout",
-  "scikit-hep-testdata"
-]
 xrootd = ["fsspec-xrootd>=0.5.0"]
 
 [project.urls]
@@ -124,6 +141,7 @@ xfail_strict = true
 [tool.ruff]
 exclude = [
   "tests/*.py",
+  "tests-cuda/*.py",
   "src/uproot/__init__.py",
   "docs-sphinx/*.py"
 ]
@@ -141,7 +159,9 @@ ignore = [
   "S307",  # no eval allowed
   "PLC1901",  # empty string is falsey (but I don't want to rely on such weak typing)
   "RUF012",  # enforces type annotations on a codebase that lacks type annotations
-  "SIM103"  # interferes with my if-elif-elif-else blocks
+  "SIM103",  # interferes with my if-elif-elif-else blocks
+  "PLC0415",  # imports outside top level
+  "PLW1641"  # __eq__ without __hash__
 ]
 select = [
   "E",

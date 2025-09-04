@@ -40,8 +40,6 @@ class FSSpecSource(uproot.source.chunk.Source):
         # What should we do when there is a chain of filesystems?
         self._async_impl = self._fs.async_impl
 
-        self._file = None
-
         self._open()
 
         self.__enter__()
@@ -56,7 +54,6 @@ class FSSpecSource(uproot.source.chunk.Source):
 
     def _open(self):
         self._executor = FSSpecLoopExecutor()
-        self._file = self._fs.open(self._file_path)
 
     def __repr__(self):
         path = repr(self._file_path)
@@ -67,19 +64,16 @@ class FSSpecSource(uproot.source.chunk.Source):
     def __getstate__(self):
         state = dict(self.__dict__)
         state.pop("_executor")
-        state.pop("_file")
         return state
 
     def __setstate__(self, state):
         self.__dict__ = state
-        self._file = None
         self._open()
 
     def __enter__(self):
         return self
 
     def __exit__(self, exception_type, exception_value, traceback):
-        self._file.__exit__(exception_type, exception_value, traceback)
         self._executor.shutdown()
 
     def chunk(self, start: int, stop: int) -> uproot.source.chunk.Chunk:
@@ -190,7 +184,8 @@ class FSSpecSource(uproot.source.chunk.Source):
         True if the associated file/connection/thread pool is closed; False
         otherwise.
         """
-        return self._file.closed
+        # FSSpecSource uses entirely stateless interfaces
+        return False
 
 
 class FSSpecLoopExecutor(uproot.source.futures.Executor):

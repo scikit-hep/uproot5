@@ -735,7 +735,7 @@ class Tree:
                             )
                         )
                     tofill.append((branch_name, datum["compression"], big_endian, None))
-                    if datum["kind"] == "counter":
+                    if datum["kind"] == "counter" and big_endian.size > 0:
                         datum["tleaf_maximum_value"] = max(
                             big_endian.max(), datum["tleaf_maximum_value"]
                         )

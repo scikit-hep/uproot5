@@ -17,6 +17,7 @@ import re
 import sys
 import threading
 from collections.abc import Iterable, Mapping, MutableMapping
+from keyword import iskeyword
 
 import numpy
 
@@ -1977,11 +1978,11 @@ class TBranch(HasBranches):
         :ref:`uproot.behaviors.TBranch.TBranch.name` is not unique: the
         non-recursive index is always unique.
         """
-        for i, branch in enumerate(self.parent.branches):
-            if branch is self:
-                return i
-        else:
-            raise AssertionError
+        if not hasattr(self, "_index"):
+            # cache index of all branches of the parent to avoid repeating this loop for other branches
+            for i, branch in enumerate(self.parent.branches):
+                branch._index = i
+        return self._index
 
     @property
     def interpretation(self):
@@ -2921,9 +2922,14 @@ def _regularize_expressions(
                     uproot.interpretation.grouped.AsGrouped,
                 ),
             ):
+                branchname_expression = (
+                    branchname
+                    if branchname.isidentifier() and not iskeyword(branchname)
+                    else language.getter_of(branchname)
+                )
                 _regularize_expression(
                     hasbranches,
-                    language.getter_of(branchname),
+                    branchname_expression,
                     keys,
                     aliases,
                     language,
@@ -3096,8 +3102,6 @@ def _ranges_or_baskets_to_arrays(
         ):
             branchid_to_branch[cache_key]._awkward_check(interpretation)
 
-    hasbranches._file.source.chunks(ranges, notifications=notifications)
-
     def replace(ranges_or_baskets, original_index, basket):
         branch, basket_num, range_or_basket = ranges_or_baskets[original_index]
         ranges_or_baskets[original_index] = branch, basket_num, basket
@@ -3175,6 +3179,13 @@ def _ranges_or_baskets_to_arrays(
             notifications.put(sys.exc_info())
         else:
             notifications.put(None)
+
+    if len(arrays) == len(branchid_interpretation):
+        # all arrays are already in the cache
+        return
+
+    # Request all chunks and then poll notifications queue until we have all the arrays we expect
+    hasbranches._file.source.chunks(ranges, notifications=notifications)
 
     while len(arrays) < len(branchid_interpretation):
         obj = notifications.get()

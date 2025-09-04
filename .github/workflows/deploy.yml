@@ -29,16 +29,16 @@ jobs:
       contents: read
 
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v5
         with:
-          name: distribution-artifact
+          name: Packages
           path: dist
 
       - name: List distributions to be deployed
         run: ls -lha dist/
 
       - name: Generate artifact attestation for sdist and wheel
-        uses: actions/attest-build-provenance@c074443f1aee8d4aeeae555aebba3282517141b2 # v2.2.3
+        uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2.4.0
         with:
           subject-path: dist/uproot-*
 

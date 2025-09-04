@@ -1348,7 +1348,7 @@ in file {self.file_path} in directory {self.path}"""
         self,
         name,
         ak_form_or_data,
-        title="",
+        description="",
     ):
         """
         Args:
@@ -1357,7 +1357,7 @@ in file {self.file_path} in directory {self.path}"""
                 and type specification for the fields. If a RecordForm is provided,
                 the RNTuple will be empty. If a RecordArray is provided, the RNTuple
                 will be initialized with the input data.
-            title (str): Title for the new RNTuple.
+            description (str): Description for the new RNTuple.
 
         Creates an empty RNTuple in this directory.
         """
@@ -1365,12 +1365,25 @@ in file {self.file_path} in directory {self.path}"""
             raise ValueError("cannot create a RNTuple in a closed file")
 
         # TODO: Think of a better alternative to this
-        if isinstance(ak_form_or_data, uproot.extras.awkward().Array):
-            ntuple = self.mkrntuple(name, ak_form_or_data.layout.form, title)
+        awkward = uproot.extras.awkward()
+        if isinstance(ak_form_or_data, awkward.Array):
+            ntuple = self.mkrntuple(name, ak_form_or_data.layout.form, description)
             ntuple.extend(ak_form_or_data)
             return ntuple
+        elif isinstance(ak_form_or_data, dict):
+            ak_data = awkward.Array(ak_form_or_data)
+            ntuple = self.mkrntuple(name, ak_data.layout.form, description)
+            ntuple.extend(ak_data)
+            return ntuple
+        elif not isinstance(ak_form_or_data, awkward.forms.Form):
+            raise TypeError(
+                "Input must be an Awkward Form, an Awkward Array, or a dictionary"
+            )
 
         # The rest assumes that ak_form_or_data is a RecordForm
+
+        if description == "" and "__doc__" in ak_form_or_data.parameters:
+            description = ak_form_or_data.parameters["__doc__"]
 
         try:
             at = name.rindex("/")
@@ -1389,7 +1402,7 @@ in file {self.file_path} in directory {self.path}"""
             directory._cascading.add_rntuple(
                 directory._file.sink,
                 treename,
-                title,
+                description,
                 ak_form_or_data,
             ),
         )
