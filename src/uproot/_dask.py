@@ -10,7 +10,7 @@ from concurrent.futures import Executor
 from uproot.source.chunk import SourcePerformanceCounters
 
 try:
-    from typing import TYPE_CHECKING, Final
+    from typing import TYPE_CHECKING, Final, NamedTuple
 
     from typing_extensions import Any, Protocol, TypeVar
 except ImportError:
@@ -19,7 +19,7 @@ except ImportError:
 import numpy
 
 import uproot
-from uproot._util import no_filter, unset
+from uproot._util import get_ttree_form, no_filter, unset
 from uproot.behaviors.RNTuple import HasFields
 from uproot.behaviors.RNTuple import (
     _regularize_step_size as _RNTuple_regularize_step_size,
@@ -972,11 +972,89 @@ class TrivialFormMappingInfo(ImplementsFormMappingInfo):
         return container
 
 
+class FormMappingInfoWithVirtualArrays(TrivialFormMappingInfo):
+    def buffer_replacements(
+        self,
+        tree: HasBranches,
+        keys: frozenset[str],
+        start: int,
+        stop: int,
+        decompression_executor,
+        interpretation_executor,
+        options: Any,
+    ) -> Mapping[str, AwkArray]:
+        awkward = uproot.extras.awkward()
+
+        def generator(tree, buffer_key):
+            form_key, attribute = self.parse_buffer_key(buffer_key)
+            key = self._form_key_to_key[form_key]
+            branch = tree[key]
+
+            def _generator():
+                array = branch.array(
+                    entry_start=start,
+                    entry_stop=stop,
+                    interpretation_executor=interpretation_executor,
+                    decompression_executor=decompression_executor,
+                    library="ak",
+                    ak_add_doc=options.get("ak_add_doc"),
+                )
+
+                # add to access_log
+                access_log = options.get("access_log")
+                if access_log is not None:
+                    if not hasattr(access_log, "__iadd__"):
+                        raise ValueError(
+                            f"{access_log=} needs to implement '__iadd__'."
+                        )
+                    else:
+                        access_log += [Accessed(branch=key, buffer_key=buffer_key)]
+
+                # Convert the sub-array into buffers
+                ttree_subform, _, ttree_container = awkward.to_buffers(array)
+
+                # Load the associated projection subform
+                projection_subform = self._form.content(key)
+
+                # Correlate each TTree form key with the projection form key
+                for (src, src_dtype), (dst, dst_dtype) in zip(
+                    ttree_subform.expected_from_buffers().items(),
+                    projection_subform.expected_from_buffers(self.buffer_key).items(),
+                ):
+                    # Return the corresponding array from the TTree if buffer key matches
+                    if buffer_key == dst:
+                        if src_dtype != dst_dtype:
+                            raise TypeError(
+                                f"Data type mismatch: {src_dtype} != {dst_dtype}"
+                            )
+                        return ttree_container[src]
+
+                # Raise an error if the buffer key is not found
+                raise ValueError(
+                    f"Buffer key {buffer_key} not found in form {self._form}"
+                )
+
+            return _generator
+
+        container = {}
+        for buffer_key, _ in self._form.expected_from_buffers().items():
+            container[buffer_key] = generator(tree, buffer_key)
+
+        return container
+
+
 class TrivialFormMapping(ImplementsFormMapping):
     def __call__(self, form: Form) -> tuple[Form, TrivialFormMappingInfo]:
-        dask_awkward = uproot.extras.dask_awkward()
-        new_form = dask_awkward.lib.utils.form_with_unique_keys(form, "<root>")
+        awkward = uproot.extras.awkward()
+        new_form = awkward.forms.form_with_unique_keys(form, ("<root>",))
         return new_form, TrivialFormMappingInfo(new_form)
+
+
+class FormMappingWithVirtualArrays(ImplementsFormMapping):
+    def __call__(self, form: Form) -> tuple[Form, FormMappingInfoWithVirtualArrays]:
+        awkward = uproot.extras.awkward()
+        new_form = awkward.forms.form_with_unique_keys(form, ("<root>",))
+        return new_form, FormMappingInfoWithVirtualArrays(new_form)
 
 
 T = TypeVar("T")
@@ -1039,7 +1117,18 @@ class UprootReadMixin:
             # but not two of the keys required for buffer B
             if all(k in self.common_keys for k in keys_for_buffer):
                 container[buffer_key] = mapping[buffer_key]
-            # Otherwise, introduce a placeholder
+            # if the form mapping info provides a replacements, use it
+            elif hasattr(self.form_mapping_info, "buffer_replacements"):
+                container[buffer_key] = self.form_mapping_info.buffer_replacements(
+                    tree,
+                    keys_for_buffer,
+                    start,
+                    stop,
+                    self.decompression_executor,
+                    self.interpretation_executor,
+                    self.interp_options,
+                )[buffer_key]
+            # Otherwise, introduce a placeholder (default replacement)
             else:
                 container[buffer_key] = awkward.typetracer.PlaceholderArray(
                     nplike=nplike,
@@ -1397,43 +1486,6 @@ which has {num_entries} entries"""
         )
 
 
-def _get_ttree_form(
-    awkward,
-    ttree,
-    common_keys,
-    ak_add_doc,
-):
-    contents = []
-    for key in common_keys:
-        branch = ttree[key]
-        content_form = branch.interpretation.awkward_form(ttree.file)
-        content_parameters = {}
-        if isinstance(ak_add_doc, bool):
-            if ak_add_doc:
-                content_parameters["__doc__"] = branch.title
-        elif isinstance(ak_add_doc, dict):
-            content_parameters.update(
-                {
-                    key: branch.__getattribute__(value)
-                    for key, value in ak_add_doc.items()
-                }
-            )
-        if len(content_parameters.keys()) != 0:
-            content_form = content_form.copy(parameters=content_parameters)
-        contents.append(content_form)
-
-    if isinstance(ak_add_doc, bool):
-        parameters = {"__doc__": ttree.title} if ak_add_doc else None
-    elif isinstance(ak_add_doc, dict):
-        parameters = (
-            {"__doc__": ttree.title} if "__doc__" in ak_add_doc.keys() else None
-        )
-    else:
-        parameters = None
-
-    return awkward.forms.RecordForm(contents, common_keys, parameters=parameters)
-
-
 def _get_dak_array(
     files,
     filter_name,
@@ -1595,8 +1647,8 @@ which has {entry_stop} entries"""
     if isinstance(ttrees[0], HasFields):
         base_form, _ = ttrees[0].to_akform(filter_name=common_keys)
     else:
-        base_form = _get_ttree_form(
-            awkward, ttrees[0], common_keys, interp_options.get("ak_add_doc")
+        base_form = get_ttree_form(
+            ttrees[0], common_keys, interp_options.get("ak_add_doc")
         )
 
     if len(partition_args) == 0:
@@ -1604,9 +1656,7 @@ which has {entry_stop} entries"""
         partition_args.append((0, 0, 0))
 
     if form_mapping is None:
-        expected_form = dask_awkward.lib.utils.form_with_unique_keys(
-            base_form, "<root>"
-        )
+        expected_form = awkward.forms.form_with_unique_keys(base_form, ("<root>",))
         form_mapping_info = TrivialFormMappingInfo(expected_form)
     else:
         expected_form, form_mapping_info = form_mapping(base_form)
@@ -1673,9 +1723,7 @@ def _get_dak_array_delay_open(
             full_paths=full_paths,
             ignore_duplicates=True,
         )
-        base_form = _get_ttree_form(
-            awkward, obj, common_keys, interp_options.get("ak_add_doc")
-        )
+        base_form = get_ttree_form(obj, common_keys, interp_options.get("ak_add_doc"))
 
     divisions = [0]
     partition_args = []
@@ -1711,9 +1759,7 @@ def _get_dak_array_delay_open(
                 )
 
     if form_mapping is None:
-        expected_form = dask_awkward.lib.utils.form_with_unique_keys(
-            base_form, "<root>"
-        )
+        expected_form = awkward.forms.form_with_unique_keys(base_form, ("<root>",))
         form_mapping_info = TrivialFormMappingInfo(expected_form)
     else:
         expected_form, form_mapping_info = form_mapping(base_form)
@@ -1738,3 +1784,8 @@ def _get_dak_array_delay_open(
         divisions=None if divisions is None else tuple(divisions),
         label="from-uproot",
     )
+
+
+class Accessed(NamedTuple):
+    branch: str
+    buffer_key: str
