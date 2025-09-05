@@ -155,6 +155,15 @@ def test_writing_then_reading_with_ROOT(tmp_path, capfd):
         in out
     )
     assert "* Field 17           : list_array (std::vector<std::int64_t>)" in out
+    assert (
+        "* Field 18           : indexed_option_array (std::optional<std::int64_t>)"
+        in out
+    )
+    assert (
+        "* Field 19           : indexed_option_array32 (std::optional<std::int64_t>)"
+        in out
+    )
+    assert "* Field 20           : indexed_array (std::int64_t)" in out
 
 
 def test_field_descriptions(tmp_path):
