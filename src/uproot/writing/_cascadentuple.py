@@ -971,7 +971,7 @@ class NTuple(CascadeNode):
                 content = data_buffers[f"{next_barekey}-data"]
                 content = content[index[index >= 0]]  # Rearrange data
                 deltas = numpy.array(index >= 0, dtype=index.dtype)
-                data_buffers[key] = numpy.cumsum(deltas)
+                data_buffers[key] = numpy.cumsum(deltas, dtype=deltas.dtype)
                 data_buffers[f"{next_barekey}-data"] = content
 
         for idx, key in enumerate(self._header._column_keys):

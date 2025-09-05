@@ -544,8 +544,11 @@ in file {self.file.file_path}"""
             if this_id in self._related_ids:
                 child_id = self._related_ids[this_id][0]
             inner = self.field_form(child_id, keys, ak_add_doc=ak_add_doc)
+            idx_type = (
+                "i32" if self._column_records_dict[cfid][0].nbits == 32 else "i64"
+            )
             return ak.forms.ListOffsetForm(
-                "i64", inner, form_key=keyname, parameters=parameters
+                idx_type, inner, form_key=keyname, parameters=parameters
             )
         elif structural_role == uproot.const.RNTupleFieldRole.RECORD:
             newids = []
