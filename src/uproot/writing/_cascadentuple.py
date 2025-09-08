@@ -931,6 +931,24 @@ class NTuple(CascadeNode):
         # 1. Write pages
         # We write a single page for each column for now
 
+        # We need to take special care of indexed arrays since they need to be put into a simpler
+        # layout before they can be written.
+
+        has_indexed = False
+        to_check = [data.layout]
+        while to_check:
+            content = to_check.pop()
+            if content.is_indexed:
+                has_indexed = True
+                break
+            if hasattr(content, "contents"):
+                to_check.extend(content.contents)
+            elif hasattr(content, "content"):
+                to_check.append(content.content)
+
+        if has_indexed:
+            data = awkward.Array(_simplify_indexed_layout(data.layout))
+
         cluster_page_data = []  # list of list of (locator, len, offset)
         data_buffers = awkward.to_buffers(data)[2]
 
@@ -965,14 +983,11 @@ class NTuple(CascadeNode):
                 data_buffers[f"{barekey}-startstop"] = tmp_buffers["node0-offsets"][1:]
                 data_buffers[f"{next_barekey}-data"] = tmp_buffers["node1-data"]
             elif "index" in key:
-                # We need to rearrange the data
-                next_barekey = f"node{int(barekey[4:])+1}"
+                # At this point, non-negative indices are guaranteed to be sorted
+                # so we can easily convert to a ListOffsetArray
                 index = data_buffers[key]
-                content = data_buffers[f"{next_barekey}-data"]
-                content = content[index[index >= 0]]  # Rearrange data
                 deltas = numpy.array(index >= 0, dtype=index.dtype)
                 data_buffers[key] = numpy.cumsum(deltas, dtype=deltas.dtype)
-                data_buffers[f"{next_barekey}-data"] = content
 
         for idx, key in enumerate(self._header._column_keys):
             col_data = data_buffers[key]
@@ -1123,3 +1138,31 @@ class NTuple(CascadeNode):
 
     def write_updates(self, sink):
         sink.flush()
+
+
+def _simplify_indexed_layout(layout):
+    """
+    This changes indexed layouts to something easily translatable to ListOffsetArrays, which can be written to RNTuples.
+    """
+    # TODO: Switch to pattern matching when 3.9 is dropped
+    if isinstance(layout, (awkward.contents.NumpyArray, awkward.contents.EmptyArray)):
+        return layout.copy()
+    if isinstance(layout, (awkward.contents.RecordArray, awkward.contents.UnionArray)):
+        return layout.copy(
+            contents=[_simplify_indexed_layout(x) for x in layout.contents]
+        )
+    if isinstance(layout, awkward.contents.IndexedArray):
+        index = awkward.index.Index(
+            numpy.arange(len(layout.index), dtype=layout.index.dtype)
+        )
+        content = layout.content._carry(layout.index, False)
+        return layout.copy(index=index, content=content)
+    if isinstance(layout, awkward.contents.IndexedOptionArray):
+        nonneg_ind = layout.index.data[layout.index.data >= 0]
+        index_buf = numpy.arange(len(nonneg_ind), dtype=layout.index.dtype)
+        missing_pos = numpy.flatnonzero(layout.index.data < 0)
+        index_buf = numpy.insert(index_buf, missing_pos, -1)
+        index = awkward.index.Index(index_buf)
+        content = layout.content._carry(awkward.index.Index(nonneg_ind), False)
+        return layout.copy(index=index, content=content)
+    return layout.copy(content=_simplify_indexed_layout(layout.content))
