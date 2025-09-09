@@ -389,8 +389,8 @@ class NTuple_Header(CascadeLeaf):
                 field_description=description,
             )
             self._field_records.append(field)
-            # They are always converted to ListOffsetArrays with Int64 offsets
-            type_num = _ak_primitive_to_num_dict["i64"]
+            ak_offset = akform.starts
+            type_num = _ak_primitive_to_num_dict[ak_offset]
             type_size = uproot.const.rntuple_col_num_to_size_dict[type_num]
             col = NTuple_Column_Description(type_num, type_size, field_id, 0, 0)
             self._column_records.append(col)
