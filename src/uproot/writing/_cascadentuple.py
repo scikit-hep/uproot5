@@ -931,8 +931,8 @@ class NTuple(CascadeNode):
         # 1. Write pages
         # We write a single page for each column for now
 
-        # We need to take special care of indexed arrays since they need to be put into a simpler
-        # layout before they can be written.
+        # We need to take special care of IndexOptionArrays and ListArrays since there are no direct equivalents in RNTuple.
+        # To solve this, we modify the layout a bit to resemble a ListOffsetArray, which can be written directly.
 
         needs_simplification = False
         to_check = [data.layout]
@@ -1133,8 +1133,8 @@ class NTuple(CascadeNode):
 
 def _simplify_layout(layout):
     """
-    This changes Indexed(Option)Arrays and ListArrays layouts to something easily translatable to ListOffsetArrays,
-    which can be written to RNTuples.
+    This function simplifies Indexed(Option)Arrays and ListArrays layouts to something resembling a ListOffsetArray,
+    which can be written to RNTuple.
     """
     # TODO: Switch to pattern matching when 3.9 is dropped
     if isinstance(layout, (awkward.contents.NumpyArray, awkward.contents.EmptyArray)):
