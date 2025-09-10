@@ -1277,4 +1277,18 @@ def _simplify_layout(layout):
         starts = awkward.index.Index(offsets[:-1])
         stops = awkward.index.Index(offsets[1:])
         return layout.copy(starts=starts, stops=stops, content=content)
+    if isinstance(layout, awkward.contents.ListOffsetArray):
+        # Need to trim elements at the start and end of the list
+        lens = numpy.diff(layout.offsets.data)
+        lens = numpy.insert(lens, 0, 0)
+        expanded_indices = awkward.index.Index(
+            numpy.arange(
+                layout.offsets.data[0],
+                layout.offsets.data[-1],
+                dtype=layout.offsets.dtype,
+            )
+        )
+        content = _carry(_simplify_layout(layout.content), expanded_indices)
+        offsets = awkward.index.Index(numpy.cumsum(lens, dtype=layout.starts.dtype))
+        return layout.copy(offsets=offsets, content=content)
     return layout.copy(content=_simplify_layout(layout.content))
