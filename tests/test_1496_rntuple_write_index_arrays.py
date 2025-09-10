@@ -11,6 +11,14 @@ ak = pytest.importorskip("awkward")
 record_array = ak.Array(
     [{"x": 1, "y": 2}, {"x": 3, "y": 4}, {"x": 5, "y": 6}, {"x": 7, "y": 8}]
 ).layout
+listoffset_array = ak.contents.ListOffsetArray(
+    ak.index.Index64([0, 0, 1, 2]),
+    record_array,
+)
+index_listoffset_array = ak.contents.IndexedArray(
+    ak.index.Index64([1, 0, 2, 2]),
+    listoffset_array,
+)
 record_index64_array = ak.contents.IndexedArray(
     ak.index.Index64([1, 0, 2, 2]),
     record_array,
@@ -46,6 +54,7 @@ data = ak.Array(
         "record_index32_option_array": record_index32_option_array,
         "record_list64_array": record_list64_array,
         "record_list32_array": record_list32_array,
+        "index_listoffset_array": index_listoffset_array,
     }
 )
 
