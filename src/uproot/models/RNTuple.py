@@ -441,8 +441,9 @@ in file {self.file.file_path}"""
             parameters = {"__array__": "string"}
             if extra_parameters is not None:
                 parameters.update(extra_parameters)
+            idx_type = "i32" if rel_crs[0].nbits == 32 else "i64"
             return ak.forms.ListOffsetForm(
-                "i64", inner, form_key=form_key, parameters=parameters
+                idx_type, inner, form_key=form_key, parameters=parameters
             )
         else:
             raise (RuntimeError(f"Missing special case: {field_id}"))
