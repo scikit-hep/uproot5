@@ -268,7 +268,7 @@ class NTuple_Header(CascadeLeaf):
     def __init__(self, location, name, ntuple_description, akform):
         self._name = name
         self._ntuple_description = ntuple_description
-        self._akform = akform
+        self._akform = _to_packed_form(akform)
 
         self._serialize = None
         self._checksum = None
@@ -925,33 +925,14 @@ class NTuple(CascadeNode):
         elif not isinstance(data, awkward.Array):
             raise TypeError("data must be an awkward.Array or a dict")
 
-        if data.layout.form != self._header._akform:
-            raise ValueError("data is not compatible with this RNTuple")
+        data = _to_packed(data.layout)
+
+        if data.form != self._header._akform:
+            msg = f"Data is not compatible with this RNTuple. Expected {self._header._akform}, got {data.form}"
+            raise ValueError(msg)
 
         # 1. Write pages
         # We write a single page for each column for now
-
-        # We need to take special care of IndexOptionArrays and ListArrays since there are no direct equivalents in RNTuple.
-        # To solve this, we modify the layout a bit to resemble a ListOffsetArray, which can be written directly.
-
-        needs_simplification = False
-        to_check = [data.layout]
-        while to_check:
-            content = to_check.pop()
-            if content.is_indexed or isinstance(content, awkward.contents.ListArray):
-                needs_simplification = True
-                break
-            if hasattr(content, "contents"):
-                to_check.extend(content.contents)
-            elif hasattr(content, "content"):
-                to_check.append(content.content)
-
-        if needs_simplification:
-            old_form = data.layout.form
-            data = awkward.Array(_simplify_layout(data.layout))
-            assert (
-                data.layout.form == old_form
-            ), f"The form {old_form} was modified to {data.layout.form}. This should not have happened. Please report this issue to the Uproot developers."
 
         cluster_page_data = []  # list of list of (locator, len, offset)
         data_buffers = awkward.to_buffers(data)[2]
@@ -1135,160 +1116,160 @@ class NTuple(CascadeNode):
         sink.flush()
 
 
-def _carry(content, index):
-    if isinstance(content, awkward.contents.BitMaskedArray):
-        return _carry(content.to_ByteMaskedArray(), index).to_BitMaskedArray()
-    if isinstance(content, awkward.contents.ByteMaskedArray):
-        nextmask = content._mask[index.data]
-        nextcontent = _carry(content._content, index)
-        return content.copy(mask=nextmask, content=nextcontent)
-    if isinstance(content, awkward.contents.EmptyArray):
-        return content.copy()
-    if isinstance(content, awkward.contents.IndexedArray):
-        nextindex = content._index[index.data]
-        nextcontent = _carry(content._content, index)
-        return content.copy(index=nextindex, content=nextcontent)
-    if isinstance(content, awkward.contents.IndexedOptionArray):
-        nextindex = content._index[index.data]
-        nextcontent = _carry(content._content, index)
-        return content.copy(index=nextindex, content=nextcontent)
-    if isinstance(content, awkward.contents.ListArray):
-        nextstarts = content._starts[index.data]
-        nextstops = content._stops[: content._starts.length][index.data]
-        lens = nextstops.data - nextstarts.data
-        lens = numpy.insert(lens, 0, 0)
-        expanded_indices = awkward.index.Index(
-            numpy.concatenate(
-                [
-                    numpy.arange(i, j, dtype=content.starts.dtype)
-                    for i, j in zip(nextstarts.data, nextstops.data)
-                ]
-            )
+def _to_packed_form(form):
+    # TODO: Switch to pattern matching when 3.9 is dropped
+    if isinstance(form, (awkward.forms.BitMaskedForm, awkward.forms.ByteMaskedForm)):
+        return awkward.forms.IndexedOptionForm(
+            "i64", _to_packed_form(form.content), parameters=form.parameters
         )
-        nextcontent = _carry(content._content, expanded_indices)
-        return content.copy(starts=nextstarts, stops=nextstops, content=nextcontent)
-    if isinstance(content, awkward.contents.ListOffsetArray):
-        nextstarts = content.starts[index.data]
-        nextstops = content.stops[index.data]
-        lens = nextstops.data - nextstarts.data
-        lens = numpy.insert(lens, 0, 0)
-        expanded_indices = awkward.index.Index(
-            numpy.concatenate(
-                [
-                    numpy.arange(i, j, dtype=content.starts.dtype)
-                    for i, j in zip(nextstarts.data, nextstops.data)
-                ]
-            )
+    if isinstance(form, awkward.forms.EmptyForm):
+        return form
+    if isinstance(form, awkward.forms.IndexedForm):
+        return _to_packed_form(form.content)
+    if isinstance(form, awkward.forms.IndexedOptionForm):
+        return awkward.forms.IndexedOptionForm(
+            form.index, _to_packed_form(form.content), parameters=form.parameters
         )
-        nextcontent = _carry(content._content, expanded_indices)
-        nextoffsets = awkward.index.Index(
-            numpy.cumsum(lens, dtype=content.starts.dtype)
+    if isinstance(form, (awkward.forms.ListForm, awkward.forms.ListOffsetForm)):
+        return awkward.forms.ListOffsetForm(
+            "i64", _to_packed_form(form.content), parameters=form.parameters
         )
-        return content.copy(offsets=nextoffsets, content=nextcontent)
-    if isinstance(content, awkward.contents.NumpyArray):
-        nextdata = content._data[index.data]
-        return content.copy(data=nextdata)
-    if isinstance(content, awkward.contents.RecordArray):
-        nextcontents = [_carry(c, index) for c in content.contents]
-        nextlength = index.length
-        return content.copy(contents=nextcontents, length=nextlength)
-    if isinstance(content, awkward.contents.RegularArray):
-        where = index.data
-        negative = where < 0
-        if numpy.any(negative):
-            where[negative] += content.length
-        if (
-            where.shape[0] is awkward._nplikes.shape.unknown_length
-            or content._size is awkward._nplikes.shape.unknown_length
-        ):
-            nextcarry = awkward.index.Index64.empty(
-                awkward._nplikes.shape.unknown_length, content._backend.nplike
-            )
-        else:
-            nextcarry = awkward.index.Index64.empty(
-                where.shape[0] * content._size, content._backend.nplike
-            )
-        content._maybe_index_error(
-            content._backend[
-                "awkward_RegularArray_getitem_carry",
-                nextcarry.dtype.type,
-                where.dtype.type,
-            ](
-                nextcarry.data,
-                where,
-                where.shape[0],
-                content._size,
-            ),
-            slicer=index,
+    if isinstance(form, awkward.forms.NumpyForm):
+        shape = form.inner_shape
+        out = awkward.forms.NumpyForm(form.primitive, parameters=form.parameters)
+        for i in range(len(shape) - 1, -1, -1):
+            out = awkward.forms.RegularForm(out, shape[i])
+        return out
+    if isinstance(form, awkward.forms.RecordForm):
+        return awkward.forms.RecordForm(
+            [_to_packed_form(x) for x in form.contents],
+            form._fields,
+            parameters=form.parameters,
         )
-        nextcontent = _carry(content._content, nextcarry)
-        return content.copy(content=nextcontent, zeros_length=where.shape[0])
-    if isinstance(content, awkward.contents.UnionArray):
-        nexttags = content._tags[index.data]
-        nextindex = content._index[: content._tags.length][index.data]
-        nextcontent = _carry(content._content, index)
-        return content.copy(tags=nexttags, index=nextindex, content=nextcontent)
-    if isinstance(content, awkward.contents.UnmaskedArray):
-        nextcontent = _carry(content._content, index)
-        return content.copy(content=nextcontent)
-    msg = f"Unexpected content type: {type(content)}"
-    raise AssertionError(msg)
+    if isinstance(form, awkward.forms.RegularForm):
+        return awkward.forms.RegularForm(
+            _to_packed_form(form.content), form._size, parameters=form.parameters
+        )
+    if isinstance(form, awkward.forms.UnionForm):
+        return awkward.forms.UnionForm(
+            "i8",
+            form.index,
+            [_to_packed_form(x) for x in form.contents],
+            parameters=form.parameters,
+        )
+    if isinstance(form, awkward.forms.UnmaskedForm):
+        return awkward.forms.UnmaskedForm(
+            _to_packed_form(form._content), parameters=form.parameters
+        )
 
 
-def _simplify_layout(layout):
+def _to_packed(layout):
     """
-    This function simplifies Indexed(Option)Arrays and ListArrays layouts to something resembling a ListOffsetArray,
-    which can be written to RNTuple.
+    This is similar to `to_packed` in Awkward, but a bit more consistent.
     """
     # TODO: Switch to pattern matching when 3.9 is dropped
-    if isinstance(layout, (awkward.contents.NumpyArray, awkward.contents.EmptyArray)):
-        return layout.copy()
-    if isinstance(layout, (awkward.contents.RecordArray, awkward.contents.UnionArray)):
-        return layout.copy(contents=[_simplify_layout(x) for x in layout.contents])
+    if isinstance(layout, awkward.contents.BitMaskedArray):
+        next = layout.to_IndexedOptionArray64()
+        content = _to_packed(next._content[: layout.length])
+        return awkward.contents.IndexedOptionArray(
+            next._index, content, parameters=next.parameters
+        )
+    if isinstance(layout, awkward.contents.BitMaskedArray):
+        next = layout.to_IndexedOptionArray64()
+        content = _to_packed(next._content[: layout._mask.length])
+        return awkward.contents.IndexedOptionArray(
+            next._index, content, parameters=next.parameters
+        )
+    if isinstance(layout, awkward.contents.EmptyArray):
+        return layout
     if isinstance(layout, awkward.contents.IndexedArray):
-        index = awkward.index.Index(
-            numpy.arange(len(layout.index), dtype=layout.index.dtype)
-        )
-        content = _carry(_simplify_layout(layout.content), layout.index)
-        return layout.copy(index=index, content=content)
+        projected = layout.project()
+        return _to_packed(projected)
     if isinstance(layout, awkward.contents.IndexedOptionArray):
-        nonneg_ind = layout.index.data[layout.index.data >= 0]
-        index_buf = numpy.arange(len(nonneg_ind), dtype=layout.index.dtype)
-        missing_pos = numpy.flatnonzero(layout.index.data < 0)
-        index_buf = numpy.insert(index_buf, missing_pos, -1)
-        index = awkward.index.Index(index_buf)
-        content = _carry(
-            _simplify_layout(layout.content), awkward.index.Index(nonneg_ind)
+        nplike = layout._backend.nplike
+        original_index = layout._index.data
+        is_none = original_index < 0
+        num_none = nplike.index_as_shape_item(nplike.count_nonzero(is_none))
+        new_index = nplike.empty(layout._index.length, dtype=layout._index.dtype)
+        new_index[is_none] = -1
+        new_index[~is_none] = nplike.arange(
+            nplike.shape_item_as_index(new_index.size - num_none),
+            dtype=layout._index.dtype,
         )
-        return layout.copy(index=index, content=content)
+        projected = layout.project()
+        return awkward.contents.IndexedOptionArray(
+            awkward.index.Index(new_index, nplike=layout._backend.nplike),
+            _to_packed(projected),
+            parameters=layout._parameters,
+        )
     if isinstance(layout, awkward.contents.ListArray):
-        lens = layout.stops.data - layout.starts.data
-        lens = numpy.insert(lens, 0, 0)
-        expanded_indices = awkward.index.Index(
-            numpy.concatenate(
-                [
-                    numpy.arange(i, j, dtype=layout.starts.dtype)
-                    for i, j in zip(layout.starts.data, layout.stops.data)
-                ]
-            )
-        )
-        content = _carry(_simplify_layout(layout.content), expanded_indices)
-        offsets = numpy.cumsum(lens, dtype=layout.starts.dtype)
-        starts = awkward.index.Index(offsets[:-1])
-        stops = awkward.index.Index(offsets[1:])
-        return layout.copy(starts=starts, stops=stops, content=content)
+        next = layout.to_ListOffsetArray64(True)
+        return _to_packed(next)
     if isinstance(layout, awkward.contents.ListOffsetArray):
-        # Need to trim elements at the start and end of the list
-        lens = numpy.diff(layout.offsets.data)
-        lens = numpy.insert(lens, 0, 0)
-        expanded_indices = awkward.index.Index(
-            numpy.arange(
-                layout.offsets.data[0],
-                layout.offsets.data[-1],
-                dtype=layout.offsets.dtype,
-            )
+        next = layout.to_ListOffsetArray64(True)
+        next_content = next._content[: next._offsets[-1]]
+        return awkward.contents.ListOffsetArray(
+            next._offsets,
+            _to_packed(next_content),
+            parameters=next._parameters,
         )
-        content = _carry(_simplify_layout(layout.content), expanded_indices)
-        offsets = awkward.index.Index(numpy.cumsum(lens, dtype=layout.starts.dtype))
-        return layout.copy(offsets=offsets, content=content)
-    return layout.copy(content=_simplify_layout(layout.content))
+    if isinstance(layout, awkward.contents.NumpyArray):
+        return layout.to_contiguous().to_RegularArray()
+    if isinstance(layout, awkward.contents.RecordArray):
+        return awkward.contents.RecordArray(
+            [_to_packed(x[: layout.length]) for x in layout._contents],
+            layout._fields,
+            layout.length,
+            parameters=layout._parameters,
+            backend=layout._backend,
+        )
+    if isinstance(layout, awkward.contents.RegularArray):
+        nplike = layout._backend.nplike
+        length = layout.length * layout._size
+        content = layout._content[: nplike.shape_item_as_index(length)]
+
+        return awkward.contents.RegularArray(
+            _to_packed(content),
+            layout._size,
+            layout.length,
+            parameters=layout._parameters,
+        )
+    if isinstance(layout, awkward.contents.UnionArray):
+        nplike = layout._backend.nplike
+        tags = layout._tags.data
+        original_index = index = layout._index.data[
+            : nplike.shape_item_as_index(tags.shape[0])
+        ]
+
+        contents = list(layout._contents)
+
+        for tag in range(len(layout._contents)):
+            is_tag = tags == tag
+            num_tag = nplike.index_as_shape_item(nplike.count_nonzero(is_tag))
+
+            if (
+                contents[tag].length is not awkward._nplikes.shape.unknown_length
+                and num_tag is not awkward._nplikes.shape.unknown_length
+                and contents[tag].length > num_tag
+            ):
+                if original_index is index:
+                    index = index.copy()
+                new_index_values = layout._backend.nplike.arange(
+                    num_tag, dtype=index.dtype
+                )
+                index[is_tag] = new_index_values
+                contents[tag] = layout.project(tag)
+
+            contents[tag] = _to_packed(contents[tag])
+
+        return awkward.contents.UnionArray(
+            awkward.index.Index8(tags, nplike=layout._backend.nplike),
+            awkward.index.Index(index, nplike=layout._backend.nplike),
+            contents,
+            parameters=layout._parameters,
+        )
+    if isinstance(layout, awkward.contents.UnmaskedArray):
+        return awkward.contents.UnmaskedArray(
+            _to_packed(layout._content),
+            parameters=layout._parameters,
+        )

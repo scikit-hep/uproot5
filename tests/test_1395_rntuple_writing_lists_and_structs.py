@@ -56,6 +56,9 @@ data = ak.Array(
             ak.index.Index([3, 0, 1]),
             ak.contents.NumpyArray([0, 1, 2, 3, 4, 5]),
         ),
+        "numpy_regular3d": numpy.array(
+            [[[1], [2], [3]], [[4], [5], [6]], [[7], [8], [9]]]
+        ),
     }
 )
 
