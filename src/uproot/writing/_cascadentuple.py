@@ -81,16 +81,11 @@ _ak_primitive_to_num_dict = {
 
 
 def _cpp_typename(akform, subcall=False):
+    # All numpy arrays are flattened beforehand
     if isinstance(akform, awkward.forms.NumpyForm) and akform.inner_shape == ():
         ak_primitive = akform.primitive
         typename = _ak_primitive_to_typename_dict[ak_primitive]
-    elif isinstance(akform, awkward.forms.NumpyForm):
-        ak_primitive = akform.primitive
-        inner_shape = akform.inner_shape
-        typename = _ak_primitive_to_typename_dict[ak_primitive]
-        for arr_size in inner_shape[::-1]:
-            typename = f"std::array<{typename},{arr_size}>"
-    elif isinstance(akform, (awkward.forms.ListOffsetForm, awkward.forms.ListForm)):
+    elif isinstance(akform, awkward.forms.ListOffsetForm):
         content_typename = _cpp_typename(akform.content, subcall=True)
         typename = f"std::vector<{content_typename}>"
         # Check if it contains strings and fix the type
@@ -111,10 +106,11 @@ def _cpp_typename(akform, subcall=False):
     elif isinstance(akform, awkward.forms.UnionForm):
         field_typenames = [_cpp_typename(t, subcall=True) for t in akform.contents]
         typename = f"std::variant<{','.join(field_typenames)}>"
-    elif isinstance(akform, (awkward.forms.UnmaskedForm, awkward.forms.IndexedForm)):
+    elif isinstance(akform, awkward.forms.UnmaskedForm):
         return _cpp_typename(akform.content, subcall=True)
     else:
-        raise NotImplementedError(f"Form type {type(akform)} cannot be written yet")
+        msg = "This should not have happened. Please report this issue to the Uproot developers."
+        raise AssertionError(msg)
     if not subcall and "UntypedRecord" in typename:
         typename = ""  # empty types for anything that contains UntypedRecord
     return typename
@@ -297,7 +293,7 @@ class NTuple_Header(CascadeLeaf):
         self._ak_node_count += 1
         if "__doc__" in akform.parameters:
             description = akform.parameters["__doc__"]
-        if isinstance(akform, awkward.forms.NumpyForm) and akform.inner_shape == ():
+        if isinstance(akform, awkward.forms.NumpyForm):
             type_name = _cpp_typename(akform)
             field = NTuple_Field_Description(
                 parent_fid,
@@ -311,37 +307,6 @@ class NTuple_Header(CascadeLeaf):
             else:
                 field_id = parent_fid
             ak_primitive = akform.parameters.get("__array__", akform.primitive)
-            type_num = _ak_primitive_to_num_dict[ak_primitive]
-            type_size = uproot.const.rntuple_col_num_to_size_dict[type_num]
-            col = NTuple_Column_Description(type_num, type_size, field_id, 0, 0)
-            self._column_records.append(col)
-            self._column_keys.append(f"node{self._ak_node_count}-data")
-        elif isinstance(akform, awkward.forms.NumpyForm):
-            reg_akform = akform.to_RegularForm()
-            inner_shape = (*akform.inner_shape, None)
-            for i, arr_size in enumerate(inner_shape):
-                if i > 0:
-                    parent_fid = field_id
-                    field_id = len(self._field_records)
-                    field_name = "_0"
-                    reg_akform = reg_akform.content
-                repetitive_flag = (
-                    uproot.const.RNTupleFieldFlags.NOFLAG
-                    if arr_size is None
-                    else uproot.const.RNTupleFieldFlags.REPETITIVE
-                )
-                type_name = _cpp_typename(reg_akform)
-                field = NTuple_Field_Description(
-                    parent_fid,
-                    uproot.const.RNTupleFieldRole.LEAF,
-                    field_name,
-                    type_name,
-                    flags=repetitive_flag,
-                    repetition=arr_size,
-                    field_description=description,
-                )
-                self._field_records.append(field)
-            ak_primitive = akform.primitive
             type_num = _ak_primitive_to_num_dict[ak_primitive]
             type_size = uproot.const.rntuple_col_num_to_size_dict[type_num]
             col = NTuple_Column_Description(type_num, type_size, field_id, 0, 0)
@@ -367,34 +332,6 @@ class NTuple_Header(CascadeLeaf):
             col = NTuple_Column_Description(type_num, type_size, field_id, 0, 0)
             self._column_records.append(col)
             self._column_keys.append(f"node{self._ak_node_count}-offsets")
-            # content data
-            self._build_field_col_records(
-                akform.content,
-                parent_fid=field_id,
-                add_field=field_role == uproot.const.RNTupleFieldRole.COLLECTION,
-                field_name="_0",
-                description=description,
-            )
-        elif isinstance(akform, awkward.forms.ListForm):
-            type_name = _cpp_typename(akform)
-            field_role = uproot.const.RNTupleFieldRole.COLLECTION
-            if akform.parameters.get("__array__", "") == "string":
-                type_name = "std::string"
-                field_role = uproot.const.RNTupleFieldRole.LEAF
-            field = NTuple_Field_Description(
-                parent_fid,
-                field_role,
-                field_name,
-                type_name,
-                field_description=description,
-            )
-            self._field_records.append(field)
-            ak_offset = akform.starts
-            type_num = _ak_primitive_to_num_dict[ak_offset]
-            type_size = uproot.const.rntuple_col_num_to_size_dict[type_num]
-            col = NTuple_Column_Description(type_num, type_size, field_id, 0, 0)
-            self._column_records.append(col)
-            self._column_keys.append(f"node{self._ak_node_count}-startstop")
             # content data
             self._build_field_col_records(
                 akform.content,
@@ -484,10 +421,7 @@ class NTuple_Header(CascadeLeaf):
                     field_name=subfield_name,
                     parent_fid=field_id,
                 )
-        elif isinstance(
-            akform, (awkward.forms.UnmaskedForm, awkward.forms.IndexedForm)
-        ):
-            # IndexedForms just get rearranged, so they are transparent
+        elif isinstance(akform, awkward.forms.UnmaskedForm):
             # Do nothing
             self._build_field_col_records(
                 akform.content,
@@ -496,7 +430,8 @@ class NTuple_Header(CascadeLeaf):
                 description=description,
             )
         else:
-            raise NotImplementedError(f"Form type {type(akform)} cannot be written yet")
+            msg = "This should not have happened. Please report this issue to the Uproot developers."
+            raise AssertionError(msg)
 
     def generate_field_col_records(self):
         akform = self._akform
@@ -952,12 +887,6 @@ class NTuple(CascadeNode):
                 switches["index"] = indices
                 switches["tag"] = tags + 1
                 data_buffers[barekey + "-switch"] = switches
-            elif "start" in key:
-                # At this point, the data is already set up as a ListOffsetArray
-                data_buffers[f"{barekey}-startstop"] = numpy.append(
-                    data_buffers[f"{barekey}-starts"][1:],
-                    data_buffers[f"{barekey}-stops"][-1],
-                )
             elif "index" in key:
                 # At this point, non-negative indices are guaranteed to be sorted
                 # so we can easily convert to a ListOffsetArray
@@ -1161,6 +1090,8 @@ def _to_packed_form(form):
         return awkward.forms.UnmaskedForm(
             _to_packed_form(form._content), parameters=form.parameters
         )
+    msg = f"Form type {type(form)} cannot be written. If you believe this should be supported, please let the Uproot developers know."
+    raise NotImplementedError(msg)
 
 
 def _to_packed(layout):
@@ -1273,3 +1204,5 @@ def _to_packed(layout):
             _to_packed(layout._content),
             parameters=layout._parameters,
         )
+    msg = f"Array type {type(layout)} cannot be written. If you believe this should be supported, please let the Uproot developers know."
+    raise NotImplementedError(msg)
