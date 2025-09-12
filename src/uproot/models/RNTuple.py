@@ -548,6 +548,11 @@ in file {self.file.file_path}"""
             idx_type = (
                 "i32" if self._column_records_dict[cfid][0].nbits == 32 else "i64"
             )
+            if self._all_fields[cfid].record.type_name.startswith("std::optional"):
+                keyname = keyname + "-optional"
+                return ak.forms.IndexedOptionForm(
+                    idx_type, inner, form_key=keyname, parameters=parameters
+                )
             return ak.forms.ListOffsetForm(
                 idx_type, inner, form_key=keyname, parameters=parameters
             )

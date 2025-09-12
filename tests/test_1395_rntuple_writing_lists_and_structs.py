@@ -86,25 +86,8 @@ def test_writing_and_reading(tmp_path):
     arrays = obj.arrays()
 
     for f in data.fields:
-        if f in ("optional", "indexed_option_array", "indexed_option_array32"):
-            assert [t[0] if len(t) > 0 else None for t in arrays[f][:3]] == data[
-                f
-            ].tolist()
-            assert [t[0] if len(t) > 0 else None for t in arrays[f][3:]] == data[
-                f
-            ].tolist()
-        elif f == "optional_union":
-            assert [
-                t if isinstance(t, str) else t[0] if len(t) > 0 else None
-                for t in arrays[f][:3]
-            ] == data[f].tolist()
-            assert [
-                t if isinstance(t, str) else t[0] if len(t) > 0 else None
-                for t in arrays[f][3:]
-            ] == data[f].tolist()
-        else:
-            assert arrays[f][:3].tolist() == data[f].tolist()
-            assert arrays[f][3:].tolist() == data[f].tolist()
+        assert arrays[f][:3].tolist() == data[f].tolist()
+        assert arrays[f][3:].tolist() == data[f].tolist()
 
 
 def test_writing_then_reading_with_ROOT(tmp_path, capfd):
