@@ -1105,7 +1105,7 @@ def _to_packed(layout):
         return awkward.contents.IndexedOptionArray(
             next._index, content, parameters=next.parameters
         )
-    if isinstance(layout, awkward.contents.BitMaskedArray):
+    if isinstance(layout, awkward.contents.ByteMaskedArray):
         next = layout.to_IndexedOptionArray64()
         content = _to_packed(next._content[: layout._mask.length])
         return awkward.contents.IndexedOptionArray(
