@@ -1750,6 +1750,27 @@ def _recursive_find(form, res):
         _recursive_find(form.content, res)
 
 
+def _cupy_insert(arr, obj, value):
+    # obj is assumed to be sorted
+    # both arr and obj are assumed to be flat arrays
+    cupy = uproot.extras.cupy()
+    out_size = arr.size + obj.size
+    out = cupy.empty(out_size, dtype=arr.dtype)
+    src_i = 0
+    dst_i = 0
+    for idx in obj.get():
+        n = idx - src_i
+        if n > 0:
+            out[dst_i : dst_i + n] = arr[src_i : src_i + n]
+            dst_i += n
+            src_i += n
+        out[dst_i] = value
+        dst_i += 1
+    if src_i < arr.size:
+        out[dst_i:] = arr[src_i:]
+    return out
+
+
 def _fill_container_dict(container_dict, content, key, dtype_byte):
     array_library_string = uproot._util.get_array_library(content)
 
@@ -1758,7 +1779,19 @@ def _fill_container_dict(container_dict, content, key, dtype_byte):
     if "cardinality" in key:
         content = library.diff(content)
 
-    if dtype_byte == uproot.const.rntuple_col_type_to_num_dict["switch"]:
+    if "optional" in key:
+        # We need to convert from a ListOffsetArray to an IndexedOptionArray
+        diff = library.diff(content)
+        missing = library.nonzero(diff == 0)[0]
+        missing -= library.arange(len(missing), dtype=missing.dtype)
+        dtype = "int64" if content.dtype == library.uint64 else "int32"
+        indices = library.arange(len(content) - len(missing), dtype=dtype)
+        if array_library_string == "numpy":
+            indices = numpy.insert(indices, missing, -1)
+        else:
+            indices = _cupy_insert(indices, missing, -1)
+        container_dict[f"{key}-index"] = indices
+    elif dtype_byte == uproot.const.rntuple_col_type_to_num_dict["switch"]:
         kindex, tags = uproot.models.RNTuple._split_switch_bits(content)
         # Find invalid variants and adjust buffers accordingly
         invalid = numpy.flatnonzero(tags == -1)
