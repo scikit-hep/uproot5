@@ -16,7 +16,6 @@ from __future__ import annotations
 import ast
 import numbers
 import re
-import warnings
 
 import numpy
 
