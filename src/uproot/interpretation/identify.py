@@ -16,6 +16,7 @@ from __future__ import annotations
 import ast
 import numbers
 import re
+import warnings
 
 import numpy
 
@@ -312,6 +313,17 @@ def interpretation_of(branch, context, simplify=True):
     If no interpretation can be found, it raises
     :doc:`uproot.interpretation.identify.UnknownInterpretation`.
     """
+
+    if len(branch.member("fLeaves")) == 1:
+        leaf = branch.member("fLeaves")[0]
+        leaf_title = leaf.member("fTitle")
+        if "[" in leaf_title and leaf.member("fLeafCount") is not None:
+            return uproot.interpretation.jagged.AsJagged(
+                uproot.interpretation.numerical.AsDtype(
+                    _leaf_to_dtype(leaf, getdims=False).newbyteorder(">")
+                )
+            )
+
     if len(branch.branches) != 0:
         if branch.top_level and branch.has_member("fClassName"):
             typename = str(branch.member("fClassName"))
