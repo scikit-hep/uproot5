@@ -750,17 +750,20 @@ class HasFields(Mapping):
                 clusters_datas,
                 start_cluster_idx,
                 stop_cluster_idx,
-                pad_missing_element=True,
             )
 
         for key in target_cols:
             if "column" in key:
                 key_nr = int(key.split("-")[1])
+                # Find how many elements should be padded at the beginning
+                n_padding = self.ntuple.column_records[key_nr].first_element_index
+                n_padding -= cluster_starts[start_cluster_idx]
+                n_padding = max(n_padding, 0)
                 if interpreter == "cpu":
                     content = self.ntuple.read_cluster_range(
                         key_nr,
                         range(start_cluster_idx, stop_cluster_idx),
-                        pad_missing_element=True,
+                        missing_element_padding=n_padding,
                         array_cache=array_cache,
                     )
                 elif interpreter == "gpu" and backend == "cuda":

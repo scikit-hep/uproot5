@@ -667,7 +667,7 @@ in file {self.file.file_path}"""
         self,
         col_idx,
         cluster_range,
-        pad_missing_element=False,
+        missing_element_padding=0,
         first_cluster_page_start=None,
         last_cluster_page_stop=None,
         array_cache=None,
@@ -676,7 +676,7 @@ in file {self.file.file_path}"""
         Args:
             ncol (int): The column id.
             cluster_range (range): The range of cluster indices.
-            pad_missing_element (bool): Whether to pad the missing elements.
+            missing_element_padding (int): Number of padding elements to add at the start of the array.
             first_cluster_page_start (None or int): The first page of the first cluster to include. If None, start from the beginning.
                 If negative, count from the end, like a Python slice.
             last_cluster_page_stop (None or int): The first page of the last cluster to exclude (i.e. one greater
@@ -700,7 +700,9 @@ in file {self.file.file_path}"""
             )
             for i, cluster_idx in enumerate(cluster_range)
         ]
-        res = self.combine_cluster_arrays(arrays, field_metadata, pad_missing_element)
+        res = self.combine_cluster_arrays(
+            arrays, field_metadata, missing_element_padding
+        )
 
         return res
 
@@ -722,7 +724,7 @@ in file {self.file.file_path}"""
             page_start (None or int): The first page to include. If None, start from the beginning.
             page_stop (None or int): The first page to exclude (i.e. one greater
                 than the last page to include). If None, stop at the end.
-            array_cache (None, or MutableMapping): Cache of arrays. If None, do not use a cache.
+            array_cache (None or MutableMapping): Cache of arrays. If None, do not use a cache.
 
         Returns a numpy array with the data from the column.
         """
@@ -895,7 +897,6 @@ in file {self.file.file_path}"""
         clusters_datas,
         start_cluster_idx,
         stop_cluster_idx,
-        pad_missing_element=False,
     ):
         """
         Args:
@@ -908,11 +909,17 @@ in file {self.file.file_path}"""
         Returns a dictionary containing contiguous buffers of deserialized data
         across requested clusters organized by column key.
         """
+        clusters = self.ntuple.cluster_summaries
+        cluster_starts = numpy.array([c.num_first_entry for c in clusters])
         cluster_range = range(start_cluster_idx, stop_cluster_idx)
 
         col_arrays = {}  # collect content for each col
         for key_nr in clusters_datas.columns:
             ncol = int(key_nr)
+            # Find how many elements should be padded at the beginning
+            n_padding = self.column_records[key_nr].first_element_index
+            n_padding -= cluster_starts[start_cluster_idx]
+            n_padding = max(n_padding, 0)
             field_metadata = self.get_field_metadata(ncol)
             # Get uncompressed array for key for all clusters
             col_decompressed_buffers = clusters_datas._grab_field_output(ncol)
@@ -923,9 +930,7 @@ in file {self.file.file_path}"""
                     cluster_buffer, ncol, cluster_i, field_metadata
                 )
                 arrays.append(cluster_buffer)
-            res = self.combine_cluster_arrays(
-                arrays, field_metadata, pad_missing_element
-            )
+            res = self.combine_cluster_arrays(arrays, field_metadata, n_padding)
             col_arrays[key_nr] = res
 
         return col_arrays
@@ -1110,15 +1115,15 @@ in file {self.file.file_path}"""
         )
         return field_metadata
 
-    def combine_cluster_arrays(self, arrays, field_metadata, pad_missing_element):
+    def combine_cluster_arrays(self, arrays, field_metadata, missing_element_padding):
         """
         Args:
             arrays (list): A list of arrays to combine.
             field_metadata (:doc:`uproot.models.RNTuple.FieldClusterMetadata`):
                 The metadata needed to combine arrays.
-            pad_missing_element (bool): Whether to pad for missing elements
+            missing_element_padding (int): Number of padding elements to add at the start of the array.
 
-        Returns a field's page arrays concatenated todgether.
+        Returns a field's page arrays concatenated together.
         """
         array_library_string = uproot._util.get_array_library(arrays[0])
         library = numpy if array_library_string == "numpy" else uproot.extras.cupy()
@@ -1143,11 +1148,8 @@ in file {self.file.file_path}"""
             # for offsets
             res = numpy.insert(res, 0, 0) if library == numpy else _cupy_insert0(res)
 
-        if pad_missing_element:
-            first_element_index = self.column_records[
-                field_metadata.ncol
-            ].first_element_index
-            res = numpy.pad(res, (first_element_index, 0))
+        if missing_element_padding:
+            res = numpy.pad(res, (missing_element_padding, 0))
 
         return res
 
