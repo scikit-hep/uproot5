@@ -23,6 +23,7 @@ import uproot.interpretation.grouped
 import uproot.language.python
 import uproot.source.chunk
 from uproot._util import no_filter, unset
+from uproot.behaviors.TBranch import _regularize_array_cache
 
 
 def iterate(
@@ -615,7 +616,7 @@ class HasFields(Mapping):
         entry_start=None,
         entry_stop=None,
         decompression_executor=None,  # TODO: Not implemented yet
-        array_cache="inherit",  # TODO: Not implemented yet
+        array_cache="inherit",
         library="ak",  # TODO: Not implemented yet
         backend="cpu",
         interpreter="cpu",
@@ -659,7 +660,7 @@ class HasFields(Mapping):
                 is used. (Not implemented yet.)
             array_cache ("inherit", None, MutableMapping, or memory size): Cache of arrays;
                 if "inherit", use the file's cache; if None, do not use a cache;
-                if a memory size, create a new cache of this size. (Not implemented yet.)
+                if a memory size, create a new cache of this size.
             library (str or :doc:`uproot.interpretation.library.Library`): The library
                 that is used to represent arrays. Options are ``"np"`` for NumPy,
                 ``"ak"`` for Awkward Array, and ``"pd"`` for Pandas. (Not implemented yet.)
@@ -725,6 +726,8 @@ class HasFields(Mapping):
             [c.num_entries for c in clusters[start_cluster_idx:stop_cluster_idx]]
         )
 
+        array_cache = _regularize_array_cache(array_cache, self.ntuple._file)
+
         form, field_path = self.to_akform(
             filter_name=filter_name,
             filter_typename=filter_typename,
@@ -754,10 +757,11 @@ class HasFields(Mapping):
             if "column" in key:
                 key_nr = int(key.split("-")[1])
                 if interpreter == "cpu":
-                    content = self.ntuple.read_col_pages(
+                    content = self.ntuple.read_cluster_range(
                         key_nr,
                         range(start_cluster_idx, stop_cluster_idx),
                         pad_missing_element=True,
+                        array_cache=array_cache,
                     )
                 elif interpreter == "gpu" and backend == "cuda":
                     content = content_dict[key_nr]

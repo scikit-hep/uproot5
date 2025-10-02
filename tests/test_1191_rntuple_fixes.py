@@ -45,7 +45,7 @@ def test_multiple_page_delta_encoding():
     with uproot.open(filename) as f:
         obj = f["ntuple"]
         field_metadata = obj.get_field_metadata(0)
-        data = obj.read_col_page(0, 0, field_metadata)
+        data = obj.read_page_range(0, 0, field_metadata)
         # first page has 64 elements, so this checks that data was stitched together correctly
         assert data[64] - data[63] == 2
 

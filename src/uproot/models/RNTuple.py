@@ -334,7 +334,7 @@ in file {self.file.file_path}"""
                 self._page_link_list.extend(pl.pagelinklist)
         return self._page_link_list
 
-    def read_locator(self, loc, uncomp_size, context):
+    def read_locator(self, loc, uncomp_size):
         """
         Args:
             loc (:doc:`uproot.models.RNTuple.MetaData`): The locator of the page.
@@ -347,7 +347,7 @@ in file {self.file.file_path}"""
         chunk = self.file.source.chunk(loc.offset, loc.offset + loc.num_bytes)
         if loc.num_bytes < uncomp_size:
             decomp_chunk = uproot.compression.decompress(
-                chunk, cursor, context, loc.num_bytes, uncomp_size, block_info=None
+                chunk, cursor, {}, loc.num_bytes, uncomp_size, block_info=None
             )
             cursor.move_to(0)
         else:
@@ -365,9 +365,7 @@ in file {self.file.file_path}"""
             for record in self.footer.cluster_group_records:
                 link = record.page_list_link
                 loc = link.locator
-                decomp_chunk, cursor = self.read_locator(
-                    loc, link.env_uncomp_size, context
-                )
+                decomp_chunk, cursor = self.read_locator(loc, link.env_uncomp_size)
                 self._page_list_envelopes.append(
                     PageLink().read(decomp_chunk, cursor, context)
                 )
@@ -605,18 +603,37 @@ in file {self.file.file_path}"""
             # everything should recurse above this branch
             raise AssertionError("this should be unreachable")
 
-    def read_pagedesc(self, destination, desc, field_metadata):
+    def read_page(
+        self,
+        destination,
+        cluster_idx,
+        col_idx,
+        page_idx,
+        field_metadata,
+        array_cache=None,
+    ):
         """
         Args:
             destination (numpy.ndarray): The array to fill.
-            desc (:doc:`uproot.models.RNTuple.MetaData`): The page description.
+            cluster_idx (int): The index of the cluster.
+            col_idx (int): The index of the column within the cluster.
+            page_idx (int): The index of the page within the column in the cluster.
             field_metadata (:doc:`uproot.models.RNTuple.FieldClusterMetadata`):
                 The metadata needed to deserialize destination.
+            array_cache (None, or MutableMapping): Cache of arrays. If None, do not use a cache.
 
         Fills the destination array with the data from the page.
         """
-        loc = desc.locator
-        context = {}
+        # Get the data from cache, if available
+        page_desc = self._ntuple.page_link_list[cluster_idx][col_idx].pages[page_idx]
+        loc = page_desc.locator
+        key = f"{self.cache_key}:{cluster_idx}:{col_idx}:{page_idx}:{loc.offset}"
+        if array_cache is not None:
+            cached_data = array_cache.get(key)
+            if cached_data is not None:
+                destination[:] = cached_data
+                return
+
         num_elements = len(destination)
         # Pages storing bits, real32trunc, and real32quant need num_elements
         # corrected
@@ -630,54 +647,95 @@ in file {self.file.file_path}"""
             num_elements_toread = num_elements
 
         uncomp_size = num_elements_toread * field_metadata.dtype_toread.itemsize
-        decomp_chunk, cursor = self.read_locator(loc, uncomp_size, context)
+        decomp_chunk, cursor = self.read_locator(loc, uncomp_size)
         content = cursor.array(
             decomp_chunk,
             num_elements_toread,
             field_metadata.dtype_toread,
-            context,
+            {},
             move=False,
         )
         destination.view(field_metadata.dtype_toread)[:num_elements_toread] = content[
             :num_elements_toread
         ]
         self.deserialize_page_decompressed_buffer(destination, field_metadata)
+        # Save a copy in array_cache
+        if array_cache is not None:
+            array_cache[key] = destination.copy()
 
-    def read_col_pages(self, ncol, cluster_range, pad_missing_element=False):
+    def read_cluster_range(
+        self,
+        col_idx,
+        cluster_range,
+        pad_missing_element=False,
+        first_cluster_page_start=None,
+        last_cluster_page_stop=None,
+        array_cache=None,
+    ):
         """
         Args:
             ncol (int): The column id.
             cluster_range (range): The range of cluster indices.
             pad_missing_element (bool): Whether to pad the missing elements.
+            first_cluster_page_start (None or int): The first page of the first cluster to include. If None, start from the beginning.
+                If negative, count from the end, like a Python slice.
+            last_cluster_page_stop (None or int): The first page of the last cluster to exclude (i.e. one greater
+                than the last page to include). If None, stop at the end. If negative,
+                count from the end, like a Python slice.
+            array_cache (None, or MutableMapping): Cache of arrays. If None, do not use a cache.
 
         Returns a numpy array with the data from the column.
         """
-        field_metadata = self.get_field_metadata(ncol)
-        arrays = [self.read_col_page(ncol, i, field_metadata) for i in cluster_range]
+        field_metadata = self.get_field_metadata(col_idx)
+        arrays = [
+            self.read_page_range(
+                cluster_idx,
+                col_idx,
+                field_metadata,
+                page_start=first_cluster_page_start if i == 0 else None,
+                page_stop=(
+                    last_cluster_page_stop if i == len(cluster_range) - 1 else None
+                ),
+                array_cache=array_cache,
+            )
+            for i, cluster_idx in enumerate(cluster_range)
+        ]
         res = self.combine_cluster_arrays(arrays, field_metadata, pad_missing_element)
 
         return res
 
-    def read_col_page(self, ncol, cluster_i, field_metadata):
+    def read_page_range(
+        self,
+        cluster_idx,
+        col_idx,
+        field_metadata,
+        page_start=None,
+        page_stop=None,
+        array_cache=None,
+    ):
         """
         Args:
-            ncol (int): The column id.
-            cluster_i (int): The cluster index.
+            cluster_idx (int): The cluster index.
+            col_idx (int): The column index.
             field_metadata (:doc:`uproot.models.RNTuple.FieldClusterMetadata`):
                 The metadata needed to read the field's pages.
+            page_start (None or int): The first page to include. If None, start from the beginning.
+            page_stop (None or int): The first page to exclude (i.e. one greater
+                than the last page to include). If None, stop at the end.
+            array_cache (None, or MutableMapping): Cache of arrays. If None, do not use a cache.
 
         Returns a numpy array with the data from the column.
         """
-        linklist = self._ntuple.page_link_list[cluster_i]
+        linklist = self._ntuple.page_link_list[cluster_idx]
         # Check if the column is suppressed and pick the non-suppressed one if so
-        if ncol < len(linklist) and linklist[ncol].suppressed:
-            rel_crs = self._column_records_dict[self.column_records[ncol].field_id]
-            ncol = next(cr.idx for cr in rel_crs if not linklist[cr.idx].suppressed)
+        if col_idx < len(linklist) and linklist[col_idx].suppressed:
+            rel_crs = self._column_records_dict[self.column_records[col_idx].field_id]
+            col_idx = next(cr.idx for cr in rel_crs if not linklist[cr.idx].suppressed)
             field_metadata = self.get_field_metadata(
-                ncol
+                col_idx
             )  # Update metadata if suppressed
         pagelist = (
-            linklist[field_metadata.ncol].pages
+            linklist[field_metadata.ncol].pages[page_start:page_stop]
             if field_metadata.ncol < len(linklist)
             else []
         )
@@ -686,13 +744,18 @@ in file {self.file.file_path}"""
 
         tracker = 0
         cumsum = 0
-        for page_desc in pagelist:
+        for page_idx, page_desc in enumerate(
+            pagelist, start=page_start if page_start is not None else 0
+        ):
             n_elements = page_desc.num_elements
             tracker_end = tracker + n_elements
-            self.read_pagedesc(
+            self.read_page(
                 res[tracker:tracker_end],
-                page_desc,
+                cluster_idx,
+                col_idx,
+                page_idx,
                 field_metadata,
+                array_cache=array_cache,
             )
             if field_metadata.delta:
                 res[tracker] -= cumsum
