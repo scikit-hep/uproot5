@@ -29,11 +29,19 @@ def test_schema_extension():
         assert next(i for i, l in enumerate(arrays.float_field) if l != 0) == 200
         assert next(i for i, l in enumerate(arrays.intvec_field) if len(l) != 0) == 400
 
-        assert len(obj.arrays(entry_start=50)) == 550
-        assert len(obj.arrays(entry_start=100)) == 500
-        assert len(obj.arrays(entry_start=200)) == 400
-        assert len(obj.arrays(entry_start=250)) == 350
-        assert len(obj.arrays(entry_start=300)) == 300
+        for i in range(50, 600, 50):
+            arrays = obj.arrays(entry_start=i)
+            assert len(arrays) == 600 - i
+            if i < 200:
+                assert all(arrays.float_field[: 200 - i] == 0)
+                assert arrays.float_field[200 - i + 1] != 0
+            else:
+                assert not all(arrays.float_field[:50] == 0)
+            if i < 400:
+                assert all(len(l) == 0 for l in arrays.intvec_field[: 400 - i])
+                assert len(arrays.intvec_field[: 400 - i + 1]) != 0
+            else:
+                assert not all(len(l) == 0 for l in arrays.intvec_field[:50])
 
 
 def test_rntuple_cardinality():
