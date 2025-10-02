@@ -666,39 +666,30 @@ in file {self.file.file_path}"""
     def read_cluster_range(
         self,
         col_idx,
-        cluster_range,
+        cluster_start,
+        cluster_stop,
         missing_element_padding=0,
-        first_cluster_page_start=None,
-        last_cluster_page_stop=None,
         array_cache=None,
     ):
         """
         Args:
-            ncol (int): The column id.
-            cluster_range (range): The range of cluster indices.
+            col_idx (int): The column index.
+            cluster_start (int): The first cluster to include.
+            cluster_stop (int): The first cluster to exclude (i.e. one greater than the last cluster to include).
             missing_element_padding (int): Number of padding elements to add at the start of the array.
-            first_cluster_page_start (None or int): The first page of the first cluster to include. If None, start from the beginning.
-                If negative, count from the end, like a Python slice.
-            last_cluster_page_stop (None or int): The first page of the last cluster to exclude (i.e. one greater
-                than the last page to include). If None, stop at the end. If negative,
-                count from the end, like a Python slice.
             array_cache (None, or MutableMapping): Cache of arrays. If None, do not use a cache.
 
         Returns a numpy array with the data from the column.
         """
         field_metadata = self.get_field_metadata(col_idx)
         arrays = [
-            self.read_page_range(
+            self.read_pages(
                 cluster_idx,
                 col_idx,
                 field_metadata,
-                page_start=first_cluster_page_start if i == 0 else None,
-                page_stop=(
-                    last_cluster_page_stop if i == len(cluster_range) - 1 else None
-                ),
                 array_cache=array_cache,
             )
-            for i, cluster_idx in enumerate(cluster_range)
+            for cluster_idx in range(cluster_start, cluster_stop)
         ]
         res = self.combine_cluster_arrays(
             arrays, field_metadata, missing_element_padding
@@ -706,13 +697,11 @@ in file {self.file.file_path}"""
 
         return res
 
-    def read_page_range(
+    def read_pages(
         self,
         cluster_idx,
         col_idx,
         field_metadata,
-        page_start=None,
-        page_stop=None,
         array_cache=None,
     ):
         """
@@ -721,9 +710,6 @@ in file {self.file.file_path}"""
             col_idx (int): The column index.
             field_metadata (:doc:`uproot.models.RNTuple.FieldClusterMetadata`):
                 The metadata needed to read the field's pages.
-            page_start (None or int): The first page to include. If None, start from the beginning.
-            page_stop (None or int): The first page to exclude (i.e. one greater
-                than the last page to include). If None, stop at the end.
             array_cache (None or MutableMapping): Cache of arrays. If None, do not use a cache.
 
         Returns a numpy array with the data from the column.
@@ -737,7 +723,7 @@ in file {self.file.file_path}"""
                 col_idx
             )  # Update metadata if suppressed
         pagelist = (
-            linklist[field_metadata.ncol].pages[page_start:page_stop]
+            linklist[field_metadata.ncol].pages
             if field_metadata.ncol < len(linklist)
             else []
         )
@@ -746,9 +732,7 @@ in file {self.file.file_path}"""
 
         tracker = 0
         cumsum = 0
-        for page_idx, page_desc in enumerate(
-            pagelist, start=page_start if page_start is not None else 0
-        ):
+        for page_idx, page_desc in enumerate(pagelist):
             n_elements = page_desc.num_elements
             tracker_end = tracker + n_elements
             self.read_page(

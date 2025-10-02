@@ -762,7 +762,8 @@ class HasFields(Mapping):
                 if interpreter == "cpu":
                     content = self.ntuple.read_cluster_range(
                         key_nr,
-                        range(start_cluster_idx, stop_cluster_idx),
+                        start_cluster_idx,
+                        stop_cluster_idx,
                         missing_element_padding=n_padding,
                         array_cache=array_cache,
                     )
