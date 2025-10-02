@@ -29,6 +29,12 @@ def test_schema_extension():
         assert next(i for i, l in enumerate(arrays.float_field) if l != 0) == 200
         assert next(i for i, l in enumerate(arrays.intvec_field) if len(l) != 0) == 400
 
+        assert len(obj.arrays(entry_start=50)) == 550
+        assert len(obj.arrays(entry_start=100)) == 500
+        assert len(obj.arrays(entry_start=200)) == 400
+        assert len(obj.arrays(entry_start=250)) == 350
+        assert len(obj.arrays(entry_start=300)) == 300
+
 
 def test_rntuple_cardinality():
     filename = skhep_testdata.data_path(
