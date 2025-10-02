@@ -754,7 +754,6 @@ class HasFields(Mapping):
 
         for key in target_cols:
             if "column" in key and "union" not in key:
-                # TODO: Need some logic to find the start and stop pages
                 key_nr = int(key.split("-")[1])
                 # Find how many elements should be padded at the beginning
                 n_padding = self.ntuple.column_records[key_nr].first_element_index
@@ -763,7 +762,8 @@ class HasFields(Mapping):
                 if interpreter == "cpu":
                     content = self.ntuple.read_cluster_range(
                         key_nr,
-                        range(start_cluster_idx, stop_cluster_idx),
+                        start_cluster_idx,
+                        stop_cluster_idx,
                         missing_element_padding=n_padding,
                         array_cache=array_cache,
                     )
