@@ -734,7 +734,7 @@ in file {self.file.file_path}"""
         res[: starts[0]] = 0
 
         for i, cluster_idx in enumerate(range(cluster_start, cluster_stop)):
-            stop = starts[i + 1] if i != len(starts) - 1 else total_length
+            stop = starts[i + 1] if i + 1 < len(starts) else None
             self.read_pages(
                 cluster_idx,
                 col_idx,
@@ -744,7 +744,6 @@ in file {self.file.file_path}"""
             )
 
         self.combine_cluster_arrays(res, starts, field_metadata)
-        # TODO: Fix type here?
 
         return res
 
@@ -770,9 +769,7 @@ in file {self.file.file_path}"""
         if col_idx < len(linklist) and linklist[col_idx].suppressed:
             rel_crs = self._column_records_dict[self.column_records[col_idx].field_id]
             col_idx = next(cr.idx for cr in rel_crs if not linklist[cr.idx].suppressed)
-            field_metadata = self.get_field_metadata(
-                col_idx
-            )  # Update metadata if suppressed
+            field_metadata = self.get_field_metadata(col_idx)
         pagelist = (
             linklist[field_metadata.ncol].pages
             if field_metadata.ncol < len(linklist)
@@ -965,17 +962,22 @@ in file {self.file.file_path}"""
             n_padding = self.column_records[key_nr].first_element_index
             n_padding -= cluster_starts[start_cluster_idx]
             n_padding = max(n_padding, 0)
+            total_length, starts = self._expected_array_length_and_starts(
+                ncol, start_cluster_idx, stop_cluster_idx, n_padding
+            )
             field_metadata = self.get_field_metadata(ncol)
+            res = numpy.empty(total_length, field_metadata.dtype_result)
             # Get uncompressed array for key for all clusters
             col_decompressed_buffers = clusters_datas._grab_field_output(ncol)
-            arrays = []
-            for cluster_i in cluster_range:
+            for i, cluster_i in enumerate(cluster_range):
+                stop = cluster_starts[i + 1] if i + 1 < len(cluster_starts) else None
                 cluster_buffer = col_decompressed_buffers[cluster_i]
                 cluster_buffer = self.gpu_deserialize_pages(
                     cluster_buffer, ncol, cluster_i, field_metadata
                 )
-                arrays.append(cluster_buffer)
-            res = self.combine_cluster_arrays(arrays, field_metadata, n_padding)
+                if field_metadata.dtype != field_metadata.dtype_result:
+                    res[starts[i] : stop] = cluster_buffer
+            self.combine_cluster_arrays(res, starts, field_metadata)
             col_arrays[key_nr] = res
 
         return col_arrays
@@ -1019,7 +1021,7 @@ in file {self.file.file_path}"""
                 cumsum += cupy.sum(cluster_buffer[tracker:tracker_end])
             tracker = tracker_end
 
-        cluster_buffer = self.post_process(cluster_buffer, field_metadata)
+        self.post_process(cluster_buffer, field_metadata)
         return cluster_buffer
 
     def post_process(self, buffer, field_metadata):
@@ -1196,7 +1198,7 @@ in file {self.file.file_path}"""
         if field_metadata.dtype_byte in uproot.const.rntuple_index_types:
             for i in range(1, len(starts)):
                 start = starts[i]
-                stop = starts[i + 1] if i != len(starts) - 1 else len(array)
+                stop = starts[i + 1] if i + 1 < len(starts) else None
                 if start == stop:
                     continue
                 array[start:stop] += array[start - 1]
@@ -1728,7 +1730,7 @@ class RField(uproot.behaviors.RNTuple.HasFields):
         entry_stop=None,
         *,
         decompression_executor=None,  # TODO: Not implemented yet
-        array_cache="inherit",  # TODO: Not implemented yet
+        array_cache="inherit",
         library="ak",
         interpreter="cpu",
         backend="cpu",
@@ -1751,7 +1753,7 @@ class RField(uproot.behaviors.RNTuple.HasFields):
                 is used. (Not implemented yet.)
             array_cache ("inherit", None, MutableMapping, or memory size): Cache of arrays;
                 if "inherit", use the file's cache; if None, do not use a cache;
-                if a memory size, create a new cache of this size. (Not implemented yet.)
+                if a memory size, create a new cache of this size.
             library (str or :doc:`uproot.interpretation.library.Library`): The library
                 that is used to represent arrays. Options are ``"np"`` for NumPy,
                 ``"ak"`` for Awkward Array, and ``"pd"`` for Pandas.
@@ -1783,6 +1785,7 @@ class RField(uproot.behaviors.RNTuple.HasFields):
         arrays = self.arrays(
             entry_start=entry_start,
             entry_stop=entry_stop,
+            array_cache=array_cache,
             library=library,
             interpreter=interpreter,
             backend=backend,
