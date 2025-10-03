@@ -663,6 +663,48 @@ in file {self.file.file_path}"""
         if array_cache is not None:
             array_cache[key] = destination.copy()
 
+    def _expected_array_length_and_starts(
+        self, col_idx, cluster_start, cluster_stop, missing_element_padding=0
+    ):
+        """
+        Args:
+            col_idx (int): The column index.
+            cluster_start (int): The first cluster to include.
+            cluster_stop (int): The first cluster to exclude (i.e. one greater than the last cluster to include).
+            missing_element_padding (int): Number of padding elements to add at the start of the array.
+
+        Returns the expected length of the array over the given cluster range, including padding, and also the start indices of each cluster.
+        """
+        field_metadata = self.get_field_metadata(col_idx)
+        if field_metadata.dtype_byte in uproot.const.rntuple_index_types:
+            # for offsets we need an extra zero at the start
+            missing_element_padding += 1
+        total_length = missing_element_padding
+        starts = []
+        for cluster_idx in range(cluster_start, cluster_stop):
+            linklist = self._ntuple.page_link_list[cluster_idx]
+            # Check if the column is suppressed and pick the non-suppressed one if so
+            if col_idx < len(linklist) and linklist[col_idx].suppressed:
+                rel_crs = self._column_records_dict[
+                    self.column_records[col_idx].field_id
+                ]
+                col_idx = next(
+                    cr.idx for cr in rel_crs if not linklist[cr.idx].suppressed
+                )
+                field_metadata = self.get_field_metadata(
+                    col_idx
+                )  # Update metadata if suppressed
+            pagelist = (
+                linklist[field_metadata.ncol].pages
+                if field_metadata.ncol < len(linklist)
+                else []
+            )
+            cluster_length = sum(desc.num_elements for desc in pagelist)
+            starts.append(total_length)
+            total_length += cluster_length
+
+        return total_length, starts
+
     def read_cluster_range(
         self,
         col_idx,
@@ -682,18 +724,27 @@ in file {self.file.file_path}"""
         Returns a numpy array with the data from the column.
         """
         field_metadata = self.get_field_metadata(col_idx)
-        arrays = [
+        total_length, starts = self._expected_array_length_and_starts(
+            col_idx, cluster_start, cluster_stop, missing_element_padding
+        )
+        res = numpy.empty(total_length, field_metadata.dtype_result)
+        # Initialize the padding elements. Note that it might be different from missing_element_padding
+        # because for offsets there is an extra zero added at the start.
+        assert len(starts) > 0, "The cluster range is invalid"
+        res[: starts[0]] = 0
+
+        for i, cluster_idx in enumerate(range(cluster_start, cluster_stop)):
+            stop = starts[i + 1] if i != len(starts) - 1 else total_length
             self.read_pages(
                 cluster_idx,
                 col_idx,
                 field_metadata,
+                destination=res[starts[i] : stop],
                 array_cache=array_cache,
             )
-            for cluster_idx in range(cluster_start, cluster_stop)
-        ]
-        res = self.combine_cluster_arrays(
-            arrays, field_metadata, missing_element_padding
-        )
+
+        self.combine_cluster_arrays(res, starts, field_metadata)
+        # TODO: Fix type here?
 
         return res
 
@@ -702,17 +753,17 @@ in file {self.file.file_path}"""
         cluster_idx,
         col_idx,
         field_metadata,
+        destination=None,
         array_cache=None,
     ):
         """
         Args:
+            destination (numpy.ndarray): The array to fill.
             cluster_idx (int): The cluster index.
             col_idx (int): The column index.
             field_metadata (:doc:`uproot.models.RNTuple.FieldClusterMetadata`):
                 The metadata needed to read the field's pages.
             array_cache (None or MutableMapping): Cache of arrays. If None, do not use a cache.
-
-        Returns a numpy array with the data from the column.
         """
         linklist = self._ntuple.page_link_list[cluster_idx]
         # Check if the column is suppressed and pick the non-suppressed one if so
@@ -728,7 +779,12 @@ in file {self.file.file_path}"""
             else []
         )
         total_len = numpy.sum([desc.num_elements for desc in pagelist], dtype=int)
-        res = numpy.empty(total_len, field_metadata.dtype)
+        if destination is None:
+            return_buffer = True
+            destination = numpy.empty(total_len, dtype=field_metadata.dtype)
+        else:
+            return_buffer = False
+            assert len(destination) == total_len
 
         tracker = 0
         cumsum = 0
@@ -736,20 +792,25 @@ in file {self.file.file_path}"""
             n_elements = page_desc.num_elements
             tracker_end = tracker + n_elements
             self.read_page(
-                res[tracker:tracker_end],
+                destination[tracker:tracker_end],
                 cluster_idx,
                 col_idx,
                 page_idx,
                 field_metadata,
                 array_cache=array_cache,
             )
+            if field_metadata.dtype != field_metadata.dtype_result:
+                destination[tracker:tracker_end] = destination[
+                    tracker:tracker_end
+                ].view(field_metadata.dtype)[: tracker_end - tracker]
             if field_metadata.delta:
-                res[tracker] -= cumsum
-                cumsum += numpy.sum(res[tracker:tracker_end])
+                destination[tracker] -= cumsum
+                cumsum += numpy.sum(destination[tracker:tracker_end])
             tracker = tracker_end
 
-        res = self.post_process(res, field_metadata)
-        return res
+        self.post_process(destination, field_metadata)
+        if return_buffer:
+            return destination
 
     def gpu_read_clusters(self, fields, start_cluster_idx, stop_cluster_idx):
         """
@@ -968,26 +1029,25 @@ in file {self.file.file_path}"""
             field_metadata (:doc:`uproot.models.RNTuple.FieldClusterMetadata`):
                 The metadata needed to post_process buffer.
 
-        Returns post-processed buffer.
+        Performs some post-processing on the buffer in place.
         """
         array_library_string = uproot._util.get_array_library(buffer)
         library = numpy if array_library_string == "numpy" else uproot.extras.cupy()
         if field_metadata.zigzag:
-            buffer = _from_zigzag(buffer)
+            buffer[:] = _from_zigzag(buffer)
         elif field_metadata.delta:
-            buffer = library.cumsum(buffer)
+            buffer[:] = library.cumsum(buffer)
         elif field_metadata.dtype_str == "real32trunc":
-            buffer = buffer.view(library.float32)
+            buffer.dtype = library.float32
         elif field_metadata.dtype_str == "real32quant" and field_metadata.ncol < len(
             self.column_records
         ):
             min_value = self.column_records[field_metadata.ncol].min_value
             max_value = self.column_records[field_metadata.ncol].max_value
-            buffer = min_value + buffer.astype(library.float32) * (
+            buffer.dtype = library.float32
+            buffer[:] = min_value + buffer.view(library.uint32) * (
                 max_value - min_value
             ) / ((1 << field_metadata.nbits) - 1)
-            buffer = buffer.astype(library.float32)
-        return buffer
 
     def deserialize_page_decompressed_buffer(self, destination, field_metadata):
         """
@@ -1085,6 +1145,28 @@ in file {self.file.file_path}"""
             dtype_toread = numpy.dtype("uint8")
         else:
             dtype_toread = dtype
+
+        rel_crs = self._column_records_dict[self.column_records[ncol].field_id]
+        alt_dtype_list = []
+        for cr in rel_crs:
+            alt_dtype_byte = self.column_records[cr.idx].type
+            alt_dtype_str = uproot.const.rntuple_col_num_to_dtype_dict[alt_dtype_byte]
+            if alt_dtype_str == "switch":
+                alt_dtype = numpy.dtype([("index", "int64"), ("tag", "int32")])
+            elif alt_dtype_str == "bit":
+                alt_dtype = numpy.dtype("bool")
+            elif alt_dtype_byte in uproot.const.rntuple_custom_float_types:
+                alt_dtype = numpy.dtype("uint32")  # for easier bit manipulation
+            else:
+                alt_dtype = numpy.dtype(alt_dtype_str)
+            alt_dtype_list.append(alt_dtype)
+        # We want to skip doing this for strings.
+        if self.field_records[self.column_records[ncol].field_id].type_name.startswith(
+            "std::string"
+        ):
+            dtype_result = dtype
+        else:
+            dtype_result = numpy.result_type(*alt_dtype_list)
         field_metadata = FieldClusterMetadata(
             ncol,
             dtype_byte,
@@ -1096,46 +1178,28 @@ in file {self.file.file_path}"""
             delta,
             isbit,
             nbits,
+            dtype_result,
         )
         return field_metadata
 
-    def combine_cluster_arrays(self, arrays, field_metadata, missing_element_padding):
+    def combine_cluster_arrays(self, array, starts, field_metadata):
         """
         Args:
-            arrays (list): A list of arrays to combine.
+            array (numpy.ndarray): An array with the full data.
+            starts (list): An array with the start indices of each cluster.
             field_metadata (:doc:`uproot.models.RNTuple.FieldClusterMetadata`):
                 The metadata needed to combine arrays.
-            missing_element_padding (int): Number of padding elements to add at the start of the array.
 
         Returns a field's page arrays concatenated together.
         """
-        array_library_string = uproot._util.get_array_library(arrays[0])
-        library = numpy if array_library_string == "numpy" else uproot.extras.cupy()
-
         # Check if column stores offset values
         if field_metadata.dtype_byte in uproot.const.rntuple_index_types:
-            # Extract the last offset values:
-            last_elements = [
-                (arr[-1] if len(arr) > 0 else library.zeros((), dtype=arr.dtype))
-                for arr in arrays[:-1]
-            ]  # First value always zero, therefore skip first arr.
-            last_offsets = library.cumsum(library.array(last_elements))
-            for i in range(1, len(arrays)):
-                arrays[i] += last_offsets[i - 1]
-
-        res = library.concatenate(arrays, axis=0)
-
-        # No longer needed; free memory
-        del arrays
-
-        if field_metadata.dtype_byte in uproot.const.rntuple_index_types:
-            # for offsets
-            res = numpy.insert(res, 0, 0) if library == numpy else _cupy_insert0(res)
-
-        if missing_element_padding:
-            res = numpy.pad(res, (missing_element_padding, 0))
-
-        return res
+            for i in range(1, len(starts)):
+                start = starts[i]
+                stop = starts[i + 1] if i != len(starts) - 1 else len(array)
+                if start == stop:
+                    continue
+                array[start:stop] += array[start - 1]
 
 
 def _extract_bits(packed, nbits):
@@ -1769,6 +1833,7 @@ class FieldClusterMetadata:
     delta: bool
     isbit: bool
     nbits: int
+    dtype_result: numpy.dtype
 
 
 @dataclasses.dataclass
