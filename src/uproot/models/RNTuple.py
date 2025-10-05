@@ -441,8 +441,9 @@ in file {self.file.file_path}"""
             parameters = {"__array__": "string"}
             if extra_parameters is not None:
                 parameters.update(extra_parameters)
+            idx_type = "i32" if rel_crs[0].nbits == 32 else "i64"
             return ak.forms.ListOffsetForm(
-                "i64", inner, form_key=form_key, parameters=parameters
+                idx_type, inner, form_key=form_key, parameters=parameters
             )
         else:
             raise (RuntimeError(f"Missing special case: {field_id}"))
@@ -544,8 +545,16 @@ in file {self.file.file_path}"""
             if this_id in self._related_ids:
                 child_id = self._related_ids[this_id][0]
             inner = self.field_form(child_id, keys, ak_add_doc=ak_add_doc)
+            idx_type = (
+                "i32" if self._column_records_dict[cfid][0].nbits == 32 else "i64"
+            )
+            if self._all_fields[cfid].record.type_name.startswith("std::optional"):
+                keyname = keyname + "-optional"
+                return ak.forms.IndexedOptionForm(
+                    idx_type, inner, form_key=keyname, parameters=parameters
+                )
             return ak.forms.ListOffsetForm(
-                "i64", inner, form_key=keyname, parameters=parameters
+                idx_type, inner, form_key=keyname, parameters=parameters
             )
         elif structural_role == uproot.const.RNTupleFieldRole.RECORD:
             newids = []
@@ -555,10 +564,13 @@ in file {self.file.file_path}"""
             recordlist = []
             namelist = []
             for i in newids:
-                if any(
-                    key.startswith(f"{self.all_fields[i].path}.")
-                    or key == self.all_fields[i].path
-                    for key in keys
+                if (
+                    any(
+                        key.startswith(f"{self.all_fields[i].path}.")
+                        or key == self.all_fields[i].path
+                        for key in keys
+                    )
+                    or self.all_fields[i].is_anonymous
                 ):
                     recordlist.append(self.field_form(i, keys, ak_add_doc=ak_add_doc))
                     namelist.append(field_records[i].field_name)
@@ -1520,8 +1532,11 @@ class RField(uproot.behaviors.RNTuple.HasFields):
     def is_anonymous(self):
         """
         There are some anonymous fields in the RNTuple specification that we hide from the user
-        to simplify the interface. These are fields named `_0` that are children of a collection
-        or variant field.
+        to simplify the interface. These are fields named `_0` that are children of a collection,
+        variant, or atomic field.
+
+        All children fields of variants are ignored, since they cannot be accessed directly
+        in a consistent manner. They can only be accessed through the parent variant field.
         """
         if self._is_anonymous is None:
             self._is_anonymous = not self.top_level and (
@@ -1531,7 +1546,17 @@ class RField(uproot.behaviors.RNTuple.HasFields):
                     uproot.const.RNTupleFieldRole.VARIANT,
                 )
                 or self.parent.record.flags & uproot.const.RNTupleFieldFlags.REPETITIVE
+                or (
+                    self.parent.record.struct_role == uproot.const.RNTupleFieldRole.LEAF
+                    and self.record.field_name == "_0"
+                )
             )
+            field = self
+            while not field.top_level:
+                field = field.parent
+                if field.record.struct_role == uproot.const.RNTupleFieldRole.VARIANT:
+                    self._is_anonymous = True
+                    break
         return self._is_anonymous
 
     @property
