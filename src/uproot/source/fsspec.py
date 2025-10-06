@@ -145,7 +145,7 @@ class FSSpecSource(uproot.source.chunk.Source):
             # _cat_ranges is async while cat_ranges is not.
             coroutine = (
                 self._fs._cat_ranges(paths=paths, starts=starts, ends=ends)
-                if self._async_impl
+                if self._async_impl and not self._fs._cached
                 else async_wrapper_thread(
                     self._fs.cat_ranges, paths=paths, starts=starts, ends=ends
                 )
