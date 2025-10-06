@@ -14,6 +14,12 @@ import uproot.source.chunk
 import uproot.source.futures
 from uproot.source.coalesce import CoalesceConfig, coalesce_requests
 
+# Wrap CERNBox URLs automatically with simplecache::
+def _maybe_wrap_cernbox(url: str) -> str:
+    if "cernbox.cern.ch/remote.php/dav/public-files/" in url:
+        return f"simplecache::{url}"
+    return url
+
 
 class FSSpecSource(uproot.source.chunk.Source):
     """
@@ -33,12 +39,6 @@ class FSSpecSource(uproot.source.chunk.Source):
     ):
         super().__init__()
         self._coalesce_config = coalesce_config
-
-        # Wrap CERNBox URLs automatically with simplecache::
-        def _maybe_wrap_cernbox(url: str) -> str:
-            if "cernbox.cern.ch/remote.php/dav/public-files/" in url:
-                return f"simplecache::{url}"
-            return url
 
         file_path = _maybe_wrap_cernbox(file_path)
 
