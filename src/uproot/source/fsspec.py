@@ -33,7 +33,7 @@ class FSSpecSource(uproot.source.chunk.Source):
     ):
         super().__init__()
         self._coalesce_config = coalesce_config
-        
+
         # Wrap CERNBox URLs automatically with simplecache::
         def _maybe_wrap_cernbox(url: str) -> str:
             if "cernbox.cern.ch/remote.php/dav/public-files/" in url:
@@ -41,7 +41,7 @@ class FSSpecSource(uproot.source.chunk.Source):
             return url
 
         file_path = _maybe_wrap_cernbox(file_path)
-        
+
         self._fs, self._file_path = fsspec.core.url_to_fs(
             file_path, **self.extract_fsspec_options(options)
         )
