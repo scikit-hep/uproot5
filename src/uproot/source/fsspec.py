@@ -22,22 +22,9 @@ _PATTERN_CERNBOX = re.compile(
 _PATTERN_WEBDAV = re.compile(r"https?://.+/remote\.php/dav/public-files/.+")
 
 
-def _ensure_fs_partial_read(fs, path: str) -> bool:
-    """
-    Test whether the filesystem supports correct byte-range reads for this file.
-    Returns True if partial reads work, False otherwise.
-    """
-    try:
-        data = fs.cat_file(path, start=0, end=1)
-        return len(data) == 1
-    except Exception:
-        return False
-
-
 def _maybe_wrap_remote_url(url: str) -> str:
     """
-    Wrap remote URLs with simplecache:: if they may not support reliable
-    partial reads for Uproot.
+    Wrap remote URLs with simplecache:: if they match the patterns
     """
     # Skip local files and known good protocols
     if url.startswith(("/", "root://", "s3://", "gs://")):
@@ -46,16 +33,6 @@ def _maybe_wrap_remote_url(url: str) -> str:
     # First, check known problematic servers by regex
     if _PATTERN_CERNBOX.match(url) or _PATTERN_WEBDAV.match(url):
         return f"simplecache::{url}"
-
-    # Otherwise, open FS and test small byte read
-    try:
-        fs, path = fsspec.core.url_to_fs(url)
-        if not _ensure_fs_partial_read(fs, path):
-            # Fallback to simplecache
-            return f"simplecache::{url}"
-    except Exception:
-        # On error, fallback to filecache (full file cache)
-        return f"filecache::{url}"
 
     return url
 
