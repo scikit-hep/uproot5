@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import concurrent.futures
 import queue
+import re
 
 import fsspec
 import fsspec.asyn
@@ -14,11 +15,12 @@ import uproot.source.chunk
 import uproot.source.futures
 from uproot.source.coalesce import CoalesceConfig, coalesce_requests
 
-import re
-
 # Patterns for known problematic servers
-_PATTERN_CERNBOX = re.compile(r"https://cernbox\.cern\.ch/remote\.php/dav/public-files/.+")
+_PATTERN_CERNBOX = re.compile(
+    r"https://cernbox\.cern\.ch/remote\.php/dav/public-files/.+"
+)
 _PATTERN_WEBDAV = re.compile(r"https?://.+/remote\.php/dav/public-files/.+")
+
 
 def _ensure_fs_partial_read(fs, path: str) -> bool:
     """
@@ -30,6 +32,7 @@ def _ensure_fs_partial_read(fs, path: str) -> bool:
         return len(data) == 1
     except Exception:
         return False
+
 
 def _maybe_wrap_remote_url(url: str) -> str:
     """
