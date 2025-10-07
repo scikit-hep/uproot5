@@ -379,9 +379,9 @@ in file {branch.file.file_path}"""
         return output
 
     def reshape(self, shape):
-        d, s = _dtype_shape(self._from_dtype)
+        d, _s = _dtype_shape(self._from_dtype)
         self._from_dtype = numpy.dtype((d, shape))
-        d, s = _dtype_shape(self._to_dtype)
+        d, _s = _dtype_shape(self._to_dtype)
         self._to_dtype = numpy.dtype((d, shape))
 
     def inplace(self, array):

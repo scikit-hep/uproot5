@@ -1133,7 +1133,7 @@ class VersionedModel(Model):
         )
 
     def __setstate__(self, state):
-        class_data, instance_data = state
+        _class_data, instance_data = state
         instance_data = {
             k: threading.Lock() if isinstance(v, _LockPlaceholder) else v
             for k, v in instance_data.items()
@@ -1322,9 +1322,9 @@ class DispatchByVersion:
         # Ignores context["reading"], because otherwise, there would be nothing to do.
         start_index = cursor._index
         (
-            num_bytes,
+            _num_bytes,
             version,
-            is_memberwise,
+            _is_memberwise,
         ) = uproot.deserialization.numbytes_version(chunk, cursor, context, move=False)
 
         versioned_cls = cls.class_of_version(version)
