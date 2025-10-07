@@ -16,9 +16,6 @@ import uproot.source.futures
 from uproot.source.coalesce import CoalesceConfig, coalesce_requests
 
 # Patterns for known problematic servers
-_PATTERN_CERNBOX = re.compile(
-    r"https://cernbox\.cern\.ch/remote\.php/dav/public-files/.+"
-)
 _PATTERN_WEBDAV = re.compile(r"https?://.+/remote\.php/dav/public-files/.+")
 
 
@@ -31,7 +28,7 @@ def _maybe_wrap_remote_url(url: str) -> str:
         return url
 
     # First, check known problematic servers by regex
-    if _PATTERN_CERNBOX.match(url) or _PATTERN_WEBDAV.match(url):
+    if _PATTERN_WEBDAV.match(url):
         return f"simplecache::{url}"
 
     return url
