@@ -408,7 +408,7 @@ def decompress(
         # https://github.com/root-project/root/blob/master/core/zip/src/RZip.cxx#L217
         # https://github.com/root-project/root/blob/master/core/lzma/src/ZipLZMA.c#L81
         # https://github.com/root-project/root/blob/master/core/lz4/src/ZipLZ4.cxx#L38
-        algo, method, c1, c2, c3, u1, u2, u3 = cursor.fields(
+        algo, _method, c1, c2, c3, u1, u2, u3 = cursor.fields(
             chunk, _decompress_header_format, context
         )
         block_compressed_bytes = c1 + (c2 << 8) + (c3 << 16)

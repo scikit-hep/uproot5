@@ -1181,7 +1181,7 @@ class HasBranches(Mapping):
 
                 next_baskets = {}
                 for branch, basket_num, basket in ranges_or_baskets:
-                    basket_entry_start, basket_entry_stop = basket.entry_start_stop
+                    _basket_entry_start, basket_entry_stop = basket.entry_start_stop
                     if basket_entry_stop > sub_entry_stop:
                         next_baskets[branch.cache_key, basket_num] = basket
 
@@ -1623,7 +1623,7 @@ class HasBranches(Mapping):
 
         keys = _keys_deep(self)
         aliases = _regularize_aliases(self, aliases)
-        arrays, expression_context, branchid_interpretation = _regularize_expressions(
+        _arrays, _expression_context, branchid_interpretation = _regularize_expressions(
             self,
             expressions,
             cut,
@@ -3103,7 +3103,7 @@ def _ranges_or_baskets_to_arrays(
             branchid_to_branch[cache_key]._awkward_check(interpretation)
 
     def replace(ranges_or_baskets, original_index, basket):
-        branch, basket_num, range_or_basket = ranges_or_baskets[original_index]
+        branch, basket_num, _range_or_basket = ranges_or_baskets[original_index]
         ranges_or_baskets[original_index] = branch, basket_num, basket
 
     def chunk_to_basket(chunk, branch, basket_num):
