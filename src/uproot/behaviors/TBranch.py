@@ -2140,6 +2140,10 @@ in file {self._file.file_path}"""
             fParentName = self.member("fParentName", none_if_missing=True)
             fClassName = self.member("fClassName", none_if_missing=True)
 
+            # Remove spaces
+            fParentName = fParentName.replace(" ", "") if fParentName else fParentName
+            fClassName = fClassName.replace(" ", "") if fClassName else fClassName
+
             if fParentName is not None and fParentName != "":
                 matches = self._file.streamers.get(fParentName)
 
