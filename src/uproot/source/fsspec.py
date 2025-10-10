@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import concurrent.futures
 import queue
+import re
 
 import fsspec
 import fsspec.asyn
@@ -13,6 +14,24 @@ import uproot
 import uproot.source.chunk
 import uproot.source.futures
 from uproot.source.coalesce import CoalesceConfig, coalesce_requests
+
+# Patterns for known problematic servers
+_PATTERN_WEBDAV = re.compile(r"https?://.+/remote\.php/dav/public-files/.+")
+
+
+def _maybe_wrap_remote_url(url: str) -> str:
+    """
+    Wrap remote URLs with simplecache:: if they match the patterns
+    """
+    # Skip local files and known good protocols
+    if url.startswith(("/", "root://", "s3://", "gs://")):
+        return url
+
+    # First, check known problematic servers by regex
+    if _PATTERN_WEBDAV.match(url):
+        return f"simplecache::{url}"
+
+    return url
 
 
 class FSSpecSource(uproot.source.chunk.Source):
@@ -33,6 +52,9 @@ class FSSpecSource(uproot.source.chunk.Source):
     ):
         super().__init__()
         self._coalesce_config = coalesce_config
+
+        file_path = _maybe_wrap_remote_url(file_path)
+
         self._fs, self._file_path = fsspec.core.url_to_fs(
             file_path, **self.extract_fsspec_options(options)
         )
@@ -145,7 +167,7 @@ class FSSpecSource(uproot.source.chunk.Source):
             # _cat_ranges is async while cat_ranges is not.
             coroutine = (
                 self._fs._cat_ranges(paths=paths, starts=starts, ends=ends)
-                if self._async_impl
+                if self._async_impl and not self._fs._cached
                 else async_wrapper_thread(
                     self._fs.cat_ranges, paths=paths, starts=starts, ends=ends
                 )
