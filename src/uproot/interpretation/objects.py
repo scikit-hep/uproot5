@@ -755,7 +755,7 @@ class AsStridedObjects(uproot.interpretation.numerical.AsDtype):
                 break
 
         for i in range(first_value_loc, len(members)):
-            member, value = members[i]
+            member, _value = members[i]
             if member is not None and not all_headers_prepended:
                 all_headers_prepended = True
             if (member is None and all_headers_prepended) or len(members) == 1:

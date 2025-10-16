@@ -685,10 +685,8 @@ def _get_dask_array(
 
     for key in common_keys:
         dt = ttrees[0][key].interpretation.numpy_dtype
-        if dt.subdtype is None:
-            inner_shape = ()
-        else:
-            dt, inner_shape = dt.subdtype
+        if dt.subdtype is not None:
+            dt, _inner_shape = dt.subdtype
 
         chunks = []
         chunk_args = []
@@ -779,10 +777,8 @@ def _get_dask_array_delay_open(
 
     for key in common_keys:
         dt = obj[key].interpretation.numpy_dtype
-        if dt.subdtype is None:
-            inner_shape = ()
-        else:
-            dt, inner_shape = dt.subdtype
+        if dt.subdtype is not None:
+            dt, _inner_shape = dt.subdtype
 
         partitions = []
         partition_args = []
@@ -913,7 +909,7 @@ class TrivialFormMappingInfo(ImplementsFormMappingInfo):
         keys: set[str] = set()
         for buffer_key in buffer_keys:
             # Identify form key
-            form_key, attribute = buffer_key.rsplit("-", maxsplit=1)
+            form_key, _attribute = buffer_key.rsplit("-", maxsplit=1)
             # Identify key from form_key
             keys.add(self._form_key_to_key[form_key])
         return frozenset(keys)
@@ -956,7 +952,7 @@ class TrivialFormMappingInfo(ImplementsFormMappingInfo):
         container = {}
         for key, array in zip(keys, arrays):
             # First, convert the sub-array into buffers
-            ttree_subform, length, ttree_container = awkward.to_buffers(array)
+            ttree_subform, _length, ttree_container = awkward.to_buffers(array)
 
             # Load the associated projection subform
             projection_subform = self._form.content(key)

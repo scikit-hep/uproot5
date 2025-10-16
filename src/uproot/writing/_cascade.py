@@ -2091,7 +2091,7 @@ class FileHeader(CascadeLeaf):
     @classmethod
     def deserialize(cls, raw_bytes, location):
         (
-            magic,
+            _magic,
             version,
             begin,
             end,
@@ -2110,7 +2110,7 @@ class FileHeader(CascadeLeaf):
         )
         if version >= 1000000:
             (
-                magic,
+                _magic,
                 version,
                 begin,
                 end,

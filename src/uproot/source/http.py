@@ -427,7 +427,7 @@ for URL {source.file_path}"""
 
         num_found = 0
         while len(futures) > 0:
-            range_string, size = self.next_header(response_buffer)
+            range_string, _size = self.next_header(response_buffer)
             num_found += 1
             if range_string is None:
                 self.handle_no_multipart(source, ranges, original_futures, results)

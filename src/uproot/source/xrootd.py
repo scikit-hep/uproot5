@@ -98,7 +98,7 @@ class XRootDResource(uproot.source.chunk.Resource):
 
         self._file = XRootD_client.File()
 
-        status, dummy = self._file.open(self._file_path, timeout=self._xrd_timeout())
+        status, _dummy = self._file.open(self._file_path, timeout=self._xrd_timeout())
         if status.error:
             self._xrd_error(status)
 
