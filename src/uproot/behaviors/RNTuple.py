@@ -751,7 +751,7 @@ class HasFields(Mapping):
             )
 
         for key in target_cols:
-            if "column" in key and "union" not in key:
+            if "column" in key:
                 key_nr = int(key.split("-")[1])
                 if interpreter == "cpu":
                     content = self.ntuple.read_col_pages(
@@ -775,7 +775,6 @@ class HasFields(Mapping):
             form,
             cluster_num_entries,
             container_dict,
-            allow_noncanonical_form=True,
             backend="cuda" if interpreter == "gpu" and backend == "cuda" else "cpu",
         )[entry_start:entry_stop]
 
@@ -1710,7 +1709,7 @@ def _num_entries_for(ntuple, akform, target_num_bytes, entry_start, entry_stop):
 
     total_bytes = 0
     for key in target_cols:
-        if "column" in key and "union" not in key:
+        if "column" in key:
             key_nr = int(key.split("-")[1])
             for cluster in range(start_cluster_idx, stop_cluster_idx):
                 pages = ntuple.page_link_list[cluster][key_nr].pages
@@ -1793,20 +1792,13 @@ def _fill_container_dict(container_dict, content, key, dtype_byte):
         container_dict[f"{key}-index"] = indices
     elif dtype_byte == uproot.const.rntuple_col_type_to_num_dict["switch"]:
         kindex, tags = uproot.models.RNTuple._split_switch_bits(content)
+        tags += 1
         # Find invalid variants and adjust buffers accordingly
-        invalid = numpy.flatnonzero(tags == -1)
-        if len(invalid) > 0:
-            kindex = numpy.delete(kindex, invalid)
-            tags = numpy.delete(tags, invalid)
-            invalid -= numpy.arange(len(invalid))
-            optional_index = numpy.insert(
-                numpy.arange(len(kindex), dtype=numpy.int64), invalid, -1
-            )
-        else:
-            optional_index = numpy.arange(len(kindex), dtype=numpy.int64)
-        container_dict[f"{key}-index"] = library.array(optional_index)
-        container_dict[f"{key}-union-index"] = library.array(kindex)
-        container_dict[f"{key}-union-tags"] = library.array(tags)
+        invalid = numpy.flatnonzero(tags == 0)
+        kindex[invalid] = 0  # Might not be necessary, but safer
+        container_dict[f"{key}-index"] = library.array(kindex)
+        container_dict[f"{key}-tags"] = library.array(tags)
+        container_dict["nones-index"] = library.array([-1], dtype=numpy.int64)
     else:
         # don't distinguish data and offsets
         container_dict[f"{key}-data"] = content

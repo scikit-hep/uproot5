@@ -584,15 +584,19 @@ in file {self.file.file_path}"""
             newids = []
             if this_id in self._related_ids:
                 newids = self._related_ids[this_id]
+            # We insert an extra form to handle invalid variants
+            # and put the rest into an optional-like form.
             recordlist = [
-                self.field_form(i, keys, ak_add_doc=ak_add_doc) for i in newids
+                ak.forms.IndexedOptionForm(
+                    "i64", ak.forms.EmptyForm(form_key="nones"), form_key="nones"
+                )
             ]
-            inner = ak.forms.UnionForm(
-                "i8", "i64", recordlist, form_key=keyname + "-union"
-            )
-            return ak.forms.IndexedOptionForm(
-                "i64", inner, form_key=keyname, parameters=parameters
-            )
+            for i in newids:
+                new_form = self.field_form(i, keys, ak_add_doc=ak_add_doc)
+                if not new_form.is_option and not new_form.is_union:
+                    new_form = ak.forms.UnmaskedForm(new_form, form_key="")
+                recordlist.append(new_form)
+            return ak.forms.UnionForm("i8", "i64", recordlist, form_key=keyname)
         elif structural_role == uproot.const.RNTupleFieldRole.STREAMER:
             raise NotImplementedError(
                 f"Unsplit fields are not supported. {this_record}"
@@ -720,7 +724,7 @@ in file {self.file.file_path}"""
         for cluster_i in cluster_range:
             colrefs_cluster = FieldRefsCluster(cluster_i)
             for key in fields:
-                if "column" in key and "union" not in key:
+                if "column" in key:
                     ncol = int(key.split("-")[1])
                     field_metadata = self.get_field_metadata(ncol)
                     if ncol not in colrefs_cluster.fieldpayloads.keys():
