@@ -1134,13 +1134,6 @@ def _extract_bits(packed, nbits):
     return result
 
 
-# Supporting function and classes
-def _split_switch_bits(content):
-    tags = content["tag"].astype(numpy.dtype("int8")) - 1
-    kindex = content["index"]
-    return kindex, tags
-
-
 # https://github.com/root-project/root/blob/8cd9eed6f3a32e55ef1f0f1df8e5462e753c735d/tree/ntuple/v7/doc/BinaryFormatSpecification.md#page-locations
 class PageDescription:
     def read(self, chunk, cursor, context):

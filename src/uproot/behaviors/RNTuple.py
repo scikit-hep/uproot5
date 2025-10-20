@@ -1791,8 +1791,8 @@ def _fill_container_dict(container_dict, content, key, dtype_byte):
             indices = _cupy_insert(indices, missing, -1)
         container_dict[f"{key}-index"] = indices
     elif dtype_byte == uproot.const.rntuple_col_type_to_num_dict["switch"]:
-        kindex, tags = uproot.models.RNTuple._split_switch_bits(content)
-        tags += 1
+        tags = content["tag"].astype(numpy.int8)
+        kindex = content["index"]
         # Find invalid variants and adjust buffers accordingly
         invalid = numpy.flatnonzero(tags == 0)
         kindex[invalid] = 0  # Might not be necessary, but safer
