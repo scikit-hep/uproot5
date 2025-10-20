@@ -610,7 +610,6 @@ in file {self.file.file_path}"""
         col_idx,
         page_idx,
         field_metadata,
-        array_cache=None,
     ):
         """
         Args:
@@ -620,20 +619,11 @@ in file {self.file.file_path}"""
             page_idx (int): The index of the page within the column in the cluster.
             field_metadata (:doc:`uproot.models.RNTuple.FieldClusterMetadata`):
                 The metadata needed to deserialize destination.
-            array_cache (None, or MutableMapping): Cache of arrays. If None, do not use a cache.
 
         Fills the destination array with the data from the page.
         """
-        # Get the data from cache, if available
         page_desc = self._ntuple.page_link_list[cluster_idx][col_idx].pages[page_idx]
         loc = page_desc.locator
-        key = f"{self.cache_key}:{cluster_idx}:{col_idx}:{page_idx}:{loc.offset}"
-        if array_cache is not None:
-            cached_data = array_cache.get(key)
-            if cached_data is not None:
-                destination[:] = cached_data
-                return
-
         num_elements = len(destination)
         # Pages storing bits, real32trunc, and real32quant need num_elements
         # corrected
@@ -659,9 +649,6 @@ in file {self.file.file_path}"""
             :num_elements_toread
         ]
         self.deserialize_page_decompressed_buffer(destination, field_metadata)
-        # Save a copy in array_cache
-        if array_cache is not None:
-            array_cache[key] = destination.copy()
 
     def _expected_array_length_and_starts(
         self, col_idx, cluster_start, cluster_stop, missing_element_padding=0
@@ -735,7 +722,7 @@ in file {self.file.file_path}"""
 
         for i, cluster_idx in enumerate(range(cluster_start, cluster_stop)):
             stop = starts[i + 1] if i + 1 < len(starts) else None
-            self.read_pages(
+            self.read_cluster_pages(
                 cluster_idx,
                 col_idx,
                 field_metadata,
@@ -747,7 +734,7 @@ in file {self.file.file_path}"""
 
         return res
 
-    def read_pages(
+    def read_cluster_pages(
         self,
         cluster_idx,
         col_idx,
@@ -764,6 +751,17 @@ in file {self.file.file_path}"""
                 The metadata needed to read the field's pages.
             array_cache (None or MutableMapping): Cache of arrays. If None, do not use a cache.
         """
+        # Get the data from cache, if available
+        key = f"{self.cache_key}:{cluster_idx}:{col_idx}"
+        if array_cache is not None:
+            cached_data = array_cache.get(key)
+            if cached_data is not None:
+                if destination is None:
+                    return cached_data
+                else:
+                    destination[:] = cached_data
+                    return
+
         linklist = self._ntuple.page_link_list[cluster_idx]
         # Check if the column is suppressed and pick the non-suppressed one if so
         if col_idx < len(linklist) and linklist[col_idx].suppressed:
@@ -794,7 +792,6 @@ in file {self.file.file_path}"""
                 col_idx,
                 page_idx,
                 field_metadata,
-                array_cache=array_cache,
             )
             if field_metadata.dtype != field_metadata.dtype_result:
                 destination[tracker:tracker_end] = destination[
@@ -806,6 +803,11 @@ in file {self.file.file_path}"""
             tracker = tracker_end
 
         self.post_process(destination, field_metadata)
+
+        # Save a copy in array_cache
+        if array_cache is not None:
+            array_cache[key] = destination.copy()
+
         if return_buffer:
             return destination
 
