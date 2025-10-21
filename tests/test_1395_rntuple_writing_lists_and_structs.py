@@ -44,6 +44,21 @@ data = ak.Array(
             ak.index.Index([1, 2, 4]),
             ak.contents.NumpyArray([0, 1, 2, 3, 4, 5]),
         ),
+        "indexed_option_array": ak.contents.IndexedOptionArray(
+            ak.index.Index([3, -1, 1]),
+            ak.contents.NumpyArray([0, 1, 2, 3, 4, 5]),
+        ),
+        "indexed_option_array32": ak.contents.IndexedOptionArray(
+            ak.index.Index32([3, -1, 1]),
+            ak.contents.NumpyArray([0, 1, 2, 3, 4, 5]),
+        ),
+        "indexed_array": ak.contents.IndexedArray(
+            ak.index.Index([3, 0, 1]),
+            ak.contents.NumpyArray([0, 1, 2, 3, 4, 5]),
+        ),
+        "numpy_regular3d": numpy.array(
+            [[[1], [2], [3]], [[4], [5], [6]], [[7], [8], [9]]]
+        ),
     }
 )
 
@@ -71,25 +86,8 @@ def test_writing_and_reading(tmp_path):
     arrays = obj.arrays()
 
     for f in data.fields:
-        if f == "optional":
-            assert [t[0] if len(t) > 0 else None for t in arrays[f][:3]] == data[
-                f
-            ].tolist()
-            assert [t[0] if len(t) > 0 else None for t in arrays[f][3:]] == data[
-                f
-            ].tolist()
-        elif f == "optional_union":
-            assert [
-                t if isinstance(t, str) else t[0] if len(t) > 0 else None
-                for t in arrays[f][:3]
-            ] == data[f].tolist()
-            assert [
-                t if isinstance(t, str) else t[0] if len(t) > 0 else None
-                for t in arrays[f][3:]
-            ] == data[f].tolist()
-        else:
-            assert arrays[f][:3].tolist() == data[f].tolist()
-            assert arrays[f][3:].tolist() == data[f].tolist()
+        assert arrays[f][:3].tolist() == data[f].tolist()
+        assert arrays[f][3:].tolist() == data[f].tolist()
 
 
 def test_writing_then_reading_with_ROOT(tmp_path, capfd):
@@ -143,6 +141,15 @@ def test_writing_then_reading_with_ROOT(tmp_path, capfd):
         in out
     )
     assert "* Field 17           : list_array (std::vector<std::int64_t>)" in out
+    assert (
+        "* Field 18           : indexed_option_array (std::optional<std::int64_t>)"
+        in out
+    )
+    assert (
+        "* Field 19           : indexed_option_array32 (std::optional<std::int64_t>)"
+        in out
+    )
+    assert "* Field 20           : indexed_array (std::int64_t)" in out
 
 
 def test_field_descriptions(tmp_path):

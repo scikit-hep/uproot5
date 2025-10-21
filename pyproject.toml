@@ -45,9 +45,6 @@ test-pyodide = [
   {include-group = "test-core"}
 ]
 
-[lint.mccabe]
-max-complexity = 100
-
 [project]
 authors = [
   {name = "Jim Pivarski", email = "jpivarski@gmail.com"}
@@ -57,7 +54,6 @@ classifiers = [
   "Intended Audience :: Developers",
   "Intended Audience :: Information Technology",
   "Intended Audience :: Science/Research",
-  "License :: OSI Approved :: BSD License",
   "Operating System :: MacOS",
   "Operating System :: POSIX",
   "Operating System :: Unix",
@@ -69,6 +65,7 @@ classifiers = [
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
   "Topic :: Scientific/Engineering",
   "Topic :: Scientific/Engineering :: Information Analysis",
   "Topic :: Scientific/Engineering :: Mathematics",
@@ -113,20 +110,17 @@ Homepage = "https://github.com/scikit-hep/uproot5"
 version-file = "src/uproot/version.py"
 
 [tool.hatch.version]
-path = "src/uproot/__init__.py"
 source = "vcs"
-
-[tool.isort]
-profile = "black"
 
 [tool.pytest.ini_options]
 addopts = ["-ra", "--showlocals", "--strict-markers", "--strict-config"]
 filterwarnings = [
   "error",
   "default:module 'sre_.*' is deprecated:DeprecationWarning",
-  "ignore:unclosed transport <asyncio.sslproto._SSLProtocolTransport"  # https://github.com/aio-libs/aiohttp/issues/1115
+  "ignore:unclosed transport <asyncio.sslproto._SSLProtocolTransport",  # https://github.com/aio-libs/aiohttp/issues/1115
+  "ignore: .*will default to writing RNTuples.*:FutureWarning"
 ]
-log_cli_level = "info"
+log_cli_level = "INFO"
 markers = [
   "slow",
   "network",
@@ -138,6 +132,9 @@ testpaths = ["tests"]
 timeout = 600
 xfail_strict = true
 
+[tool.repo-review]
+ignore = ["PY004"]
+
 [tool.ruff]
 exclude = [
   "tests/*.py",
@@ -145,32 +142,12 @@ exclude = [
   "src/uproot/__init__.py",
   "docs-sphinx/*.py"
 ]
-src = ["src"]
 
 [tool.ruff.lint]
-ignore = [
-  "E501",
-  "E722",
-  "PLR",
-  "PLW0120",  # else on loop without break
-  "SIM118",  # key in dict, broken since uproot doesn't behave like a dict
-  "PGH003",  # too-broad type ignore
-  "SIM114",  # combine `if` branches using logical `or` operator
-  "S307",  # no eval allowed
-  "PLC1901",  # empty string is falsey (but I don't want to rely on such weak typing)
-  "RUF012",  # enforces type annotations on a codebase that lacks type annotations
-  "SIM103",  # interferes with my if-elif-elif-else blocks
-  "PLC0415",  # imports outside top level
-  "PLW1641"  # __eq__ without __hash__
-]
-select = [
-  "E",
-  "F",
-  "W",  # flake8
-  "B",
-  "B904",  # flake8-bugbear
+extend-select = [
+  "B",  # flake8-bugbear
   "I",  # isort
-  # "ARG",         # flake8-unused-arguments
+  # "ARG", # flake8-unused-arguments
   "C4",  # flake8-comprehensions
   "ISC",  # flake8-implicit-str-concat
   "PGH",  # pygrep-hooks
@@ -182,6 +159,19 @@ select = [
   "T20",  # flake8-print
   "UP",  # pyupgrade
   "YTT"  # flake8-2020
+]
+ignore = [
+  "PGH003",  # too-broad type ignore
+  "PLC0415",  # imports outside top level
+  "PLC1901",  # empty string is falsey (but I don't want to rely on such weak typing)
+  "PLR",
+  "PLW0120",  # else on loop without break
+  "PLW1641",  # __eq__ without __hash__
+  "RUF012",  # enforces type annotations on a codebase that lacks type annotations
+  "S307",  # no eval allowed
+  "SIM103",  # interferes with my if-elif-elif-else blocks
+  "SIM114",  # combine `if` branches using logical `or` operator
+  "SIM118"  # key in dict, broken since uproot doesn't behave like a dict
 ]
 isort.required-imports = ["from __future__ import annotations"]
 

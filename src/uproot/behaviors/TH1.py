@@ -159,7 +159,7 @@ class Histogram:
 
         Setting ``flow=True`` increases the length of each dimension by two.
         """
-        values, variances = self._values_variances(flow)
+        _values, variances = self._values_variances(flow)
         return numpy.sqrt(variances)
 
     def variances(self, flow=False):
@@ -178,7 +178,7 @@ class Histogram:
 
         Setting ``flow=True`` increases the length of each dimension by two.
         """
-        values, variances = self._values_variances(flow)
+        _values, variances = self._values_variances(flow)
         return variances
 
     def counts(self, flow=False):

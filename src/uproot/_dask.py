@@ -685,10 +685,8 @@ def _get_dask_array(
 
     for key in common_keys:
         dt = ttrees[0][key].interpretation.numpy_dtype
-        if dt.subdtype is None:
-            inner_shape = ()
-        else:
-            dt, inner_shape = dt.subdtype
+        if dt.subdtype is not None:
+            dt, _inner_shape = dt.subdtype
 
         chunks = []
         chunk_args = []
@@ -779,10 +777,8 @@ def _get_dask_array_delay_open(
 
     for key in common_keys:
         dt = obj[key].interpretation.numpy_dtype
-        if dt.subdtype is None:
-            inner_shape = ()
-        else:
-            dt, inner_shape = dt.subdtype
+        if dt.subdtype is not None:
+            dt, _inner_shape = dt.subdtype
 
         partitions = []
         partition_args = []
@@ -913,7 +909,7 @@ class TrivialFormMappingInfo(ImplementsFormMappingInfo):
         keys: set[str] = set()
         for buffer_key in buffer_keys:
             # Identify form key
-            form_key, attribute = buffer_key.rsplit("-", maxsplit=1)
+            form_key, _attribute = buffer_key.rsplit("-", maxsplit=1)
             # Identify key from form_key
             keys.add(self._form_key_to_key[form_key])
         return frozenset(keys)
@@ -956,7 +952,7 @@ class TrivialFormMappingInfo(ImplementsFormMappingInfo):
         container = {}
         for key, array in zip(keys, arrays):
             # First, convert the sub-array into buffers
-            ttree_subform, length, ttree_container = awkward.to_buffers(array)
+            ttree_subform, _length, ttree_container = awkward.to_buffers(array)
 
             # Load the associated projection subform
             projection_subform = self._form.content(key)
@@ -1484,6 +1480,68 @@ which has {num_entries} entries"""
             self.decompression_executor,
             self.interpretation_executor,
         )
+
+
+def _get_ttree_form(
+    awkward,
+    ttree,
+    common_keys,
+    ak_add_doc,
+):
+    contents = []
+    for key in common_keys:
+        branch = ttree[key]
+        if isinstance(branch, HasFields):
+            content_form = branch.to_akform()[0].content(0)
+        else:
+            content_form = branch.interpretation.awkward_form(ttree.file)
+        content_parameters = {}
+        if isinstance(ak_add_doc, bool):
+            if ak_add_doc:
+                content_parameters["__doc__"] = (
+                    branch.description
+                    if isinstance(branch, HasFields)
+                    else branch.title
+                )
+        elif isinstance(ak_add_doc, dict):
+            content_parameters.update(
+                {
+                    key: branch.__getattribute__(
+                        "description"
+                        if isinstance(branch, HasFields) and value == "title"
+                        else value
+                    )
+                    for key, value in ak_add_doc.items()
+                }
+            )
+        if len(content_parameters.keys()) != 0:
+            content_form = content_form.copy(parameters=content_parameters)
+        contents.append(content_form)
+
+    if isinstance(ak_add_doc, bool):
+        parameters = (
+            {
+                "__doc__": (
+                    ttree.description if isinstance(ttree, HasFields) else ttree.title
+                )
+            }
+            if ak_add_doc
+            else None
+        )
+    elif isinstance(ak_add_doc, dict):
+        parameters = (
+            {
+                "__doc__": (
+                    ttree.description if isinstance(ttree, HasFields) else ttree.title
+                )
+            }
+            if "__doc__" in ak_add_doc.keys()
+            else None
+        )
+    else:
+        parameters = None
+
+    return awkward.forms.RecordForm(contents, common_keys, parameters=parameters)
 
 
 def _get_dak_array(

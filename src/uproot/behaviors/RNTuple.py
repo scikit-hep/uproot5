@@ -751,7 +751,7 @@ class HasFields(Mapping):
             )
 
         for key in target_cols:
-            if "column" in key and "union" not in key:
+            if "column" in key:
                 key_nr = int(key.split("-")[1])
                 if interpreter == "cpu":
                     content = self.ntuple.read_col_pages(
@@ -775,7 +775,6 @@ class HasFields(Mapping):
             form,
             cluster_num_entries,
             container_dict,
-            allow_noncanonical_form=True,
             backend="cuda" if interpreter == "gpu" and backend == "cuda" else "cpu",
         )[entry_start:entry_stop]
 
@@ -1530,14 +1529,9 @@ class HasFields(Mapping):
         filter_typename=no_filter,
         filter_field=no_filter,
         recursive=True,
-        name_width=20,
-        typename_width=24,
-        path_width=30,
+        max_width=80,
         stream=sys.stdout,
-        # For compatibility reasons we also accepts kwargs meant for TTrees
-        full_paths=unset,
-        filter_branch=unset,
-        interpretation_width=unset,
+        **kwargs,
     ):
         """
         Args:
@@ -1550,23 +1544,9 @@ class HasFields(Mapping):
                 :doc:`uproot.models.RNTuple.RField` object. The ``RField`` is
                 included if the function returns True, excluded if it returns False.
             recursive (bool): If True, recursively descend into subfields.
-            name_width (int): Number of characters to reserve for the ``TBranch``
-                names.
-            typename_width (int): Number of characters to reserve for the C++
-                typenames.
-            interpretation_width (int): Number of characters to reserve for the
-                :doc:`uproot.interpretation.Interpretation` displays.
+            max_width (int): Maximum number of characters to display in a line.
             stream (object with a ``write(str)`` method): Stream to write the
                 output to.
-            full_paths (None): This argument is not used and is only included for now
-                for compatibility with software that was used for :doc:`uproot.behaviors.TBranch.TBranch`. This argument should not be used
-                and will be removed in a future version.
-            filter_branch (None or function of :doc:`uproot.models.RNTuple.RField` \u2192 bool): An alias for ``filter_field`` included
-                for compatibility with software that was used for :doc:`uproot.behaviors.TBranch.TBranch`. This argument should not be used
-                and will be removed in a future version.
-            interpretation_width (None): This argument is not used and is only included for now
-                for compatibility with software that was used for :doc:`uproot.behaviors.TBranch.TBranch`. This argument should not be used
-                and will be removed in a future version.
 
         Interactively display the ``RFields``.
 
@@ -1575,54 +1555,52 @@ class HasFields(Mapping):
         .. code-block::
 
             >>> my_ntuple.show()
-            name                 | typename                 | path
-            ---------------------+--------------------------+-------------------------------
-            my_int               | std::int64_t             | my_int
-            my_vec               | std::vector<std::int6... | my_vec
-            _0                   | std::int64_t             | my_vec._0
+            my_ntuple (ROOT::RNTuple)
+            Description: The description of the ntuple
+            ├─ my_int (std::int64_t)
+            │  Description: The description of the field
+            ├─ jagged_list (std::vector<std::int64_t>)
+            ├─ nested_list (std::vector<std::vector<std::int64_t>>)
+            ├─ struct (MyStruct)
+            │  ├─ x (std::int64_t)
+            │  └─ y (std::int64_t)
+            └─ other_struct (OtherStruct)
+                ├─ a (SubStruct)
+                │  Description: The description of the subfield
+                │  ├─ x (std::int64_t)
+                │  └─ y (std::int64_t)
+                └─ b (std::int64_t)
         """
-        if name_width < 3:
-            raise ValueError("'name_width' must be at least 3")
-        if typename_width < 3:
-            raise ValueError("'typename_width' must be at least 3")
-        if path_width < 3:
-            raise ValueError("'path_width' must be at least 3")
+        elbow = "└─ "
+        pipe = "│  "
+        tee = "├─ "
+        blank = "   "
 
-        formatter = f"{{0:{name_width}.{name_width}}} | {{1:{typename_width}.{typename_width}}} | {{2:{path_width}.{path_width}}}"
+        def recursive_show(field, header="", first=True, last=True, recursive=True):
+            outstr = f"""{header}{"" if first else (elbow if last else tee)}{field.name} ({'ROOT::RNTuple' if isinstance(field, uproot.behaviors.RNTuple.RNTuple) else field.typename})"""
+            stream.write(outstr[:max_width] + "\n")
+            if field.description != "":
+                outstr = f"""{header}{'' if first else (blank if last else pipe)}Description: {field.description}"""
+                stream.write(outstr[:max_width] + "\n")
+            if len(field) > 0 and (recursive or first):
+                subfields = list(
+                    field.itervalues(
+                        filter_name=filter_name,
+                        filter_typename=filter_typename,
+                        filter_field=filter_field,
+                        recursive=False,
+                    )
+                )
+                for i, subfield in enumerate(subfields):
+                    recursive_show(
+                        subfield,
+                        header=f"{header}{'' if first else (blank if last else pipe)}",
+                        first=False,
+                        last=i == len(subfields) - 1,
+                        recursive=recursive,
+                    )
 
-        stream.write(formatter.format("name", "typename", "path"))
-        stream.write(
-            "\n"
-            + "-" * name_width
-            + "-+-"
-            + "-" * typename_width
-            + "-+-"
-            + "-" * path_width
-            + "\n"
-        )
-
-        if isinstance(self, uproot.models.RNTuple.RField):
-            stream.write(formatter.format(self.name, self.typename, self.path) + "\n")
-
-        for field in self.itervalues(
-            filter_name=filter_name,
-            filter_typename=filter_typename,
-            filter_field=filter_field,
-            recursive=recursive,
-            filter_branch=filter_branch,
-        ):
-            name = field.name
-            typename = field.typename
-            path = field.path
-
-            if len(name) > name_width:
-                name = name[: name_width - 3] + "..."
-            if len(typename) > typename_width:
-                typename = typename[: typename_width - 3] + "..."
-            if len(path) > path_width:
-                path = path[: path_width - 3] + "..."
-
-            stream.write(formatter.format(name, typename, path).rstrip(" ") + "\n")
+        recursive_show(self, recursive=recursive)
 
     @property
     def source(self) -> uproot.source.chunk.Source | None:
@@ -1731,7 +1709,7 @@ def _num_entries_for(ntuple, akform, target_num_bytes, entry_start, entry_stop):
 
     total_bytes = 0
     for key in target_cols:
-        if "column" in key and "union" not in key:
+        if "column" in key:
             key_nr = int(key.split("-")[1])
             for cluster in range(start_cluster_idx, stop_cluster_idx):
                 pages = ntuple.page_link_list[cluster][key_nr].pages
@@ -1771,6 +1749,27 @@ def _recursive_find(form, res):
         _recursive_find(form.content, res)
 
 
+def _cupy_insert(arr, obj, value):
+    # obj is assumed to be sorted
+    # both arr and obj are assumed to be flat arrays
+    cupy = uproot.extras.cupy()
+    out_size = arr.size + obj.size
+    out = cupy.empty(out_size, dtype=arr.dtype)
+    src_i = 0
+    dst_i = 0
+    for idx in obj.get():
+        n = idx - src_i
+        if n > 0:
+            out[dst_i : dst_i + n] = arr[src_i : src_i + n]
+            dst_i += n
+            src_i += n
+        out[dst_i] = value
+        dst_i += 1
+    if src_i < arr.size:
+        out[dst_i:] = arr[src_i:]
+    return out
+
+
 def _fill_container_dict(container_dict, content, key, dtype_byte):
     array_library_string = uproot._util.get_array_library(content)
 
@@ -1779,22 +1778,27 @@ def _fill_container_dict(container_dict, content, key, dtype_byte):
     if "cardinality" in key:
         content = library.diff(content)
 
-    if dtype_byte == uproot.const.rntuple_col_type_to_num_dict["switch"]:
-        kindex, tags = uproot.models.RNTuple._split_switch_bits(content)
-        # Find invalid variants and adjust buffers accordingly
-        invalid = numpy.flatnonzero(tags == -1)
-        if len(invalid) > 0:
-            kindex = numpy.delete(kindex, invalid)
-            tags = numpy.delete(tags, invalid)
-            invalid -= numpy.arange(len(invalid))
-            optional_index = numpy.insert(
-                numpy.arange(len(kindex), dtype=numpy.int64), invalid, -1
-            )
+    if "optional" in key:
+        # We need to convert from a ListOffsetArray to an IndexedOptionArray
+        diff = library.diff(content)
+        missing = library.nonzero(diff == 0)[0]
+        missing -= library.arange(len(missing), dtype=missing.dtype)
+        dtype = "int64" if content.dtype == library.uint64 else "int32"
+        indices = library.arange(len(content) - len(missing), dtype=dtype)
+        if array_library_string == "numpy":
+            indices = numpy.insert(indices, missing, -1)
         else:
-            optional_index = numpy.arange(len(kindex), dtype=numpy.int64)
-        container_dict[f"{key}-index"] = library.array(optional_index)
-        container_dict[f"{key}-union-index"] = library.array(kindex)
-        container_dict[f"{key}-union-tags"] = library.array(tags)
+            indices = _cupy_insert(indices, missing, -1)
+        container_dict[f"{key}-index"] = indices
+    elif dtype_byte == uproot.const.rntuple_col_type_to_num_dict["switch"]:
+        tags = content["tag"].astype(numpy.int8)
+        kindex = content["index"]
+        # Find invalid variants and adjust buffers accordingly
+        invalid = numpy.flatnonzero(tags == 0)
+        kindex[invalid] = 0  # Might not be necessary, but safer
+        container_dict[f"{key}-index"] = library.array(kindex)
+        container_dict[f"{key}-tags"] = library.array(tags)
+        container_dict["nones-index"] = library.array([-1], dtype=numpy.int64)
     else:
         # don't distinguish data and offsets
         container_dict[f"{key}-data"] = content
