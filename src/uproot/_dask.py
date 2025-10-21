@@ -1781,7 +1781,9 @@ def _get_dak_array_delay_open(
             full_paths=full_paths,
             ignore_duplicates=True,
         )
-        base_form = _get_ttree_form(awkward, obj, common_keys, interp_options.get("ak_add_doc"))
+        base_form = _get_ttree_form(
+            awkward, obj, common_keys, interp_options.get("ak_add_doc")
+        )
 
     divisions = [0]
     partition_args = []
