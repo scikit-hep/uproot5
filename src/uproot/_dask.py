@@ -19,7 +19,7 @@ except ImportError:
 import numpy
 
 import uproot
-from uproot._util import get_ttree_form, no_filter, unset
+from uproot._util import no_filter, unset
 from uproot.behaviors.RNTuple import HasFields
 from uproot.behaviors.RNTuple import (
     _regularize_step_size as _RNTuple_regularize_step_size,
@@ -1705,8 +1705,8 @@ which has {entry_stop} entries"""
     if isinstance(ttrees[0], HasFields):
         base_form, _ = ttrees[0].to_akform(filter_name=common_keys)
     else:
-        base_form = get_ttree_form(
-            ttrees[0], common_keys, interp_options.get("ak_add_doc")
+        base_form = _get_ttree_form(
+            awkward, ttrees[0], common_keys, interp_options.get("ak_add_doc")
         )
 
     if len(partition_args) == 0:
@@ -1781,7 +1781,7 @@ def _get_dak_array_delay_open(
             full_paths=full_paths,
             ignore_duplicates=True,
         )
-        base_form = get_ttree_form(obj, common_keys, interp_options.get("ak_add_doc"))
+        base_form = _get_ttree_form(awkward, obj, common_keys, interp_options.get("ak_add_doc"))
 
     divisions = [0]
     partition_args = []
