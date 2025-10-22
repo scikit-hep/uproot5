@@ -12,7 +12,7 @@ def test_ttree_virtual_arrays():
     log = []
     path = skhep_testdata.data_path("uproot-Zmumu.root")
     with uproot.open(path) as file:
-        tree = file["events"]        
+        tree = file["events"]
         eager = tree.arrays()
         virtual = tree.arrays(virtual=True, access_log=log)
 
@@ -42,7 +42,7 @@ def test_ttree_virtual_arrays_nonsense_kwargs_combinations():
     path = skhep_testdata.data_path("uproot-Zmumu.root")
     with uproot.open(path) as file:
         tree = file["events"]
-        
+
         # virtual=True
         match = "cannot be used with 'virtual=True'"
         with pytest.raises(ValueError, match=match):
