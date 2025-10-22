@@ -982,7 +982,7 @@ class FormMappingInfoWithVirtualArrays(TrivialFormMappingInfo):
         awkward = uproot.extras.awkward()
 
         def generator(tree, buffer_key):
-            form_key, attribute = self.parse_buffer_key(buffer_key)
+            form_key, _ = self.parse_buffer_key(buffer_key)
             key = self._form_key_to_key[form_key]
             branch = tree[key]
 
