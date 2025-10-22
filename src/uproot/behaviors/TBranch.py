@@ -728,17 +728,176 @@ class HasBranches(Mapping):
 
             stream.write(formatter.format(name, typename, interp).rstrip(" ") + "\n")
 
-    def virtual_arrays(
+    def arrays(
         self,
+        expressions=None,
+        cut=None,
         *,
         filter_name=no_filter,
         filter_typename=no_filter,
         filter_branch=no_filter,
         aliases=None,
+        language=uproot.language.python.python_language,
+        entry_start=None,
+        entry_stop=None,
+        decompression_executor=None,
+        interpretation_executor=None,
+        array_cache="inherit",
+        library="ak",
+        ak_add_doc=False,
+        how=None,
+        virtual=False,
+        access_log=None,
+    ):
+        """
+        Args:
+            expressions (None, str, or list of str): Names of ``TBranches`` or
+                aliases to convert to arrays or mathematical expressions of them.
+                Uses the ``language`` to evaluate. If None, all ``TBranches``
+                selected by the filters are included.
+            cut (None or str): If not None, this expression filters all of the
+                ``expressions``.
+            filter_name (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
+                filter to select ``TBranches`` by name.
+            filter_typename (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
+                filter to select ``TBranches`` by type.
+            filter_branch (None or function of :doc:`uproot.behaviors.TBranch.TBranch` \u2192 bool, :doc:`uproot.interpretation.Interpretation`, or None): A
+                filter to select ``TBranches`` using the full
+                :doc:`uproot.behaviors.TBranch.TBranch` object. If the function
+                returns False or None, the ``TBranch`` is excluded; if the function
+                returns True, it is included with its standard
+                :ref:`uproot.behaviors.TBranch.TBranch.interpretation`; if an
+                :doc:`uproot.interpretation.Interpretation`, this interpretation
+                overrules the standard one.
+            aliases (None or dict of str \u2192 str): Mathematical expressions that
+                can be used in ``expressions`` or other aliases (without cycles).
+                Uses the ``language`` engine to evaluate. If None, only the
+                :ref:`uproot.behaviors.TBranch.TBranch.aliases` are available.
+            language (:doc:`uproot.language.Language`): Language used to interpret
+                the ``expressions`` and ``aliases``.
+            entry_start (None or int): The first entry to include. If None, start
+                at zero. If negative, count from the end, like a Python slice.
+            entry_stop (None or int): The first entry to exclude (i.e. one greater
+                than the last entry to include). If None, stop at
+                :ref:`uproot.behaviors.TTree.TTree.num_entries`. If negative,
+                count from the end, like a Python slice.
+            decompression_executor (None or Executor with a ``submit`` method): The
+                executor that is used to decompress ``TBaskets``; if None, the
+                file's :ref:`uproot.reading.ReadOnlyFile.decompression_executor`
+                is used.
+            interpretation_executor (None or Executor with a ``submit`` method): The
+                executor that is used to interpret uncompressed ``TBasket`` data as
+                arrays; if None, the file's :ref:`uproot.reading.ReadOnlyFile.interpretation_executor`
+                is used.
+            array_cache ("inherit", None, MutableMapping, or memory size): Cache of arrays;
+                if "inherit", use the file's cache; if None, do not use a cache;
+                if a memory size, create a new cache of this size.
+            library (str or :doc:`uproot.interpretation.library.Library`): The library
+                that is used to represent arrays. Options are ``"np"`` for NumPy,
+                ``"ak"`` for Awkward Array, and ``"pd"`` for Pandas.
+            ak_add_doc (bool | dict ): If True and ``library="ak"``, add the TBranch ``title``
+                to the Awkward ``__doc__`` parameter of the array.
+                if dict = {key:value} and ``library="ak"``, add the TBranch ``value`` to the
+                Awkward ``key`` parameter of the array.
+            how (None, str, or container type): Library-dependent instructions
+                for grouping. The only recognized container types are ``tuple``,
+                ``list``, and ``dict``. Note that the container *type itself*
+                must be passed as ``how``, not an instance of that type (i.e.
+                ``how=tuple``, not ``how=()``).
+            virtual (bool): If True, return virtual arrays that compute their
+                data on demand; if False, return fully realized arrays.
+            access_log (None or object with a ``__iadd__`` method): If an access_log is
+                provided, e.g. a list, all materializations of the arrays are
+                tracked inside this reference. Only applies if ``virtual=True``.
+
+        Returns a group of arrays from the ``TTree``.
+
+        For example:
+
+        .. code-block:: python
+
+            >>> my_tree["x"].array()
+            <Array [-41.2, 35.1, 35.1, ... 32.4, 32.5] type='2304 * float64'>
+            >>> my_tree["y"].array()
+            <Array [17.4, -16.6, -16.6, ... 1.2, 1.2, 1.2] type='2304 * float64'>
+
+        Or read lazily with awkward's virtual arrays:
+
+        .. code-block:: python
+
+            >>> my_tree.arrays(virtual=True, )
+            <Array [{run: ??, ...}, ..., {run: ??, ...}] type='40 * {run: uint32, lumin...'>
+            >>> access_log = []
+            >>> array = my_tree.arrays(virtual=True, access_log=access_log)
+            >>> ak.materialize(array.run)
+            >>> print(access_log)
+            [Accessed(branch='run', buffer_key="('<root>', 'run')-data")]
+
+        See also :ref:`uproot.behaviors.TBranch.TBranch.array` to read a single
+        ``TBranch`` as an array.
+
+        See also :ref:`uproot.behaviors.TBranch.HasBranches.iterate` to iterate over
+        the array in contiguous ranges of entries.
+        """
+        if virtual:
+            # some kwargs can't be used with virtual arrays
+            err = "'{}' cannot be used with 'virtual=True'".format
+            if how is not None:
+                raise ValueError(err("how"))
+            if library != "ak":
+                raise ValueError(err("library"))
+            if expressions is not None:
+                raise ValueError(err("expressions"))
+            if cut is not None:
+                raise ValueError(err("cut"))
+            if aliases is not None:
+                raise ValueError(err("aliases"))
+
+            return self._virtual_arrays(
+                filter_name=filter_name,
+                filter_typename=filter_typename,
+                filter_branch=filter_branch,
+                entry_start=entry_start,
+                entry_stop=entry_stop,
+                decompression_executor=decompression_executor,
+                interpretation_executor=interpretation_executor,
+                array_cache=array_cache,
+                ak_add_doc=ak_add_doc,
+                access_log=access_log,
+            )
+        else:
+            # some kwargs can't be used with eager arrays
+            err = "'{}' cannot be used with 'virtual=False'".format
+            if access_log is not None:
+                raise ValueError(err("access_log"))
+            
+            return self._eager_arrays(
+                expressions=expressions,
+                cut=cut,
+                filter_name=filter_name,
+                filter_typename=filter_typename,
+                filter_branch=filter_branch,
+                aliases=aliases,
+                language=language,
+                entry_start=entry_start,
+                entry_stop=entry_stop,
+                decompression_executor=decompression_executor,
+                interpretation_executor=interpretation_executor,
+                array_cache=array_cache,
+                library=library,
+                ak_add_doc=ak_add_doc,
+                how=how,
+            )
+
+    def _virtual_arrays(
+        self,
+        *,
+        filter_name=no_filter,
+        filter_typename=no_filter,
+        filter_branch=no_filter,
         recursive=True,
         full_paths=True,
         ignore_duplicates=False,
-        language=uproot.language.python.python_language,
         entry_start=None,
         entry_stop=None,
         decompression_executor=None,
@@ -761,10 +920,6 @@ class HasBranches(Mapping):
                 :ref:`uproot.behaviors.TBranch.TBranch.interpretation`; if an
                 :doc:`uproot.interpretation.Interpretation`, this interpretation
                 overrules the standard one.
-            aliases (None or dict of str \u2192 str): Mathematical expressions that
-                can be used in ``expressions`` or other aliases (without cycles).
-                Uses the ``language`` engine to evaluate. If None, only the
-                :ref:`uproot.behaviors.TBranch.TBranch.aliases` are available.
             recursive (bool): If True, descend into any nested subbranches.
                 If False, only return the names of branches directly accessible
                 under this object.
@@ -772,8 +927,6 @@ class HasBranches(Mapping):
                 with slashes (``/``); otherwise, use the descendant's name as
                 the output name.
             ignore_duplicates (bool): If True, return a set of the keys; otherwise, return the full list of keys.
-            language (:doc:`uproot.language.Language`): Language used to interpret
-                the ``expressions`` and ``aliases``.
             entry_start (None or int): The first entry to include. If None, start
                 at zero. If negative, count from the end, like a Python slice.
             entry_stop (None or int): The first entry to exclude (i.e. one greater
@@ -806,10 +959,10 @@ class HasBranches(Mapping):
 
         .. code-block:: python
 
-            >>> my_tree.virtual_arrays()
+            >>> my_tree._virtual_arrays()
             <Array [{run: ??, ...}, ..., {run: ??, ...}] type='40 * {run: uint32, lumin...'>
             >>> access_log = []
-            >>> array = my_tree.virtual_arrays(access_log=access_log)
+            >>> array = my_tree._virtual_arrays(access_log=access_log)
             >>> ak.materialize(array.Jet_pt)
             >>> print(access_log)
             [Accessed(branch='Jet_pt', buffer_key='<root>.Jet_pt-offsets'), Accessed(branch='Jet_pt', buffer_key='<root>.Jet_pt.content-data')]
@@ -865,7 +1018,7 @@ class HasBranches(Mapping):
             buffer_key=form_mapping_info.buffer_key,
         )
 
-    def arrays(
+    def _eager_arrays(
         self,
         expressions=None,
         cut=None,
