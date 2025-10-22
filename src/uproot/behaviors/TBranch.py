@@ -870,7 +870,7 @@ class HasBranches(Mapping):
             err = "'{}' cannot be used with 'virtual=False'".format
             if access_log is not None:
                 raise ValueError(err("access_log"))
-            
+
             return self._eager_arrays(
                 expressions=expressions,
                 cut=cut,
