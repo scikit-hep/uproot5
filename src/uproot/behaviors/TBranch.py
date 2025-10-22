@@ -995,16 +995,18 @@ class HasBranches(Mapping):
         # we're dealing with a single branch here:
         if isinstance(self, TBranch) and len(keys) == 0:
             filter_branch = uproot._util.regularize_filter(filter_branch)
-            return self.parent.arrays(
+            return self.parent._virtual_arrays(
                 filter_name=filter_name,
                 filter_typename=filter_typename,
                 filter_branch=lambda branch: branch is self and filter_branch(branch),
+                recursive=recursive,
+                full_paths=full_paths,
+                ignore_duplicates=ignore_duplicates,
                 entry_start=entry_start,
                 entry_stop=entry_stop,
                 decompression_executor=decompression_executor,
                 interpretation_executor=interpretation_executor,
                 array_cache=array_cache,
-                virtual=True,
                 ak_add_doc=ak_add_doc,
                 access_log=access_log,
             )
