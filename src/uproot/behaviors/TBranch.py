@@ -1132,7 +1132,7 @@ class HasBranches(Mapping):
         keys = _keys_deep(self)
         if isinstance(self, TBranch) and expressions is None and len(keys) == 0:
             filter_branch = uproot._util.regularize_filter(filter_branch)
-            return self.parent.arrays(
+            return self.parent._eager_arrays(
                 expressions=expressions,
                 cut=cut,
                 filter_name=filter_name,
