@@ -8,7 +8,17 @@ import uproot
 import skhep_testdata
 
 
-def test_ttree_virtual_arrays():
+def test_ttree_virtual_arrays_no_log():
+    path = skhep_testdata.data_path("uproot-Zmumu.root")
+    with uproot.open(path) as file:
+        tree = file["events"]
+        eager = tree.arrays()
+        virtual = tree.arrays(virtual=True, access_log=None)
+
+    assert ak.materialize(virtual).layout.is_equal_to(eager.layout)
+
+
+def test_ttree_virtual_arrays_with_log():
     log = []
     path = skhep_testdata.data_path("uproot-Zmumu.root")
     with uproot.open(path) as file:
