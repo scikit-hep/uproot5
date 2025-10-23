@@ -1122,11 +1122,13 @@ Writing TTrees to a file
 
 TTrees are a special type of object, just as TDirectories are special: data can be cumulatively added to them.
 
-However, :doc:`uproot.writing.writable.WritableTree` objects can be created in the same way as static objects, by assigning TTree-like data to a name in a directory.
+:doc:`uproot.writing.writable.WritableTree` objects can be created using the :ref:`uproot.writing.writable.WritableDirectory.mktree` method that Uproot provides for TDirectories.
+Previously, they could be created by assigning TTree-like data to a name in a directory (e.g., ``file["tree"] = {"branch": np.arange(1000)}``). However, this syntax was deprecated,
+as Uproot will switch to writing RNTuples with syntax, since the HEP community is moving towards RNTuples.
 
 .. code-block:: python
 
-    >>> file["tree1"] = {"branch1": np.arange(1000), "branch2": np.arange(1000)*1.1}
+    >>> file.mktree("tree1", {"branch1": np.arange(1000), "branch2": np.arange(1000)*1.1})
     >>> file["tree1"]
     <WritableTree '/tree1' at 0x7f2ede193e20>
     >>> file["tree1"].show()
@@ -1156,7 +1158,7 @@ Python dicts of equal-length NumPy arrays are TTree-like, as are Pandas DataFram
     999  999  1098.9
 
     [1000 rows x 2 columns]
-    >>> file["tree2"] = df
+    >>> file.mktree("tree2", df)
     >>> file["tree2"]
     <WritableTree '/tree2' at 0x7f2e7c516d90>
     >>> file["tree2"].show()
@@ -1171,7 +1173,7 @@ If the arrays are Awkward Arrays, they can contain a variable number of values p
 .. code-block:: python
 
     >>> import awkward as ak
-    >>> file["tree3"] = {"branch": ak.Array([[1.1, 2.2, 3.3], [], [4.4, 5.5]])}
+    >>> file.mktree("tree3", {"branch": ak.Array([[1.1, 2.2, 3.3], [], [4.4, 5.5]])})
     >>> file["tree3"]
     <WritableTree '/tree3' at 0x7f2e7c516dc0>
     >>> file["tree3"].show()
@@ -1184,7 +1186,7 @@ And Awkward record arrays, constructed with `ak.zip <https://awkward-array.readt
 
 .. code-block:: python
 
-    >>> file["tree4"] = {"Muon": ak.zip({"pt": muon_pt, "eta": muon_eta, "phi": muon_phi})}
+    >>> file.mktree("tree4", {"Muon": ak.zip({"pt": muon_pt, "eta": muon_eta, "phi": muon_phi})})
     >>> file["tree4"]
     <WritableTree '/tree4' at 0x7fee9e3ebc40>
     >>> file["tree4"].show()

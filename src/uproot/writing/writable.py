@@ -1617,15 +1617,14 @@ class WritableTree:
 
     Represents a writable ``TTree`` from a ROOT file.
 
-    This object would normally be created by assigning a TTree-like data to a
-    :doc:`uproot.writing.writable.WritableDirectory`. For instance:
+    This object can be created using the :ref:`uproot.writing.writable.WritableDirectory.mktree` method. For instance:
 
     .. code-block:: python
 
-        my_directory["tree1"] = {"branch1": np.array(...), "branch2": ak.Array(...)}
-        my_directory["tree2"] = numpy_structured_array
-        my_directory["tree3"] = awkward_record_array
-        my_directory["tree4"] = pandas_dataframe
+        my_directory.mktree("tree1", {"branch1": np.array(...), "branch2": ak.Array(...)})
+        my_directory.mktree("tree2", numpy_structured_array)
+        my_directory.mktree("tree3", awkward_record_array)
+        my_directory.mktree("tree4", pandas_dataframe)
 
     Recognized data types:
 
@@ -1646,14 +1645,12 @@ class WritableTree:
 
     .. code-block:: python
 
-        my_directory["tree5"] = ak.zip({"branch1": array1, "branch2": array2, "branch3": array3})
+        my_directory.mktree("tree5", ak.zip({"branch1": array1, "branch2": array2, "branch3": array3}))
 
     would produce only one counter TBranch.
 
-    Assigning TTree-like data to a directory creates the TTree object with all of
-    its metadata and fills it with the contents of the arrays in one step. To separate
-    the process of creating the TTree metadata from filling the first TBasket, use the
-    :doc:`uproot.writing.writable.WritableDirectory.mktree` method:
+    The :doc:`uproot.writing.writable.WritableDirectory.mktree` method allows you to separate
+    the process of creating the TTree metadata from filling the first TBasket:
 
     .. code-block:: python
 
