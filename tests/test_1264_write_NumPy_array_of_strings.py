@@ -10,7 +10,7 @@ def test(tmp_path):
     newfile = os.path.join(tmp_path, "example.root")
 
     with uproot.recreate(newfile) as f:
-        f["t"] = {"x": np.array(["A", "B"]), "y": np.array([1, 2])}
+        f.mktree("t", {"x": np.array(["A", "B"]), "y": np.array([1, 2])})
         f["t"].extend({"x": np.array(["A", "B"]), "y": np.array([1, 2])})
 
     with uproot.open(newfile) as f:
