@@ -39,7 +39,7 @@ def test_schema_extension():
                 assert not all(arrays.float_field[:50] == 0)
             if i < 400:
                 assert all(len(l) == 0 for l in arrays.intvec_field[: 400 - i])
-                assert len(arrays.intvec_field[: 400 - i + 1]) != 0
+                assert len(arrays.intvec_field[400 - i]) != 0
             else:
                 assert not all(len(l) == 0 for l in arrays.intvec_field[:50])
 

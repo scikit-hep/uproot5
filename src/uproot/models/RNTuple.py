@@ -972,7 +972,7 @@ in file {self.file.file_path}"""
             # Get uncompressed array for key for all clusters
             col_decompressed_buffers = clusters_datas._grab_field_output(ncol)
             for i, cluster_i in enumerate(cluster_range):
-                stop = cluster_starts[i + 1] if i + 1 < len(cluster_starts) else None
+                stop = starts[i + 1] if i + 1 < len(starts) else None
                 cluster_buffer = col_decompressed_buffers[cluster_i]
                 cluster_buffer = self.gpu_deserialize_pages(
                     cluster_buffer, ncol, cluster_i, field_metadata
