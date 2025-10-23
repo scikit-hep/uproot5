@@ -1263,8 +1263,10 @@ in file {self.file_path} in directory {self.path}"""
         """
         Args:
             name (str): Name of the new TTree.
-            branch_types_or_data (dict or pairs of str \u2192 NumPy dtype/Awkward type): Name
-                and type specification for the TBranches.
+            branch_types_or_data (dict or pairs of str \u2192 NumPy dtype/Awkward type,
+                or dict of str \u2192 data to be written in the TBranch): Name
+                and type specification for the TBranches. If the values are not valid
+                type specifications, they are assumed to be the actual data to be written.
             title (str): Title for the new TTree.
             counter_name (callable of str \u2192 str): Function to generate counter-TBranch
                 names for Awkward Arrays of variable-length lists.

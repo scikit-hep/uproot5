@@ -66,6 +66,7 @@ def add_to_directory(obj, name, directory, streamers):
             warnings.warn(
                 "Starting in version 5.7.0, Uproot will default to writing RNTuples instead of TTrees. "
                 "You will need to use `mktree` to explicitly create a TTree. "
+                "This can be done by changing `file['tree_name'] = data` to `file.mktree('tree_name', data)`. "
                 "Please update your code accordingly.",
                 FutureWarning,
                 stacklevel=4,
