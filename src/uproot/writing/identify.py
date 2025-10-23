@@ -54,22 +54,7 @@ def add_to_directory(obj, name, directory, streamers):
     """
     is_ttree = False
 
-    if uproot._util.from_module(obj, "pandas"):
-        import pandas
-
-        if isinstance(
-            obj, pandas.DataFrame
-        ) and uproot._util.pandas_has_attr_is_numeric(pandas)(obj.index):
-            obj = uproot.writing._cascadetree.dataframe_to_dict(obj)
-
-    if uproot._util.from_module(obj, "awkward"):
-        import awkward
-
-        if isinstance(obj, awkward.Array):
-            obj = {"": obj}
-
-    if isinstance(obj, numpy.ndarray) and obj.dtype.fields is not None:
-        obj = uproot.writing._cascadetree.recarray_to_dict(obj)
+    obj = uproot.writing.writable._regularize_input_type(obj)
 
     if isinstance(obj, Mapping) and all(isinstance(x, str) for x in obj):
         is_ttree = True

@@ -1293,6 +1293,7 @@ in file {self.file_path} in directory {self.path}"""
 
         # If data is provided, create an empty TTree and then extend it
         awkward = uproot.extras.awkward()
+        branch_types_or_data = _regularize_input_type(branch_types_or_data)
         if isinstance(branch_types_or_data, Mapping) and not all(
             isinstance(
                 x, (numpy.dtype, awkward.types.Type, awkward.types.ArrayType, str)
@@ -1305,7 +1306,7 @@ in file {self.file_path} in directory {self.path}"""
                 metadata,
                 title=title,
                 counter_name=counter_name,
-                field_name=counter_name,
+                field_name=field_name,
                 initial_basket_capacity=initial_basket_capacity,
                 resize_factor=resize_factor,
             )
@@ -2203,6 +2204,27 @@ class WritableNTuple:
             **As a word of warning,** be sure that each call to :ref:`uproot.writing.writable.WritableNTuple.extend` includes at least 100 kB per branch/array. (NumPy and Awkward Arrays have an `nbytes <https://numpy.org/doc/stable/reference/generated/numpy.ndarray.nbytes.html>`__ property; you want at least ``100000`` per array.) If you ask Uproot to write very small TBaskets, it will spend more time working on TBasket overhead than actually writing data. The absolute worst case is one-entry-per-:ref:`uproot.writing.writable.WritableTree.extend`. See `#428 (comment) <https://github.com/scikit-hep/uproot5/pull/428#issuecomment-908703486>`__.
         """
         self._cascading.extend(self._file, self._file.sink, data)
+
+
+def _regularize_input_type(obj):
+    if uproot._util.from_module(obj, "pandas"):
+        import pandas
+
+        if isinstance(
+            obj, pandas.DataFrame
+        ) and uproot._util.pandas_has_attr_is_numeric(pandas)(obj.index):
+            obj = uproot.writing._cascadetree.dataframe_to_dict(obj)
+
+    if uproot._util.from_module(obj, "awkward"):
+        import awkward
+
+        if isinstance(obj, awkward.Array):
+            obj = {"": obj}
+
+    if isinstance(obj, numpy.ndarray) and obj.dtype.fields is not None:
+        obj = uproot.writing._cascadetree.recarray_to_dict(obj)
+
+    return obj
 
 
 def _unpack_metadata_and_arrays(obj):
