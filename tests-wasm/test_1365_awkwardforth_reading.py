@@ -3,6 +3,11 @@ from __future__ import annotations
 
 from utils import run_test_in_pyodide
 
+# This comment below is needed for pytest_pyodide to work
+# The issue is that we use our own custom decorator
+# See https://github.com/pyodide/pytest-pyodide/pull/180
+# run_in_pyodide
+
 
 # Taken from test_0610_awkward_form.py
 @run_test_in_pyodide(packages=["numpy"], test_file="uproot-HZZ-objects.root")
