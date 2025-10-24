@@ -243,7 +243,7 @@ def test_flattree_ZLIB(tmp_path):
     branch2 = 1.1 * np.arange(100)
 
     with uproot.recreate(newfile, compression=uproot.ZLIB(5)) as fout:
-        fout["tree"] = {"branch1": branch1, "branch2": branch2}
+        fout.mktree("tree", {"branch1": branch1, "branch2": branch2})
         fout["tree"].extend({"branch1": branch1, "branch2": branch2})
 
     with uproot.open(newfile) as fin:
@@ -266,7 +266,7 @@ def test_flattree_LZMA(tmp_path):
     branch2 = 1.1 * np.arange(100)
 
     with uproot.recreate(newfile, compression=uproot.LZMA(5)) as fout:
-        fout["tree"] = {"branch1": branch1, "branch2": branch2}
+        fout.mktree("tree", {"branch1": branch1, "branch2": branch2})
         fout["tree"].extend({"branch1": branch1, "branch2": branch2})
 
     with uproot.open(newfile) as fin:
@@ -289,7 +289,7 @@ def test_flattree_LZ4(tmp_path):
     branch2 = 1.1 * np.arange(100)
 
     with uproot.recreate(newfile, compression=uproot.LZ4(5)) as fout:
-        fout["tree"] = {"branch1": branch1, "branch2": branch2}
+        fout.mktree("tree", {"branch1": branch1, "branch2": branch2})
         fout["tree"].extend({"branch1": branch1, "branch2": branch2})
 
     with uproot.open(newfile) as fin:
@@ -312,7 +312,7 @@ def test_flattree_ZSTD(tmp_path):
     branch2 = 1.1 * np.arange(100)
 
     with uproot.recreate(newfile, compression=uproot.ZSTD(5)) as fout:
-        fout["tree"] = {"branch1": branch1, "branch2": branch2}
+        fout.mktree("tree", {"branch1": branch1, "branch2": branch2})
         fout["tree"].extend({"branch1": branch1, "branch2": branch2})
 
     with uproot.open(newfile) as fin:
@@ -335,7 +335,7 @@ def test_jaggedtree_ZLIB(tmp_path):
     branch2 = ak.Array([[1.1, 2.2, 3.3], [], [4.4, 5.5]] * 10)
 
     with uproot.recreate(newfile, compression=uproot.ZLIB(5)) as fout:
-        fout["tree"] = {"branch1": branch1, "branch2": branch2}
+        fout.mktree("tree", {"branch1": branch1, "branch2": branch2})
         fout["tree"].extend({"branch1": branch1, "branch2": branch2})
 
     with uproot.open(newfile) as fin:
@@ -359,7 +359,7 @@ def test_jaggedtree_LZMA(tmp_path):
     branch2 = ak.Array([[1.1, 2.2, 3.3], [], [4.4, 5.5]] * 10)
 
     with uproot.recreate(newfile, compression=uproot.LZMA(5)) as fout:
-        fout["tree"] = {"branch1": branch1, "branch2": branch2}
+        fout.mktree("tree", {"branch1": branch1, "branch2": branch2})
         fout["tree"].extend({"branch1": branch1, "branch2": branch2})
 
     with uproot.open(newfile) as fin:
@@ -383,7 +383,7 @@ def test_jaggedtree_LZ4(tmp_path):
     branch2 = ak.Array([[1.1, 2.2, 3.3], [], [4.4, 5.5]] * 10)
 
     with uproot.recreate(newfile, compression=uproot.LZ4(5)) as fout:
-        fout["tree"] = {"branch1": branch1, "branch2": branch2}
+        fout.mktree("tree", {"branch1": branch1, "branch2": branch2})
         fout["tree"].extend({"branch1": branch1, "branch2": branch2})
 
     with uproot.open(newfile) as fin:
@@ -407,7 +407,7 @@ def test_jaggedtree_ZSTD(tmp_path):
     branch2 = ak.Array([[1.1, 2.2, 3.3], [], [4.4, 5.5]] * 10)
 
     with uproot.recreate(newfile, compression=uproot.ZSTD(5)) as fout:
-        fout["tree"] = {"branch1": branch1, "branch2": branch2}
+        fout.mktree("tree", {"branch1": branch1, "branch2": branch2})
         fout["tree"].extend({"branch1": branch1, "branch2": branch2})
 
     with uproot.open(newfile) as fin:
