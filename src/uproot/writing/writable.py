@@ -1294,14 +1294,8 @@ in file {self.file_path} in directory {self.path}"""
             raise ValueError("cannot create a TTree in a closed file")
 
         # If data is provided, create an empty TTree and then extend it
-        awkward = uproot.extras.awkward()
         branch_types_or_data = _regularize_input_type(branch_types_or_data)
-        if isinstance(branch_types_or_data, Mapping) and not all(
-            isinstance(
-                x, (numpy.dtype, awkward.types.Type, awkward.types.ArrayType, str)
-            )
-            for x in branch_types_or_data.values()
-        ):
+        if not _is_type_specification(branch_types_or_data):
             metadata, data = _unpack_metadata_and_arrays(branch_types_or_data)
             tree = self.mktree(
                 name,
@@ -2203,6 +2197,24 @@ class WritableNTuple:
             **As a word of warning,** be sure that each call to :ref:`uproot.writing.writable.WritableNTuple.extend` includes at least 100 kB per branch/array. (NumPy and Awkward Arrays have an `nbytes <https://numpy.org/doc/stable/reference/generated/numpy.ndarray.nbytes.html>`__ property; you want at least ``100000`` per array.) If you ask Uproot to write very small TBaskets, it will spend more time working on TBasket overhead than actually writing data. The absolute worst case is one-entry-per-:ref:`uproot.writing.writable.WritableTree.extend`. See `#428 (comment) <https://github.com/scikit-hep/uproot5/pull/428#issuecomment-908703486>`__.
         """
         self._cascading.extend(self._file, self._file.sink, data)
+
+
+def _is_type_specification(obj):
+    awkward = uproot.extras.awkward()
+    to_check = [obj]
+    while len(to_check) > 0:
+        obj = to_check.pop()
+        if isinstance(obj, Mapping):
+            if all(isinstance(k, str) for k in obj.keys()):
+                to_check.extend(obj.values())
+                continue
+            else:
+                return False
+        if not isinstance(
+            obj, (numpy.dtype, awkward.types.Type, awkward.types.ArrayType, str, type)
+        ):
+            return False
+    return True
 
 
 def _regularize_input_type(obj):
