@@ -138,7 +138,7 @@ def _leaf_to_dtype(leaf, getdims):
 
 _title_has_dims = re.compile(r"^([^\[\]]*)(\[[^\[\]]+\])+")
 _item_dim_pattern = re.compile(r"\[([1-9][0-9]*)\]")
-_item_any_pattern = re.compile(r"\[(.*)\]")
+_item_any_pattern = re.compile(r"(\[.*\])")
 
 
 def _from_leaves_one(leaf, title):
