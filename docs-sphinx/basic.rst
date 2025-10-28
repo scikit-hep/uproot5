@@ -1311,3 +1311,67 @@ Here is an example of writing an RNTuple. Since TTree is still the default forma
     >>> data = {"my_int": [1,2], "my_vector": [[1,2], [3,4,5]]}
     >>> rntuple = file.mkrntuple("my_rntuple", data)
     >>> rntuple.extend(data) # Can be extended, just like TTrees
+
+Using your own interpretation
+--------------------------------
+
+Interpretations manages how data are read from files and converted into arrays. There are many built-in interpretations, but you can also write your own. This is useful if you want to read your custom classes that are not supported by Uproot.
+
+To write your own interpretation, you need to subclass :doc:`uproot.interpretation.custom.CustomInterpretation` and implement some methods:
+
+.. code-block:: python
+
+    import uproot
+    from uproot.interpretation.custom import CustomInterpretation
+
+    class MyCustomInterpretation(CustomInterpretation):
+        def __init__(
+            self,
+            branch: uproot.behaviors.TBranch.TBranch,
+            context: dict,
+            simplify: bool,
+        ):
+            super().__init__(branch, context, simplify)
+            # Initialize your interpretation here
+
+        @classmethod
+        def match_branch(
+            self,
+            branch: uproot.behaviors.TBranch.TBranch,
+            context: dict,
+            simplify: bool,
+        ) -> bool:
+            # Return True if this interpretation can handle the branch
+            # You can also declare this method as a class method
+
+        def basket_array(
+            self,
+            data,
+            byte_offsets,
+            basket,
+            branch,
+            context,
+            cursor_offset,
+            library,
+            interp_options,
+        ):
+            # Convert the data from the basket into an array
+            # `data` is the raw binary data from the basket as `np.ndarray[np.uint8]`,
+            # `byte_offsets` is a `uint32` numpy array with the byte offsets of each entry.
+
+The ``match_branch`` method tells Uproot whether this interpretation can handle a specific branch. It is called for each branch in the file, and if it returns ``True``, Uproot will instantiate this interpretation with the same arguments passed to ``match_branch``.
+
+The ``basket_array`` method is where you convert the raw binary data from the basket into an array. The ``data`` argument is a NumPy array of type ``np.uint8``, which contains the raw bytes of the basket. The ``byte_offsets`` argument is a NumPy array of type ``np.uint32``, which contains the byte offsets of each entry in ``data``. You should return the converted data in this method.
+
+.. note::
+
+    If ``basket_array`` does not return an ``awkward``, ``numpy`` array or ``pandas`` dataframe, you need to reimplement the ``final_array`` method to concatenate the results.
+
+To use your custom interpretation, register it with Uproot like:
+
+.. code-block:: python
+
+    import uproot
+    uproot.register_interpretation(MyCustomInterpretation)
+
+Then you can use it to read data as described in the previous sections.
