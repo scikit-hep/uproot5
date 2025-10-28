@@ -108,8 +108,7 @@ def test_empty_struct(backend, interpreter, library):
         assert a.empty_struct.tolist() == [(), (), ()]
 
 
-# cupy doesn't support None or object dtype like numpy; test cannot pass with
-# GDS
+# cupy doesn't support None or object dtype like numpy; test cannot pass with GDS
 def test_invalid_variant():
     filename = skhep_testdata.data_path(
         "test_emptystruct_invalidvar_rntuple_v1-0-0-0.root"
@@ -117,6 +116,6 @@ def test_invalid_variant():
     with uproot.open(filename) as f:
         obj = f["ntuple"]
 
-        a = obj.arrays("variant.*", backend="cuda", interpreter="cpu")
+        a = obj.arrays("variant", backend="cuda", interpreter="cpu")
 
         assert a.variant.tolist() == [1, None, {"i": 2}]

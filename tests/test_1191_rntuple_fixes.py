@@ -29,6 +29,20 @@ def test_schema_extension():
         assert next(i for i, l in enumerate(arrays.float_field) if l != 0) == 200
         assert next(i for i, l in enumerate(arrays.intvec_field) if len(l) != 0) == 400
 
+        for i in range(50, 600, 50):
+            arrays = obj.arrays(entry_start=i)
+            assert len(arrays) == 600 - i
+            if i < 200:
+                assert all(arrays.float_field[: 200 - i] == 0)
+                assert arrays.float_field[200 - i + 1] != 0
+            else:
+                assert not all(arrays.float_field[:50] == 0)
+            if i < 400:
+                assert all(len(l) == 0 for l in arrays.intvec_field[: 400 - i])
+                assert len(arrays.intvec_field[400 - i]) != 0
+            else:
+                assert not all(len(l) == 0 for l in arrays.intvec_field[:50])
+
 
 def test_rntuple_cardinality():
     filename = skhep_testdata.data_path(
@@ -45,7 +59,7 @@ def test_multiple_page_delta_encoding():
     with uproot.open(filename) as f:
         obj = f["ntuple"]
         field_metadata = obj.get_field_metadata(0)
-        data = obj.read_col_page(0, 0, field_metadata)
+        data = obj.read_cluster_pages(0, 0, field_metadata)
         # first page has 64 elements, so this checks that data was stitched together correctly
         assert data[64] - data[63] == 2
 
