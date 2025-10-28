@@ -4,6 +4,11 @@ from __future__ import annotations
 import pytest
 from utils import run_test_in_pyodide
 
+# This comment below is needed for pytest_pyodide to work
+# The issue is that we use our own custom decorator
+# See https://github.com/pyodide/pytest-pyodide/pull/180
+# run_in_pyodide
+
 
 # Taken from test_0034_generic_objects_in_ttrees.py
 @run_test_in_pyodide(test_file="uproot-HZZ-objects.root", packages=["pytest", "xxhash"])

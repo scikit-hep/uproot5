@@ -10,7 +10,7 @@ from concurrent.futures import Executor
 from uproot.source.chunk import SourcePerformanceCounters
 
 try:
-    from typing import TYPE_CHECKING, Final
+    from typing import TYPE_CHECKING, Final, NamedTuple
 
     from typing_extensions import Any, Protocol, TypeVar
 except ImportError:
@@ -968,11 +968,89 @@ class TrivialFormMappingInfo(ImplementsFormMappingInfo):
         return container
 
 
+class FormMappingInfoWithVirtualArrays(TrivialFormMappingInfo):
+    def buffer_replacements(
+        self,
+        tree: HasBranches,
+        keys: frozenset[str],
+        start: int,
+        stop: int,
+        decompression_executor,
+        interpretation_executor,
+        options: Any,
+    ) -> Mapping[str, AwkArray]:
+        awkward = uproot.extras.awkward()
+
+        def generator(tree, buffer_key):
+            form_key, _ = self.parse_buffer_key(buffer_key)
+            key = self._form_key_to_key[form_key]
+            branch = tree[key]
+
+            def _generator():
+                array = branch.array(
+                    entry_start=start,
+                    entry_stop=stop,
+                    interpretation_executor=interpretation_executor,
+                    decompression_executor=decompression_executor,
+                    library="ak",
+                    ak_add_doc=options.get("ak_add_doc"),
+                )
+
+                # add to access_log
+                access_log = options.get("access_log")
+                if access_log is not None:
+                    if not hasattr(access_log, "__iadd__"):
+                        raise ValueError(
+                            f"{access_log=} needs to implement '__iadd__'."
+                        )
+                    else:
+                        access_log += [Accessed(branch=key, buffer_key=buffer_key)]
+
+                # Convert the sub-array into buffers
+                ttree_subform, _, ttree_container = awkward.to_buffers(array)
+
+                # Load the associated projection subform
+                projection_subform = self._form.content(key)
+
+                # Correlate each TTree form key with the projection form key
+                for (src, src_dtype), (dst, dst_dtype) in zip(
+                    ttree_subform.expected_from_buffers().items(),
+                    projection_subform.expected_from_buffers(self.buffer_key).items(),
+                ):
+                    # Return the corresponding array from the TTree if buffer key matches
+                    if buffer_key == dst:
+                        if src_dtype != dst_dtype:
+                            raise TypeError(
+                                f"Data type mismatch: {src_dtype} != {dst_dtype}"
+                            )
+                        return ttree_container[src]
+
+                # Raise an error if the buffer key is not found
+                raise ValueError(
+                    f"Buffer key {buffer_key} not found in form {self._form}"
+                )
+
+            return _generator
+
+        container = {}
+        for buffer_key, _ in self._form.expected_from_buffers().items():
+            container[buffer_key] = generator(tree, buffer_key)
+
+        return container
+
+
 class TrivialFormMapping(ImplementsFormMapping):
     def __call__(self, form: Form) -> tuple[Form, TrivialFormMappingInfo]:
-        dask_awkward = uproot.extras.dask_awkward()
-        new_form = dask_awkward.lib.utils.form_with_unique_keys(form, "<root>")
+        awkward = uproot.extras.awkward()
+        new_form = awkward.forms.form_with_unique_keys(form, ("<root>",))
         return new_form, TrivialFormMappingInfo(new_form)
+
+
+class FormMappingWithVirtualArrays(ImplementsFormMapping):
+    def __call__(self, form: Form) -> tuple[Form, FormMappingInfoWithVirtualArrays]:
+        awkward = uproot.extras.awkward()
+        new_form = awkward.forms.form_with_unique_keys(form, ("<root>",))
+        return new_form, FormMappingInfoWithVirtualArrays(new_form)
 
 
 T = TypeVar("T")
@@ -1035,7 +1113,18 @@ class UprootReadMixin:
             # but not two of the keys required for buffer B
             if all(k in self.common_keys for k in keys_for_buffer):
                 container[buffer_key] = mapping[buffer_key]
-            # Otherwise, introduce a placeholder
+            # if the form mapping info provides a replacements, use it
+            elif hasattr(self.form_mapping_info, "buffer_replacements"):
+                container[buffer_key] = self.form_mapping_info.buffer_replacements(
+                    tree,
+                    keys_for_buffer,
+                    start,
+                    stop,
+                    self.decompression_executor,
+                    self.interpretation_executor,
+                    self.interp_options,
+                )[buffer_key]
+            # Otherwise, introduce a placeholder (default replacement)
             else:
                 container[buffer_key] = awkward.typetracer.PlaceholderArray(
                     nplike=nplike,
@@ -1625,9 +1714,7 @@ which has {entry_stop} entries"""
         partition_args.append((0, 0, 0))
 
     if form_mapping is None:
-        expected_form = dask_awkward.lib.utils.form_with_unique_keys(
-            base_form, "<root>"
-        )
+        expected_form = awkward.forms.form_with_unique_keys(base_form, ("<root>",))
         form_mapping_info = TrivialFormMappingInfo(expected_form)
     else:
         expected_form, form_mapping_info = form_mapping(base_form)
@@ -1732,9 +1819,7 @@ def _get_dak_array_delay_open(
                 )
 
     if form_mapping is None:
-        expected_form = dask_awkward.lib.utils.form_with_unique_keys(
-            base_form, "<root>"
-        )
+        expected_form = awkward.forms.form_with_unique_keys(base_form, ("<root>",))
         form_mapping_info = TrivialFormMappingInfo(expected_form)
     else:
         expected_form, form_mapping_info = form_mapping(base_form)
@@ -1759,3 +1844,8 @@ def _get_dak_array_delay_open(
         divisions=None if divisions is None else tuple(divisions),
         label="from-uproot",
     )
+
+
+class Accessed(NamedTuple):
+    branch: str
+    buffer_key: str
