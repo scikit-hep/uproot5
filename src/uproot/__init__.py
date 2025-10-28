@@ -170,6 +170,8 @@ from uproot.interpretation.strings import AsStrings
 from uproot.interpretation.objects import AsObjects
 from uproot.interpretation.objects import AsStridedObjects
 from uproot.interpretation.grouped import AsGrouped
+from uproot.interpretation.identify import register_interpretation
+from uproot.interpretation.identify import unregister_interpretation
 from uproot.containers import AsString
 from uproot.containers import AsPointer
 from uproot.containers import AsArray
