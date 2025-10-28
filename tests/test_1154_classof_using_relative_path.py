@@ -11,7 +11,7 @@ def test_descend_into_path_classname_of(tmp_path):
     filename = os.path.join(tmp_path, "test.root")
 
     with uproot.recreate(filename) as f:
-        f["Tree"] = {"x": np.array([1, 2, 3, 4, 5])}
+        f.mktree("Tree", {"x": np.array([1, 2, 3, 4, 5])})
 
     with uproot.open(filename) as f:
         assert f.classname_of("Tree/x") == "TBranch"
