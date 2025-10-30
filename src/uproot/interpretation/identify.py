@@ -188,6 +188,7 @@ def _from_leaves(branch, context):
             title = leaf.member("fTitle")
             if first:
                 dims, is_jagged = _from_leaves_one(leaf, title, count_branch_name)
+                first = False
             else:
                 trial_dims, trial_is_jagged = _from_leaves_one(
                     leaf, title, count_branch_name
