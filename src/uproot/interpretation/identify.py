@@ -193,12 +193,21 @@ def _from_leaves(branch, context):
                 trial_dims, trial_is_jagged = _from_leaves_one(
                     leaf, title, count_branch_name
                 )
-                if dims != trial_dims or is_jagged != trial_is_jagged:
+                if is_jagged != trial_is_jagged:
                     raise UnknownInterpretation(
-                        "leaf-list with different dimensions among the leaves",
+                        "leaf-list with different jaggedness among the leaves",
                         branch.file.file_path,
                         branch.object_path,
                     )
+                if dims != trial_dims:
+                    # pick the common dimensions
+                    i = 0
+                    for d1, d2 in zip(dims, trial_dims):
+                        if d1 == d2:
+                            i += 1
+                        else:
+                            break
+                    dims = dims[:i]
         return dims, is_jagged
 
 
