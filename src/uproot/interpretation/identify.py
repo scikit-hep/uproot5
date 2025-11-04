@@ -141,12 +141,16 @@ _item_dim_pattern = re.compile(r"\[([1-9][0-9]*)\]")
 _item_any_pattern = re.compile(r"(\[.*\])")
 
 
-def _from_leaves_one(leaf, title):
+def _from_leaves_one(leaf, title, count_branch_name):
     dims, is_jagged = (), False
 
     m = _title_has_dims.match(title)
     if m is not None:
-        dims = tuple(int(x) for x in re.findall(_item_dim_pattern, title))
+        dims = tuple(
+            int(x)
+            for x in re.findall(_item_dim_pattern, title)
+            if x != count_branch_name
+        )
         if dims == () and leaf.member("fLen") > 1:
             dims = (leaf.member("fLen"),)
 
@@ -170,22 +174,40 @@ def _from_leaves(branch, context):
     elif len(branch.member("fLeaves")) == 1:
         leaf = branch.member("fLeaves")[0]
         title = leaf.member("fTitle")
-        return _from_leaves_one(leaf, title)
+        count_branch_name = (
+            branch.count_branch.name if branch.count_branch is not None else ""
+        )
+        return _from_leaves_one(leaf, title, count_branch_name)
 
     else:
         first = True
+        count_branch_name = (
+            branch.count_branch.name if branch.count_branch is not None else ""
+        )
         for leaf in branch.member("fLeaves"):
             title = leaf.member("fTitle")
             if first:
-                dims, is_jagged = _from_leaves_one(leaf, title)
+                dims, is_jagged = _from_leaves_one(leaf, title, count_branch_name)
+                first = False
             else:
-                trial_dims, trial_is_jagged = _from_leaves_one(leaf, title)
-                if dims != trial_dims or is_jagged != trial_is_jagged:
+                trial_dims, trial_is_jagged = _from_leaves_one(
+                    leaf, title, count_branch_name
+                )
+                if is_jagged != trial_is_jagged:
                     raise UnknownInterpretation(
-                        "leaf-list with different dimensions among the leaves",
+                        "leaf-list with different jaggedness among the leaves",
                         branch.file.file_path,
                         branch.object_path,
                     )
+                if dims != trial_dims:
+                    # pick the common dimensions
+                    i = 0
+                    for d1, d2 in zip(dims, trial_dims):
+                        if d1 == d2:
+                            i += 1
+                        else:
+                            break
+                    dims = dims[:i]
         return dims, is_jagged
 
 
