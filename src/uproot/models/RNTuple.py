@@ -650,7 +650,7 @@ in file {self.file.file_path}"""
         ]
         self.deserialize_page_decompressed_buffer(destination, field_metadata)
 
-    def _expected_array_length_and_starts(
+    def _expected_array_length_starts_dtype(
         self, col_idx, cluster_start, cluster_stop, missing_element_padding=0
     ):
         """
@@ -660,7 +660,7 @@ in file {self.file.file_path}"""
             cluster_stop (int): The first cluster to exclude (i.e. one greater than the last cluster to include).
             missing_element_padding (int): Number of padding elements to add at the start of the array.
 
-        Returns the expected length of the array over the given cluster range, including padding, and also the start indices of each cluster.
+        Returns the expected length of the array over the given cluster range (including padding), the start indices of each cluster, and the dtype of the array.
         """
         field_metadata = self.get_field_metadata(col_idx)
         if field_metadata.dtype_byte in uproot.const.rntuple_index_types:
@@ -690,7 +690,7 @@ in file {self.file.file_path}"""
             starts.append(total_length)
             total_length += cluster_length
 
-        return total_length, starts
+        return total_length, starts, field_metadata.dtype_result
 
     def read_cluster_range(
         self,
@@ -711,10 +711,10 @@ in file {self.file.file_path}"""
         Returns a numpy array with the data from the column.
         """
         field_metadata = self.get_field_metadata(col_idx)
-        total_length, starts = self._expected_array_length_and_starts(
+        total_length, starts, dtype = self._expected_array_length_starts_dtype(
             col_idx, cluster_start, cluster_stop, missing_element_padding
         )
-        res = numpy.empty(total_length, field_metadata.dtype_result)
+        res = numpy.empty(total_length, dtype)
         # Initialize the padding elements. Note that it might be different from missing_element_padding
         # because for offsets there is an extra zero added at the start.
         assert len(starts) > 0, "The cluster range is invalid"
@@ -726,7 +726,7 @@ in file {self.file.file_path}"""
                 cluster_idx,
                 col_idx,
                 field_metadata,
-                destination=res[starts[i] : stop],
+                destination=res[starts[i] : stop].view(field_metadata.dtype),
                 array_cache=array_cache,
             )
 
@@ -964,7 +964,7 @@ in file {self.file.file_path}"""
             n_padding = self.column_records[key_nr].first_element_index
             n_padding -= cluster_starts[start_cluster_idx]
             n_padding = max(n_padding, 0)
-            total_length, starts = self._expected_array_length_and_starts(
+            total_length, starts, _ = self._expected_array_length_starts_dtype(
                 ncol, start_cluster_idx, stop_cluster_idx, n_padding
             )
             field_metadata = self.get_field_metadata(ncol)
@@ -1169,6 +1169,8 @@ in file {self.file.file_path}"""
             "std::string"
         ):
             dtype_result = dtype
+        elif dtype_byte in uproot.const.rntuple_custom_float_types:
+            dtype_result = numpy.float32
         else:
             dtype_result = numpy.result_type(*alt_dtype_list)
         field_metadata = FieldClusterMetadata(
