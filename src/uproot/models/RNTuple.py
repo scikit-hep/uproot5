@@ -711,10 +711,10 @@ in file {self.file.file_path}"""
         Returns a numpy array with the data from the column.
         """
         field_metadata = self.get_field_metadata(col_idx)
-        total_length, starts, _ = self._expected_array_length_starts_dtype(
+        total_length, starts, dtype = self._expected_array_length_starts_dtype(
             col_idx, cluster_start, cluster_stop, missing_element_padding
         )
-        res = numpy.empty(total_length, field_metadata.dtype_result)
+        res = numpy.empty(total_length, dtype)
         # Initialize the padding elements. Note that it might be different from missing_element_padding
         # because for offsets there is an extra zero added at the start.
         assert len(starts) > 0, "The cluster range is invalid"
@@ -726,7 +726,7 @@ in file {self.file.file_path}"""
                 cluster_idx,
                 col_idx,
                 field_metadata,
-                destination=res[starts[i] : stop],
+                destination=res[starts[i] : stop].view(field_metadata.dtype),
                 array_cache=array_cache,
             )
 
@@ -1169,6 +1169,8 @@ in file {self.file.file_path}"""
             "std::string"
         ):
             dtype_result = dtype
+        elif dtype_byte in uproot.const.rntuple_custom_float_types:
+            dtype_result = numpy.float32
         else:
             dtype_result = numpy.result_type(*alt_dtype_list)
         field_metadata = FieldClusterMetadata(
