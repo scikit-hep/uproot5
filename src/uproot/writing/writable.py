@@ -37,6 +37,8 @@ import uproot.model
 import uproot.models.TObjString
 import uproot.sink.file
 import uproot.writing._cascade
+import uproot.writing._cascadetree
+import uproot.writing.identify
 from uproot._util import no_filter, no_rename
 
 
