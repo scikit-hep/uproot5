@@ -73,7 +73,7 @@ class S3Source(uproot.source.http.HTTPSource):
             region = parsed_query["region"]
 
         client = Minio(
-            endpoint,
+            endpoint=endpoint,
             access_key=access_key,
             secret_key=secret_key,
             session_token=session_token,
@@ -83,6 +83,8 @@ class S3Source(uproot.source.http.HTTPSource):
             credentials=credentials,
         )
 
-        url = client.get_presigned_url("GET", bucket_name, object_name)
+        url = client.get_presigned_url(
+            method="GET", bucket_name=bucket_name, object_name=object_name
+        )
 
         super().__init__(url, **options)
