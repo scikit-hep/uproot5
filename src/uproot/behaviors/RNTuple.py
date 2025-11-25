@@ -15,6 +15,7 @@ from __future__ import annotations
 import sys
 import warnings
 from collections.abc import Mapping
+from functools import partial
 
 import numpy
 
@@ -622,6 +623,7 @@ class HasFields(Mapping):
         interpreter="cpu",
         ak_add_doc=False,
         how=None,
+        virtual=False,
         # For compatibility reasons we also accepts kwargs meant for TTrees
         interpretation_executor=None,
         filter_branch=unset,
@@ -677,6 +679,7 @@ class HasFields(Mapping):
                 ``list``, and ``dict``. Note that the container *type itself*
                 must be passed as ``how``, not an instance of that type (i.e.
                 ``how=tuple``, not ``how=()``).
+            virtual (bool): If True, return virtual Awkward arrays, meaning that the data will not be loaded into memory until it is accessed.
             interpretation_executor (None): This argument is not used and is only included for now
                 for compatibility with software that was used for :doc:`uproot.behaviors.TBranch.TBranch`. This argument should not be used
                 and will be removed in a future version.
@@ -759,22 +762,40 @@ class HasFields(Mapping):
                 n_padding = self.ntuple.column_records[key_nr].first_element_index
                 n_padding -= cluster_starts[start_cluster_idx]
                 n_padding = max(n_padding, 0)
+                dtype = None
                 if interpreter == "cpu":
-                    content = self.ntuple.read_cluster_range(
+                    content_generator = partial(
+                        self.ntuple.read_cluster_range,
                         key_nr,
                         start_cluster_idx,
                         stop_cluster_idx,
                         missing_element_padding=n_padding,
                         array_cache=array_cache,
                     )
+                    if virtual:
+                        total_length, _, dtype = (
+                            self.ntuple._expected_array_length_starts_dtype(
+                                key_nr,
+                                start_cluster_idx,
+                                stop_cluster_idx,
+                                missing_element_padding=n_padding,
+                            )
+                        )
+                        if "cardinality" in key:
+                            total_length -= 1
+                        content = (total_length, content_generator)
+                    else:
+                        content = content_generator()
                 elif interpreter == "gpu" and backend == "cuda":
                     content = content_dict[key_nr]
                 elif interpreter == "gpu":
                     raise NotImplementedError(
                         f"Backend {backend} GDS support not implemented."
                     )
+                else:
+                    raise NotImplementedError(f"Backend {backend} not implemented.")
                 dtype_byte = self.ntuple.column_records[key_nr].type
-                _fill_container_dict(container_dict, content, key, dtype_byte)
+                _fill_container_dict(container_dict, content, key, dtype_byte, dtype)
 
         cluster_offset = cluster_starts[start_cluster_idx]
         entry_start -= cluster_offset
@@ -1778,36 +1799,116 @@ def _cupy_insert(arr, obj, value):
     return out
 
 
-def _fill_container_dict(container_dict, content, key, dtype_byte):
-    array_library_string = uproot._util.get_array_library(content)
+def _fill_container_dict(container_dict, content, key, dtype_byte, dtype):
+    from awkward._nplikes.numpy import Numpy
+    from awkward._nplikes.virtual import VirtualNDArray
+
+    if isinstance(content, tuple):
+        # Virtual arrays not yet implemented for GPU
+        array_library_string = "numpy"
+        virtual = True
+        length = int(content[0])
+        raw_generator = content[1]
+    else:
+        virtual = False
+        array_library_string = uproot._util.get_array_library(content)
+        length = len(content)
+
+        def raw_generator():
+            return content
 
     library = numpy if array_library_string == "numpy" else uproot.extras.cupy()
 
     if "cardinality" in key:
-        content = library.diff(content)
 
-    if "optional" in key:
-        # We need to convert from a ListOffsetArray to an IndexedOptionArray
-        diff = library.diff(content)
-        missing = library.nonzero(diff == 0)[0]
-        missing -= library.arange(len(missing), dtype=missing.dtype)
-        dtype = "int64" if content.dtype == library.uint64 else "int32"
-        indices = library.arange(len(content) - len(missing), dtype=dtype)
-        if array_library_string == "numpy":
-            indices = numpy.insert(indices, missing, -1)
+        def generator():
+            materialized = raw_generator()
+            materialized = library.diff(materialized)
+            return materialized
+
+        if virtual:
+            virtual_array = VirtualNDArray(
+                Numpy.instance(), shape=(length,), dtype=dtype, generator=generator
+            )
+            container_dict[f"{key}-data"] = virtual_array
         else:
-            indices = _cupy_insert(indices, missing, -1)
-        container_dict[f"{key}-index"] = indices
+            container_dict[f"{key}-data"] = generator()
+
+    elif "optional" in key:
+
+        def generator():
+            # We need to convert from a ListOffsetArray to an IndexedOptionArray
+            materialized = raw_generator()
+            diff = library.diff(materialized)
+            missing = library.nonzero(diff == 0)[0]
+            missing -= library.arange(len(missing), dtype=missing.dtype)
+            dtype = "int64" if materialized.dtype == library.int64 else "int32"
+            indices = library.arange(len(materialized) - len(missing), dtype=dtype)
+            if array_library_string == "numpy":
+                indices = numpy.insert(indices, missing, -1)
+            else:
+                indices = _cupy_insert(indices, missing, -1)
+            return indices[:-1]  # We need to delete the last index
+
+        if virtual:
+            virtual_array = VirtualNDArray(
+                Numpy.instance(), shape=(length - 1,), dtype=dtype, generator=generator
+            )
+            container_dict[f"{key}-index"] = virtual_array
+        else:
+            container_dict[f"{key}-index"] = generator()
+
     elif dtype_byte == uproot.const.rntuple_col_type_to_num_dict["switch"]:
-        tags = content["tag"].astype(numpy.int8)
-        kindex = content["index"]
-        # Find invalid variants and adjust buffers accordingly
-        invalid = numpy.flatnonzero(tags == 0)
-        kindex[invalid] = 0  # Might not be necessary, but safer
-        container_dict[f"{key}-index"] = library.array(kindex)
-        container_dict[f"{key}-tags"] = library.array(tags)
-        container_dict["nones-index"] = library.array([-1], dtype=numpy.int64)
+
+        def tag_generator():
+            content = raw_generator()
+            return content["tag"].astype(numpy.int8)
+
+        def index_generator():
+            content = raw_generator()
+            tags = content["tag"].astype(numpy.int8)
+            kindex = content["index"]
+            # Find invalid variants and adjust buffers accordingly
+            invalid = numpy.flatnonzero(tags == 0)
+            kindex[invalid] = 0  # Might not be necessary, but safer
+            return kindex
+
+        def nones_index_generator():
+            return library.array([-1], dtype=numpy.int64)
+
+        if virtual:
+            tag_virtual_array = VirtualNDArray(
+                Numpy.instance(),
+                shape=(length,),
+                dtype=numpy.int8,
+                generator=tag_generator,
+            )
+            container_dict[f"{key}-tags"] = tag_virtual_array
+            index_virtual_array = VirtualNDArray(
+                Numpy.instance(),
+                shape=(length,),
+                dtype=numpy.int64,
+                generator=index_generator,
+            )
+            container_dict[f"{key}-index"] = index_virtual_array
+            nones_index_virtual_array = VirtualNDArray(
+                Numpy.instance(),
+                shape=(1,),
+                dtype=numpy.int64,
+                generator=nones_index_generator,
+            )
+            container_dict["nones-index"] = nones_index_virtual_array
+        else:
+            container_dict[f"{key}-tags"] = tag_generator()
+            container_dict[f"{key}-index"] = index_generator()
+            container_dict["nones-index"] = nones_index_generator()
     else:
-        # don't distinguish data and offsets
-        container_dict[f"{key}-data"] = content
-        container_dict[f"{key}-offsets"] = content
+        if virtual:
+            virtual_array = VirtualNDArray(
+                Numpy.instance(), shape=(length,), dtype=dtype, generator=raw_generator
+            )
+            container_dict[f"{key}-data"] = virtual_array
+            container_dict[f"{key}-offsets"] = virtual_array
+        else:
+            container_dict[f"{key}-data"] = content
+            container_dict[f"{key}-offsets"] = content
