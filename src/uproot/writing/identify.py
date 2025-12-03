@@ -269,17 +269,27 @@ def to_writable(obj):
         if len(axes) == 1:
             if obj.kind == "MEAN":
                 if hasattr(obj, "storage_type"):
-                    if "fSumw2" in obj.metadata.keys():
+                    if obj.metadata is not None and "fSumw2" in obj.metadata.keys():
                         fSumw2 = obj.metadata["fSumw2"]
+                        fTsumw = obj.sum()["sum_of_weights"]
+                        fTsumw2 = obj.sum()["sum_of_weights_squared"]
+                    elif isinstance(
+                        obj.storage_type, uproot.extras.hist().storage.WeightedMean
+                    ):
+                        fSumw2 = obj.view()["sum_of_weights_squared"]
+                        fTsumw = obj.sum()["sum_of_weights"]
+                        fTsumw2 = obj.sum()["sum_of_weights_squared"]
                     else:
-                        raise ValueError(f"fSumw2 has not been set for {obj}")
+                        fSumw2 = obj.view()["count"]
+                        fTsumw = obj.sum()["count"]
+                        fTsumw2 = obj.sum()["count"]
                     return to_TProfile(
                         fName=None,
                         fTitle=title,
                         data=obj.values(flow=True),
                         fEntries=obj.size + 1,
-                        fTsumw=obj.sum()["sum_of_weights"],
-                        fTsumw2=obj.sum()["sum_of_weights_squared"],
+                        fTsumw=fTsumw,
+                        fTsumw2=fTsumw2,
                         fTsumwx=0,
                         fTsumwx2=0,
                         fTsumwy=0,
