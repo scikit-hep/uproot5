@@ -269,13 +269,16 @@ def to_writable(obj):
         if len(axes) == 1:
             if obj.kind == "MEAN":
                 if hasattr(obj, "storage_type"):
-                    if obj.metadata is not None and "fSumw2" in obj.metadata.keys():
+                    # Use __dir__ instead of hasattr to avoid a warning
+                    if (
+                        "metadata" in obj.__dir__()
+                        and obj.metadata is not None
+                        and "fSumw2" in obj.metadata.keys()
+                    ):
                         fSumw2 = obj.metadata["fSumw2"]
                         fTsumw = obj.sum()["sum_of_weights"]
                         fTsumw2 = obj.sum()["sum_of_weights_squared"]
-                    elif isinstance(
-                        obj.storage_type, uproot.extras.hist().storage.WeightedMean
-                    ):
+                    elif obj.storage_type is boost_histogram.storage.WeightedMean:
                         fSumw2 = obj.view()["sum_of_weights_squared"]
                         fTsumw = obj.sum()["sum_of_weights"]
                         fTsumw2 = obj.sum()["sum_of_weights_squared"]
