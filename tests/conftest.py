@@ -47,7 +47,7 @@ def serve_http():
     server = HTTPServer(
         server_address=("localhost", 0),
         RequestHandlerClass=partial(
-            Handler, directory=skhep_testdata.local_files._cache_path()
+            Handler, directory=skhep_testdata.data.cache_path()
         ),
     )
     server.server_activate()
