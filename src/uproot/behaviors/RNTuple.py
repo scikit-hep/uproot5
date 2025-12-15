@@ -730,6 +730,11 @@ class HasFields(Mapping):
                 raise ValueError(err("cut"))
             if aliases is not None:
                 raise ValueError(err("aliases"))
+        else:
+            # some kwargs can't be used with eager arrays
+            err = "'{}' cannot be used with 'virtual=False'".format
+            if access_log is not None:
+                raise ValueError(err("access_log"))
 
         entry_start, entry_stop = (
             uproot.behaviors.TBranch._regularize_entries_start_stop(
