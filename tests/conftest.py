@@ -51,13 +51,11 @@ def serve_http():
         # Newer skhep_testdata
         cache_path = skhep_testdata.data.cache_path()
 
-    cache_path = Path(cache_path)
-
     server = HTTPServer(
         server_address=("localhost", 0),
         RequestHandlerClass=partial(
             Handler,
-            directory=str(cache_path),
+            directory=cache_path,
         ),
     )
     server.server_activate()
