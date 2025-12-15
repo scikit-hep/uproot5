@@ -44,10 +44,20 @@ def serve_http():
             self._cache_file(self.path)
             return super().do_GET()
 
+    try:
+        # Older skhep_testdata (in Python 3.9 environments)
+        cache_path = skhep_testdata.local_files._cache_path()
+    except AttributeError:
+        # Newer skhep_testdata
+        cache_path = skhep_testdata.data.cache_path()
+
+    cache_path = Path(cache_path)
+
     server = HTTPServer(
         server_address=("localhost", 0),
         RequestHandlerClass=partial(
-            Handler, directory=skhep_testdata.data.cache_path()
+            Handler,
+            directory=str(cache_path),
         ),
     )
     server.server_activate()
