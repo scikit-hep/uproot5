@@ -1800,8 +1800,8 @@ def _cupy_insert(arr, obj, value):
 
 
 def _fill_container_dict(container_dict, content, key, dtype_byte, dtype):
-    from awkward._nplikes.numpy import Numpy
-    from awkward._nplikes.virtual import VirtualNDArray
+    ak = uproot.extras.awkward()
+    Numpy = ak._nplikes.numpy
 
     if isinstance(content, tuple):
         # Virtual arrays not yet implemented for GPU
@@ -1816,6 +1816,13 @@ def _fill_container_dict(container_dict, content, key, dtype_byte, dtype):
 
         def raw_generator():
             return content
+
+    if virtual:
+        from packaging.version import Version
+
+        if Version(ak.__version__) < Version("2.8.11"):
+            raise ImportError("Virtual arrays require Awkward version 2.8.11 or later")
+        VirtualNDArray = ak._nplikes.virtual.VirtualNDArray
 
     library = numpy if array_library_string == "numpy" else uproot.extras.cupy()
 
