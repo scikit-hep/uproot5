@@ -10,6 +10,7 @@ import re
 import struct
 import sys
 from collections import defaultdict
+from typing import NamedTuple
 
 import numpy
 import xxhash
@@ -699,6 +700,7 @@ in file {self.file.file_path}"""
         cluster_stop,
         missing_element_padding=0,
         array_cache=None,
+        access_log=None,
     ):
         """
         Args:
@@ -707,9 +709,26 @@ in file {self.file.file_path}"""
             cluster_stop (int): The first cluster to exclude (i.e. one greater than the last cluster to include).
             missing_element_padding (int): Number of padding elements to add at the start of the array.
             array_cache (None, or MutableMapping): Cache of arrays. If None, do not use a cache.
+            access_log (None or object with a ``__iadd__`` method): If an access_log is
+                provided, e.g. a list, cluster reads are tracked inside this reference.
 
         Returns a numpy array with the data from the column.
         """
+        if access_log is not None:
+            if not hasattr(access_log, "__iadd__"):
+                raise ValueError(f"{access_log=} needs to implement '__iadd__'.")
+            access_log += [
+                Accessed(
+                    column_index=col_idx,
+                    cluster_start=int(cluster_start),
+                    cluster_stop=int(cluster_stop),
+                    field_id=self.column_records[col_idx].field_id,
+                    field_name=self.field_records[
+                        self.column_records[col_idx].field_id
+                    ].field_name,
+                )
+            ]
+
         field_metadata = self.get_field_metadata(col_idx)
         total_length, starts, dtype = self._expected_array_length_starts_dtype(
             col_idx, cluster_start, cluster_stop, missing_element_padding
@@ -1739,6 +1758,8 @@ class RField(uproot.behaviors.RNTuple.HasFields):
         interpreter="cpu",
         backend="cpu",
         ak_add_doc=False,
+        virtual=False,
+        access_log=None,
         # For compatibility reasons we also accepts kwargs meant for TTrees
         interpretation=None,
         interpretation_executor=None,
@@ -1765,6 +1786,11 @@ class RField(uproot.behaviors.RNTuple.HasFields):
                 to the Awkward ``__doc__`` parameter of the array.
                 if dict = {key:value} and ``library="ak"``, add the RField ``value`` to the
                 Awkward ``key`` parameter of the array.
+            virtual (bool): If True, return virtual Awkward arrays, meaning that the data will not be
+                loaded into memory until it is accessed.
+            access_log (None or object with a ``__iadd__`` method): If an access_log is
+                provided, e.g. a list, all materializations of the arrays are
+                tracked inside this reference. Only applies if ``virtual=True``.
             interpretation (None): This argument is not used and is only included for now
                 for compatibility with software that was used for :doc:`uproot.behaviors.TBranch.TBranch`. This argument should not be used
                 and will be removed in a future version.
@@ -1794,6 +1820,8 @@ class RField(uproot.behaviors.RNTuple.HasFields):
             interpreter=interpreter,
             backend=backend,
             ak_add_doc=ak_add_doc,
+            virtual=virtual,
+            access_log=access_log,
         )
         if self.name in arrays.fields:
             arrays = arrays[self.name]
@@ -1943,6 +1971,14 @@ class ClusterRefs:
                 cupy = uproot.extras.cupy()
                 mempool = cupy.get_default_memory_pool()
                 mempool.free_all_blocks()
+
+
+class Accessed(NamedTuple):
+    column_index: int
+    cluster_start: int
+    cluster_stop: int
+    field_id: int
+    field_name: str
 
 
 uproot.classes["ROOT::RNTuple"] = Model_ROOT_3a3a_RNTuple

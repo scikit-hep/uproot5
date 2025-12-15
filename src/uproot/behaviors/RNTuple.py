@@ -624,6 +624,7 @@ class HasFields(Mapping):
         ak_add_doc=False,
         how=None,
         virtual=False,
+        access_log=None,
         # For compatibility reasons we also accepts kwargs meant for TTrees
         interpretation_executor=None,
         filter_branch=unset,
@@ -679,7 +680,11 @@ class HasFields(Mapping):
                 ``list``, and ``dict``. Note that the container *type itself*
                 must be passed as ``how``, not an instance of that type (i.e.
                 ``how=tuple``, not ``how=()``).
-            virtual (bool): If True, return virtual Awkward arrays, meaning that the data will not be loaded into memory until it is accessed.
+            virtual (bool): If True, return virtual Awkward arrays, meaning that the data will not be
+                loaded into memory until it is accessed.
+            access_log (None or object with a ``__iadd__`` method): If an access_log is
+                provided, e.g. a list, all materializations of the arrays are
+                tracked inside this reference. Only applies if ``virtual=True``.
             interpretation_executor (None): This argument is not used and is only included for now
                 for compatibility with software that was used for :doc:`uproot.behaviors.TBranch.TBranch`. This argument should not be used
                 and will be removed in a future version.
@@ -711,6 +716,20 @@ class HasFields(Mapping):
                 raise ValueError(
                     "Expressions are not supported yet. They are currently equivalent to filter_name."
                 )
+
+        if virtual:
+            # some kwargs can't be used with virtual arrays
+            err = "'{}' cannot be used with 'virtual=True'".format
+            if how is not None:
+                raise ValueError(err("how"))
+            if library != "ak":
+                raise ValueError(err("library"))
+            if expressions is not None:
+                raise ValueError(err("expressions"))
+            if cut is not None:
+                raise ValueError(err("cut"))
+            if aliases is not None:
+                raise ValueError(err("aliases"))
 
         entry_start, entry_stop = (
             uproot.behaviors.TBranch._regularize_entries_start_stop(
@@ -771,6 +790,7 @@ class HasFields(Mapping):
                         stop_cluster_idx,
                         missing_element_padding=n_padding,
                         array_cache=array_cache,
+                        access_log=access_log,
                     )
                     if virtual:
                         total_length, _, dtype = (
@@ -1801,7 +1821,7 @@ def _cupy_insert(arr, obj, value):
 
 def _fill_container_dict(container_dict, content, key, dtype_byte, dtype):
     ak = uproot.extras.awkward()
-    Numpy = ak._nplikes.numpy
+    Numpy = ak._nplikes.numpy.Numpy
 
     if isinstance(content, tuple):
         # Virtual arrays not yet implemented for GPU
