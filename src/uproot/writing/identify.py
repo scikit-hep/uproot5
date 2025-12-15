@@ -269,6 +269,7 @@ def to_writable(obj):
         if len(axes) == 1:
             if obj.kind == "MEAN":
                 if hasattr(obj, "storage_type"):
+                    obj_sum = obj.sum()
                     # Use __dir__ instead of hasattr to avoid a warning
                     if (
                         "metadata" in obj.__dir__()
@@ -276,16 +277,16 @@ def to_writable(obj):
                         and "fSumw2" in obj.metadata.keys()
                     ):
                         fSumw2 = obj.metadata["fSumw2"]
-                        fTsumw = obj.sum()["sum_of_weights"]
-                        fTsumw2 = obj.sum()["sum_of_weights_squared"]
+                        fTsumw = obj_sum["sum_of_weights"]
+                        fTsumw2 = obj_sum["sum_of_weights_squared"]
                     elif obj.storage_type is boost_histogram.storage.WeightedMean:
                         fSumw2 = obj.view()["sum_of_weights_squared"]
-                        fTsumw = obj.sum()["sum_of_weights"]
-                        fTsumw2 = obj.sum()["sum_of_weights_squared"]
+                        fTsumw = obj_sum["sum_of_weights"]
+                        fTsumw2 = obj_sum["sum_of_weights_squared"]
                     else:
                         fSumw2 = obj.view()["count"]
-                        fTsumw = obj.sum()["count"]
-                        fTsumw2 = obj.sum()["count"]
+                        fTsumw = obj_sum["count"]
+                        fTsumw2 = obj_sum["count"]
                     return to_TProfile(
                         fName=None,
                         fTitle=title,
