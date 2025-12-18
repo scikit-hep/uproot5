@@ -2490,7 +2490,7 @@ in file {self._file.file_path}"""
                         "fClonesName", none_if_missing=True
                     ) == self.member(
                         "fParentName"
-                    ):  # Use `self.member("fParentName")` since `fClassName` could contain spaces between brackets.
+                    ):  # Use `self.member("fParentName")` since `fClonesName` could contain spaces between brackets.
                         self._streamer_isTClonesArray = True
 
             elif fClassName is not None and fClassName != "":
