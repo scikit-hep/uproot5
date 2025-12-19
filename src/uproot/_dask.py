@@ -543,7 +543,7 @@ class _UprootOpenAndReadNumpy:
             start, stop = (istep_or_start * events_per_steps), min(
                 (istep_or_start + 1) * events_per_steps, num_entries
             )
-        elif (not 0 <= start < num_entries) or (not 0 <= stop <= num_entries):
+        elif (not 0 <= start <= num_entries) or (not 0 <= stop <= num_entries):
             raise ValueError(
                 f"""explicit entry start ({start}) or stop ({stop}) from uproot.dask 'files' argument is out of bounds for file
 
@@ -703,7 +703,7 @@ def _get_dask_array(
                         chunk_args.append((i, start, stop))
             else:
                 for start, stop in explicit_chunks[i]:
-                    if (not 0 <= start < entry_stop) or (not 0 <= stop <= entry_stop):
+                    if (not 0 <= start <= entry_stop) or (not 0 <= stop <= entry_stop):
                         raise ValueError(
                             f"""explicit entry start ({start}) or stop ({stop}) from uproot.dask 'files' argument is out of bounds for file
 
@@ -1394,7 +1394,7 @@ class _UprootOpenAndRead(UprootReadMixin):
         num_entries = ttree.num_entries
         if is_chunk:
             start, stop = i_step_or_start, n_steps_or_stop
-            if (not 0 <= start < num_entries) or (not 0 <= stop <= num_entries):
+            if (not 0 <= start <= num_entries) or (not 0 <= stop <= num_entries):
                 raise ValueError(
                     f"""explicit entry start ({start}) or stop ({stop}) from uproot.dask 'files' argument is out of bounds for file
 
@@ -1685,7 +1685,7 @@ def _get_dak_array(
                     partition_args.append((i, start, stop))
         else:
             for start, stop in explicit_chunks[i]:
-                if (not 0 <= start < entry_stop) or (not 0 <= stop <= entry_stop):
+                if (not 0 <= start <= entry_stop) or (not 0 <= stop <= entry_stop):
                     raise ValueError(
                         f"""explicit entry start ({start}) or stop ({stop}) from uproot.dask 'files' argument is out of bounds for file
 
