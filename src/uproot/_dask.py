@@ -1731,12 +1731,15 @@ which has {entry_stop} entries"""
         interpretation_executor=interpretation_executor,
     )
 
-    return dask_awkward.from_map(
+    out = dask_awkward.from_map(
         fn,
         partition_args,
         divisions=tuple(divisions),
         label="from-uproot",
     )
+    if allow_read_errors_with_report:
+        out[0]._divisions = tuple(None for i in out[0]._divisions)
+    return out
 
 
 def _get_dak_array_delay_open(
@@ -1838,12 +1841,15 @@ def _get_dak_array_delay_open(
         interpretation_executor=interpretation_executor,
     )
 
-    return dask_awkward.from_map(
+    out = dask_awkward.from_map(
         fn,
         partition_args,
         divisions=None if divisions is None else tuple(divisions),
         label="from-uproot",
     )
+    if allow_read_errors_with_report:
+        out[0]._divisions = tuple(None for i in out[0]._divisions)
+    return out
 
 
 class Accessed(NamedTuple):
