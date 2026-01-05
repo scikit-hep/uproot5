@@ -81,7 +81,7 @@ The following libraries are also useful in conjunction with Uproot, but are not 
 
 **For accessing remote files:**
 
-   * `minio`: if reading files with `s3://` URIs.
+   * `s3fs`: if reading files with `s3://` URIs.
    * `xrootd`: if reading files with `root://` URIs.
    * HTTP/S access is built in (Python standard library).
 

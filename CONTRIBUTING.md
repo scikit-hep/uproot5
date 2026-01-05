@@ -32,7 +32,6 @@ This guide will help you get started with contributing.
    conda install root
    conda install pandas
    conda install dask
-   conda install minio
 
    # pip-only dependencies
    pip install scikit-hep-testdata
