@@ -1046,7 +1046,7 @@ class NTuple(CascadeNode):
 
 
 def _to_packed_form(form):
-    match form:
+    match form.__class__:
         case awkward.forms.BitMaskedForm | awkward.forms.ByteMaskedForm:
             return awkward.forms.IndexedOptionForm(
                 "i64", _to_packed_form(form.content), parameters=form.parameters
@@ -1099,7 +1099,7 @@ def _to_packed(layout):
     """
     This is similar to `to_packed` in Awkward, but a bit more consistent.
     """
-    match layout:
+    match layout.__class__:
         case awkward.contents.BitMaskedArray:
             next = layout.to_IndexedOptionArray64()
             content = _to_packed(next._content[: layout.length])
