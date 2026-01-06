@@ -23,7 +23,6 @@ test = [
   "deflate",
   "fsspec-xrootd>=0.5.0",
   "isal",
-  "minio",
   "paramiko",
   "pytest-rerunfailures",
   "rangehttpserver",
