@@ -202,7 +202,7 @@ def _from_leaves(branch, context):
                 if dims != trial_dims:
                     # pick the common dimensions
                     i = 0
-                    for d1, d2 in zip(dims, trial_dims):
+                    for d1, d2 in zip(dims, trial_dims, strict=False):
                         if d1 == d2:
                             i += 1
                         else:
