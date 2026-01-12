@@ -1014,7 +1014,7 @@ class TListOfStreamers(CascadeNode):
 
         rawstreamers = []
 
-        for (start, stop), streamer in zip(tlist.byte_ranges, tlist):
+        for (start, stop), streamer in zip(tlist.byte_ranges, tlist, strict=True):
             if isinstance(streamer, uproot.streamers.Model_TStreamerInfo):
                 rawstreamers.append(
                     RawStreamerInfo(

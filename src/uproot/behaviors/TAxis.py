@@ -110,7 +110,9 @@ class TAxis:
         other_labeled = other_fLabels is not None and len(other_fLabels) == other_fNbins
 
         if self_labeled and other_labeled:
-            return all(x == y for x, y in zip(self_fLabels, other_fLabels))
+            return len(self_fLabels) == len(other_fLabels) and all(
+                x == y for x, y in zip(self_fLabels, other_fLabels, strict=True)
+            )
         elif not self_labeled and not other_labeled:
             return numpy.array_equal(self.edges(), other.edges())
         else:

@@ -194,7 +194,7 @@ def to_writable(obj):
 
             # and flow=True is different from flow=False (obj actually has flow bins)
             data_noflow = obj.values(flow=False)
-            for flow, noflow in zip(data.shape, data_noflow.shape):
+            for flow, noflow in zip(data.shape, data_noflow.shape, strict=True):
                 if flow != noflow + 2:
                     raise TypeError
 
@@ -262,7 +262,9 @@ def to_writable(obj):
                 fXbins=_fXbins_maybe_regular(axis, boost_histogram),
                 fLabels=_fLabels_maybe_categorical(axis, boost_histogram),
             )
-            for axis, default_name in zip(obj.axes, ["xaxis", "yaxis", "zaxis"])
+            for axis, default_name in zip(
+                obj.axes, ["xaxis", "yaxis", "zaxis"], strict=False
+            )
         ]
 
         # make TH1, TH2, TH3 types independently

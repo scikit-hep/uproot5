@@ -69,7 +69,7 @@ in file {self.file.file_path}"""
 
     @property
     def byte_ranges(self):
-        return zip(self._starts, self._stops)
+        return zip(self._starts, self._stops, strict=True)
 
     def tojson(self):
         return {
@@ -99,7 +99,7 @@ in file {self.file.file_path}"""
         out.append(uproot.serialization.string(self._members["fName"]))
         out.append(_tlist_format1.pack(self._members["fSize"]))
 
-        for datum, option in zip(self._data, self._options):
+        for datum, option in zip(self._data, self._options, strict=True):
             uproot.serialization._serialize_object_any(out, datum, None)
             out.append(uproot.serialization.bytestring(option))
 
