@@ -56,6 +56,8 @@ def test_with_report_known_divisions():
     )
     assert collection.known_divisions
     assert collection.divisions == (0, 1152, 2304)
+    (ccollection,) = dask.compute(collection)
+    assert len(ccollection) == 2304
     collection, report = uproot.dask(
         files,
         library="ak",
@@ -64,3 +66,6 @@ def test_with_report_known_divisions():
     )
     assert not collection.known_divisions
     assert collection.divisions == (None, None, None)
+    (ccollection, creport) = dask.compute(collection, report)
+    assert len(ccollection) == 2304
+    assert creport[0].exception is None
