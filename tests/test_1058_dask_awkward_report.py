@@ -45,7 +45,7 @@ def test_with_report_exception_missed():
         _, creport = dask.compute(collection, report)
 
 
-def test_known_divisions():
+def test_with_report_known_divisions():
     test_path = skhep_testdata.data_path("uproot-Zmumu.root")
     files = {test_path: {"object_path": "events", "steps": [[0, 1152], [1152, 2304]]}}
     collection = uproot.dask(
