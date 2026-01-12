@@ -1738,7 +1738,7 @@ which has {entry_stop} entries"""
         label="from-uproot",
     )
     if allow_read_errors_with_report:
-        out[0]._divisions = tuple(None for i in out[0]._divisions)
+        out[0].clear_divisions()
     return out
 
 
@@ -1848,7 +1848,7 @@ def _get_dak_array_delay_open(
         label="from-uproot",
     )
     if allow_read_errors_with_report:
-        out[0]._divisions = tuple(None for i in out[0]._divisions)
+        out[0].clear_divisions()
     return out
 
 
