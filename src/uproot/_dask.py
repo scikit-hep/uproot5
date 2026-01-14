@@ -118,9 +118,9 @@ def dask(
         decompression_executor (None or Executor with a ``submit`` method): The
             executor that is used to decompress ``TBaskets``; if None, a
             :doc:`uproot.source.futures.TrivialExecutor` is created.
-            This option is primarily useful for very large, CPU-intensive TBaskets 
-            (e.g. LZMA compression) and can lead to nested parallelism, leaving it as None is recommended 
-            for most cases. These options are particularly useful in very high thread-count scenarios, 
+            This option is primarily useful for very large, CPU-intensive TBaskets
+            (e.g. LZMA compression) and can lead to nested parallelism, leaving it as None is recommended
+            for most cases. These options are particularly useful in very high thread-count scenarios,
             such as when using Python 3.13 free-threading.
             Executors attached to a file are ``shutdown`` when the file is closed.
         interpretation_executor (None or Executor with a ``submit`` method): The
@@ -128,7 +128,7 @@ def dask(
             arrays; if None, a :doc:`uproot.source.futures.TrivialExecutor`
             is created.
             It is primarily useful when interpretation is CPU-intensive (e.g. for certain Awkward
-            ''AsObjects'') and can lead to nested parallelism, leaving it as None is recommended 
+            ''AsObjects'') and can lead to nested parallelism, leaving it as None is recommended
             for most cases. These options are particularly useful in very high thread-count scenarios,
             such as when using Python 3.13 free-threading.
             Executors attached to a file are ``shutdown`` when the file is closed.
