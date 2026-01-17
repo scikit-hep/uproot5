@@ -218,3 +218,43 @@ def test_function_iterate_pandas_2():
     for arrays, report in uproot.iterate(files, "Muon_Px", report=True, library="pd"):
         assert arrays["Muon_Px"].index.values[0] == expect
         expect += report.tree.num_entries
+
+
+def test_iterate_invalid_filter_name_raises(tmp_path):
+
+    import pytest
+    import uproot
+    import numpy as np
+
+    # Create a ROOT file with known branches
+    filename = tmp_path / "test_file.root"
+
+    import warnings
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", FutureWarning)
+
+    with uproot.recreate(filename) as f:
+        tree = f.mktree(
+            "Tree1",
+            {
+                "branch1": "float64",
+                "branch2": "float64",
+            },
+        )
+        tree.extend(
+            {
+                "branch1": np.ones(1000),
+                "branch2": np.zeros(1000),
+            }
+        )
+
+    # Nonexistent branch name (this is the bug case)
+    with pytest.raises(ValueError, match="did not match any branches"):
+        list(
+            uproot.iterate(
+                f"{filename}:Tree1",
+                filter_name="branch3",
+                library="ak",
+            )
+        )
