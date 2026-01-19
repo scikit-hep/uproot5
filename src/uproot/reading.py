@@ -83,7 +83,7 @@ def open(
     * handler (:doc:`uproot.source.chunk.Source` class; None)
     * timeout (float for HTTP, int for XRootD; 30)
     * max_num_elements (None or int; None)
-        Limits the total number of elements read from jagged arrays to prevent excessive memory use.    
+        Limits the total number of elements read from jagged arrays to prevent excessive memory use.
         This can be provided either directly as a keyword argument or inside the `options` dictionary.
     * num_workers (int; 1)
     * use_threads (bool; False on the emscripten platform (i.e. in a web browser), else True)
@@ -519,7 +519,7 @@ class ReadOnlyFile(CommonFileMethods):
     * handler (:doc:`uproot.source.chunk.Source` class; None)
     * timeout (float for HTTP, int for XRootD; 30)
     * max_num_elements (None or int; None)
-        Limits the total number of elements read from jagged arrays to prevent excessive memory use. 
+        Limits the total number of elements read from jagged arrays to prevent excessive memory use.
         This can be provided either directly as a keyword argument or inside the `options` dictionary.
     * num_workers (int; 1)
     * use_threads (bool; False on the emscripten platform (i.e. in a web browser), else True)
