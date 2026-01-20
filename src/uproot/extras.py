@@ -358,6 +358,21 @@ where X is the cuda major version on user's system (11 and 12 currently supporte
     else:
         return kvikio
 
+def nvcomp():
+    """
+    Imports and returns ``kvikio.nvcomp_codec`` which is not exposed by ``kvikio`` alone.
+    """
+    try:
+        from nvidia import nvcomp
+    except ModuleNotFoundError as err:
+        raise ModuleNotFoundError(
+            """nvCOMP is required for GDS reading to work. Please install GDS dependencies with:
+    `python3 -m pip install uproot[GDS_cuX]`
+where X is the cuda major version on user's system (11 and 12 currently supported). Cuda major version can be checked by calling `nvidia-smi --version` or `nvcc --version` if available."""
+        ) from err
+    else:
+        return nvcomp
+
 
 def kvikio_nvcomp_codec():
     """
