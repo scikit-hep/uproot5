@@ -17,7 +17,6 @@ objects from Python builtins and other writable models.
 """
 from __future__ import annotations
 
-import warnings
 from collections.abc import Mapping
 
 import numpy
@@ -26,9 +25,6 @@ import uproot.compression
 import uproot.extras
 import uproot.pyroot
 import uproot.writing
-
-# To keep track of whether we've warned about switching to writing RNTuple by default
-_warned_rntuple_by_default = False
 
 
 def add_to_directory(obj, name, directory, streamers):
@@ -52,28 +48,12 @@ def add_to_directory(obj, name, directory, streamers):
 
     Raises ``TypeError`` if ``obj`` is not recognized as writable data.
     """
-    is_ttree = False
-
-    obj = uproot.writing.writable._regularize_input_type(obj)
+    obj = uproot.writing.writable._regularize_input_type_to_awkward(obj)
 
     if isinstance(obj, Mapping) and all(isinstance(x, str) for x in obj):
-        is_ttree = True
         metadata, data = uproot.writing.writable._unpack_metadata_and_arrays(obj)
-
-    if is_ttree:
-        global _warned_rntuple_by_default  # noqa: PLW0603
-        if not _warned_rntuple_by_default:
-            warnings.warn(
-                "Starting in version 5.7.0, Uproot will default to writing RNTuples instead of TTrees. "
-                "You will need to use `mktree` to explicitly create a TTree. "
-                "This can be done by changing `file['tree_name'] = data` to `file.mktree('tree_name', data)`. "
-                "Please update your code accordingly.",
-                FutureWarning,
-                stacklevel=4,
-            )
-            _warned_rntuple_by_default = True
-        tree = directory.mktree(name, metadata)
-        tree.extend(data)
+        rntuple = directory.mkrntuple(name, metadata)
+        rntuple.extend(data)
 
     else:
         writable = to_writable(obj)
