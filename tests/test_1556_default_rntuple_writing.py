@@ -42,18 +42,47 @@ def test_write_complex_type_spec(tmp_path):
     filepath = os.path.join(tmp_path, "test.root")
 
     with uproot.recreate(filepath) as file:
-        rntuple = file.mkrntuple("ntuple", {"a": "int32", "b": "float64"})
+        rntuple = file.mkrntuple(
+            "ntuple",
+            {
+                "a": "var * int64",
+                "b": "var * union[int64, bool]",
+                "c": "var * ?int64",
+                "d": "{one: int64, two: float64}",
+            },
+        )
         rntuple.extend(
             {
-                "a": np.array([1, 2, 3], dtype=np.int32),
-                "b": np.array([1.1, 2.2, 3.3], dtype=np.float64),
+                "a": ak.Array([[1, 2, 3], [2, 3]]),
+                "b": ak.Array([[1, True, 3], [2, False]]),
+                "c": ak.Array([[1, None, 3], [2, None]]),
+                "d": ak.Array([{"one": 1, "two": 1.1}, {"one": 2, "two": 2.2}]),
             }
         )
 
     with uproot.open(filepath) as file:
         rntuple = file["ntuple"]
-        assert rntuple["a"].array().tolist() == [1, 2, 3]
-        assert rntuple["b"].array().tolist() == [1.1, 2.2, 3.3]
+        assert rntuple["a"].array().tolist() == [[1, 2, 3], [2, 3]]
+        assert rntuple["b"].array().tolist() == [[1, True, 3], [2, False]]
+        assert rntuple["c"].array().tolist() == [[1, None, 3], [2, None]]
+        assert rntuple["d"].array().tolist() == [
+            {"one": 1, "two": 1.1},
+            {"one": 2, "two": 2.2},
+        ]
+
+
+def test_write_form(tmp_path):
+    filepath = os.path.join(tmp_path, "test.root")
+
+    data = ak.Array({"a": [1, 2, 3], "b": [1.1, 2.2, 3.3]})
+
+    with uproot.recreate(filepath) as file:
+        rntuple = file.mkrntuple("ntuple", data.layout.form)
+        rntuple.extend(data)
+
+    with uproot.open(filepath) as file:
+        rntuple = file["ntuple"]
+        assert rntuple.arrays().tolist() == data.tolist()
 
 
 def test_write_dict(tmp_path):
@@ -67,6 +96,21 @@ def test_write_dict(tmp_path):
         rntuple = file["ntuple"]
         assert rntuple["a"].array().tolist() == [1, 2, 3, 1, 2, 3]
         assert rntuple["b"].array().tolist() == [1.1, 2.2, 3.3, 1.1, 2.2, 3.3]
+
+
+def test_write_awkward(tmp_path):
+    filepath = os.path.join(tmp_path, "test.root")
+
+    data = ak.Array({"a": [1, 2, 3], "b": [1.1, 2.2, 3.3]})
+
+    with uproot.recreate(filepath) as file:
+        rntuple = file["ntuple"] = data
+        rntuple.extend(data)
+
+    with uproot.open(filepath) as file:
+        rntuple = file["ntuple"]
+        assert rntuple.arrays()[:3].tolist() == data.tolist()
+        assert rntuple.arrays()[3:].tolist() == data.tolist()
 
 
 def test_write_pandas(tmp_path):
@@ -95,3 +139,23 @@ def test_extend_dict_mixed_order(tmp_path):
         rntuple = file["ntuple"]
         assert rntuple["a"].array().tolist() == [1, 2, 3, 1, 2, 3]
         assert rntuple["b"].array().tolist() == [1.1, 2.2, 3.3, 1.1, 2.2, 3.3]
+
+
+def test_write_with_setitem(tmp_path):
+    filepath = os.path.join(tmp_path, "test.root")
+
+    ak_data = ak.Array({"a": [1, 2, 3], "b": [1.1, 2.2, 3.3]})
+
+    pandas_data = {
+        "Name": ["Alice", "Bob", "Charlie", "David"],
+        "Age": [25, 32, 18, 47],
+        "City": ["New York", "Los Angeles", "Chicago", "Houston"],
+    }
+    pandas_df = pd.DataFrame(pandas_data)
+
+    with uproot.recreate(filepath) as file:
+        file["ntuple1"] = {"a": "int32", "b": "float64", "c": np.int64}
+        file["ntuple2"] = {"a": [1, 2, 3], "b": [1.1, 2.2, 3.3]}
+        file["ntuple3"] = ak_data.layout.form
+        file["ntuple4"] = ak_data
+        file["ntuple5"] = pandas_df
