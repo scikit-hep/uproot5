@@ -192,11 +192,24 @@ def iterate(
 
         if hasbranches is not None:
 
+            branch_names = list(hasbranches.keys())
             if filter_name is not None:
                 predicate = uproot._util.regularize_filter(filter_name)
-                branch_names = list(hasbranches.keys())
-
                 if not any(predicate(name) for name in branch_names):
+                    continue
+            
+            if filter_typename is not None: 
+                predicate = uproot._util.regularize_filter(filter_typename) 
+                if not any( 
+                    predicate(branch.typename)
+                    for branch in hasbranches.values() 
+                    if hasattr(branch, "typename")
+                ) : 
+                    continue 
+            
+            if filter_branch is not None: 
+                predicate = uproot._util.regularize_filter(filter_branch)
+                if not any(predicate(name) for name in branch_names) : 
                     continue
 
             with hasbranches:
