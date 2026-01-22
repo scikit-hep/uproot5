@@ -249,7 +249,7 @@ def test_iterate_invalid_filter_name_raises(tmp_path):
     # The test: must NOT raise
     list(
         uproot.iterate(
-            f"{filename}:Tree1",   # <-- NO spaces
+            f"{filename}:Tree1",  # <-- NO spaces
             filter_name="branch3",
             library="ak",
         )
