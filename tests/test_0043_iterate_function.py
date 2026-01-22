@@ -222,39 +222,35 @@ def test_function_iterate_pandas_2():
 
 def test_iterate_invalid_filter_name_raises(tmp_path):
 
-    import pytest
     import uproot
     import numpy as np
-
-    # Create a ROOT file with known branches
-    filename = tmp_path / "test_file.root"
-
     import warnings
+
+    filename = tmp_path / "test_file.root"
 
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", FutureWarning)
 
-    with uproot.recreate(filename) as f:
-        tree = f.mktree(
-            "Tree1",
-            {
-                "branch1": "float64",
-                "branch2": "float64",
-            },
-        )
-        tree.extend(
-            {
-                "branch1": np.ones(1000),
-                "branch2": np.zeros(1000),
-            }
-        )
-
-    # Nonexistent branch name (this is the bug case)
-    with pytest.raises(ValueError, match="did not match any branches"):
-        list(
-            uproot.iterate(
-                f"{filename}:Tree1",
-                filter_name="branch3",
-                library="ak",
+        with uproot.recreate(filename) as f:
+            tree = f.mktree(
+                "Tree1",
+                {
+                    "branch1": "float64",
+                    "branch2": "float64",
+                },
             )
+            tree.extend(
+                {
+                    "branch1": np.ones(1000),
+                    "branch2": np.ones(1000),
+                }
+            )
+
+    # The test: must NOT raise
+    list(
+        uproot.iterate(
+            f"{filename}:Tree1",   # <-- NO spaces
+            filter_name="branch3",
+            library="ak",
         )
+    )

@@ -190,16 +190,15 @@ def iterate(
             file_path, object_path, custom_classes, allow_missing, options
         )
 
-        # Fail fast if filter_name matches no branches
-        if filter_name is not None and hasbranches is not None:
-            predicate = uproot._util.regularize_filter(filter_name)
-            branch_names = list(hasbranches.keys())
-            if not any(predicate(name) for name in branch_names):
-                raise ValueError(
-                    f"filter_name={filter_name!r} did not match any branches"
-                )
-
         if hasbranches is not None:
+
+            if filter_name is not None : 
+                predicate = uproot._util.regularize_filter(filter_name) 
+                branch_names = list(hasbranches.keys())
+
+                if not any(predicate(name) for name in branch_names) : 
+                    continue
+                           
             with hasbranches:
                 try:
                     for item in hasbranches.iterate(
