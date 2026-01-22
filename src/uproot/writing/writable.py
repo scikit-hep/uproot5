@@ -1500,7 +1500,7 @@ in file {source.file_path} in directory {source.path}"""
 
         notifications = queue.Queue()
         ranges = {}
-        for new_name, old_key in zip(new_names, keys):
+        for new_name, old_key in zip(new_names, keys, strict=True):
             if old_key.fClassName not in ("TDirectory", "TDirectoryFile"):
                 start = old_key.data_cursor.index
                 stop = start + old_key.data_compressed_bytes
@@ -1520,7 +1520,7 @@ in file {source.file_path} in directory {source.path}"""
         self._file._cascading.streamers.update_streamers(self._file.sink, streamers)
 
         new_dirs = {}
-        for new_name, old_key in zip(new_names, keys):
+        for new_name, old_key in zip(new_names, keys, strict=True):
             classname = old_key.fClassName
             path = new_name.strip("/").split("/")
             if classname not in ("TDirectory", "TDirectoryFile"):

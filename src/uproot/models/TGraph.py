@@ -259,13 +259,21 @@ class Model_TGraph_v4(uproot.behaviors.TGraph.TGraph, uproot.model.VersionedMode
                 numpy.dtype("u2"), file, context
             )
         tmp_awkward_form = file.class_named("TNamed", 1).awkward_form(file, context)
-        contents.update(zip(tmp_awkward_form.fields, tmp_awkward_form.contents))
+        contents.update(
+            zip(tmp_awkward_form.fields, tmp_awkward_form.contents, strict=True)
+        )
         tmp_awkward_form = file.class_named("TAttLine", 2).awkward_form(file, context)
-        contents.update(zip(tmp_awkward_form.fields, tmp_awkward_form.contents))
+        contents.update(
+            zip(tmp_awkward_form.fields, tmp_awkward_form.contents, strict=True)
+        )
         tmp_awkward_form = file.class_named("TAttFill", 2).awkward_form(file, context)
-        contents.update(zip(tmp_awkward_form.fields, tmp_awkward_form.contents))
+        contents.update(
+            zip(tmp_awkward_form.fields, tmp_awkward_form.contents, strict=True)
+        )
         tmp_awkward_form = file.class_named("TAttMarker", 2).awkward_form(file, context)
-        contents.update(zip(tmp_awkward_form.fields, tmp_awkward_form.contents))
+        contents.update(
+            zip(tmp_awkward_form.fields, tmp_awkward_form.contents, strict=True)
+        )
         contents["fNpoints"] = uproot._util.awkward_form(
             numpy.dtype(">u4"), file, context
         )
@@ -477,7 +485,9 @@ class Model_TGraphErrors_v3(
                 numpy.dtype("u2"), file, context
             )
         tmp_awkward_form = file.class_named("TGraph", 4).awkward_form(file, context)
-        contents.update(zip(tmp_awkward_form.fields, tmp_awkward_form.contents))
+        contents.update(
+            zip(tmp_awkward_form.fields, tmp_awkward_form.contents, strict=True)
+        )
         contents["fEX"] = ListOffsetForm(
             context["index_format"],
             uproot._util.awkward_form(cls._dtype0, file, context),
@@ -689,7 +699,9 @@ class Model_TGraphAsymmErrors_v3(
                 numpy.dtype("u2"), file, context
             )
         tmp_awkward_form = file.class_named("TGraph", 4).awkward_form(file, context)
-        contents.update(zip(tmp_awkward_form.fields, tmp_awkward_form.contents))
+        contents.update(
+            zip(tmp_awkward_form.fields, tmp_awkward_form.contents, strict=True)
+        )
         contents["fEXlow"] = ListOffsetForm(
             context["index_format"],
             uproot._util.awkward_form(cls._dtype0, file, context),
