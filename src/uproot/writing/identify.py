@@ -50,11 +50,14 @@ def add_to_directory(obj, name, directory, streamers):
     """
     obj = uproot.writing.writable._regularize_input_type_to_awkward(obj)
 
+    awkward = uproot.extras.awkward()
+
     if isinstance(obj, Mapping) and all(isinstance(x, str) for x in obj):
         metadata, data = uproot.writing.writable._unpack_metadata_and_arrays(obj)
         rntuple = directory.mkrntuple(name, metadata)
         rntuple.extend(data)
-
+    elif isinstance(obj, (awkward.Array, awkward.contents.Content, awkward.forms.Form)):
+        directory.mkrntuple(name, obj)
     else:
         writable = to_writable(obj)
 

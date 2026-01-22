@@ -104,7 +104,7 @@ def test_write_awkward(tmp_path):
     data = ak.Array({"a": [1, 2, 3], "b": [1.1, 2.2, 3.3]})
 
     with uproot.recreate(filepath) as file:
-        rntuple = file["ntuple"] = data
+        rntuple = file.mkrntuple("ntuple", data)
         rntuple.extend(data)
 
     with uproot.open(filepath) as file:
@@ -154,8 +154,22 @@ def test_write_with_setitem(tmp_path):
     pandas_df = pd.DataFrame(pandas_data)
 
     with uproot.recreate(filepath) as file:
-        file["ntuple1"] = {"a": "int32", "b": "float64", "c": np.int64}
-        file["ntuple2"] = {"a": [1, 2, 3], "b": [1.1, 2.2, 3.3]}
-        file["ntuple3"] = ak_data.layout.form
-        file["ntuple4"] = ak_data
-        file["ntuple5"] = pandas_df
+        file["ntuple1"] = {"a": [1, 2, 3], "b": [1.1, 2.2, 3.3]}
+        file["ntuple2"] = ak_data.layout.form
+        file["ntuple3"] = ak_data
+        file["ntuple4"] = pandas_df
+
+
+def test_invalid_inputs(tmp_path):
+    filepath = os.path.join(tmp_path, "test.root")
+
+    data = ak.Array({"a": [1, 2, 3], "b": [1.1, 2.2, 3.3]})
+    with uproot.recreate(filepath) as file:
+        with pytest.raises(ValueError):
+            file["ntuple1"] = {"a": "int32", "b": "float64", "c": np.int64}
+        with pytest.raises(TypeError):
+            file["ntuple2"] = data.layout
+        with pytest.raises(TypeError):
+            file["ntuple3"] = data.layout.contents[0]
+        with pytest.raises(TypeError):
+            file["ntuple4"] = data.layout.contents[0].form
