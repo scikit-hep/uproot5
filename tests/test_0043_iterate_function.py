@@ -255,11 +255,11 @@ def test_iterate_invalid_filter_name_raises(tmp_path):
         )
     )
 
-    list( 
-        uproot.iterate( 
+    list(
+        uproot.iterate(
             f"{filename}:Tree1",
-            filter_typename = "nonexistent_type",
-            library = "ak",
+            filter_typename="nonexistent_type",
+            library="ak",
         )
     )
 
