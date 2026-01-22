@@ -204,6 +204,7 @@ Thanks especially to the gracious help of Uproot contributors (including the [or
     </tr>
     <tr>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/ianna"><img src="https://avatars.githubusercontent.com/u/1390682?v=4?s=100" width="100px;" alt="Ianna Osborne"/><br /><sub><b>Ianna Osborne</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot5/commits?author=ianna" title="Code">💻</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/Rachit931"><img src="https://avatars.githubusercontent.com/u/199397286?v=4?s=100" width="100px;" alt="Rachit931"/><br /><sub><b>Rachit931</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot5/commits?author=Rachit931" title="Documentation">📖</a></td>
     </tr>
   </tbody>
 </table>

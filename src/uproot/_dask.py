@@ -118,11 +118,19 @@ def dask(
         decompression_executor (None or Executor with a ``submit`` method): The
             executor that is used to decompress ``TBaskets``; if None, a
             :doc:`uproot.source.futures.TrivialExecutor` is created.
+            This option is primarily useful for very large, CPU-intensive TBaskets
+            (e.g. LZMA compression) and can lead to nested parallelism, leaving it as None is recommended
+            for most cases. These options are particularly useful in very high thread-count scenarios,
+            such as when using Python 3.13 free-threading.
             Executors attached to a file are ``shutdown`` when the file is closed.
         interpretation_executor (None or Executor with a ``submit`` method): The
             executor that is used to interpret uncompressed ``TBasket`` data as
             arrays; if None, a :doc:`uproot.source.futures.TrivialExecutor`
             is created.
+            It is primarily useful when interpretation is CPU-intensive (e.g. for certain Awkward
+            ''AsObjects'') and can lead to nested parallelism, leaving it as None is recommended
+            for most cases. These options are particularly useful in very high thread-count scenarios,
+            such as when using Python 3.13 free-threading.
             Executors attached to a file are ``shutdown`` when the file is closed.
         options: See below.
 
@@ -169,6 +177,7 @@ def dask(
     * handler (:doc:`uproot.source.chunk.Source` class; None)
     * timeout (float for HTTP, int for XRootD; 30)
     * max_num_elements (None or int; None)
+        The maximum number of elements to be requested in a single vector read, when using XRootD.
     * num_workers (int; 1)
     * use_threads (bool; False on the emscripten platform (i.e. in a web browser), else True)
     * num_fallback_workers (int; 10)
@@ -1740,7 +1749,7 @@ which has {entry_stop} entries"""
         label="from-uproot",
     )
     if allow_read_errors_with_report:
-        out[0]._divisions = tuple(None for i in out[0]._divisions)
+        out[0].clear_divisions()
     return out
 
 
@@ -1850,7 +1859,7 @@ def _get_dak_array_delay_open(
         label="from-uproot",
     )
     if allow_read_errors_with_report:
-        out[0]._divisions = tuple(None for i in out[0]._divisions)
+        out[0].clear_divisions()
     return out
 
 
