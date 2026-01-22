@@ -348,9 +348,13 @@ in file {self.file.file_path}"""
                 numpy.dtype("u2"), file, context
             )
         tmp_awkward_form = file.class_named("TNamed", 1).awkward_form(file, context)
-        contents.update(zip(tmp_awkward_form.fields, tmp_awkward_form.contents))
+        contents.update(
+            zip(tmp_awkward_form.fields, tmp_awkward_form.contents, strict=True)
+        )
         tmp_awkward_form = file.class_named("TAttAxis", 4).awkward_form(file, context)
-        contents.update(zip(tmp_awkward_form.fields, tmp_awkward_form.contents))
+        contents.update(
+            zip(tmp_awkward_form.fields, tmp_awkward_form.contents, strict=True)
+        )
         contents["fNbins"] = uproot._util.awkward_form(
             numpy.dtype(">i4"), file, context
         )
@@ -825,13 +829,21 @@ in file {self.file.file_path}"""
                 numpy.dtype("u2"), file, context
             )
         tmp_awkward_form = file.class_named("TNamed", 1).awkward_form(file, context)
-        contents.update(zip(tmp_awkward_form.fields, tmp_awkward_form.contents))
+        contents.update(
+            zip(tmp_awkward_form.fields, tmp_awkward_form.contents, strict=True)
+        )
         tmp_awkward_form = file.class_named("TAttLine", 2).awkward_form(file, context)
-        contents.update(zip(tmp_awkward_form.fields, tmp_awkward_form.contents))
+        contents.update(
+            zip(tmp_awkward_form.fields, tmp_awkward_form.contents, strict=True)
+        )
         tmp_awkward_form = file.class_named("TAttFill", 2).awkward_form(file, context)
-        contents.update(zip(tmp_awkward_form.fields, tmp_awkward_form.contents))
+        contents.update(
+            zip(tmp_awkward_form.fields, tmp_awkward_form.contents, strict=True)
+        )
         tmp_awkward_form = file.class_named("TAttMarker", 2).awkward_form(file, context)
-        contents.update(zip(tmp_awkward_form.fields, tmp_awkward_form.contents))
+        contents.update(
+            zip(tmp_awkward_form.fields, tmp_awkward_form.contents, strict=True)
+        )
         contents["fNcells"] = uproot._util.awkward_form(
             numpy.dtype(">i4"), file, context
         )
@@ -1131,7 +1143,9 @@ in file {self.file.file_path}"""
                 numpy.dtype("u2"), file, context
             )
         tmp_awkward_form = file.class_named("TH1", 8).awkward_form(file, context)
-        contents.update(zip(tmp_awkward_form.fields, tmp_awkward_form.contents))
+        contents.update(
+            zip(tmp_awkward_form.fields, tmp_awkward_form.contents, strict=True)
+        )
         contents["fScalefactor"] = uproot._util.awkward_form(
             numpy.dtype(">f8"), file, context
         )
@@ -1341,9 +1355,13 @@ in file {self.file.file_path}"""
                 numpy.dtype("u2"), file, context
             )
         tmp_awkward_form = file.class_named("TH1", 8).awkward_form(file, context)
-        contents.update(zip(tmp_awkward_form.fields, tmp_awkward_form.contents))
+        contents.update(
+            zip(tmp_awkward_form.fields, tmp_awkward_form.contents, strict=True)
+        )
         tmp_awkward_form = file.class_named("TAtt3D", 1).awkward_form(file, context)
-        contents.update(zip(tmp_awkward_form.fields, tmp_awkward_form.contents))
+        contents.update(
+            zip(tmp_awkward_form.fields, tmp_awkward_form.contents, strict=True)
+        )
         contents["fTsumwy"] = uproot._util.awkward_form(
             numpy.dtype(">f8"), file, context
         )
@@ -1531,9 +1549,13 @@ in file {self.file.file_path}"""
                 numpy.dtype("u2"), file, context
             )
         tmp_awkward_form = file.class_named("TH1", 8).awkward_form(file, context)
-        contents.update(zip(tmp_awkward_form.fields, tmp_awkward_form.contents))
+        contents.update(
+            zip(tmp_awkward_form.fields, tmp_awkward_form.contents, strict=True)
+        )
         tmp_awkward_form = file.class_named("TArrayC", 1).awkward_form(file, context)
-        contents.update(zip(tmp_awkward_form.fields, tmp_awkward_form.contents))
+        contents.update(
+            zip(tmp_awkward_form.fields, tmp_awkward_form.contents, strict=True)
+        )
         return RecordForm(
             list(contents.values()),
             list(contents.keys()),
@@ -1694,9 +1716,13 @@ in file {self.file.file_path}"""
                 numpy.dtype("u2"), file, context
             )
         tmp_awkward_form = file.class_named("TH1", 8).awkward_form(file, context)
-        contents.update(zip(tmp_awkward_form.fields, tmp_awkward_form.contents))
+        contents.update(
+            zip(tmp_awkward_form.fields, tmp_awkward_form.contents, strict=True)
+        )
         tmp_awkward_form = file.class_named("TArrayD", 1).awkward_form(file, context)
-        contents.update(zip(tmp_awkward_form.fields, tmp_awkward_form.contents))
+        contents.update(
+            zip(tmp_awkward_form.fields, tmp_awkward_form.contents, strict=True)
+        )
         return RecordForm(
             list(contents.values()),
             list(contents.keys()),
@@ -1852,9 +1878,13 @@ in file {self.file.file_path}"""
                 numpy.dtype("u2"), file, context
             )
         tmp_awkward_form = file.class_named("TH1", 8).awkward_form(file, context)
-        contents.update(zip(tmp_awkward_form.fields, tmp_awkward_form.contents))
+        contents.update(
+            zip(tmp_awkward_form.fields, tmp_awkward_form.contents, strict=True)
+        )
         tmp_awkward_form = file.class_named("TArrayF", 1).awkward_form(file, context)
-        contents.update(zip(tmp_awkward_form.fields, tmp_awkward_form.contents))
+        contents.update(
+            zip(tmp_awkward_form.fields, tmp_awkward_form.contents, strict=True)
+        )
         return RecordForm(
             list(contents.values()),
             list(contents.keys()),
@@ -2010,9 +2040,13 @@ in file {self.file.file_path}"""
                 numpy.dtype("u2"), file, context
             )
         tmp_awkward_form = file.class_named("TH1", 8).awkward_form(file, context)
-        contents.update(zip(tmp_awkward_form.fields, tmp_awkward_form.contents))
+        contents.update(
+            zip(tmp_awkward_form.fields, tmp_awkward_form.contents, strict=True)
+        )
         tmp_awkward_form = file.class_named("TArrayI", 1).awkward_form(file, context)
-        contents.update(zip(tmp_awkward_form.fields, tmp_awkward_form.contents))
+        contents.update(
+            zip(tmp_awkward_form.fields, tmp_awkward_form.contents, strict=True)
+        )
         return RecordForm(
             list(contents.values()),
             list(contents.keys()),
@@ -2173,9 +2207,13 @@ in file {self.file.file_path}"""
                 numpy.dtype("u2"), file, context
             )
         tmp_awkward_form = file.class_named("TH1", 8).awkward_form(file, context)
-        contents.update(zip(tmp_awkward_form.fields, tmp_awkward_form.contents))
+        contents.update(
+            zip(tmp_awkward_form.fields, tmp_awkward_form.contents, strict=True)
+        )
         tmp_awkward_form = file.class_named("TArrayS", 1).awkward_form(file, context)
-        contents.update(zip(tmp_awkward_form.fields, tmp_awkward_form.contents))
+        contents.update(
+            zip(tmp_awkward_form.fields, tmp_awkward_form.contents, strict=True)
+        )
         return RecordForm(
             list(contents.values()),
             list(contents.keys()),
@@ -2336,9 +2374,13 @@ in file {self.file.file_path}"""
                 numpy.dtype("u2"), file, context
             )
         tmp_awkward_form = file.class_named("TH2", 5).awkward_form(file, context)
-        contents.update(zip(tmp_awkward_form.fields, tmp_awkward_form.contents))
+        contents.update(
+            zip(tmp_awkward_form.fields, tmp_awkward_form.contents, strict=True)
+        )
         tmp_awkward_form = file.class_named("TArrayC", 1).awkward_form(file, context)
-        contents.update(zip(tmp_awkward_form.fields, tmp_awkward_form.contents))
+        contents.update(
+            zip(tmp_awkward_form.fields, tmp_awkward_form.contents, strict=True)
+        )
         return RecordForm(
             list(contents.values()),
             list(contents.keys()),
@@ -2500,9 +2542,13 @@ in file {self.file.file_path}"""
                 numpy.dtype("u2"), file, context
             )
         tmp_awkward_form = file.class_named("TH2", 5).awkward_form(file, context)
-        contents.update(zip(tmp_awkward_form.fields, tmp_awkward_form.contents))
+        contents.update(
+            zip(tmp_awkward_form.fields, tmp_awkward_form.contents, strict=True)
+        )
         tmp_awkward_form = file.class_named("TArrayD", 1).awkward_form(file, context)
-        contents.update(zip(tmp_awkward_form.fields, tmp_awkward_form.contents))
+        contents.update(
+            zip(tmp_awkward_form.fields, tmp_awkward_form.contents, strict=True)
+        )
         return RecordForm(
             list(contents.values()),
             list(contents.keys()),
@@ -2659,9 +2705,13 @@ in file {self.file.file_path}"""
                 numpy.dtype("u2"), file, context
             )
         tmp_awkward_form = file.class_named("TH2", 5).awkward_form(file, context)
-        contents.update(zip(tmp_awkward_form.fields, tmp_awkward_form.contents))
+        contents.update(
+            zip(tmp_awkward_form.fields, tmp_awkward_form.contents, strict=True)
+        )
         tmp_awkward_form = file.class_named("TArrayF", 1).awkward_form(file, context)
-        contents.update(zip(tmp_awkward_form.fields, tmp_awkward_form.contents))
+        contents.update(
+            zip(tmp_awkward_form.fields, tmp_awkward_form.contents, strict=True)
+        )
         return RecordForm(
             list(contents.values()),
             list(contents.keys()),
@@ -2823,9 +2873,13 @@ in file {self.file.file_path}"""
                 numpy.dtype("u2"), file, context
             )
         tmp_awkward_form = file.class_named("TH2", 5).awkward_form(file, context)
-        contents.update(zip(tmp_awkward_form.fields, tmp_awkward_form.contents))
+        contents.update(
+            zip(tmp_awkward_form.fields, tmp_awkward_form.contents, strict=True)
+        )
         tmp_awkward_form = file.class_named("TArrayI", 1).awkward_form(file, context)
-        contents.update(zip(tmp_awkward_form.fields, tmp_awkward_form.contents))
+        contents.update(
+            zip(tmp_awkward_form.fields, tmp_awkward_form.contents, strict=True)
+        )
         return RecordForm(
             list(contents.values()),
             list(contents.keys()),
@@ -2987,9 +3041,13 @@ in file {self.file.file_path}"""
                 numpy.dtype("u2"), file, context
             )
         tmp_awkward_form = file.class_named("TH2", 5).awkward_form(file, context)
-        contents.update(zip(tmp_awkward_form.fields, tmp_awkward_form.contents))
+        contents.update(
+            zip(tmp_awkward_form.fields, tmp_awkward_form.contents, strict=True)
+        )
         tmp_awkward_form = file.class_named("TArrayS", 1).awkward_form(file, context)
-        contents.update(zip(tmp_awkward_form.fields, tmp_awkward_form.contents))
+        contents.update(
+            zip(tmp_awkward_form.fields, tmp_awkward_form.contents, strict=True)
+        )
         return RecordForm(
             list(contents.values()),
             list(contents.keys()),
@@ -3151,9 +3209,13 @@ in file {self.file.file_path}"""
                 numpy.dtype("u2"), file, context
             )
         tmp_awkward_form = file.class_named("TH3", 6).awkward_form(file, context)
-        contents.update(zip(tmp_awkward_form.fields, tmp_awkward_form.contents))
+        contents.update(
+            zip(tmp_awkward_form.fields, tmp_awkward_form.contents, strict=True)
+        )
         tmp_awkward_form = file.class_named("TArrayC", 1).awkward_form(file, context)
-        contents.update(zip(tmp_awkward_form.fields, tmp_awkward_form.contents))
+        contents.update(
+            zip(tmp_awkward_form.fields, tmp_awkward_form.contents, strict=True)
+        )
         return RecordForm(
             list(contents.values()),
             list(contents.keys()),
@@ -3316,9 +3378,13 @@ in file {self.file.file_path}"""
                 numpy.dtype("u2"), file, context
             )
         tmp_awkward_form = file.class_named("TH3", 6).awkward_form(file, context)
-        contents.update(zip(tmp_awkward_form.fields, tmp_awkward_form.contents))
+        contents.update(
+            zip(tmp_awkward_form.fields, tmp_awkward_form.contents, strict=True)
+        )
         tmp_awkward_form = file.class_named("TArrayD", 1).awkward_form(file, context)
-        contents.update(zip(tmp_awkward_form.fields, tmp_awkward_form.contents))
+        contents.update(
+            zip(tmp_awkward_form.fields, tmp_awkward_form.contents, strict=True)
+        )
         return RecordForm(
             list(contents.values()),
             list(contents.keys()),
@@ -3476,9 +3542,13 @@ in file {self.file.file_path}"""
                 numpy.dtype("u2"), file, context
             )
         tmp_awkward_form = file.class_named("TH3", 6).awkward_form(file, context)
-        contents.update(zip(tmp_awkward_form.fields, tmp_awkward_form.contents))
+        contents.update(
+            zip(tmp_awkward_form.fields, tmp_awkward_form.contents, strict=True)
+        )
         tmp_awkward_form = file.class_named("TArrayF", 1).awkward_form(file, context)
-        contents.update(zip(tmp_awkward_form.fields, tmp_awkward_form.contents))
+        contents.update(
+            zip(tmp_awkward_form.fields, tmp_awkward_form.contents, strict=True)
+        )
         return RecordForm(
             list(contents.values()),
             list(contents.keys()),
@@ -3641,9 +3711,13 @@ in file {self.file.file_path}"""
                 numpy.dtype("u2"), file, context
             )
         tmp_awkward_form = file.class_named("TH3", 6).awkward_form(file, context)
-        contents.update(zip(tmp_awkward_form.fields, tmp_awkward_form.contents))
+        contents.update(
+            zip(tmp_awkward_form.fields, tmp_awkward_form.contents, strict=True)
+        )
         tmp_awkward_form = file.class_named("TArrayI", 1).awkward_form(file, context)
-        contents.update(zip(tmp_awkward_form.fields, tmp_awkward_form.contents))
+        contents.update(
+            zip(tmp_awkward_form.fields, tmp_awkward_form.contents, strict=True)
+        )
         return RecordForm(
             list(contents.values()),
             list(contents.keys()),
@@ -3806,9 +3880,13 @@ in file {self.file.file_path}"""
                 numpy.dtype("u2"), file, context
             )
         tmp_awkward_form = file.class_named("TH3", 6).awkward_form(file, context)
-        contents.update(zip(tmp_awkward_form.fields, tmp_awkward_form.contents))
+        contents.update(
+            zip(tmp_awkward_form.fields, tmp_awkward_form.contents, strict=True)
+        )
         tmp_awkward_form = file.class_named("TArrayS", 1).awkward_form(file, context)
-        contents.update(zip(tmp_awkward_form.fields, tmp_awkward_form.contents))
+        contents.update(
+            zip(tmp_awkward_form.fields, tmp_awkward_form.contents, strict=True)
+        )
         return RecordForm(
             list(contents.values()),
             list(contents.keys()),
@@ -4007,7 +4085,9 @@ in file {self.file.file_path}"""
                 numpy.dtype("u2"), file, context
             )
         tmp_awkward_form = file.class_named("TH1D", 3).awkward_form(file, context)
-        contents.update(zip(tmp_awkward_form.fields, tmp_awkward_form.contents))
+        contents.update(
+            zip(tmp_awkward_form.fields, tmp_awkward_form.contents, strict=True)
+        )
         contents["fBinEntries"] = file.class_named("TArrayD", "max").awkward_form(
             file, context
         )
@@ -4247,7 +4327,9 @@ in file {self.file.file_path}"""
                 numpy.dtype("u2"), file, context
             )
         tmp_awkward_form = file.class_named("TH2D", 4).awkward_form(file, context)
-        contents.update(zip(tmp_awkward_form.fields, tmp_awkward_form.contents))
+        contents.update(
+            zip(tmp_awkward_form.fields, tmp_awkward_form.contents, strict=True)
+        )
         contents["fBinEntries"] = file.class_named("TArrayD", "max").awkward_form(
             file, context
         )
@@ -4489,7 +4571,9 @@ in file {self.file.file_path}"""
                 numpy.dtype("u2"), file, context
             )
         tmp_awkward_form = file.class_named("TH3D", 4).awkward_form(file, context)
-        contents.update(zip(tmp_awkward_form.fields, tmp_awkward_form.contents))
+        contents.update(
+            zip(tmp_awkward_form.fields, tmp_awkward_form.contents, strict=True)
+        )
         contents["fBinEntries"] = file.class_named("TArrayD", "max").awkward_form(
             file, context
         )

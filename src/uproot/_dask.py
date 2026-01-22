@@ -439,7 +439,7 @@ def _dask_array_from_map(
         # Structure inputs such that the tuple of arguments pair each 0th,
         # 1st, 2nd, ... elements together; for example:
         # from_map(f, [1, 2, 3], [4, 5, 6]) --> [f(1, 4), f(2, 5), f(3, 6)]
-        inputs = list(zip(*iters))
+        inputs = list(zip(*iters, strict=True))
         packed = True
 
     # Define collection name
@@ -959,7 +959,7 @@ class TrivialFormMappingInfo(ImplementsFormMappingInfo):
         # subform, as they're derived from `branch.interpretation.awkward_form`
         # Therefore, we can correlate the subform keys using `expected_from_buffers`
         container = {}
-        for key, array in zip(keys, arrays):
+        for key, array in zip(keys, arrays, strict=True):
             # First, convert the sub-array into buffers
             ttree_subform, _length, ttree_container = awkward.to_buffers(array)
 
@@ -970,6 +970,7 @@ class TrivialFormMappingInfo(ImplementsFormMappingInfo):
             for (src, src_dtype), (dst, dst_dtype) in zip(
                 ttree_subform.expected_from_buffers().items(),
                 projection_subform.expected_from_buffers(self.buffer_key).items(),
+                strict=True,
             ):
                 assert src_dtype == dst_dtype  # Sanity check!
                 container[dst] = ttree_container[src]
@@ -1025,6 +1026,7 @@ class FormMappingInfoWithVirtualArrays(TrivialFormMappingInfo):
                 for (src, src_dtype), (dst, dst_dtype) in zip(
                     ttree_subform.expected_from_buffers().items(),
                     projection_subform.expected_from_buffers(self.buffer_key).items(),
+                    strict=True,
                 ):
                     # Return the corresponding array from the TTree if buffer key matches
                     if buffer_key == dst:
