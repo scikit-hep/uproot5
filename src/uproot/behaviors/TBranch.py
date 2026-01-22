@@ -199,7 +199,7 @@ def iterate(
                 predicate = uproot._util.regularize_filter(filter_name)
                 if any(predicate(name) for name in branch_names):
                     matched_any = True
-                else : 
+                else:
                     continue
 
             if filter_typename is not None:
@@ -210,25 +210,22 @@ def iterate(
                     if hasattr(branch, "typename")
                 ):
                     matched_any = True
-                else : 
+                else:
                     continue
 
             if filter_branch is not None:
                 predicate = uproot._util.regularize_filter(filter_branch)
                 if any(predicate(name) for name in branch_names):
                     matched_any = True
-                else : 
+                else:
                     continue
-            
-            if( 
-                not matched_any 
-                and ( 
-                    filter_name is not None 
-                    or filter_typename is not None 
-                    or filter_branch is not None 
-                )
-            ) : 
-                return 
+
+            if not matched_any and (
+                filter_name is not None
+                or filter_typename is not None
+                or filter_branch is not None
+            ):
+                return
 
             with hasbranches:
                 try:
