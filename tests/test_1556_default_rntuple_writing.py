@@ -1,13 +1,7 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot5/blob/main/LICENSE
 
-import json
 import os
-import queue
-import sys
-
-import numpy
 import pytest
-import skhep_testdata
 
 import uproot
 
@@ -124,8 +118,32 @@ def test_write_pandas(tmp_path):
     df = pd.DataFrame(data)
 
     with uproot.recreate(filepath) as file:
-        r = file.mkrntuple("df", df)
+        r = file.mkrntuple("ntuple", df)
         r.extend(df)
+
+    with uproot.open(filepath) as file:
+        rntuple = file["ntuple"]
+        assert rntuple["Name"].array().tolist() == [
+            "Alice",
+            "Bob",
+            "Charlie",
+            "David",
+            "Alice",
+            "Bob",
+            "Charlie",
+            "David",
+        ]
+        assert rntuple["Age"].array().tolist() == [25, 32, 18, 47, 25, 32, 18, 47]
+        assert rntuple["City"].array().tolist() == [
+            "New York",
+            "Los Angeles",
+            "Chicago",
+            "Houston",
+            "New York",
+            "Los Angeles",
+            "Chicago",
+            "Houston",
+        ]
 
 
 def test_extend_dict_mixed_order(tmp_path):
@@ -158,6 +176,12 @@ def test_write_with_setitem(tmp_path):
         file["ntuple2"] = ak_data.layout.form
         file["ntuple3"] = ak_data
         file["ntuple4"] = pandas_df
+
+    with uproot.open(filepath) as file:
+        assert file["ntuple1"].arrays()["a"].tolist() == [1, 2, 3]
+        assert file["ntuple2"].arrays()["a"].tolist() == []
+        assert file["ntuple3"].arrays()["a"].tolist() == [1, 2, 3]
+        assert file["ntuple4"].arrays()["Age"].tolist() == [25, 32, 18, 47]
 
 
 def test_invalid_inputs(tmp_path):
