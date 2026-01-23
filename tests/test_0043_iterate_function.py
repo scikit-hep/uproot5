@@ -218,4 +218,3 @@ def test_function_iterate_pandas_2():
     for arrays, report in uproot.iterate(files, "Muon_Px", report=True, library="pd"):
         assert arrays["Muon_Px"].index.values[0] == expect
         expect += report.tree.num_entries
-
