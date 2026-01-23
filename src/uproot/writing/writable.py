@@ -2241,7 +2241,10 @@ def _type_specification_to_awkward_form(obj):
             [_type_specification_to_awkward_form(v) for v in obj.values()],
             list(obj.keys()),
         )
-    raise TypeError(f"Cannot construct an Awkward Form from the given object {obj!r}")
+    raise TypeError(
+        f"Cannot construct an Awkward Form from {type(obj).__name__}. "
+        f"Supported types: Form, Type, ArrayType, dtype, str, Mapping"
+    )
 
 
 def _regularize_input_type_to_dict(obj):
