@@ -821,7 +821,7 @@ in file {self.file.file_path}"""
                 cumsum += numpy.sum(destination[tracker:tracker_end])
             tracker = tracker_end
 
-        self.post_process_inplace(destination, field_metadata)
+        self.post_process_in_place(destination, field_metadata)
 
         # Save a copy in array_cache
         if array_cache is not None:
@@ -830,11 +830,7 @@ in file {self.file.file_path}"""
         if return_buffer:
             return destination
 
-    def gpu_read_cluster_range(self,
-                               fields,
-                               start_cluster_idx,
-                               stop_cluster_idx,
-                               array_cache = None):
+    def gpu_read_cluster_range(self, fields, start_cluster_idx, stop_cluster_idx):
         """
         Args:
             fields (list: str): The target fields to read.
@@ -861,8 +857,10 @@ in file {self.file.file_path}"""
                     field_metadata = self.get_field_metadata(ncol)
                     if ncol not in colrefs_cluster.fieldpayloads.keys():
                         Col_ClusterBuffers = self.gpu_read_cluster_pages(
-                            cluster_i, ncol, filehandle, field_metadata,
-                            array_cache = array_cache
+                            cluster_i,
+                            ncol,
+                            filehandle,
+                            field_metadata,
                         )
                         colrefs_cluster._add_field(Col_ClusterBuffers)
             clusters_datas._add_cluster(colrefs_cluster)
@@ -870,16 +868,15 @@ in file {self.file.file_path}"""
         filehandle.get_all()
         return clusters_datas
 
-    def gpu_read_cluster_pages(self,
-                               cluster_idx,
-                               col_idx,
-                               filehandle,
-                               field_metadata,
-                               array_cache = None,
-                               destination = None):
+    def gpu_read_cluster_pages(
+        self,
+        cluster_idx,
+        col_idx,
+        filehandle,
+        field_metadata,
+    ):
         """
         Args:
-            destination (numpy.ndarray): The array to fill.
             cluster_idx (int): The cluster index.
             col_idx (int): The column index.
             filehandle (uproot.source.cufile_interface.CuFileSource): CuFile
@@ -890,25 +887,18 @@ in file {self.file.file_path}"""
         Returns a FieldPayload containing raw page buffers, decompression
         target buffers, and compression metadata.
         """
-        # Get the data from cache, if available
-        key = f"{self.cache_key}:{cluster_idx}:{col_idx}"
-        if array_cache is not None:
-            cached_data = array_cache.get(key)
-            if cached_data is not None:
-                if destination is None:
-                    return cached_data
-                else:
-                    destination[:] = cached_data
-                    return
-          
         # Get cluster and pages metadatas
         cupy = uproot.extras.cupy()
         linklist = self._ntuple.page_link_list[cluster_idx]
         col_idx_orig = col_idx
         if col_idx < len(linklist):
             if linklist[col_idx].suppressed:
-                rel_crs = self._column_records_dict[self.column_records[col_idx].field_id]
-                col_idx = next(cr.idx for cr in rel_crs if not linklist[cr.idx].suppressed)
+                rel_crs = self._column_records_dict[
+                    self.column_records[col_idx].field_id
+                ]
+                col_idx = next(
+                    cr.idx for cr in rel_crs if not linklist[cr.idx].suppressed
+                )
                 field_metadata = self.get_field_metadata(col_idx)
             linklist_col = linklist[col_idx]
             pagelist = linklist_col.pages
@@ -920,7 +910,6 @@ in file {self.file.file_path}"""
             pagelist = []
             algorithm_str = None
             compression_level = None
-
 
         # Prepare full output buffer
         total_len = numpy.sum([desc.num_elements for desc in pagelist], dtype=int)
@@ -1012,7 +1001,7 @@ in file {self.file.file_path}"""
             total_length, starts, _ = self._expected_array_length_starts_dtype(
                 ncol, start_cluster_idx, stop_cluster_idx, n_padding
             )
-            
+
             res = cupy.empty(total_length, field_metadata.dtype_result)
             res[: starts[0]] = 0
             # Get uncompressed array for key for all clusters
@@ -1027,8 +1016,10 @@ in file {self.file.file_path}"""
                 res[starts[i] : stop] = cluster_buffer
 
                 if field_metadata.dtype != field_metadata.dtype_result:
-                    res[starts[i] : stop] = res[starts[i] : stop].view(field_metadata.dtype)[:stop-starts[i]]
-            
+                    res[starts[i] : stop] = res[starts[i] : stop].view(
+                        field_metadata.dtype
+                    )[: stop - starts[i]]
+
             self.combine_cluster_arrays(res, starts, field_metadata)
             col_arrays[key_nr] = res
 
@@ -1076,7 +1067,7 @@ in file {self.file.file_path}"""
         cluster_buffer = self.post_process(cluster_buffer, field_metadata)
         return cluster_buffer
 
-    def post_process_inplace(self, buffer, field_metadata):
+    def post_process_in_place(self, buffer, field_metadata):
         """
         Args:
             buffer (library.ndarray): The buffer to post-process.
@@ -1093,7 +1084,6 @@ in file {self.file.file_path}"""
             buffer[:] = library.cumsum(buffer)
         elif field_metadata.dtype_str == "real32trunc":
             buffer.dtype = library.float32
-            # buffer = buffer.view(library.float32)
         elif field_metadata.dtype_str == "real32quant" and field_metadata.ncol < len(
             self.column_records
         ):
@@ -1103,7 +1093,7 @@ in file {self.file.file_path}"""
             buffer[:] = min_value + buffer.view(library.uint32) * (
                 max_value - min_value
             ) / ((1 << field_metadata.nbits) - 1)
-            
+
     def post_process(self, buffer, field_metadata):
         """
         Args:
@@ -1111,7 +1101,8 @@ in file {self.file.file_path}"""
             field_metadata (:doc:`uproot.models.RNTuple.FieldClusterMetadata`):
                 The metadata needed to post_process buffer.
 
-        Returns post-processed buffer.
+        Returns post-processed buffer. ``post_process_in_place`` does not work with
+        cupy.ndarray since you cannot change dtype with ``buffer.dtype = cupy.dtype``.
         """
         array_library_string = uproot._util.get_array_library(buffer)
         library = numpy if array_library_string == "numpy" else uproot.extras.cupy()
@@ -1958,12 +1949,13 @@ class FieldPayload:
         if self.page_is_compressed and self.algorithm is not None:
             nvcomp = uproot.extras.nvcomp()
             cupy = uproot.extras.cupy()
-            codec = nvcomp.Codec(algorithm = self.algorithm, bitstream_kind=nvcomp.BitstreamKind.RAW)
+            codec = nvcomp.Codec(
+                algorithm=self.algorithm, bitstream_kind=nvcomp.BitstreamKind.RAW
+            )
             batch_nv = nvcomp.as_arrays(self.pages)
             batch = codec.decode(batch_nv)
-            for i, _array in enumerate (batch):
+            for i, _array in enumerate(batch):
                 self.output[i][:] = cupy.array(_array).view(self.output[i].dtype)
-                    
 
 
 @dataclasses.dataclass
@@ -2020,23 +2012,21 @@ class ClusterRefs:
                         to_decompress[fieldpayload.algorithm].extend(fieldpayload.pages)
                         target[fieldpayload.algorithm].extend(fieldpayload.output)
 
-        # Batch decompress
-        #kvikio_nvcomp_codec = uproot.extras.kvikio_nvcomp_codec()
-        #for algorithm, batch in to_decompress.items():
-        #    codec = kvikio_nvcomp_codec.NvCompBatchCodec(algorithm)
-        #    codec.decode_batch(batch, target[algorithm])
-
         # batch decompress
         nvcomp = uproot.extras.nvcomp()
         cupy = uproot.extras.cupy()
         for algorithm, batch in to_decompress.items():
             if batch != []:
-                codec = nvcomp.Codec(algorithm = algorithm, bitstream_kind=nvcomp.BitstreamKind.RAW)
+                codec = nvcomp.Codec(
+                    algorithm=algorithm, bitstream_kind=nvcomp.BitstreamKind.RAW
+                )
                 batch_nv = nvcomp.as_arrays(batch)
-                batch = codec.decode(batch_nv)
-                for i, _array in enumerate (batch):
-                    target[algorithm][i][:] = cupy.array(_array).view(target[algorithm][i].dtype)
-                
+                batch_nv_dec = codec.decode(batch_nv)
+                for i, _array in enumerate(batch_nv_dec):
+                    target[algorithm][i][:] = cupy.array(_array).view(
+                        target[algorithm][i].dtype
+                    )
+
         # Clean up compressed buffers from memory after decompression
         for cluster in self.refs.values():
             for fieldpayload in cluster.fieldpayloads.values():

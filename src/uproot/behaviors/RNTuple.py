@@ -768,7 +768,7 @@ class HasFields(Mapping):
         container_dict = {}
         _recursive_find(form, target_cols)
 
-        # With GPU interpretation data can be decompressed and deserialized in 
+        # With GPU interpretation data can be decompressed and deserialized in
         # parallel. Read requested columns all at once
         if interpreter == "gpu" and backend == "cuda":
             clusters_datas = self.ntuple.gpu_read_cluster_range(
