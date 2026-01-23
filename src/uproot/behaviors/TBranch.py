@@ -192,6 +192,7 @@ def iterate(
         )
 
         if hasbranches is not None:
+
             with hasbranches:
                 try:
                     for item in hasbranches.iterate(
@@ -1399,6 +1400,9 @@ class HasBranches(Mapping):
                 language,
                 (lambda branchname, interpretation: None),
             )
+
+            if len(branchid_interpretation) == 0:
+                return
 
             entry_step = _regularize_step_size(
                 self, step_size, entry_start, entry_stop, branchid_interpretation
