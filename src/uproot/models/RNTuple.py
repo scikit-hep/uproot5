@@ -670,6 +670,8 @@ in file {self.file.file_path}"""
         total_length = missing_element_padding
         starts = []
         for cluster_idx in range(cluster_start, cluster_stop):
+            if cluster_idx < 0:
+                continue
             linklist = self._ntuple.page_link_list[cluster_idx]
             # Check if the column is suppressed and pick the non-suppressed one if so
             if col_idx < len(linklist) and linklist[col_idx].suppressed:
@@ -734,9 +736,11 @@ in file {self.file.file_path}"""
             col_idx, cluster_start, cluster_stop, missing_element_padding
         )
         res = numpy.empty(total_length, dtype)
+        if len(starts) == 0:
+            return res
+
         # Initialize the padding elements. Note that it might be different from missing_element_padding
         # because for offsets there is an extra zero added at the start.
-        assert len(starts) > 0, "The cluster range is invalid"
         res[: starts[0]] = 0
 
         for i, cluster_idx in enumerate(range(cluster_start, cluster_stop)):

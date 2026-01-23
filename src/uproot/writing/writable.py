@@ -1405,8 +1405,8 @@ in file {self.file_path} in directory {self.path}"""
             raise TypeError("Awkward input must be a high-level array or a RecordForm")
         elif not isinstance(type_spec_or_data, awkward.forms.RecordForm):
             raise TypeError(
-                """Input must be a type specification (in the form of an Awkward RecordForm, or a dict or list of pairs of str \u2192 NumPy dtype/Awkward type)
-                   or data (in the form of a high-level Awkward record array, Pandas dataframe, or dict)"""
+                "Input must be a type specification (in the form of an Awkward RecordForm, or a dict of str \u2192 NumPy dtype/Awkward type)"
+                "or data (in the form of a high-level Awkward record array, Pandas dataframe, or dict)"
             )
 
         # The rest assumes that type_spec_or_data is a RecordForm
