@@ -43,6 +43,7 @@ from uproot.models.RNTuple import (
     _rntuple_repetition_format,
 )
 from uproot.writing._cascade import CascadeLeaf, CascadeNode, Key, String
+from uproot.writing.writable import _regularize_input_type_to_awkward
 
 _rntuple_string_length_format = struct.Struct("<I")
 
@@ -854,11 +855,11 @@ class NTuple(CascadeNode):
         4. Update anchor's foot metadata values in-place
         """
 
-        # TODO: Think of a better way to do this
-        if isinstance(data, dict):
-            data = awkward.Array(data)
-        elif not isinstance(data, awkward.Array):
-            raise TypeError("data must be an awkward.Array or a dict")
+        data = _regularize_input_type_to_awkward(data)
+        if not isinstance(data, awkward.Array):
+            raise TypeError(
+                "data must be an Awkward array, a dict, or a Pandas DataFrame"
+            )
 
         data = _to_packed(data.layout)
 

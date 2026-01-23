@@ -752,7 +752,8 @@ class HasFields(Mapping):
         )
         stop_cluster_idx = numpy.searchsorted(cluster_starts, entry_stop, side="right")
         cluster_num_entries = numpy.sum(
-            [c.num_entries for c in clusters[start_cluster_idx:stop_cluster_idx]]
+            [c.num_entries for c in clusters[start_cluster_idx:stop_cluster_idx]],
+            dtype=int,
         )
 
         array_cache = _regularize_array_cache(array_cache, self.ntuple._file)
@@ -786,7 +787,9 @@ class HasFields(Mapping):
                 key_nr = int(key.split("-")[1])
                 # Find how many elements should be padded at the beginning
                 n_padding = self.ntuple.column_records[key_nr].first_element_index
-                n_padding -= cluster_starts[start_cluster_idx]
+                n_padding -= (
+                    cluster_starts[start_cluster_idx] if start_cluster_idx >= 0 else 0
+                )
                 n_padding = max(n_padding, 0)
                 dtype = None
                 if interpreter == "cpu":
@@ -824,7 +827,9 @@ class HasFields(Mapping):
                 dtype_byte = self.ntuple.column_records[key_nr].type
                 _fill_container_dict(container_dict, content, key, dtype_byte, dtype)
 
-        cluster_offset = cluster_starts[start_cluster_idx]
+        cluster_offset = (
+            cluster_starts[start_cluster_idx] if start_cluster_idx >= 0 else 0
+        )
         entry_start -= cluster_offset
         entry_stop -= cluster_offset
         arrays = uproot.extras.awkward().from_buffers(

@@ -1265,7 +1265,7 @@ in file {self.file_path} in directory {self.path}"""
         """
         Args:
             name (str): Name of the new TTree.
-            branch_types_or_data (dict or pairs of str \u2192 NumPy dtype/Awkward type,
+            branch_types_or_data (dict of str \u2192 NumPy dtype/Awkward type,
                 or dict of str \u2192 data to be written in the TBranch): Name
                 and type specification for the TBranches. If the values are not valid
                 type specifications, they are assumed to be the actual data to be written.
@@ -1296,7 +1296,7 @@ in file {self.file_path} in directory {self.path}"""
             raise ValueError("cannot create a TTree in a closed file")
 
         # If data is provided, create an empty TTree and then extend it
-        branch_types_or_data = _regularize_input_type(branch_types_or_data)
+        branch_types_or_data = _regularize_input_type_to_dict(branch_types_or_data)
         if not _is_type_specification(branch_types_or_data):
             metadata, data = _unpack_metadata_and_arrays(branch_types_or_data)
             tree = self.mktree(
@@ -1371,13 +1371,14 @@ in file {self.file_path} in directory {self.path}"""
     def mkrntuple(
         self,
         name,
-        ak_form_or_data,
+        type_spec_or_data,
         description="",
     ):
         """
         Args:
             name (str): Name of the new RNTuple.
-            ak_form_or_data (Awkward RecordForm or RecordArray): Name
+            type_spec_or_data (dict of str \u2192 NumPy dtype/Awkward type,
+                Awkward RecordForm, or data in the form of a RecordArray, Pandas dataframe, or dict): Name
                 and type specification for the fields. If a RecordForm is provided,
                 the RNTuple will be empty. If a RecordArray is provided, the RNTuple
                 will be initialized with the input data.
@@ -1388,26 +1389,30 @@ in file {self.file_path} in directory {self.path}"""
         if self._file.sink.closed:
             raise ValueError("cannot create a RNTuple in a closed file")
 
-        # TODO: Think of a better alternative to this
+        if _is_type_specification(type_spec_or_data):
+            ak_form = _type_specification_to_awkward_form(type_spec_or_data)
+            return self.mkrntuple(name, ak_form, description)
+
         awkward = uproot.extras.awkward()
-        if isinstance(ak_form_or_data, awkward.Array):
-            ntuple = self.mkrntuple(name, ak_form_or_data.layout.form, description)
-            ntuple.extend(ak_form_or_data)
+        type_spec_or_data = _regularize_input_type_to_awkward(type_spec_or_data)
+        if isinstance(type_spec_or_data, awkward.Array):
+            ntuple = self.mkrntuple(name, type_spec_or_data.layout.form, description)
+            ntuple.extend(type_spec_or_data)
             return ntuple
-        elif isinstance(ak_form_or_data, dict):
-            ak_data = awkward.Array(ak_form_or_data)
-            ntuple = self.mkrntuple(name, ak_data.layout.form, description)
-            ntuple.extend(ak_data)
-            return ntuple
-        elif not isinstance(ak_form_or_data, awkward.forms.Form):
+        if isinstance(
+            type_spec_or_data, (awkward.contents.Content, awkward.forms.Form)
+        ) and not isinstance(type_spec_or_data, awkward.forms.RecordForm):
+            raise TypeError("Awkward input must be a high-level array or a RecordForm")
+        elif not isinstance(type_spec_or_data, awkward.forms.RecordForm):
             raise TypeError(
-                "Input must be an Awkward Form, an Awkward Array, or a dictionary"
+                "Input must be a type specification (in the form of an Awkward RecordForm, or a dict of str \u2192 NumPy dtype/Awkward type)"
+                "or data (in the form of a high-level Awkward record array, Pandas dataframe, or dict)"
             )
 
-        # The rest assumes that ak_form_or_data is a RecordForm
+        # The rest assumes that type_spec_or_data is a RecordForm
 
-        if description == "" and "__doc__" in ak_form_or_data.parameters:
-            description = ak_form_or_data.parameters["__doc__"]
+        if description == "" and "__doc__" in type_spec_or_data.parameters:
+            description = type_spec_or_data.parameters["__doc__"]
 
         try:
             at = name.rindex("/")
@@ -1427,7 +1432,7 @@ in file {self.file_path} in directory {self.path}"""
                 directory._file.sink,
                 treename,
                 description,
-                ak_form_or_data,
+                type_spec_or_data,
             ),
         )
         directory._file._new_ntuple(ntuple)
@@ -2219,7 +2224,30 @@ def _is_type_specification(obj):
     return True
 
 
-def _regularize_input_type(obj):
+def _type_specification_to_awkward_form(obj):
+    awkward = uproot.extras.awkward()
+    if isinstance(obj, awkward.forms.Form):
+        return obj
+    if isinstance(obj, (awkward.types.Type, awkward.types.ArrayType)):
+        return awkward.forms.from_type(obj)
+    if isinstance(obj, (numpy.dtype, type)):
+        obj = str(numpy.dtype(obj))
+    if isinstance(obj, str):
+        return awkward.forms.from_type(
+            awkward.types.from_datashape(obj, highlevel=False)
+        )
+    if isinstance(obj, Mapping):
+        return awkward.forms.RecordForm(
+            [_type_specification_to_awkward_form(v) for v in obj.values()],
+            list(obj.keys()),
+        )
+    raise TypeError(
+        f"Cannot construct an Awkward Form from {type(obj).__name__}. "
+        f"Supported types: Form, Type, ArrayType, dtype, str, Mapping"
+    )
+
+
+def _regularize_input_type_to_dict(obj):
     if uproot._util.from_module(obj, "pandas"):
         import pandas
 
@@ -2236,6 +2264,33 @@ def _regularize_input_type(obj):
 
     if isinstance(obj, numpy.ndarray) and obj.dtype.fields is not None:
         obj = uproot.writing._cascadetree.recarray_to_dict(obj)
+
+    return obj
+
+
+def _regularize_input_type_to_awkward(obj):
+    import awkward
+
+    if uproot._util.from_module(obj, "pandas"):
+        import pandas
+
+        if isinstance(
+            obj, pandas.DataFrame
+        ) and uproot._util.pandas_has_attr_is_numeric(pandas)(obj.index):
+            obj = uproot.writing._cascadetree.dataframe_to_dict(obj)
+            # Try to retype dtype=object columns
+            for k in obj.keys():
+                if obj[k].dtype == object:
+                    obj[k] = awkward.Array(obj[k].tolist())
+            obj = awkward.Array(obj)
+
+    elif isinstance(obj, numpy.ndarray) and obj.dtype.fields is not None:
+        obj = awkward.Array(obj)
+
+    elif isinstance(obj, dict):
+        # Sort dictionary keys to avoid issues
+        obj = {k: obj[k] for k in sorted(obj.keys())}
+        obj = awkward.Array(obj)
 
     return obj
 
