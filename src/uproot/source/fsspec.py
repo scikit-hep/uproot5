@@ -55,9 +55,7 @@ class FSSpecSource(uproot.source.chunk.Source):
 
         file_path = _maybe_wrap_remote_url(file_path)
 
-        self._fs, self._file_path = fsspec.core.url_to_fs(
-            file_path, **options
-        )
+        self._fs, self._file_path = fsspec.core.url_to_fs(file_path, **options)
 
         # What should we do when there is a chain of filesystems?
         self._async_impl = self._fs.async_impl
