@@ -237,7 +237,7 @@ jobs:
             kvikio
 
       - name: Pip install the package
-        run: pip install --system -e. --group=dev
+        run: pip install .[test]
 
       - name: Run pytest
         run: |
