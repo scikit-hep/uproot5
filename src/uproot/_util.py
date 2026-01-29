@@ -883,7 +883,11 @@ def _regularize_files_inner(
                 file.full_name
                 for file in fsspec.open_files(
                     file_path,
-                    **uproot.source.fsspec.FSSpecSource.extract_fsspec_options(options),
+                    **{
+                        k: v
+                        for k, v in options.items()
+                        if k not in uproot.reading.open.defaults
+                    },
                 )
             ]
             # https://github.com/fsspec/filesystem_spec/issues/1459
