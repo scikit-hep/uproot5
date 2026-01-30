@@ -407,6 +407,16 @@ def concatenate(
 
     return library.concatenate(all_arrays)
 
+def _validate_rntuple_offsets(container_dict, cluster_num_entries):
+        for key, offsets in container_dict.items():
+            if key.endswith("-offsets"):
+                if len(offsets) != cluster_num_entries + 1:
+                    raise ValueError(
+                        f"Malformed RNTuple offsets '{key}': "
+                        f"expected {cluster_num_entries + 1}, got {len(offsets)}"
+                    )
+
+
 
 class HasFields(Mapping):
     """
@@ -838,6 +848,8 @@ class HasFields(Mapping):
             container_dict,
             backend="cuda" if interpreter == "gpu" and backend == "cuda" else "cpu",
         )[entry_start:entry_stop]
+
+        _validate_rntuple_offsets(container_dict, cluster_num_entries)
 
         arrays = uproot.extras.awkward().to_backend(arrays, backend=backend)
         # no longer needed; save memory
