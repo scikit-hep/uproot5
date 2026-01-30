@@ -64,7 +64,7 @@ def test_broken_offsets_array():
     cluster_num_entries = 3
 
     container_dict = {
-        "x-offsets": np.array([0, 2, 3]), 
+        "x-offsets": np.array([0, 2, 3]),
         "x-content": np.array([1, 2, 3]),
     }
 
