@@ -243,12 +243,6 @@ jobs:
         run: |
           python -m pytest -vv tests-cuda --reruns 10 --reruns-delay 30 --only-rerun "(?i)http|ssl|timeout|expired|connection|socket"
 
-      - name: Clean the workspace and mamba
-        if: always()
-        run: |
-          rm -rf * .[!.]* || echo "Nothing to clean"
-          rm -rf ~/micromamba* || echo "Nothing to clean"
-
   pass:
     if: always()
     needs: [build, vanilla-build, numpy1-build, pyodide-build]
