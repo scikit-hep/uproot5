@@ -14,7 +14,7 @@ def test_s3_fail():
     with pytest.raises((FileNotFoundError, TimeoutError, socket.timeout)):
         # Sometimes this raises a timeout error that doesn't go away for a long time, we might as well skip it.
         with uproot.source.fsspec.FSSpecSource(
-            "s3://pivarski-princeton/does-not-exist", timeout=0.1, anon=True
+            "s3://pivarski-princeton/does-not-exist", anon=True
         ) as source:
             uproot._util.tobytes(source.chunk(0, 100).raw_data)
 

@@ -158,7 +158,6 @@ def open(
 
 open.defaults = {
     "handler": None,
-    "timeout": 30,
     "max_num_elements": None,
     "num_workers": 1,
     "use_threads": sys.platform != "emscripten",

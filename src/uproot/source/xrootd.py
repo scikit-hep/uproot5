@@ -271,7 +271,7 @@ class XRootDSource(uproot.source.chunk.Source):
     def __init__(self, file_path: str, **options):
         options = dict(uproot.reading.open.defaults, **options)
 
-        self._timeout = options["timeout"]
+        self._timeout = options.get("timeout")
         self._desired_max_num_elements = options["max_num_elements"]
         self._use_threads = options["use_threads"]
         self._num_workers = options["num_workers"]
@@ -466,7 +466,7 @@ class MultithreadedXRootDSource(uproot.source.chunk.MultithreadedSource):
         options = dict(uproot.reading.open.defaults, **options)
 
         self._num_workers = options["num_workers"]
-        self._timeout = options["timeout"]
+        self._timeout = options.get("timeout")
         self._use_threads = options["use_threads"]
         self._num_requests = 0
         self._num_requested_chunks = 0
