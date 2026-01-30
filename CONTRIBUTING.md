@@ -109,7 +109,7 @@ Some tests may depend on having ROOT or XRootD installed. These are covered in t
 
 ## 🤖 AI-assisted contributions
 
-We welcome the use of AI tools as part of the development process. They can be valuable aids for drafting, refactoring, documentation, and exploration. However, contributions to Awkward Array require human judgment, contextual understanding, and familiarity with the project’s structure, goals, and standards.
+We welcome the use of AI tools as part of the development process. They can be valuable aids for drafting, refactoring, documentation, and exploration. However, contributions to Uproot require human judgment, contextual understanding, and familiarity with the project’s structure, goals, and standards.
 
 When using AI tools:
 
