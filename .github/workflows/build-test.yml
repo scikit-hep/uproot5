@@ -233,6 +233,7 @@ jobs:
             python=3.13
             cuda-version=${{ matrix.cuda-version }}
             cuda-toolkit
+            cuda-python
             cupy
             kvikio
             nvcomp
