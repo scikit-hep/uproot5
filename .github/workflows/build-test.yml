@@ -200,6 +200,49 @@ jobs:
         run: |
           pytest -vv --dist-dir=./pyodide-dist/ --runner=selenium --runtime=firefox tests-wasm
 
+  gpu-build:
+    strategy:
+      fail-fast: false
+      matrix:
+        cuda-version: [12, 13]
+
+    runs-on: self-hosted
+    timeout-minutes: 30
+
+    # Required for miniconda to activate conda
+    defaults:
+      run:
+        shell: bash -l {0}
+
+    steps:
+      - name: Clean the workspace and mamba
+        run: |
+          rm -rf * .[!.]* || echo "Nothing to clean"
+          rm -rf ~/micromamba* || echo "Nothing to clean"
+
+      - uses: actions/checkout@v6
+
+      - name: Get micromamba
+        uses: mamba-org/setup-micromamba@v2
+        with:
+          environment-name: test-env
+          init-shell: bash
+          create-args: >-
+            -c rapidsai
+            -c nvidia
+            python=3.13
+            cuda-version=${{ matrix.cuda-version }}
+            cuda-toolkit
+            cupy
+            kvikio
+
+      - name: Pip install the package
+        run: pip install --group=test .
+
+      - name: Run pytest
+        run: |
+          python -m pytest -vv tests-cuda --reruns 10 --reruns-delay 30 --only-rerun "(?i)http|ssl|timeout|expired|connection|socket"
+
   pass:
     if: always()
     needs: [build, vanilla-build, numpy1-build, pyodide-build]
