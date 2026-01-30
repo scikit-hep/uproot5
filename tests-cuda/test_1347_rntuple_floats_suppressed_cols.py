@@ -14,7 +14,8 @@ pytestmark = [
         cupy.cuda.runtime.driverGetVersion() == 0, reason="No available CUDA driver."
     ),
     pytest.mark.xfail(
-        reason="There are breaking changes in new versions of KvikIO that are not yet resolved"
+        strict=False,
+        reason="There are breaking changes in new versions of KvikIO that are not yet resolved",
     ),
 ]
 
