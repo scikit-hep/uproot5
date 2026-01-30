@@ -842,7 +842,7 @@ class HasFields(Mapping):
         entry_start -= cluster_offset
         entry_stop -= cluster_offset
 
-        if entry_start == 0 and entry_stop == cluster_num_entries : 
+        if entry_start == 0 and entry_stop == cluster_num_entries:
             _validate_rntuple_offsets(container_dict, cluster_num_entries)
 
         arrays = uproot.extras.awkward().from_buffers(
