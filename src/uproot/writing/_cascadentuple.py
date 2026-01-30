@@ -43,6 +43,7 @@ from uproot.models.RNTuple import (
     _rntuple_repetition_format,
 )
 from uproot.writing._cascade import CascadeLeaf, CascadeNode, Key, String
+from uproot.writing.writable import _regularize_input_type_to_awkward
 
 _rntuple_string_length_format = struct.Struct("<I")
 
@@ -435,7 +436,7 @@ class NTuple_Header(CascadeLeaf):
 
     def generate_field_col_records(self):
         akform = self._akform
-        for field_name, topakform in zip(akform.fields, akform.contents):
+        for field_name, topakform in zip(akform.fields, akform.contents, strict=True):
             self._build_field_col_records(
                 topakform,
                 field_name=field_name,
@@ -854,11 +855,11 @@ class NTuple(CascadeNode):
         4. Update anchor's foot metadata values in-place
         """
 
-        # TODO: Think of a better way to do this
-        if isinstance(data, dict):
-            data = awkward.Array(data)
-        elif not isinstance(data, awkward.Array):
-            raise TypeError("data must be an awkward.Array or a dict")
+        data = _regularize_input_type_to_awkward(data)
+        if not isinstance(data, awkward.Array):
+            raise TypeError(
+                "data must be an Awkward array, a dict, or a Pandas DataFrame"
+            )
 
         data = _to_packed(data.layout)
 
@@ -1046,163 +1047,165 @@ class NTuple(CascadeNode):
 
 
 def _to_packed_form(form):
-    # TODO: Switch to pattern matching when 3.9 is dropped
-    if isinstance(form, (awkward.forms.BitMaskedForm, awkward.forms.ByteMaskedForm)):
-        return awkward.forms.IndexedOptionForm(
-            "i64", _to_packed_form(form.content), parameters=form.parameters
-        )
-    if isinstance(form, awkward.forms.EmptyForm):
-        return form
-    if isinstance(form, awkward.forms.IndexedForm):
-        return _to_packed_form(form.content)
-    if isinstance(form, awkward.forms.IndexedOptionForm):
-        return awkward.forms.IndexedOptionForm(
-            form.index, _to_packed_form(form.content), parameters=form.parameters
-        )
-    if isinstance(form, (awkward.forms.ListForm, awkward.forms.ListOffsetForm)):
-        return awkward.forms.ListOffsetForm(
-            "i64", _to_packed_form(form.content), parameters=form.parameters
-        )
-    if isinstance(form, awkward.forms.NumpyForm):
-        shape = form.inner_shape
-        out = awkward.forms.NumpyForm(form.primitive, parameters=form.parameters)
-        for i in range(len(shape) - 1, -1, -1):
-            out = awkward.forms.RegularForm(out, shape[i])
-        return out
-    if isinstance(form, awkward.forms.RecordForm):
-        return awkward.forms.RecordForm(
-            [_to_packed_form(x) for x in form.contents],
-            form._fields,
-            parameters=form.parameters,
-        )
-    if isinstance(form, awkward.forms.RegularForm):
-        return awkward.forms.RegularForm(
-            _to_packed_form(form.content), form._size, parameters=form.parameters
-        )
-    if isinstance(form, awkward.forms.UnionForm):
-        return awkward.forms.UnionForm(
-            "i8",
-            form.index,
-            [_to_packed_form(x) for x in form.contents],
-            parameters=form.parameters,
-        )
-    if isinstance(form, awkward.forms.UnmaskedForm):
-        return awkward.forms.UnmaskedForm(
-            _to_packed_form(form._content), parameters=form.parameters
-        )
-    msg = f"Form type {type(form)} cannot be written. If you believe this should be supported, please let the Uproot developers know."
-    raise NotImplementedError(msg)
+    match form.__class__:
+        case awkward.forms.BitMaskedForm | awkward.forms.ByteMaskedForm:
+            return awkward.forms.IndexedOptionForm(
+                "i64", _to_packed_form(form.content), parameters=form.parameters
+            )
+        case awkward.forms.EmptyForm:
+            return form
+        case awkward.forms.IndexedForm:
+            return _to_packed_form(form.content)
+        case awkward.forms.IndexedOptionForm:
+            return awkward.forms.IndexedOptionForm(
+                form.index, _to_packed_form(form.content), parameters=form.parameters
+            )
+        case awkward.forms.ListForm | awkward.forms.ListOffsetForm:
+            return awkward.forms.ListOffsetForm(
+                "i64", _to_packed_form(form.content), parameters=form.parameters
+            )
+        case awkward.forms.NumpyForm:
+            shape = form.inner_shape
+            out = awkward.forms.NumpyForm(form.primitive, parameters=form.parameters)
+            for i in range(len(shape) - 1, -1, -1):
+                out = awkward.forms.RegularForm(out, shape[i])
+            return out
+        case awkward.forms.RecordForm:
+            return awkward.forms.RecordForm(
+                [_to_packed_form(x) for x in form.contents],
+                form._fields,
+                parameters=form.parameters,
+            )
+        case awkward.forms.RegularForm:
+            return awkward.forms.RegularForm(
+                _to_packed_form(form.content), form._size, parameters=form.parameters
+            )
+        case awkward.forms.UnionForm:
+            return awkward.forms.UnionForm(
+                "i8",
+                form.index,
+                [_to_packed_form(x) for x in form.contents],
+                parameters=form.parameters,
+            )
+        case awkward.forms.UnmaskedForm:
+            return awkward.forms.UnmaskedForm(
+                _to_packed_form(form._content), parameters=form.parameters
+            )
+        case _:
+            msg = f"Form type {type(form)} cannot be written. If you believe this should be supported, please let the Uproot developers know."
+            raise NotImplementedError(msg)
 
 
 def _to_packed(layout):
     """
     This is similar to `to_packed` in Awkward, but a bit more consistent.
     """
-    # TODO: Switch to pattern matching when 3.9 is dropped
-    if isinstance(layout, awkward.contents.BitMaskedArray):
-        next = layout.to_IndexedOptionArray64()
-        content = _to_packed(next._content[: layout.length])
-        return awkward.contents.IndexedOptionArray(
-            next._index, content, parameters=next.parameters
-        )
-    if isinstance(layout, awkward.contents.ByteMaskedArray):
-        next = layout.to_IndexedOptionArray64()
-        content = _to_packed(next._content[: layout._mask.length])
-        return awkward.contents.IndexedOptionArray(
-            next._index, content, parameters=next.parameters
-        )
-    if isinstance(layout, awkward.contents.EmptyArray):
-        return layout
-    if isinstance(layout, awkward.contents.IndexedArray):
-        projected = layout.project()
-        return _to_packed(projected)
-    if isinstance(layout, awkward.contents.IndexedOptionArray):
-        nplike = layout._backend.nplike
-        original_index = layout._index.data
-        is_none = original_index < 0
-        num_none = nplike.index_as_shape_item(nplike.count_nonzero(is_none))
-        new_index = nplike.empty(layout._index.length, dtype=layout._index.dtype)
-        new_index[is_none] = -1
-        new_index[~is_none] = nplike.arange(
-            nplike.shape_item_as_index(new_index.size - num_none),
-            dtype=layout._index.dtype,
-        )
-        projected = layout.project()
-        return awkward.contents.IndexedOptionArray(
-            awkward.index.Index(new_index, nplike=layout._backend.nplike),
-            _to_packed(projected),
-            parameters=layout._parameters,
-        )
-    if isinstance(layout, awkward.contents.ListArray):
-        next = layout.to_ListOffsetArray64(True)
-        return _to_packed(next)
-    if isinstance(layout, awkward.contents.ListOffsetArray):
-        next = layout.to_ListOffsetArray64(True)
-        next_content = next._content[: next._offsets[-1]]
-        return awkward.contents.ListOffsetArray(
-            next._offsets,
-            _to_packed(next_content),
-            parameters=next._parameters,
-        )
-    if isinstance(layout, awkward.contents.NumpyArray):
-        return layout.to_contiguous().to_RegularArray()
-    if isinstance(layout, awkward.contents.RecordArray):
-        return awkward.contents.RecordArray(
-            [_to_packed(x[: layout.length]) for x in layout._contents],
-            layout._fields,
-            layout.length,
-            parameters=layout._parameters,
-            backend=layout._backend,
-        )
-    if isinstance(layout, awkward.contents.RegularArray):
-        nplike = layout._backend.nplike
-        length = layout.length * layout._size
-        content = layout._content[: nplike.shape_item_as_index(length)]
+    match layout.__class__:
+        case awkward.contents.BitMaskedArray:
+            next = layout.to_IndexedOptionArray64()
+            content = _to_packed(next._content[: layout.length])
+            return awkward.contents.IndexedOptionArray(
+                next._index, content, parameters=next.parameters
+            )
+        case awkward.contents.ByteMaskedArray:
+            next = layout.to_IndexedOptionArray64()
+            content = _to_packed(next._content[: layout._mask.length])
+            return awkward.contents.IndexedOptionArray(
+                next._index, content, parameters=next.parameters
+            )
+        case awkward.contents.EmptyArray:
+            return layout
+        case awkward.contents.IndexedArray:
+            projected = layout.project()
+            return _to_packed(projected)
+        case awkward.contents.IndexedOptionArray:
+            nplike = layout._backend.nplike
+            original_index = layout._index.data
+            is_none = original_index < 0
+            num_none = nplike.index_as_shape_item(nplike.count_nonzero(is_none))
+            new_index = nplike.empty(layout._index.length, dtype=layout._index.dtype)
+            new_index[is_none] = -1
+            new_index[~is_none] = nplike.arange(
+                nplike.shape_item_as_index(new_index.size - num_none),
+                dtype=layout._index.dtype,
+            )
+            projected = layout.project()
+            return awkward.contents.IndexedOptionArray(
+                awkward.index.Index(new_index, nplike=layout._backend.nplike),
+                _to_packed(projected),
+                parameters=layout._parameters,
+            )
+        case awkward.contents.ListArray:
+            next = layout.to_ListOffsetArray64(True)
+            return _to_packed(next)
+        case awkward.contents.ListOffsetArray:
+            next = layout.to_ListOffsetArray64(True)
+            next_content = next._content[: next._offsets[-1]]
+            return awkward.contents.ListOffsetArray(
+                next._offsets,
+                _to_packed(next_content),
+                parameters=next._parameters,
+            )
+        case awkward.contents.NumpyArray:
+            return layout.to_contiguous().to_RegularArray()
+        case awkward.contents.RecordArray:
+            return awkward.contents.RecordArray(
+                [_to_packed(x[: layout.length]) for x in layout._contents],
+                layout._fields,
+                layout.length,
+                parameters=layout._parameters,
+                backend=layout._backend,
+            )
+        case awkward.contents.RegularArray:
+            nplike = layout._backend.nplike
+            length = layout.length * layout._size
+            content = layout._content[: nplike.shape_item_as_index(length)]
 
-        return awkward.contents.RegularArray(
-            _to_packed(content),
-            layout._size,
-            layout.length,
-            parameters=layout._parameters,
-        )
-    if isinstance(layout, awkward.contents.UnionArray):
-        nplike = layout._backend.nplike
-        tags = layout._tags.data
-        original_index = index = layout._index.data[
-            : nplike.shape_item_as_index(tags.shape[0])
-        ]
+            return awkward.contents.RegularArray(
+                _to_packed(content),
+                layout._size,
+                layout.length,
+                parameters=layout._parameters,
+            )
+        case awkward.contents.UnionArray:
+            nplike = layout._backend.nplike
+            tags = layout._tags.data
+            original_index = index = layout._index.data[
+                : nplike.shape_item_as_index(tags.shape[0])
+            ]
 
-        contents = list(layout._contents)
+            contents = list(layout._contents)
 
-        for tag in range(len(layout._contents)):
-            is_tag = tags == tag
-            num_tag = nplike.index_as_shape_item(nplike.count_nonzero(is_tag))
+            for tag in range(len(layout._contents)):
+                is_tag = tags == tag
+                num_tag = nplike.index_as_shape_item(nplike.count_nonzero(is_tag))
 
-            if (
-                contents[tag].length is not awkward._nplikes.shape.unknown_length
-                and num_tag is not awkward._nplikes.shape.unknown_length
-                and contents[tag].length > num_tag
-            ):
-                if original_index is index:
-                    index = index.copy()
-                new_index_values = layout._backend.nplike.arange(
-                    num_tag, dtype=index.dtype
-                )
-                index[is_tag] = new_index_values
-                contents[tag] = layout.project(tag)
+                if (
+                    contents[tag].length is not awkward._nplikes.shape.unknown_length
+                    and num_tag is not awkward._nplikes.shape.unknown_length
+                    and contents[tag].length > num_tag
+                ):
+                    if original_index is index:
+                        index = index.copy()
+                    new_index_values = layout._backend.nplike.arange(
+                        num_tag, dtype=index.dtype
+                    )
+                    index[is_tag] = new_index_values
+                    contents[tag] = layout.project(tag)
 
-            contents[tag] = _to_packed(contents[tag])
+                contents[tag] = _to_packed(contents[tag])
 
-        return awkward.contents.UnionArray(
-            awkward.index.Index8(tags, nplike=layout._backend.nplike),
-            awkward.index.Index(index, nplike=layout._backend.nplike),
-            contents,
-            parameters=layout._parameters,
-        )
-    if isinstance(layout, awkward.contents.UnmaskedArray):
-        return awkward.contents.UnmaskedArray(
-            _to_packed(layout._content),
-            parameters=layout._parameters,
-        )
-    msg = f"Array type {type(layout)} cannot be written. If you believe this should be supported, please let the Uproot developers know."
-    raise NotImplementedError(msg)
+            return awkward.contents.UnionArray(
+                awkward.index.Index8(tags, nplike=layout._backend.nplike),
+                awkward.index.Index(index, nplike=layout._backend.nplike),
+                contents,
+                parameters=layout._parameters,
+            )
+        case awkward.contents.UnmaskedArray:
+            return awkward.contents.UnmaskedArray(
+                _to_packed(layout._content),
+                parameters=layout._parameters,
+            )
+        case _:
+            msg = f"Array type {type(layout)} cannot be written. If you believe this should be supported, please let the Uproot developers know."
+            raise NotImplementedError(msg)

@@ -16,7 +16,7 @@ jobs:
       fail-fast: false
       matrix:
         platform: [windows-latest, macos-latest, ubuntu-latest]
-        python-version: ['3.9', '3.10', '3.11', '3.12', '3.13', '3.14']
+        python-version: ['3.10', '3.11', '3.12', '3.13', '3.14']
 
     runs-on: ${{ matrix.platform }}
     timeout-minutes: 30
@@ -45,7 +45,7 @@ jobs:
         run: python -c "import sys; assert '.'.join(str(s) for s in sys.version_info[:2]) == '${{ matrix.python-version }}', f'{version} incorrect!'"
 
       - name: Install ROOT
-        if: matrix.python-version == 3.9  &&  runner.os == 'Linux'
+        if: matrix.python-version == 3.10  &&  runner.os == 'Linux'
         run: |
           micromamba env list
           micromamba install root
@@ -199,6 +199,49 @@ jobs:
       - name: Run pytest (Firefox)
         run: |
           pytest -vv --dist-dir=./pyodide-dist/ --runner=selenium --runtime=firefox tests-wasm
+
+  gpu-build:
+    strategy:
+      fail-fast: false
+      matrix:
+        cuda-version: [12, 13]
+
+    runs-on: self-hosted
+    timeout-minutes: 30
+
+    # Required for miniconda to activate conda
+    defaults:
+      run:
+        shell: bash -l {0}
+
+    steps:
+      - name: Clean the workspace and mamba
+        run: |
+          rm -rf * .[!.]* || echo "Nothing to clean"
+          rm -rf ~/micromamba* || echo "Nothing to clean"
+
+      - uses: actions/checkout@v6
+
+      - name: Get micromamba
+        uses: mamba-org/setup-micromamba@v2
+        with:
+          environment-name: test-env
+          init-shell: bash
+          create-args: >-
+            -c rapidsai
+            -c nvidia
+            python=3.13
+            cuda-version=${{ matrix.cuda-version }}
+            cuda-toolkit
+            cupy
+            kvikio
+
+      - name: Pip install the package
+        run: pip install --group=test .
+
+      - name: Run pytest
+        run: |
+          python -m pytest -vv tests-cuda --reruns 10 --reruns-delay 30 --only-rerun "(?i)http|ssl|timeout|expired|connection|socket"
 
   pass:
     if: always()

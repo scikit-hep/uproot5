@@ -160,6 +160,7 @@ def iterate(
     * handler (:doc:`uproot.source.chunk.Source` class; None)
     * timeout (float for HTTP, int for XRootD; 30)
     * max_num_elements (None or int; None)
+        The maximum number of elements to be requested in a single vector read, when using XRootD.
     * num_workers (int; 1)
     * use_threads (bool; False on the emscripten platform (i.e. in a web browser), else True)
     * num_fallback_workers (int; 10)
@@ -191,6 +192,7 @@ def iterate(
         )
 
         if hasbranches is not None:
+
             with hasbranches:
                 try:
                     for item in hasbranches.iterate(
@@ -345,6 +347,7 @@ def concatenate(
     * handler (:doc:`uproot.source.chunk.Source` class; None)
     * timeout (float for HTTP, int for XRootD; 30)
     * max_num_elements (None or int; None)
+        The maximum number of elements to be requested in a single vector read, when using XRootD.
     * num_workers (int; 1)
     * use_threads (bool; False on the emscripten platform (i.e. in a web browser), else True)
     * num_fallback_workers (int; 10)
@@ -1397,6 +1400,9 @@ class HasBranches(Mapping):
                 language,
                 (lambda branchname, interpretation: None),
             )
+
+            if len(branchid_interpretation) == 0:
+                return
 
             entry_step = _regularize_step_size(
                 self, step_size, entry_start, entry_stop, branchid_interpretation

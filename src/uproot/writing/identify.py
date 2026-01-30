@@ -17,7 +17,6 @@ objects from Python builtins and other writable models.
 """
 from __future__ import annotations
 
-import warnings
 from collections.abc import Mapping
 
 import numpy
@@ -26,9 +25,6 @@ import uproot.compression
 import uproot.extras
 import uproot.pyroot
 import uproot.writing
-
-# To keep track of whether we've warned about switching to writing RNTuple by default
-_warned_rntuple_by_default = False
 
 
 def add_to_directory(obj, name, directory, streamers):
@@ -52,29 +48,16 @@ def add_to_directory(obj, name, directory, streamers):
 
     Raises ``TypeError`` if ``obj`` is not recognized as writable data.
     """
-    is_ttree = False
+    obj = uproot.writing.writable._regularize_input_type_to_awkward(obj)
 
-    obj = uproot.writing.writable._regularize_input_type(obj)
+    awkward = uproot.extras.awkward()
 
     if isinstance(obj, Mapping) and all(isinstance(x, str) for x in obj):
-        is_ttree = True
         metadata, data = uproot.writing.writable._unpack_metadata_and_arrays(obj)
-
-    if is_ttree:
-        global _warned_rntuple_by_default  # noqa: PLW0603
-        if not _warned_rntuple_by_default:
-            warnings.warn(
-                "Starting in version 5.7.0, Uproot will default to writing RNTuples instead of TTrees. "
-                "You will need to use `mktree` to explicitly create a TTree. "
-                "This can be done by changing `file['tree_name'] = data` to `file.mktree('tree_name', data)`. "
-                "Please update your code accordingly.",
-                FutureWarning,
-                stacklevel=4,
-            )
-            _warned_rntuple_by_default = True
-        tree = directory.mktree(name, metadata)
-        tree.extend(data)
-
+        rntuple = directory.mkrntuple(name, metadata)
+        rntuple.extend(data)
+    elif isinstance(obj, (awkward.Array, awkward.contents.Content, awkward.forms.Form)):
+        directory.mkrntuple(name, obj)
     else:
         writable = to_writable(obj)
 
@@ -194,7 +177,7 @@ def to_writable(obj):
 
             # and flow=True is different from flow=False (obj actually has flow bins)
             data_noflow = obj.values(flow=False)
-            for flow, noflow in zip(data.shape, data_noflow.shape):
+            for flow, noflow in zip(data.shape, data_noflow.shape, strict=True):
                 if flow != noflow + 2:
                     raise TypeError
 
@@ -262,7 +245,9 @@ def to_writable(obj):
                 fXbins=_fXbins_maybe_regular(axis, boost_histogram),
                 fLabels=_fLabels_maybe_categorical(axis, boost_histogram),
             )
-            for axis, default_name in zip(obj.axes, ["xaxis", "yaxis", "zaxis"])
+            for axis, default_name in zip(
+                obj.axes, ["xaxis", "yaxis", "zaxis"], strict=False
+            )
         ]
 
         # make TH1, TH2, TH3 types independently

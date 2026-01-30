@@ -141,6 +141,7 @@ def iterate(
     * handler (:doc:`uproot.source.chunk.Source` class; None)
     * timeout (float for HTTP, int for XRootD; 30)
     * max_num_elements (None or int; None)
+        The maximum number of elements to be requested in a single vector read, when using XRootD.
     * num_workers (int; 1)
     * use_threads (bool; False on the emscripten platform (i.e. in a web browser), else True)
     * num_fallback_workers (int; 10)
@@ -315,6 +316,7 @@ def concatenate(
     * handler (:doc:`uproot.source.chunk.Source` class; None)
     * timeout (float for HTTP, int for XRootD; 30)
     * max_num_elements (None or int; None)
+        The maximum number of elements to be requested in a single vector read, when using XRootD.
     * num_workers (int; 1)
     * use_threads (bool; False on the emscripten platform (i.e. in a web browser), else True)
     * num_fallback_workers (int; 10)
@@ -750,7 +752,8 @@ class HasFields(Mapping):
         )
         stop_cluster_idx = numpy.searchsorted(cluster_starts, entry_stop, side="right")
         cluster_num_entries = numpy.sum(
-            [c.num_entries for c in clusters[start_cluster_idx:stop_cluster_idx]]
+            [c.num_entries for c in clusters[start_cluster_idx:stop_cluster_idx]],
+            dtype=int,
         )
 
         array_cache = _regularize_array_cache(array_cache, self.ntuple._file)
@@ -786,7 +789,9 @@ class HasFields(Mapping):
                 key_nr = int(key.split("-")[1])
                 # Find how many elements should be padded at the beginning
                 n_padding = self.ntuple.column_records[key_nr].first_element_index
-                n_padding -= cluster_starts[start_cluster_idx]
+                n_padding -= (
+                    cluster_starts[start_cluster_idx] if start_cluster_idx >= 0 else 0
+                )
                 n_padding = max(n_padding, 0)
                 dtype = None
                 if interpreter == "cpu":
@@ -824,7 +829,9 @@ class HasFields(Mapping):
                 dtype_byte = self.ntuple.column_records[key_nr].type
                 _fill_container_dict(container_dict, content, key, dtype_byte, dtype)
 
-        cluster_offset = cluster_starts[start_cluster_idx]
+        cluster_offset = (
+            cluster_starts[start_cluster_idx] if start_cluster_idx >= 0 else 0
+        )
         entry_start -= cluster_offset
         entry_stop -= cluster_offset
         arrays = uproot.extras.awkward().from_buffers(
@@ -1511,6 +1518,9 @@ class HasFields(Mapping):
             filter_field=filter_field,
             filter_branch=filter_branch,
         )
+
+        if len(akform.contents) == 0:
+            return
 
         return _num_entries_for(self, akform, target_num_bytes, entry_start, entry_stop)
 

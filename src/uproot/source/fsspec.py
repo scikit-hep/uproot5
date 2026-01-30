@@ -55,9 +55,10 @@ class FSSpecSource(uproot.source.chunk.Source):
 
         file_path = _maybe_wrap_remote_url(file_path)
 
-        self._fs, self._file_path = fsspec.core.url_to_fs(
-            file_path, **self.extract_fsspec_options(options)
-        )
+        fsspec_options = {
+            k: v for k, v in options.items() if k not in uproot.reading.open.defaults
+        }
+        self._fs, self._file_path = fsspec.core.url_to_fs(file_path, **fsspec_options)
 
         # What should we do when there is a chain of filesystems?
         self._async_impl = self._fs.async_impl
@@ -65,14 +66,6 @@ class FSSpecSource(uproot.source.chunk.Source):
         self._open()
 
         self.__enter__()
-
-    @classmethod
-    def extract_fsspec_options(cls, options: dict) -> dict:
-        uproot_default_options = dict(uproot.reading.open.defaults)
-        options = dict(uproot_default_options, **options)
-        return {
-            k: v for k, v in options.items() if k not in uproot_default_options.keys()
-        }
 
     def _open(self):
         self._executor = FSSpecLoopExecutor()

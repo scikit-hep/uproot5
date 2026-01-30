@@ -883,7 +883,11 @@ def _regularize_files_inner(
                 file.full_name
                 for file in fsspec.open_files(
                     file_path,
-                    **uproot.source.fsspec.FSSpecSource.extract_fsspec_options(options),
+                    **{
+                        k: v
+                        for k, v in options.items()
+                        if k not in uproot.reading.open.defaults
+                    },
                 )
             ]
             # https://github.com/fsspec/filesystem_spec/issues/1459
@@ -906,7 +910,7 @@ def _regularize_files_inner(
                         *[match.group(0)[1:-1].split(",") for match in matches]
                     ):
                         tmp = expanded
-                        for c, m in list(zip(combination, matches))[::-1]:
+                        for c, m in list(zip(combination, matches, strict=True))[::-1]:
                             tmp = tmp[: m.span()[0]] + c + tmp[m.span()[1] :]
                         results.append(tmp)
 
