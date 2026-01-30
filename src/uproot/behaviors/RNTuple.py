@@ -407,15 +407,14 @@ def concatenate(
 
     return library.concatenate(all_arrays)
 
-def _validate_rntuple_offsets(container_dict, cluster_num_entries):
-        for key, offsets in container_dict.items():
-            if key.endswith("-offsets"):
-                if len(offsets) != cluster_num_entries + 1:
-                    raise ValueError(
-                        f"Malformed RNTuple offsets '{key}': "
-                        f"expected {cluster_num_entries + 1}, got {len(offsets)}"
-                    )
 
+def _validate_rntuple_offsets(container_dict, cluster_num_entries):
+    for key, offsets in container_dict.items():
+        if key.endswith("-offsets") and len(offsets) != cluster_num_entries + 1:
+                raise ValueError(
+                    f"Malformed RNTuple offsets '{key}': "
+                    f"expected {cluster_num_entries + 1}, got {len(offsets)}"
+                )
 
 
 class HasFields(Mapping):

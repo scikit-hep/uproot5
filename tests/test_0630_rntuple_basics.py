@@ -54,17 +54,17 @@ def test_jagged():
             "four_v_LVs",
         ]
 
+
 def test_broken_offsets_array():
-    
+
     import numpy as np
     import pytest
     from uproot.behaviors.RNTuple import _validate_rntuple_offsets
 
     cluster_num_entries = 3
 
-    # Simulate what arrays() sees internally
     container_dict = {
-        "x-offsets": np.array([0, 2, 3]),  # ❌ length 3, should be 4
+        "x-offsets": np.array([0, 2, 3]), 
         "x-content": np.array([1, 2, 3]),
     }
 
