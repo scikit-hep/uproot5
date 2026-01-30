@@ -234,6 +234,7 @@ jobs:
             cuda-version=${{ matrix.cuda-version }}
             cuda-toolkit
             cuda-python
+            cccl-python
             cupy
             kvikio
             nvcomp
