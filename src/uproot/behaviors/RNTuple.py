@@ -843,7 +843,7 @@ class HasFields(Mapping):
         entry_stop -= cluster_offset
 
         _validate_rntuple_offsets(container_dict, cluster_num_entries)
-        
+
         arrays = uproot.extras.awkward().from_buffers(
             form,
             cluster_num_entries,
