@@ -165,7 +165,12 @@ class Library:
         return repr(self.name)
 
     def __eq__(self, other):
-        return type(_libraries[self.name]) is type(_libraries[other.name])
+        if not isinstance(other, Library):
+            return NotImplemented
+        try : 
+            return type(_libraries[self.name]) is type(_libraries[other.name])
+        except (KeyError, AttributeError, TypeError) : 
+            return False 
 
 
 class NumPy(Library):
