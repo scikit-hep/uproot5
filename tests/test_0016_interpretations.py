@@ -130,6 +130,7 @@ def test_recovery(mini):
         ]
         assert branch.entry_offsets == [0, branch.num_entries]
 
+
 def test_library_equality_is_safe():
     from uproot.interpretation.library import NumPy, Awkward, Pandas
 
