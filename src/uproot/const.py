@@ -3,6 +3,7 @@
 """
 This module defines integer constants used by serialization and deserialization routines.
 """
+
 from __future__ import annotations
 
 from enum import IntFlag

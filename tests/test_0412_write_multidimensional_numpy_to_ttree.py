@@ -184,17 +184,17 @@ def test_histogram_interface(tmp_path):
 
     with uproot.open(skhep_testdata.data_path("uproot-hepdata-example.root")) as fin:
         h1d, h2d = fin["hpx"], fin["hpxpy"]
-        (h1d_entries_1, h1d_xedges_1) = h1d.to_numpy()
-        (h2d_entries_1, h2d_xedges_1, h2d_yedges_1) = h2d.to_numpy(dd=False)
-        (h2d_dd_entries_1, (h2d_dd_xedges_1, h2d_dd_yedges_1)) = h2d.to_numpy(dd=True)
+        h1d_entries_1, h1d_xedges_1 = h1d.to_numpy()
+        h2d_entries_1, h2d_xedges_1, h2d_yedges_1 = h2d.to_numpy(dd=False)
+        h2d_dd_entries_1, (h2d_dd_xedges_1, h2d_dd_yedges_1) = h2d.to_numpy(dd=True)
 
         with uproot.recreate(newfile) as fout:
             fout["h1d"] = h1d.to_numpy()
             fout["h2d"] = h2d.to_numpy(dd=False)
             fout["h2d_dd"] = h2d.to_numpy(dd=True)
-            (h1d_entries_2, h1d_xedges_2) = fout["h1d"].to_numpy()
-            (h2d_entries_2, h2d_xedges_2, h2d_yedges_2) = fout["h2d"].to_numpy(dd=False)
-            (h2d_dd_entries_2, (h2d_dd_xedges_2, h2d_dd_yedges_2)) = fout[
+            h1d_entries_2, h1d_xedges_2 = fout["h1d"].to_numpy()
+            h2d_entries_2, h2d_xedges_2, h2d_yedges_2 = fout["h2d"].to_numpy(dd=False)
+            h2d_dd_entries_2, (h2d_dd_xedges_2, h2d_dd_yedges_2) = fout[
                 "h2d_dd"
             ].to_numpy(dd=True)
 

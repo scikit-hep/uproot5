@@ -3,6 +3,7 @@
 """
 This module defines a versionless model for ``ROOT::RNTuple``.
 """
+
 from __future__ import annotations
 
 import dataclasses

@@ -7,6 +7,7 @@ See :doc:`uproot.interpretation.known_forth.known_forth_of` for the function
 that provides the lookup of known forth codes and :doc:`uproot.interpretation.known_forth.atlas.VectorVectorElementLink` for an
 implementation used in ATLAS (D)AODs.
 """
+
 from __future__ import annotations
 
 import uproot

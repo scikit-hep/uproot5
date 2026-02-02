@@ -10,6 +10,7 @@ Most of the functionality of RNTuple-reading is implemented here.
 See :doc:`uproot.models.RNTuple` for deserialization of the ``RNTuple``
 objects themselves.
 """
+
 from __future__ import annotations
 
 import sys

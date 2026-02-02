@@ -7,6 +7,7 @@ This module defines low-level routines for deserialization, including
 :doc:`uproot.deserialization.read_object_any`, which manages references to
 previously read objects.
 """
+
 from __future__ import annotations
 
 import struct
@@ -426,9 +427,7 @@ in file {self.file_path}{in_parent}"""
 {}
 
 {}
-in file {}{}""".format(
-                "\n".join(lines), self.message, self.file_path, in_parent
-            )
+in file {}{}""".format("\n".join(lines), self.message, self.file_path, in_parent)
 
     def debug(
         self, skip_bytes=0, limit_bytes=None, dtype=None, offset=0, stream=sys.stdout
