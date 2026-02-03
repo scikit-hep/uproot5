@@ -6,6 +6,7 @@ a base class for all user-defined custom interpretations, and provides
 a :doc:`uproot.interpretation.Interpretation` for extracting binary data
 from ``TBasket`` objects.
 """
+
 from __future__ import annotations
 
 import numpy

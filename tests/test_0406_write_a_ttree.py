@@ -376,7 +376,7 @@ def test_interface(tmp_path):
     branch1 = np.arange(10)
     branch2 = 1.1 * np.arange(10)
 
-    (entries, edges) = np.histogram(branch2)
+    entries, edges = np.histogram(branch2)
 
     with uproot.recreate(newfile) as fout:
         fout.mktree("tree", {"branch1": branch1, "branch2": branch2})

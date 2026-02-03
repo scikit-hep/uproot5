@@ -21,6 +21,7 @@ are not efficiently represented, but some jagged arrays are encoded as
 Lazy arrays (:doc:`uproot.behaviors.TBranch.lazy`) can only use the
 :doc:`uproot.interpretation.library.Awkward` library.
 """
+
 from __future__ import annotations
 
 import json
@@ -165,6 +166,9 @@ class Library:
         return repr(self.name)
 
     def __eq__(self, other):
+        if not isinstance(other, Library):
+            return NotImplemented
+
         return type(_libraries[self.name]) is type(_libraries[other.name])
 
 

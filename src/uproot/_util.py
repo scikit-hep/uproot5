@@ -384,8 +384,7 @@ else:
 def _file_not_found(files, message=None):
     message = "" if message is None else " (" + message + ")"
 
-    return _FileNotFoundError(
-        f"""file not found{message}
+    return _FileNotFoundError(f"""file not found{message}
 
     {files!r}
 
@@ -406,8 +405,7 @@ Functions that accept many files (uproot.iterate, etc.) also allow:
          Example: {{"/data_v1/*.root": "ttree_v1", "/data_v2/*.root": "ttree_v2"}}
    * already-open TTree objects.
    * iterables of the above.
-"""
-    )
+""")
 
 
 def memory_size(data, error_message=None) -> int:
