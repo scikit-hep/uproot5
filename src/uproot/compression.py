@@ -450,10 +450,8 @@ in file {chunk.source.file_path}"""
             )
 
         else:
-            raise ValueError(
-                f"""unrecognized compression algorithm: {algo}
-in file {chunk.source.file_path}"""
-            )
+            raise ValueError(f"""unrecognized compression algorithm: {algo}
+in file {chunk.source.file_path}""")
 
         if block_info is not None:
             block_info.append(

@@ -3,6 +3,7 @@
 """
 This module defines a versionless model of ``TString``.
 """
+
 from __future__ import annotations
 
 import uproot

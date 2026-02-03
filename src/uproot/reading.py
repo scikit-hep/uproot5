@@ -7,6 +7,7 @@ and the classes that are too fundamental to be models:
 :doc:`uproot.reading.ReadOnlyDirectory` (``TDirectory`` or ``TDirectoryFile``),
 and :doc:`uproot.reading.ReadOnlyKey` (``TKey``).
 """
+
 from __future__ import annotations
 
 import re
@@ -619,10 +620,8 @@ class ReadOnlyFile(CommonFileMethods):
         self.hook_after_interpret(magic=magic)
 
         if magic != b"root":
-            raise ValueError(
-                f"""not a ROOT file: first four bytes are {magic!r}
-in file {file_path}"""
-            )
+            raise ValueError(f"""not a ROOT file: first four bytes are {magic!r}
+in file {file_path}""")
 
     def __repr__(self):
         return f"<ReadOnlyFile {self._file_path!r} at 0x{id(self):012x}>"

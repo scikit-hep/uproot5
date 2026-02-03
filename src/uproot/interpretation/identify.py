@@ -11,6 +11,7 @@ need to be tweaked by new types, type combinations, and serialization methods
 observed in ROOT files (perhaps forever), unless a systematic study can be
 performed to exhaustively discover all cases.
 """
+
 from __future__ import annotations
 
 import ast
@@ -603,14 +604,10 @@ def _parse_error(pos, typename, file):
     in_file = ""
     if file is not None:
         in_file = f"\nin file {file.file_path}"
-    raise ValueError(
-        """invalid C++ type name syntax at char {}
+    raise ValueError("""invalid C++ type name syntax at char {}
 
     {}
-{}{}""".format(
-            pos, typename, "-" * (4 + pos) + "^", in_file
-        )
-    )
+{}{}""".format(pos, typename, "-" * (4 + pos) + "^", in_file))
 
 
 def _parse_expect(what, tokens, i, typename, file):

@@ -11,8 +11,7 @@ import uproot
 
 from_ROOT = {}
 
-from_ROOT["one"] = json.loads(
-    r"""{
+from_ROOT["one"] = json.loads(r"""{
   "_typename" : "TH1F",
   "fUniqueID" : 0,
   "fBits" : 8,
@@ -138,8 +137,7 @@ from_ROOT["one"] = json.loads(
   "fBinStatErrOpt" : 0,
   "fStatOverflows" : 2,
   "fArray" : [0, 68, 285, 755, 1580, 2296, 2286, 1570, 795, 289, 76, 0]
-}"""
-)
+}""")
 
 
 def drop_fbits(x):

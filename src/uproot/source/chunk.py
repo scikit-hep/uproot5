@@ -393,17 +393,13 @@ class Chunk:
             elif insist is False:
                 requirement = True
             else:
-                raise TypeError(
-                    f"""insist must be a bool or an int, not {insist!r}
-for file path {self._source.file_path}"""
-                )
+                raise TypeError(f"""insist must be a bool or an int, not {insist!r}
+for file path {self._source.file_path}""")
 
             if not requirement:
-                raise OSError(
-                    f"""expected Chunk of length {self._stop - self._start},
+                raise OSError(f"""expected Chunk of length {self._stop - self._start},
 received {len(self._raw_data)} bytes from {type(self._source).__name__}
-for file path {self._source.file_path}"""
-                )
+for file path {self._source.file_path}""")
             self._future = None
 
     @property

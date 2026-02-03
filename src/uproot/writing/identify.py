@@ -15,6 +15,7 @@ but not adding it to any :doc:`uproot.writing.writable.WritableDirectory`.
 The (many) other functions in this module construct writable :doc:`uproot.model.Model`
 objects from Python builtins and other writable models.
 """
+
 from __future__ import annotations
 
 from collections.abc import Mapping
@@ -416,7 +417,7 @@ def to_writable(obj):
             title = ""
 
         if len(obj) == 2:
-            (entries, edges) = obj
+            entries, edges = obj
 
             with_flow = numpy.empty(len(entries) + 2, dtype=">f8")
             with_flow[1:-1] = entries
@@ -456,7 +457,7 @@ def to_writable(obj):
             )
 
         elif len(obj) == 3:
-            (entries, xedges, yedges) = obj
+            entries, xedges, yedges = obj
 
             fEntries = entries.sum()
             (
@@ -525,7 +526,7 @@ def to_writable(obj):
             )
 
         elif len(obj) == 4:
-            (entries, xedges, yedges, zedges) = obj
+            entries, xedges, yedges, zedges = obj
 
             fEntries = entries.sum()
             (
