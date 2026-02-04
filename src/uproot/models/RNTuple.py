@@ -749,7 +749,7 @@ in file {self.file.file_path}"""
                 cluster_idx,
                 col_idx,
                 field_metadata,
-                destination=res[starts[i] : stop].view(field_metadata.dtype),
+                destination=res[starts[i] : stop],
                 array_cache=array_cache,
             )
 
@@ -799,7 +799,7 @@ in file {self.file.file_path}"""
         total_len = numpy.sum([desc.num_elements for desc in pagelist], dtype=int)
         if destination is None:
             return_buffer = True
-            destination = numpy.empty(total_len, dtype=field_metadata.dtype)
+            destination = numpy.empty(total_len, dtype=field_metadata.dtype_result)
         else:
             return_buffer = False
             assert len(destination) == total_len
@@ -1086,14 +1086,11 @@ in file {self.file.file_path}"""
             buffer[:] = _from_zigzag(buffer)
         elif field_metadata.delta:
             buffer[:] = library.cumsum(buffer)
-        elif field_metadata.dtype_str == "real32trunc":
-            buffer.dtype = library.float32
         elif field_metadata.dtype_str == "real32quant" and field_metadata.ncol < len(
             self.column_records
         ):
             min_value = self.column_records[field_metadata.ncol].min_value
             max_value = self.column_records[field_metadata.ncol].max_value
-            buffer.dtype = library.float32
             buffer[:] = min_value + buffer.view(library.uint32) * (
                 max_value - min_value
             ) / ((1 << field_metadata.nbits) - 1)
@@ -1180,6 +1177,7 @@ in file {self.file.file_path}"""
             content = library.unpackbits(
                 destination.view(dtype=library.uint8), bitorder="little"
             )
+            destination[:] = content[:num_elements]
         elif field_metadata.dtype_str in ("real32trunc", "real32quant"):
             if field_metadata.nbits == 32:
                 content = library.copy(destination).view(library.uint32)
@@ -1188,9 +1186,10 @@ in file {self.file.file_path}"""
                 content = _extract_bits(content, field_metadata.nbits)
             if field_metadata.dtype_str == "real32trunc":
                 content <<= 32 - field_metadata.nbits
-
-        # needed to chop off extra bits incase we used `unpackbits`
-        destination[:] = content[:num_elements]
+            # TODO: check why this needs to be trimmed
+            destination.view(numpy.uint32)[:] = content[:num_elements]
+        else:
+            destination[:] = content
 
     def get_field_metadata(self, ncol):
         """
@@ -1208,7 +1207,7 @@ in file {self.file.file_path}"""
         elif dtype_str == "bit":
             dtype = numpy.dtype("bool")
         elif dtype_byte in uproot.const.rntuple_custom_float_types:
-            dtype = numpy.dtype("uint32")  # for easier bit manipulation
+            dtype = numpy.dtype("float32")
         else:
             dtype = numpy.dtype(dtype_str)
         split = dtype_byte in uproot.const.rntuple_split_types
@@ -1234,7 +1233,7 @@ in file {self.file.file_path}"""
             elif alt_dtype_str == "bit":
                 alt_dtype = numpy.dtype("bool")
             elif alt_dtype_byte in uproot.const.rntuple_custom_float_types:
-                alt_dtype = numpy.dtype("uint32")  # for easier bit manipulation
+                alt_dtype = numpy.dtype("float32")
             else:
                 alt_dtype = numpy.dtype(alt_dtype_str)
             alt_dtype_list.append(alt_dtype)
@@ -1243,8 +1242,6 @@ in file {self.file.file_path}"""
             "std::string"
         ):
             dtype_result = dtype
-        elif dtype_byte in uproot.const.rntuple_custom_float_types:
-            dtype_result = numpy.float32
         else:
             dtype_result = numpy.result_type(*alt_dtype_list)
         field_metadata = FieldClusterMetadata(
@@ -1253,12 +1250,12 @@ in file {self.file.file_path}"""
             dtype_str,
             dtype,
             dtype_toread,
+            dtype_result,
             split,
             zigzag,
             delta,
             isbit,
             nbits,
-            dtype_result,
         )
         return field_metadata
 
@@ -1916,14 +1913,20 @@ class FieldClusterMetadata:
     ncol: int
     dtype_byte: type
     dtype_str: str
+    # This is the real dtype of the column.
     dtype: numpy.dtype
+    # This is for cases where a different dtype should be read in an intermetiate step.
+    # In particular, custom-length floats need to be read as uint8 since they length of
+    # the data may not be a multiple of 32-bit chuncks.
     dtype_toread: numpy.dtype
+    # This is for cases where the column is part of a field with multiple representations.
+    # It is set to the dtype resulting from applying promition rules among representations.
+    dtype_result: numpy.dtype
     split: bool
     zigzag: bool
     delta: bool
     isbit: bool
     nbits: int
-    dtype_result: numpy.dtype
 
 
 @dataclasses.dataclass
