@@ -825,7 +825,7 @@ in file {self.file.file_path}"""
                 cumsum += numpy.sum(destination[tracker:tracker_end])
             tracker = tracker_end
 
-        self.post_process_in_place(destination, field_metadata)
+        self.post_process(destination, field_metadata)
 
         # Save a copy in array_cache
         if array_cache is not None:
@@ -1068,17 +1068,17 @@ in file {self.file.file_path}"""
                 cumsum += cupy.sum(cluster_buffer[tracker:tracker_end])
             tracker = tracker_end
 
-        cluster_buffer = self.post_process(cluster_buffer, field_metadata)
+        self.post_process(cluster_buffer, field_metadata)
         return cluster_buffer
 
-    def post_process_in_place(self, buffer, field_metadata):
+    def post_process(self, buffer, field_metadata):
         """
         Args:
             buffer (library.ndarray): The buffer to post-process.
             field_metadata (:doc:`uproot.models.RNTuple.FieldClusterMetadata`):
                 The metadata needed to post_process buffer.
 
-        Performs some post-processing on the buffer in place.
+        Performs some post-processing on the buffer.
         """
         array_library_string = uproot._util.get_array_library(buffer)
         library = numpy if array_library_string == "numpy" else uproot.extras.cupy()
@@ -1094,35 +1094,6 @@ in file {self.file.file_path}"""
             buffer[:] = min_value + buffer.view(library.uint32) * (
                 max_value - min_value
             ) / ((1 << field_metadata.nbits) - 1)
-
-    def post_process(self, buffer, field_metadata):
-        """
-        Args:
-            buffer (library.ndarray): The buffer to post-process.
-            field_metadata (:doc:`uproot.models.RNTuple.FieldClusterMetadata`):
-                The metadata needed to post_process buffer.
-
-        Returns post-processed buffer. ``post_process_in_place`` does not work with
-        cupy.ndarray since you cannot change dtype with ``buffer.dtype = cupy.dtype``.
-        """
-        array_library_string = uproot._util.get_array_library(buffer)
-        library = numpy if array_library_string == "numpy" else uproot.extras.cupy()
-        if field_metadata.zigzag:
-            buffer = _from_zigzag(buffer)
-        elif field_metadata.delta:
-            buffer = library.cumsum(buffer)
-        elif field_metadata.dtype_str == "real32trunc":
-            buffer = buffer.view(library.float32)
-        elif field_metadata.dtype_str == "real32quant" and field_metadata.ncol < len(
-            self.column_records
-        ):
-            min_value = self.column_records[field_metadata.ncol].min_value
-            max_value = self.column_records[field_metadata.ncol].max_value
-            buffer = min_value + buffer.astype(library.uint32) * (
-                max_value - min_value
-            ) / ((1 << field_metadata.nbits) - 1)
-            buffer = buffer.astype(library.float32)
-        return buffer
 
     def deserialize_page_decompressed_buffer(self, destination, field_metadata):
         """
