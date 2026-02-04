@@ -1917,10 +1917,10 @@ class FieldClusterMetadata:
     dtype: numpy.dtype
     # This is for cases where a different dtype should be read in an intermetiate step.
     # In particular, custom-length floats need to be read as uint8 since they length of
-    # the data may not be a multiple of 32-bit chuncks.
+    # the data may not be a multiple of 32-bit chunks.
     dtype_toread: numpy.dtype
     # This is for cases where the column is part of a field with multiple representations.
-    # It is set to the dtype resulting from applying promition rules among representations.
+    # It is set to the dtype resulting from applying promotion rules among representations.
     dtype_result: numpy.dtype
     split: bool
     zigzag: bool
