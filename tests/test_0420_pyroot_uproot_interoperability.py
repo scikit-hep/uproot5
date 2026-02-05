@@ -35,10 +35,14 @@ def test_from_pyroot():
     pyroot_h2 = ROOT.TH1D("h2", "Histogram", 100, 0, 1)
     pyroot_h3 = ROOT.TH2F("h3", "Histogram", 100, 0, 1, 100, 0, 1)
     pyroot_h4 = ROOT.TH2D("h4", "Histogram", 100, 0, 1, 100, 0, 1)
-    uproot.from_pyroot(pyroot_h1)
-    uproot.from_pyroot(pyroot_h2)
-    uproot.from_pyroot(pyroot_h3)
-    uproot.from_pyroot(pyroot_h4)
+    h1 = uproot.from_pyroot(pyroot_h1)
+    h2 = uproot.from_pyroot(pyroot_h2)
+    h3 = uproot.from_pyroot(pyroot_h3)
+    h4 = uproot.from_pyroot(pyroot_h4)
+    assert h1.classname == "TH1F"
+    assert h2.classname == "TH1D"
+    assert h3.classname == "TH2F"
+    assert h4.classname == "TH2D"
 
 
 def test_write_pyroot_TObjString(tmp_path):
