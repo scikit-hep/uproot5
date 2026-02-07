@@ -26,7 +26,7 @@ import json
 import threading
 
 import numpy
-
+import awkward
 import uproot
 import uproot._awkwardforth
 from uproot.interpretation.known_forth import known_forth_of
@@ -133,7 +133,6 @@ class AsObjects(uproot.interpretation.Interpretation):
         breadcrumbs=(),
     ):
         if self._form is not None:
-            awkward = uproot.extras.awkward()
             return awkward.forms.from_dict(self._form)
 
         context = self._make_context(
@@ -214,7 +213,6 @@ class AsObjects(uproot.interpretation.Interpretation):
         library,
         options,
     ):
-        awkward = uproot.extras.awkward()
         import awkward.forth  # noqa: F811
 
         self.hook_before_basket_array(
@@ -499,7 +497,7 @@ input stream
                     if isinstance(to_append, numpy.ndarray):
                         trimmed.append(
                             uproot.interpretation.library._object_to_awkward_array(
-                                uproot.extras.awkward(), self._form, to_append
+                                awkward, self._form, to_append
                             )
                         )
                     else:
@@ -535,7 +533,6 @@ input stream
                 uproot.interpretation.library.Pandas,
             ),
         ):
-            awkward = uproot.extras.awkward()
             for k, v in basket_arrays.items():
                 if not uproot._util.from_module(v, "awkward"):
                     form = json.loads(self.awkward_form(branch.file).to_json())
@@ -557,7 +554,6 @@ input stream
                 uproot.interpretation.library.Pandas,
             ),
         ):
-            awkward = uproot.extras.awkward()
             output = awkward.concatenate(trimmed, mergebool=False, highlevel=False)
         else:
             output = numpy.concatenate(trimmed)
@@ -823,7 +819,6 @@ class AsStridedObjects(uproot.interpretation.numerical.AsDtype):
         context = self._make_context(
             context, index_format, header, tobject_header, breadcrumbs
         )
-        awkward = uproot.extras.awkward()
         cname = uproot.model.classname_decode(self._model.__name__)[0]
         form = _strided_awkward_form(awkward, cname, self._members, file, context)
         for dim in reversed(self.inner_shape):

@@ -23,7 +23,7 @@ import warnings
 from collections.abc import Mapping
 
 import numpy
-
+import awkward
 import uproot.compression
 import uproot.const
 import uproot.reading
@@ -125,12 +125,7 @@ class Tree:
                     branch_dtype = numpy.dtype(branch_type)
 
                 except (TypeError, ValueError) as err:
-                    try:
-                        awkward = uproot.extras.awkward()
-                    except ModuleNotFoundError as err:
-                        raise TypeError(
-                            f"not a NumPy dtype and 'awkward' cannot be imported: {branch_type!r}"
-                        ) from err
+                    
                     if isinstance(
                         branch_type,
                         (awkward.types.Type, awkward.types.ArrayType),
@@ -509,14 +504,6 @@ class Tree:
             ) and uproot._util.pandas_has_attr_is_numeric(pandas)(data.index):
                 provided = dataframe_to_dict(data)
 
-        if uproot._util.from_module(data, "awkward"):
-            try:
-                awkward = uproot.extras.awkward()
-            except ModuleNotFoundError as err:
-                raise TypeError(
-                    f"an Awkward Array was provided, but 'awkward' cannot be imported: {data!r}"
-                ) from err
-
             if isinstance(data, awkward.Array):
                 if data.ndim > 1 and not data.layout.purelist_isregular:
                     provided = {
@@ -563,30 +550,12 @@ class Tree:
                             ).VisibleDeprecationWarning,
                             Exception,
                         ):
-                            try:
-                                awkward = uproot.extras.awkward()
-                            except ModuleNotFoundError as err:
-                                raise TypeError(
-                                    f"NumPy dtype would be dtype('O'), so we won't use NumPy, but 'awkward' cannot be imported: {k}: {type(v)}"
-                                ) from err
                             v = awkward.from_iter(v)  # noqa: PLW2901 (overwriting v)
 
                     if getattr(v, "dtype", None) == numpy.dtype("O"):
-                        try:
-                            awkward = uproot.extras.awkward()
-                        except ModuleNotFoundError as err:
-                            raise TypeError(
-                                f"NumPy dtype is dtype('O'), so we won't use NumPy, but 'awkward' cannot be imported: {k}: {type(v)}"
-                            ) from err
                         v = awkward.from_iter(v)  # noqa: PLW2901 (overwriting v)
 
-                if uproot._util.from_module(v, "awkward"):
-                    try:
-                        awkward = uproot.extras.awkward()
-                    except ModuleNotFoundError as err:
-                        raise TypeError(
-                            f"an Awkward Array was provided, but 'awkward' cannot be imported: {k}: {type(v)}"
-                        ) from err
+                if isinstance(v, awkward.Array):
                     if (
                         isinstance(v, awkward.Array)
                         and v.ndim > 1
@@ -674,7 +643,6 @@ class Tree:
 
             if datum["counter"] is None:
                 if datum["dtype"] == ">U0":
-                    awkward = uproot.extras.awkward()
 
                     layout = awkward.to_layout(branch_array)
                     if isinstance(
@@ -742,12 +710,7 @@ class Tree:
                         )
 
             else:
-                try:
-                    awkward = uproot.extras.awkward()
-                except ModuleNotFoundError as err:
-                    raise TypeError(
-                        f"a jagged array was provided (possibly as an iterable), but 'awkward' cannot be imported: {branch_name}: {branch_array!r}"
-                    ) from err
+                
                 layout = branch_array.layout
                 while not isinstance(layout, awkward.contents.ListOffsetArray):
                     if isinstance(layout, awkward.contents.IndexedArray):
@@ -1541,12 +1504,6 @@ class Tree:
         itemsize = array.dtype.itemsize
         for item in array.shape[1:]:
             itemsize *= item
-        try:
-            uproot.extras.awkward()
-        except ModuleNotFoundError as err:
-            raise TypeError(
-                f"'awkward' cannot be imported: {self._branch_type!r}"
-            ) from err
 
         offsets *= itemsize
         offsets += fKeylen

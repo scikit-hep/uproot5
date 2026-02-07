@@ -9,7 +9,7 @@ from __future__ import annotations
 import struct
 
 import numpy
-
+import awkward
 import uproot
 
 _tattline1_format1 = struct.Struct(">hhh")
@@ -51,7 +51,6 @@ in file {self.file.file_path}"""
 
     @classmethod
     def awkward_form(cls, file, context):
-        awkward = uproot.extras.awkward()
         contents = {}
         if context["header"]:
             contents["@num_bytes"] = uproot._util.awkward_form(
@@ -117,7 +116,6 @@ in file {self.file.file_path}"""
 
     @classmethod
     def awkward_form(cls, file, context):
-        awkward = uproot.extras.awkward()
         contents = {}
         if context["header"]:
             contents["@num_bytes"] = uproot._util.awkward_form(
@@ -210,7 +208,6 @@ in file {self.file.file_path}"""
 
     @classmethod
     def awkward_form(cls, file, context):
-        awkward = uproot.extras.awkward()
         contents = {}
         if context["header"]:
             contents["@num_bytes"] = uproot._util.awkward_form(
@@ -270,7 +267,6 @@ in file {self.file.file_path}"""
 
     @classmethod
     def awkward_form(cls, file, context):
-        awkward = uproot.extras.awkward()
         contents = {}
         if context["header"]:
             contents["@num_bytes"] = uproot._util.awkward_form(
@@ -361,7 +357,6 @@ in file {self.file.file_path}"""
 
     @classmethod
     def awkward_form(cls, file, context):
-        awkward = uproot.extras.awkward()
         contents = {}
         if context["header"]:
             contents["@num_bytes"] = uproot._util.awkward_form(

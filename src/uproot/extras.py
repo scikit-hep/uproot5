@@ -17,28 +17,6 @@ import os
 from uproot._util import parse_version
 
 
-def awkward():
-    """
-    Imports and returns ``awkward``.
-    """
-    try:
-        import awkward
-    except ModuleNotFoundError as err:
-        raise ModuleNotFoundError("""install the 'awkward' package with:
-
-    pip install awkward
-
-Alternatively, you can use ``library="np"`` or globally set ``uproot.default_library``
-to output as NumPy arrays, rather than Awkward arrays.
-""") from err
-    if parse_version(awkward.__version__) >= parse_version("2.4.6"):
-        return awkward
-    else:
-        raise ModuleNotFoundError(
-            f"Uproot 5.1+ can only be used with Awkward 2.4.6 or newer; you have Awkward {awkward.__version__}"
-        )
-
-
 def pandas():
     """
     Imports and returns ``pandas``.

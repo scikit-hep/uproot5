@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import uproot
 import uproot.serialization
-
+import awkward
 
 class Model_TObjString(uproot.model.Model, str):
     """
@@ -88,7 +88,6 @@ in file {self.file.file_path}"""
 
     @classmethod
     def awkward_form(cls, file, context):
-        awkward = uproot.extras.awkward()
         return awkward.forms.ListOffsetForm(
             context["index_format"],
             awkward.forms.NumpyForm("uint8", parameters={"__array__": "char"}),

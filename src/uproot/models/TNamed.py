@@ -7,7 +7,7 @@ This module defines a versionless model for ``TNamed``.
 from __future__ import annotations
 
 import numpy
-
+import awkward
 import uproot
 
 
@@ -49,7 +49,6 @@ in file {self.file.file_path}"""
 
     @classmethod
     def awkward_form(cls, file, context):
-        awkward = uproot.extras.awkward()
         contents = {}
         if context["header"]:
             contents["@num_bytes"] = uproot._util.awkward_form(

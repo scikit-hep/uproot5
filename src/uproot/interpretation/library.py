@@ -27,7 +27,7 @@ from __future__ import annotations
 import json
 
 import numpy
-
+import awkward
 import uproot
 
 
@@ -60,7 +60,14 @@ class Library:
         """
         Attempts to import the library and returns the imported module.
         """
-        raise AssertionError
+        if self.name == "ak" : 
+            import awkward
+            return awkward
+        elif self.name == "np" : 
+            import numpy
+            return numpy
+        else : 
+            raise AssertionError
 
     def empty(self, shape, dtype):
         """
@@ -506,9 +513,6 @@ class Awkward(Library):
 
     name = "ak"
 
-    @property
-    def imported(self):
-        return uproot.extras.awkward()
 
     def finalize(self, array, branch, interpretation, entry_start, entry_stop, options):
         awkward = self.imported
@@ -811,7 +815,7 @@ def _process_array_for_pandas(
         if finalize:
             return array
         else:
-            return uproot.extras.awkward().Array(array)
+            return awkward.Array(array)
     else:
         try:
             interpretation.awkward_form(None)
@@ -823,13 +827,13 @@ def _process_array_for_pandas(
                     array, branch, interpretation, entry_start, entry_stop, options
                 )
                 if isinstance(
-                    array.type.content, uproot.extras.awkward().types.NumpyType
+                    array.type.content, awkward.types.NumpyType
                 ) and array.layout.minmax_depth == (1, 1):
                     array = array.to_numpy()
                 else:
                     array = uproot.extras.awkward_pandas().AwkwardExtensionArray(array)
             else:
-                array = _object_to_awkward_array(uproot.extras.awkward(), form, array)
+                array = _object_to_awkward_array(awkward, form, array)
             return array
 
 

@@ -15,7 +15,7 @@ from typing import NamedTuple
 
 import numpy
 import xxhash
-
+import awkward as ak 
 import uproot
 import uproot.behaviors.RNTuple
 import uproot.const
@@ -383,7 +383,6 @@ in file {self.file.file_path}"""
 
         Returns an Awkward Form describing the column if applicable, or a form key otherwise.
         """
-        ak = uproot.extras.awkward()
 
         form_key = f"column-{cr.idx}" + ("-cardinality" if is_cardinality else "")
         dtype_byte = cr.type
@@ -409,7 +408,6 @@ in file {self.file.file_path}"""
 
         Returns an Awkward Form describing the column if applicable, or a form key otherwise.
         """
-        ak = uproot.extras.awkward()
 
         cfid = field_id
         if self.field_records[cfid].source_field_id is not None:
@@ -460,7 +458,6 @@ in file {self.file.file_path}"""
 
         Returns an Awkward Form describing the field.
         """
-        ak = uproot.extras.awkward()
 
         field_records = self.field_records
         this_record = field_records[this_id]

@@ -12,7 +12,7 @@ an array is being built from ``TBaskets``. Its final form is determined by
 from __future__ import annotations
 
 import numpy
-
+import awkward
 import uproot
 
 
@@ -115,7 +115,6 @@ class AsJagged(uproot.interpretation.Interpretation):
         context = self._make_context(
             context, index_format, header, tobject_header, breadcrumbs
         )
-        awkward = uproot.extras.awkward()
         return awkward.forms.ListOffsetForm(
             context["index_format"],
             uproot._util.awkward_form(self._content, file, context),

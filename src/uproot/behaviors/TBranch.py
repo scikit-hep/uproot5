@@ -21,7 +21,7 @@ from collections.abc import Iterable, Mapping, MutableMapping
 from keyword import iskeyword
 
 import numpy
-
+import awkward
 import uproot
 import uproot.interpretation.grouped
 import uproot.language.python
@@ -977,7 +977,6 @@ class HasBranches(Mapping):
         """
         from uproot._dask import FormMappingWithVirtualArrays
 
-        awkward = uproot.extras.awkward()
 
         entry_start, entry_stop = _regularize_entries_start_stop(
             self.num_entries, entry_start, entry_stop

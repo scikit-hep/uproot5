@@ -9,7 +9,7 @@ not contain data but has subbranches that do.
 from __future__ import annotations
 
 import uproot
-
+import awkward
 
 class AsGrouped(uproot.interpretation.Interpretation):
     """
@@ -97,7 +97,6 @@ class AsGrouped(uproot.interpretation.Interpretation):
         context = self._make_context(
             context, index_format, header, tobject_header, breadcrumbs
         )
-        awkward = uproot.extras.awkward()
         names = []
         fields = []
         for x, y in self._subbranches.items():

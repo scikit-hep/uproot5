@@ -10,7 +10,7 @@ import struct
 from collections.abc import Sequence
 
 import numpy
-
+import awkward
 import uproot
 
 _tarray_format1 = struct.Struct(">i")
@@ -76,7 +76,6 @@ in file {self.file.file_path}"""
 
     @classmethod
     def awkward_form(cls, file, context):
-        awkward = uproot.extras.awkward()
         return awkward.forms.ListOffsetForm(
             context["index_format"],
             uproot._util.awkward_form(cls.dtype, file, context),

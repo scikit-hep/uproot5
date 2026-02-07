@@ -19,7 +19,7 @@ several numerical types:
 from __future__ import annotations
 
 import numpy
-
+import awkward
 import uproot
 
 
@@ -270,7 +270,6 @@ class AsDtype(Numerical):
         context = self._make_context(
             context, index_format, header, tobject_header, breadcrumbs
         )
-        awkward = uproot.extras.awkward()
         d, s = _dtype_shape(self._to_dtype)
         out = uproot._util.awkward_form(d, file, context)
         for size in s[::-1]:
@@ -657,7 +656,6 @@ class AsDouble32(TruncatedNumerical):
         context = self._make_context(
             context, index_format, header, tobject_header, breadcrumbs
         )
-        awkward = uproot.extras.awkward()
         out = awkward.forms.NumpyForm("float64")
         for size in self._to_dims[::-1]:
             out = awkward.forms.RegularForm(out, size)
@@ -715,7 +713,6 @@ class AsFloat16(TruncatedNumerical):
         context = self._make_context(
             context, index_format, header, tobject_header, breadcrumbs
         )
-        awkward = uproot.extras.awkward()
         out = awkward.forms.NumpyForm("float32")
         for size in self._to_dims[::-1]:
             out = awkward.forms.RegularForm(out, size)

@@ -21,7 +21,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 
 import numpy
-
+import awkward
 import uproot.compression
 import uproot.extras
 import uproot.pyroot
@@ -51,7 +51,6 @@ def add_to_directory(obj, name, directory, streamers):
     """
     obj = uproot.writing.writable._regularize_input_type_to_awkward(obj)
 
-    awkward = uproot.extras.awkward()
 
     if isinstance(obj, Mapping) and all(isinstance(x, str) for x in obj):
         metadata, data = uproot.writing.writable._unpack_metadata_and_arrays(obj)

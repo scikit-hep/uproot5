@@ -14,7 +14,7 @@ import types
 from collections.abc import KeysView, Mapping, Sequence, Set, ValuesView
 
 import numpy
-
+import awkward 
 import uproot
 import uproot._awkwardforth
 
@@ -327,7 +327,6 @@ class AsDynamic(AsContainer):
             return uproot.model.classname_decode(self._model.__name__)[0]
 
     def awkward_form(self, file, context):
-        uproot.extras.awkward()
         if self._model is None:
             raise uproot.interpretation.objects.CannotBeAwkward("dynamic type")
         else:
@@ -452,7 +451,6 @@ class AsString(AsContainer):
             return self._typename
 
     def awkward_form(self, file, context):
-        awkward = uproot.extras.awkward()
         return awkward.forms.ListOffsetForm(
             context["index_format"],
             awkward.forms.NumpyForm("uint8", parameters={"__array__": "char"}),
@@ -676,7 +674,6 @@ class AsArray(AsContainer):
         return _content_typename(self._values) + "[]" + shape
 
     def awkward_form(self, file, context):
-        awkward = uproot.extras.awkward()
         values_form = uproot._util.awkward_form(self._values, file, context)
         for dim in reversed(self.inner_shape):
             values_form = awkward.forms.RegularForm(values_form, dim)
@@ -895,7 +892,6 @@ class AsVectorLike(AsContainer):
     _form_parameters = {}
 
     def awkward_form(self, file, context):
-        awkward = uproot.extras.awkward()
         return awkward.forms.ListOffsetForm(
             context["index_format"],
             uproot._util.awkward_form(self._items, file, context),
@@ -1278,7 +1274,6 @@ class AsMap(AsContainer):
         return f"std::map<{_content_typename(self._keys)}, {_content_typename(self._values)}>"
 
     def awkward_form(self, file, context):
-        awkward = uproot.extras.awkward()
         return awkward.forms.ListOffsetForm(
             context["index_format"],
             awkward.forms.RecordForm(
