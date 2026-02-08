@@ -436,7 +436,7 @@ class ZSTD(Compression, _DecompressZSTD):
 
         out = zstd.compress(data, level=self._level)
         return bytes(memoryview(out))
-    
+
 
 algorithm_codes = {
     uproot.const.kZLIB: ZLIB,
