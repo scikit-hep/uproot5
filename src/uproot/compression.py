@@ -189,18 +189,47 @@ class _DecompressLZMA:
     _method = b"\x00"
 
     def decompress(self, data: bytes, uncompressed_bytes=None) -> bytes:
+        # Try numcodecs 
+        try : 
+            import numcodecs
+
+            codec = numcodecs.LZMA()
+            decoded = codec.decode(data)
+
+            # numcodecs does not gaurentee outpute size ( must validate )
+            if uncompressed_bytes is not None and len(decoded)!=uncompressed_bytes : 
+                raise ValueError ( 
+                    "numcodecs LZMA produced incorrect output size"
+                )
+            
+            return decoded 
+        
+        except ImportError: 
+            # Failure due to numcodecs not being installed = fall back to cramjam/stdlib 
+            pass 
+        
+        except ValueError : 
+            # Failure due to output-size validation failed = fall back to cramjam/stdlib
+            pass
+
+        # Fallback : Try cramjam(preferred) or stdlib 
         cramjam = uproot.extras.cramjam()
         lzma = getattr(cramjam, "xz", None) or getattr(
             getattr(cramjam, "experimental", None), "lzma", None
         )
+
+        # Last fallback : lzma through stdlib
         if lzma is None:
             import lzma
 
             return lzma.decompress(data)
-        if uncompressed_bytes is None:
+
+        # Known output size path is required 
+        if uncompressed_bytes is None : 
             raise ValueError(
                 "lzma decompression requires the number of uncompressed bytes"
             )
+        
         return lzma.decompress(data, output_len=uncompressed_bytes)
 
 
@@ -236,14 +265,28 @@ class LZMA(Compression, _DecompressLZMA):
         self._level = int(value)
 
     def compress(self, data: bytes) -> bytes:
+        # Try numcodecs
+        try : 
+            import numcodecs
+
+            codec = numcodecs.LZMA()
+            return codec.encode(data)
+        
+        except ImportError : 
+            # Failure due to numcodecs not installed = fall back to cramjam/stdlib
+            pass 
+
+        # Fallbac : Try cramjam 
         cramjam = uproot.extras.cramjam()
         lzma = getattr(cramjam, "xz", None) or getattr(
             getattr(cramjam, "experimental", None), "lzma", None
         )
-        if lzma is None:
-            import lzma
-        return lzma.compress(data, preset=self._level)
+        if lzma is not None:
+            return lzma.compress(data, preset=self._level)
 
+        # Fallback : stdlib lzma 
+        import lzma as _stdlib_lzma 
+        return _stdlib_lzma.compress(data, preset=self._level)
 
 class _DecompressLZ4:
     name = "LZ4"
@@ -301,11 +344,43 @@ class _DecompressZSTD:
     _method = b"\x01"
 
     def decompress(self, data: bytes, uncompressed_bytes=None) -> bytes:
-        zstd = uproot.extras.cramjam().zstd
+        # ROOT requires exact output size 
         if uncompressed_bytes is None:
             raise ValueError(
                 "zstd block decompression requires the number of uncompressed bytes"
             )
+        
+        # Try numcodecs 
+        try : 
+            import numcodecs
+
+            codec = numcodecs.Zstd()
+            decoded = codec.decode(data)
+
+            #numcodecs does NOT guarantee outpute size (must validate)
+            if len(decoded)!=uncompressed_bytes : 
+                raise ValueError(
+                    "numcodecs ZSSTD produced incorrect output size"
+                )
+            
+            return decoded
+        
+        except ImportError : 
+            # Failure due to numcodecs not being installed = fall back 
+            pass 
+        except ValueError : 
+            # Failusre due to size mismatch = fall back to strict backend
+            pass 
+
+        # Fallback : cramjam
+        cramjam = uproot.extras.cramjam()
+        zstd = getattr(cramjam,"zstd", None) 
+
+        if zstd is None : 
+            raise RuntimeError ( 
+                "ZSTD decompression requires cramjam or numcodecs"
+            )
+        
         return zstd.decompress(data, output_len=uncompressed_bytes)
 
 
@@ -342,7 +417,26 @@ class ZSTD(Compression, _DecompressZSTD):
         self._level = int(value)
 
     def compress(self, data: bytes) -> bytes:
-        zstd = uproot.extras.cramjam().zstd
+        # Try numcodecs : 
+        try : 
+            import numcodecs
+
+            codec = numcodecs.Zstd(level = self._level)
+            return codec.encode(data)
+        
+        except ImportError : 
+            # Failure due to numcodecs not installed = Fall back
+            pass 
+
+        # Fallback : cramjam
+        cramjam = uproot.extras.cramjam() 
+        zstd = getattr(cramjam, "zstd", None)
+
+        if zstd is None : 
+            raise RuntimeError(
+                "ZSTD compression requires ramjam or numcodecs"
+            )
+        
         return zstd.compress(data, level=self._level)
 
 
