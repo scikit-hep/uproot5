@@ -280,12 +280,13 @@ class LZMA(Compression, _DecompressLZMA):
             getattr(cramjam, "experimental", None), "lzma", None
         )
         if lzma is not None:
-            return lzma.compress(data, preset=self._level)
-
+            out = lzma.compress(data, preset=self._level)
+            return bytes(memoryview(out))
         # Fallback : stdlib lzma
         import lzma as _stdlib_lzma
 
-        return _stdlib_lzma.compress(data, preset=self._level)
+        out = _stdlib_lzma.compress(data, preset=self._level)
+        return bytes(memoryview(out))
 
 
 class _DecompressLZ4:
@@ -433,8 +434,9 @@ class ZSTD(Compression, _DecompressZSTD):
         if zstd is None:
             raise RuntimeError("ZSTD compression requires ramjam or numcodecs")
 
-        return zstd.compress(data, level=self._level)
-
+        out = zstd.compress(data, level=self._level)
+        return bytes(memoryview(out))
+    
 
 algorithm_codes = {
     uproot.const.kZLIB: ZLIB,
