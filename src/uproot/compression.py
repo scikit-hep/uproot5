@@ -356,7 +356,7 @@ class _DecompressZSTD:
 
             codec = numcodecs.Zstd()
             decoded = codec.decode(data)
-            decode = bytes(decoded)
+            decoded = bytes(decoded)
 
             # numcodecs does NOT guarantee outpute size (must validate)
             if len(decoded) != uncompressed_bytes:
