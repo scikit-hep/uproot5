@@ -195,7 +195,7 @@ class _DecompressLZMA:
 
             codec = numcodecs.LZMA()
             decoded = codec.decode(data)
-
+            decoded = bytes(decoded)
             # numcodecs does not gaurentee outpute size ( must validate )
             if uncompressed_bytes is not None and len(decoded) != uncompressed_bytes:
                 raise ValueError("numcodecs LZMA produced incorrect output size")
@@ -268,8 +268,8 @@ class LZMA(Compression, _DecompressLZMA):
             import numcodecs
 
             codec = numcodecs.LZMA()
-            return codec.encode(data)
-
+            out = codec.encode(data)
+            return bytes(out)
         except ImportError:
             # Failure due to numcodecs not installed = fall back to cramjam/stdlib
             pass
@@ -356,6 +356,7 @@ class _DecompressZSTD:
 
             codec = numcodecs.Zstd()
             decoded = codec.decode(data)
+            decode = bytes(decoded)
 
             # numcodecs does NOT guarantee outpute size (must validate)
             if len(decoded) != uncompressed_bytes:
@@ -418,7 +419,8 @@ class ZSTD(Compression, _DecompressZSTD):
             import numcodecs
 
             codec = numcodecs.Zstd(level=self._level)
-            return codec.encode(data)
+            out = codec.encode(data)
+            return bytes(out)
 
         except ImportError:
             # Failure due to numcodecs not installed = Fall back
