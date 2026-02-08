@@ -269,7 +269,7 @@ class LZMA(Compression, _DecompressLZMA):
 
             codec = numcodecs.LZMA()
             out = codec.encode(data)
-            return bytes(out)
+            return bytes(memoryview(out))
         except ImportError:
             # Failure due to numcodecs not installed = fall back to cramjam/stdlib
             pass
@@ -420,7 +420,7 @@ class ZSTD(Compression, _DecompressZSTD):
 
             codec = numcodecs.Zstd(level=self._level)
             out = codec.encode(data)
-            return bytes(out)
+            return bytes(memoryview(out))
 
         except ImportError:
             # Failure due to numcodecs not installed = Fall back
