@@ -191,7 +191,7 @@ class _DecompressLZMA:
     def decompress(self, data: bytes, uncompressed_bytes=None) -> bytes:
         # Try numcodecs
         try:
-            import numcodecs
+            numcodecs = uproot.extras.numcodecs()
 
             codec = numcodecs.LZMA()
             decoded = codec.decode(data)
@@ -204,7 +204,7 @@ class _DecompressLZMA:
 
             return decoded
 
-        except ImportError:
+        except ModuleNotFoundError:
             # Failure due to numcodecs not being installed = fall back to cramjam/stdlib
             pass
 
@@ -267,12 +267,14 @@ class LZMA(Compression, _DecompressLZMA):
     def compress(self, data: bytes) -> bytes:
         # Try numcodecs
         try:
-            import numcodecs
+            numcodecs = uproot.extras.numcodecs()
 
             codec = numcodecs.LZMA()
             out = codec.encode(data)
-            return bytes(memoryview(out))
-        except ImportError:
+            out = b"".join(out) if isinstance(out, list) else bytes(out)
+            return out
+        
+        except ModuleNotFoundError:
             # Failure due to numcodecs not installed = fall back to cramjam/stdlib
             pass
 
@@ -355,7 +357,7 @@ class _DecompressZSTD:
 
         # Try numcodecs
         try:
-            import numcodecs
+            numcodecs = uproot.extras.numcodecs()
 
             codec = numcodecs.Zstd()
             decoded = codec.decode(data)
@@ -368,7 +370,7 @@ class _DecompressZSTD:
 
             return decoded
 
-        except ImportError:
+        except ModuleNotFoundError:
             # Failure due to numcodecs not being installed = fall back
             pass
         except ValueError:
@@ -420,13 +422,14 @@ class ZSTD(Compression, _DecompressZSTD):
     def compress(self, data: bytes) -> bytes:
         # Try numcodecs :
         try:
-            import numcodecs
+            numcodecs = uproot.extras.numcodecs()
 
             codec = numcodecs.Zstd(level=self._level)
             out = codec.encode(data)
-            return bytes(memoryview(out))
+            out = b"".join(out) if isinstance(out, list) else bytes(out)
+            return out
 
-        except ImportError:
+        except ModuleNotFoundError:
             # Failure due to numcodecs not installed = Fall back
             pass
 

@@ -187,6 +187,23 @@ or
     conda install cramjam""") from err
     else:
         return cramjam
+    
+def numcodecs() : 
+    """
+    Imports and returns ``numcodecs``.
+    """
+    try : 
+        import numcodecs
+    except ModuleNotFoundError as err : 
+        raise ModuleNotFoundError("""install the `numcodecs` package with:
+
+    pip install numcodecs
+                                
+or 
+            
+    conda install numcodecs""") from err
+    else:
+        return numcodecs
 
 
 def xxhash():
