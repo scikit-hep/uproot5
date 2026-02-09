@@ -8,16 +8,22 @@ import uproot
 
 ak = pytest.importorskip("awkward")
 cupy = pytest.importorskip("cupy")
-pytestmark = pytest.mark.skipif(
-    cupy.cuda.runtime.driverGetVersion() == 0, reason="No available CUDA driver."
-)
+pytestmark = [
+    pytest.mark.skipif(
+        cupy.cuda.runtime.driverGetVersion() == 0, reason="No available CUDA driver."
+    ),
+    pytest.mark.xfail(
+        strict=False,
+        reason="There are breaking changes in new versions of KvikIO that are not yet resolved",
+    ),
+]
 
 
 @pytest.mark.parametrize(
-    ("backend", "GDS", "library"),
-    [("cuda", False, cupy), ("cuda", True, cupy)],
+    ("backend", "interpreter", "library"),
+    [("cuda", "cpu", cupy), ("cuda", "gpu", cupy)],
 )
-def test_flat(backend, GDS, library):
+def test_flat(backend, interpreter, library):
     filename = skhep_testdata.data_path("test_int_float_rntuple_v1-0-0-0.root")
     with uproot.open(filename) as f:
         R = f["ntuple"]
@@ -28,19 +34,21 @@ def test_flat(backend, GDS, library):
         ]
         assert R.header.checksum == R.footer.header_checksum
         assert all(
-            R.arrays(entry_stop=3, use_GDS=GDS, backend=backend)["one_integers"]
-            == library.array([9, 8, 7])
-        )
-        assert all(
-            R.arrays("one_integers", entry_stop=3, use_GDS=GDS, backend=backend)[
+            R.arrays(entry_stop=3, interpreter=interpreter, backend=backend)[
                 "one_integers"
             ]
             == library.array([9, 8, 7])
         )
         assert all(
-            R.arrays(entry_start=1, entry_stop=3, use_GDS=GDS, backend=backend)[
-                "one_integers"
-            ]
+            R.arrays(
+                "one_integers", entry_stop=3, interpreter=interpreter, backend=backend
+            )["one_integers"]
+            == library.array([9, 8, 7])
+        )
+        assert all(
+            R.arrays(
+                entry_start=1, entry_stop=3, interpreter=interpreter, backend=backend
+            )["one_integers"]
             == library.array([8, 7])
         )
 
@@ -48,10 +56,14 @@ def test_flat(backend, GDS, library):
     with uproot.open(filename) as f:
         R = f["ntuple"]
         assert all(
-            R.arrays(entry_stop=3, use_GDS=GDS, backend=backend)["one_integers"]
+            R.arrays(entry_stop=3, interpreter=interpreter, backend=backend)[
+                "one_integers"
+            ]
             == library.array([50000, 49999, 49998])
         )
         assert all(
-            R.arrays(entry_start=-3, use_GDS=GDS, backend=backend)["one_integers"]
+            R.arrays(entry_start=-3, interpreter=interpreter, backend=backend)[
+                "one_integers"
+            ]
             == library.array([3, 2, 1])
         )

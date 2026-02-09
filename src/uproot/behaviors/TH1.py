@@ -4,6 +4,7 @@
 This module defines the behaviors of ``TH1`` and its subclasses (not including ``TH2``,
 ``TH3``, or ``TProfile``).
 """
+
 from __future__ import annotations
 
 import numpy
@@ -159,7 +160,7 @@ class Histogram:
 
         Setting ``flow=True`` increases the length of each dimension by two.
         """
-        values, variances = self._values_variances(flow)
+        _values, variances = self._values_variances(flow)
         return numpy.sqrt(variances)
 
     def variances(self, flow=False):
@@ -178,7 +179,7 @@ class Histogram:
 
         Setting ``flow=True`` increases the length of each dimension by two.
         """
-        values, variances = self._values_variances(flow)
+        _values, variances = self._values_variances(flow)
         return variances
 
     def counts(self, flow=False):

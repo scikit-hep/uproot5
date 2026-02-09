@@ -313,11 +313,11 @@ def file_object_path_split(urlpath: str) -> tuple[str, str | None]:
 
     separator = "::"
     parts = urlpath.split(separator)
-    object_regex = re.compile(r"(.+\.root):(.*$)", re.IGNORECASE)
+    object_regex = re.compile(r"(.+\.root(\.[0-9]+)?):(.*$)", re.IGNORECASE)
     for i, part in enumerate(reversed(parts)):
         match = object_regex.match(part)
         if match:
-            obj = re.sub(r"/+", "/", match.group(2).strip().lstrip("/")).rstrip("/")
+            obj = re.sub(r"/+", "/", match.group(3).strip().lstrip("/")).rstrip("/")
             parts[-i - 1] = match.group(1)
             break
 
@@ -384,8 +384,7 @@ else:
 def _file_not_found(files, message=None):
     message = "" if message is None else " (" + message + ")"
 
-    return _FileNotFoundError(
-        f"""file not found{message}
+    return _FileNotFoundError(f"""file not found{message}
 
     {files!r}
 
@@ -406,8 +405,7 @@ Functions that accept many files (uproot.iterate, etc.) also allow:
          Example: {{"/data_v1/*.root": "ttree_v1", "/data_v2/*.root": "ttree_v2"}}
    * already-open TTree objects.
    * iterables of the above.
-"""
-    )
+""")
 
 
 def memory_size(data, error_message=None) -> int:
@@ -691,6 +689,45 @@ def awkward_form_of_iter(awkward, form):
         raise RuntimeError(f"unrecognized form: {type(form)}")
 
 
+def get_ttree_form(
+    ttree,
+    common_keys,
+    ak_add_doc,
+):
+    import uproot
+
+    awkward = uproot.extras.awkward()
+    contents = []
+    for key in common_keys:
+        branch = ttree[key]
+        content_form = branch.interpretation.awkward_form(ttree.file)
+        content_parameters = {}
+        if isinstance(ak_add_doc, bool):
+            if ak_add_doc:
+                content_parameters["__doc__"] = branch.title
+        elif isinstance(ak_add_doc, dict):
+            content_parameters.update(
+                {
+                    key: branch.__getattribute__(value)
+                    for key, value in ak_add_doc.items()
+                }
+            )
+        if len(content_parameters.keys()) != 0:
+            content_form = content_form.copy(parameters=content_parameters)
+        contents.append(content_form)
+
+    if isinstance(ak_add_doc, bool):
+        parameters = {"__doc__": ttree.title} if ak_add_doc else None
+    elif isinstance(ak_add_doc, dict):
+        parameters = (
+            {"__doc__": ttree.title} if "__doc__" in ak_add_doc.keys() else None
+        )
+    else:
+        parameters = None
+
+    return awkward.forms.RecordForm(contents, common_keys, parameters=parameters)
+
+
 def damerau_levenshtein(a, b, ratio=False):
     """
     Calculates the Damerau-Levenshtein distance of two strings.
@@ -844,7 +881,11 @@ def _regularize_files_inner(
                 file.full_name
                 for file in fsspec.open_files(
                     file_path,
-                    **uproot.source.fsspec.FSSpecSource.extract_fsspec_options(options),
+                    **{
+                        k: v
+                        for k, v in options.items()
+                        if k not in uproot.reading.open.defaults
+                    },
                 )
             ]
             # https://github.com/fsspec/filesystem_spec/issues/1459
@@ -867,7 +908,7 @@ def _regularize_files_inner(
                         *[match.group(0)[1:-1].split(",") for match in matches]
                     ):
                         tmp = expanded
-                        for c, m in list(zip(combination, matches))[::-1]:
+                        for c, m in list(zip(combination, matches, strict=True))[::-1]:
                             tmp = tmp[: m.span()[0]] + c + tmp[m.span()[1] :]
                         results.append(tmp)
 

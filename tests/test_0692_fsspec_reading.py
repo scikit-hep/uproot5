@@ -14,7 +14,6 @@ import uproot
 import uproot.source.fsspec
 import uproot.source.file
 import uproot.source.xrootd
-import uproot.source.s3
 
 is_windows = sys.platform.startswith("win")
 
@@ -91,7 +90,6 @@ def test_open_fsspec_local():
     "handler",
     [
         uproot.source.fsspec.FSSpecSource,
-        uproot.source.s3.S3Source,
         None,
     ],
 )

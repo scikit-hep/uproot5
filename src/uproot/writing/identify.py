@@ -15,6 +15,7 @@ but not adding it to any :doc:`uproot.writing.writable.WritableDirectory`.
 The (many) other functions in this module construct writable :doc:`uproot.model.Model`
 objects from Python builtins and other writable models.
 """
+
 from __future__ import annotations
 
 from collections.abc import Mapping
@@ -24,7 +25,7 @@ import numpy
 import uproot.compression
 import uproot.extras
 import uproot.pyroot
-import uproot.writing._cascadetree
+import uproot.writing
 
 
 def add_to_directory(obj, name, directory, streamers):
@@ -48,109 +49,16 @@ def add_to_directory(obj, name, directory, streamers):
 
     Raises ``TypeError`` if ``obj`` is not recognized as writable data.
     """
-    is_ttree = False
+    obj = uproot.writing.writable._regularize_input_type_to_awkward(obj)
 
-    if uproot._util.from_module(obj, "pandas"):
-        import pandas
-
-        if isinstance(
-            obj, pandas.DataFrame
-        ) and uproot._util.pandas_has_attr_is_numeric(pandas)(obj.index):
-            obj = uproot.writing._cascadetree.dataframe_to_dict(obj)
-
-    if uproot._util.from_module(obj, "awkward"):
-        import awkward
-
-        if isinstance(obj, awkward.Array):
-            obj = {"": obj}
-
-    if isinstance(obj, numpy.ndarray) and obj.dtype.fields is not None:
-        obj = uproot.writing._cascadetree.recarray_to_dict(obj)
+    awkward = uproot.extras.awkward()
 
     if isinstance(obj, Mapping) and all(isinstance(x, str) for x in obj):
-        data = {}
-        metadata = {}
-
-        for branch_name, branch_array in obj.items():
-            if uproot._util.from_module(branch_array, "pandas"):
-                import pandas
-
-                if isinstance(branch_array, pandas.DataFrame):
-                    branch_array = uproot.writing._cascadetree.dataframe_to_dict(  # noqa: PLW2901 (overwriting branch_array)
-                        branch_array
-                    )
-
-            if (
-                isinstance(branch_array, numpy.ndarray)
-                and branch_array.dtype.fields is not None
-            ):
-                branch_array = uproot.writing._cascadetree.recarray_to_dict(  # noqa: PLW2901 (overwriting branch_array)
-                    branch_array
-                )
-
-            if isinstance(branch_array, Mapping) and all(
-                isinstance(x, str) for x in branch_array
-            ):
-                datum = {}
-                metadatum = {}
-                for kk, vv in branch_array.items():
-                    try:
-                        vv = (  # noqa: PLW2901 (overwriting vv)
-                            uproot._util.ensure_numpy(vv)
-                        )
-                    except TypeError:
-                        raise TypeError(
-                            f"unrecognizable array type {type(branch_array)} associated with {branch_name!r}"
-                        ) from None
-                    datum[kk] = vv
-                    branch_dtype = vv.dtype
-                    branch_shape = vv.shape[1:]
-                    if branch_shape != ():
-                        branch_dtype = numpy.dtype((branch_dtype, branch_shape))
-                    metadatum[kk] = branch_dtype
-
-                data[branch_name] = datum
-                metadata[branch_name] = metadatum
-
-            else:
-                if uproot._util.from_module(branch_array, "awkward"):
-                    data[branch_name] = branch_array
-                    metadata[branch_name] = branch_array.type
-
-                else:
-                    try:
-                        branch_array = uproot._util.ensure_numpy(  # noqa: PLW2901 (overwriting branch_array)
-                            branch_array
-                        )
-                    except TypeError:
-                        awkward = uproot.extras.awkward()
-                        try:
-                            branch_array = awkward.from_iter(  # noqa: PLW2901 (overwriting branch_array)
-                                branch_array
-                            )
-                        except Exception:
-                            raise TypeError(
-                                f"unrecognizable array type {type(branch_array)} associated with {branch_name!r}"
-                            ) from None
-                        else:
-                            data[branch_name] = branch_array
-                            metadata[branch_name] = awkward.type(branch_array)
-
-                    else:
-                        data[branch_name] = branch_array
-                        branch_dtype = branch_array.dtype
-                        branch_shape = branch_array.shape[1:]
-                        if branch_shape != ():
-                            branch_dtype = numpy.dtype((branch_dtype, branch_shape))
-                        metadata[branch_name] = branch_dtype
-
-        else:
-            is_ttree = True
-
-    if is_ttree:
-        tree = directory.mktree(name, metadata)
-        tree.extend(data)
-
+        metadata, data = uproot.writing.writable._unpack_metadata_and_arrays(obj)
+        rntuple = directory.mkrntuple(name, metadata)
+        rntuple.extend(data)
+    elif isinstance(obj, (awkward.Array, awkward.contents.Content, awkward.forms.Form)):
+        directory.mkrntuple(name, obj)
     else:
         writable = to_writable(obj)
 
@@ -270,7 +178,7 @@ def to_writable(obj):
 
             # and flow=True is different from flow=False (obj actually has flow bins)
             data_noflow = obj.values(flow=False)
-            for flow, noflow in zip(data.shape, data_noflow.shape):
+            for flow, noflow in zip(data.shape, data_noflow.shape, strict=True):
                 if flow != noflow + 2:
                     raise TypeError
 
@@ -338,24 +246,40 @@ def to_writable(obj):
                 fXbins=_fXbins_maybe_regular(axis, boost_histogram),
                 fLabels=_fLabels_maybe_categorical(axis, boost_histogram),
             )
-            for axis, default_name in zip(obj.axes, ["xaxis", "yaxis", "zaxis"])
+            for axis, default_name in zip(
+                obj.axes, ["xaxis", "yaxis", "zaxis"], strict=False
+            )
         ]
 
         # make TH1, TH2, TH3 types independently
         if len(axes) == 1:
             if obj.kind == "MEAN":
                 if hasattr(obj, "storage_type"):
-                    if "fSumw2" in obj.metadata.keys():
+                    obj_sum = obj.sum()
+                    # Use __dir__ instead of hasattr to avoid a warning
+                    if (
+                        "metadata" in obj.__dir__()
+                        and obj.metadata is not None
+                        and "fSumw2" in obj.metadata.keys()
+                    ):
                         fSumw2 = obj.metadata["fSumw2"]
+                        fTsumw = obj_sum["sum_of_weights"]
+                        fTsumw2 = obj_sum["sum_of_weights_squared"]
+                    elif obj.storage_type is boost_histogram.storage.WeightedMean:
+                        fSumw2 = obj.view()["sum_of_weights_squared"]
+                        fTsumw = obj_sum["sum_of_weights"]
+                        fTsumw2 = obj_sum["sum_of_weights_squared"]
                     else:
-                        raise ValueError(f"fSumw2 has not been set for {obj}")
+                        fSumw2 = obj.view()["count"]
+                        fTsumw = obj_sum["count"]
+                        fTsumw2 = obj_sum["count"]
                     return to_TProfile(
                         fName=None,
                         fTitle=title,
                         data=obj.values(flow=True),
                         fEntries=obj.size + 1,
-                        fTsumw=obj.sum()["sum_of_weights"],
-                        fTsumw2=obj.sum()["sum_of_weights_squared"],
+                        fTsumw=fTsumw,
+                        fTsumw2=fTsumw2,
                         fTsumwx=0,
                         fTsumwx2=0,
                         fTsumwy=0,
@@ -493,7 +417,7 @@ def to_writable(obj):
             title = ""
 
         if len(obj) == 2:
-            (entries, edges) = obj
+            entries, edges = obj
 
             with_flow = numpy.empty(len(entries) + 2, dtype=">f8")
             with_flow[1:-1] = entries
@@ -533,7 +457,7 @@ def to_writable(obj):
             )
 
         elif len(obj) == 3:
-            (entries, xedges, yedges) = obj
+            entries, xedges, yedges = obj
 
             fEntries = entries.sum()
             (
@@ -602,7 +526,7 @@ def to_writable(obj):
             )
 
         elif len(obj) == 4:
-            (entries, xedges, yedges, zedges) = obj
+            entries, xedges, yedges, zedges = obj
 
             fEntries = entries.sum()
             (

@@ -623,6 +623,51 @@
       "contributions": [
         "code"
       ]
+    },
+    {
+      "login": "fstrug",
+      "name": "fstrug",
+      "avatar_url": "https://avatars.githubusercontent.com/u/84533949?v=4",
+      "profile": "https://github.com/fstrug",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "zlmarshall",
+      "name": "Zach Marshall",
+      "avatar_url": "https://avatars.githubusercontent.com/u/10702398?v=4",
+      "profile": "https://github.com/zlmarshall",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "mrzimu",
+      "name": "Mingrun Li",
+      "avatar_url": "https://avatars.githubusercontent.com/u/74824770?v=4",
+      "profile": "https://github.com/mrzimu",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "ianna",
+      "name": "Ianna Osborne",
+      "avatar_url": "https://avatars.githubusercontent.com/u/1390682?v=4",
+      "profile": "https://github.com/ianna",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "Rachit931",
+      "name": "Rachit931",
+      "avatar_url": "https://avatars.githubusercontent.com/u/199397286?v=4",
+      "profile": "https://github.com/Rachit931",
+      "contributions": [
+        "doc"
+      ]
     }
   ],
   "contributorsPerLine": 7,

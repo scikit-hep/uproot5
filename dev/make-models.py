@@ -70,8 +70,7 @@ with uproot.open("example-objects.root") as f:
     for classname, class_version in superclasses:
         cls = f.file.class_named(classname, class_version)
         print(cls.class_code)
-        print(
-            f"""
+        print(f"""
     writable = True
 
     def _serialize(self, out, header, name):
@@ -90,16 +89,13 @@ class {uproot.model.classname_encode(classname)}(uproot.model.DispatchByVersion)
     \"\"\"
 
     known_versions = {{{class_version}: {cls.__name__}}}
-"""
-        )
+""")
 
     for key in keys:
         obj = f[key]
         print(type(obj).class_code)
-        print(
-            """
-    class_rawstreamers = ("""
-        )
+        print("""
+    class_rawstreamers = (""")
         for streamer_name, streamer_version in f.file.streamer_dependencies(
             obj.classname, obj.class_version
         ):
@@ -110,16 +106,13 @@ class {uproot.model.classname_encode(classname)}(uproot.model.DispatchByVersion)
             ).tobytes()
             preamble = b"\xff\xff\xff\xffTStreamerInfo\x00"
             full = header + preamble + inner + b"\x00"
-            print(
-                f"""        uproot._writing.RawStreamerInfo(
+            print(f"""        uproot._writing.RawStreamerInfo(
             None,
             {full},
             {streamer_name!r},
             {streamer_version},
-        ),"""
-            )
-        print(
-            f"""    )
+        ),""")
+        print(f"""    )
     writable = True
 
     def _serialize(self, out, header, name):
@@ -131,19 +124,16 @@ class {uproot.model.classname_encode(classname)}(uproot.model.DispatchByVersion)
             num_bytes = sum(len(x) for x in out[where:])
             version = {obj.class_version}
             out.insert(where, uproot.serialization.numbytes_version(num_bytes, version))
-"""
-        )
+""")
 
-        print(
-            f"""
+        print(f"""
 class {uproot.model.classname_encode(obj.classname)}(uproot.model.DispatchByVersion):
     \"\"\"
     A :doc:`uproot.model.DispatchByVersion` for ``{obj.classname}``.
     \"\"\"
 
     known_versions = {{{obj.class_version}: {type(obj).__name__}}}
-"""
-        )
+""")
 
     for classname, _ in superclasses:
         print(

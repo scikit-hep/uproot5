@@ -20,6 +20,7 @@ import base64
 import http.client
 import queue
 import re
+import socket
 import sys
 import urllib.parse
 from urllib.parse import urlparse
@@ -40,6 +41,10 @@ def make_connection(parsed_url: urllib.parse.ParseResult, timeout: float | None)
     depending on the URL scheme.
     """
     from http.client import HTTPConnection, HTTPSConnection
+
+    # default socket timeout is None, which can cause hangs
+    if timeout is None and socket.getdefaulttimeout() is None:
+        timeout = 30
 
     if parsed_url.scheme == "https":
         return HTTPSConnection(parsed_url.hostname, parsed_url.port, timeout=timeout)
@@ -245,12 +250,15 @@ for URL {self._file_path}"""
             def task(resource):
                 import requests
 
+                # https://requests.readthedocs.io/en/latest/user/advanced/#timeouts
+                timeout = source.timeout if source.timeout is not None else 30
+
                 r = requests.get(
                     source._file_path,
                     headers=dict(
                         {"Range": f"bytes={start}-{stop - 1}"}, **source.auth_headers
                     ),
-                    timeout=source.timeout,
+                    timeout=timeout,
                 )
                 return r.content
 
@@ -427,7 +435,7 @@ for URL {source.file_path}"""
 
         num_found = 0
         while len(futures) > 0:
-            range_string, size = self.next_header(response_buffer)
+            range_string, _size = self.next_header(response_buffer)
             num_found += 1
             if range_string is None:
                 self.handle_no_multipart(source, ranges, original_futures, results)
@@ -575,7 +583,7 @@ class HTTPSource(uproot.source.chunk.Source):
         options = dict(uproot.reading.open.defaults, **options)
 
         self._num_fallback_workers = options["num_fallback_workers"]
-        self._timeout = options["timeout"]
+        self._timeout = options.get("timeout")
         self._num_requests = 0
         self._num_requested_chunks = 0
         self._num_requested_bytes = 0
@@ -784,7 +792,7 @@ class MultithreadedHTTPSource(uproot.source.chunk.MultithreadedSource):
 
         self._file_path = file_path
         self._num_bytes = None
-        self._timeout = options["timeout"]
+        self._timeout = options.get("timeout")
 
         # Parse the URL here, so that we can expose these fields
         self._parsed_url = urlparse(file_path)

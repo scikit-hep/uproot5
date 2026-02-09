@@ -7,6 +7,7 @@ and the classes that are too fundamental to be models:
 :doc:`uproot.reading.ReadOnlyDirectory` (``TDirectory`` or ``TDirectoryFile``),
 and :doc:`uproot.reading.ReadOnlyKey` (``TKey``).
 """
+
 from __future__ import annotations
 
 import re
@@ -83,6 +84,7 @@ def open(
     * handler (:doc:`uproot.source.chunk.Source` class; None)
     * timeout (float for HTTP, int for XRootD; 30)
     * max_num_elements (None or int; None)
+        The maximum number of elements to be requested in a single vector read, when using XRootD.
     * num_workers (int; 1)
     * use_threads (bool; False on the emscripten platform (i.e. in a web browser), else True)
     * num_fallback_workers (int; 10)
@@ -157,7 +159,6 @@ def open(
 
 open.defaults = {
     "handler": None,
-    "timeout": 30,
     "max_num_elements": None,
     "num_workers": 1,
     "use_threads": sys.platform != "emscripten",
@@ -517,6 +518,7 @@ class ReadOnlyFile(CommonFileMethods):
     * handler (:doc:`uproot.source.chunk.Source` class; None)
     * timeout (float for HTTP, int for XRootD; 30)
     * max_num_elements (None or int; None)
+       The maximum number of elements to be requested in a single vector read, when using XRootD.
     * num_workers (int; 1)
     * use_threads (bool; False on the emscripten platform (i.e. in a web browser), else True)
     * num_fallback_workers (int; 10)
@@ -664,10 +666,8 @@ class ReadOnlyFile(CommonFileMethods):
         self.hook_after_interpret(magic=magic)
 
         if magic != b"root":
-            raise ValueError(
-                f"""not a ROOT file: first four bytes are {magic!r}
-in file {file_path}"""
-            )
+            raise ValueError(f"""not a ROOT file: first four bytes are {magic!r}
+in file {file_path}""")
 
     def __repr__(self):
         return f"<ReadOnlyFile {self._file_path!r} at 0x{id(self):012x}>"

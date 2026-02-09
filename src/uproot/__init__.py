@@ -89,7 +89,6 @@ from uproot.source.http import HTTPSource
 from uproot.source.http import MultithreadedHTTPSource
 from uproot.source.xrootd import XRootDSource
 from uproot.source.xrootd import MultithreadedXRootDSource
-from uproot.source.s3 import S3Source
 from uproot.source.object import ObjectSource
 from uproot.source.fsspec import FSSpecSource
 from uproot.source.cursor import Cursor
@@ -170,6 +169,8 @@ from uproot.interpretation.strings import AsStrings
 from uproot.interpretation.objects import AsObjects
 from uproot.interpretation.objects import AsStridedObjects
 from uproot.interpretation.grouped import AsGrouped
+from uproot.interpretation.identify import register_interpretation
+from uproot.interpretation.identify import unregister_interpretation
 from uproot.containers import AsString
 from uproot.containers import AsPointer
 from uproot.containers import AsArray

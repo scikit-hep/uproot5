@@ -11,15 +11,47 @@ need to be tweaked by new types, type combinations, and serialization methods
 observed in ROOT files (perhaps forever), unless a systematic study can be
 performed to exhaustively discover all cases.
 """
+
 from __future__ import annotations
 
 import ast
 import numbers
 import re
+import warnings
 
 import numpy
 
 import uproot
+
+_registered_interpretations = set()
+
+
+def register_interpretation(cls):
+    """
+    Register a custom interpretation class.
+
+    Args:
+        cls (type): A subclass of :doc:`uproot.interpretation.custom.CustomInterpretation`.
+
+    This method registers a custom interpretation class to be used in
+    :doc:`uproot.interpretation.identify.interpretation_of`.
+    """
+    if cls in _registered_interpretations:
+        warnings.warn(f"Overwriting existing custom interpretation {cls}", stacklevel=2)
+    _registered_interpretations.add(cls)
+
+
+def unregister_interpretation(cls):
+    """
+    Unregister a custom interpretation class.
+
+    Args:
+        cls (type): A subclass of :doc:`uproot.interpretation.custom.CustomInterpretation`.
+
+    This method removes a custom interpretation class from the registry.
+    """
+    if cls in _registered_interpretations:
+        _registered_interpretations.remove(cls)
 
 
 def _normalize_ftype(fType):
@@ -107,15 +139,19 @@ def _leaf_to_dtype(leaf, getdims):
 
 _title_has_dims = re.compile(r"^([^\[\]]*)(\[[^\[\]]+\])+")
 _item_dim_pattern = re.compile(r"\[([1-9][0-9]*)\]")
-_item_any_pattern = re.compile(r"\[(.*)\]")
+_item_any_pattern = re.compile(r"(\[.*\])")
 
 
-def _from_leaves_one(leaf, title):
+def _from_leaves_one(leaf, title, count_branch_name):
     dims, is_jagged = (), False
 
     m = _title_has_dims.match(title)
     if m is not None:
-        dims = tuple(int(x) for x in re.findall(_item_dim_pattern, title))
+        dims = tuple(
+            int(x)
+            for x in re.findall(_item_dim_pattern, title)
+            if x != count_branch_name
+        )
         if dims == () and leaf.member("fLen") > 1:
             dims = (leaf.member("fLen"),)
 
@@ -139,22 +175,40 @@ def _from_leaves(branch, context):
     elif len(branch.member("fLeaves")) == 1:
         leaf = branch.member("fLeaves")[0]
         title = leaf.member("fTitle")
-        return _from_leaves_one(leaf, title)
+        count_branch_name = (
+            branch.count_branch.name if branch.count_branch is not None else ""
+        )
+        return _from_leaves_one(leaf, title, count_branch_name)
 
     else:
         first = True
+        count_branch_name = (
+            branch.count_branch.name if branch.count_branch is not None else ""
+        )
         for leaf in branch.member("fLeaves"):
             title = leaf.member("fTitle")
             if first:
-                dims, is_jagged = _from_leaves_one(leaf, title)
+                dims, is_jagged = _from_leaves_one(leaf, title, count_branch_name)
+                first = False
             else:
-                trial_dims, trial_is_jagged = _from_leaves_one(leaf, title)
-                if dims != trial_dims or is_jagged != trial_is_jagged:
+                trial_dims, trial_is_jagged = _from_leaves_one(
+                    leaf, title, count_branch_name
+                )
+                if is_jagged != trial_is_jagged:
                     raise UnknownInterpretation(
-                        "leaf-list with different dimensions among the leaves",
+                        "leaf-list with different jaggedness among the leaves",
                         branch.file.file_path,
                         branch.object_path,
                     )
+                if dims != trial_dims:
+                    # pick the common dimensions
+                    i = 0
+                    for d1, d2 in zip(dims, trial_dims, strict=False):
+                        if d1 == d2:
+                            i += 1
+                        else:
+                            break
+                    dims = dims[:i]
         return dims, is_jagged
 
 
@@ -312,6 +366,22 @@ def interpretation_of(branch, context, simplify=True):
     If no interpretation can be found, it raises
     :doc:`uproot.interpretation.identify.UnknownInterpretation`.
     """
+    # Match custom interpretations
+    matched_custom_interpretations = [
+        cls
+        for cls in _registered_interpretations
+        if cls.match_branch(branch, context, simplify)
+    ]
+
+    assert (
+        len(matched_custom_interpretations) <= 1
+    ), "Multiple custom interpretations matched, "
+    f"uproot cannot determine which one to use: {matched_custom_interpretations}"
+
+    if len(matched_custom_interpretations) == 1:
+        return matched_custom_interpretations[0](branch, context, simplify)
+
+    # Original interpretation logic
     if len(branch.branches) != 0:
         if branch.top_level and branch.has_member("fClassName"):
             typename = str(branch.member("fClassName"))
@@ -358,7 +428,7 @@ def interpretation_of(branch, context, simplify=True):
             uproot.containers.AsDynamic(), branch
         )
 
-    dims, is_jagged = _from_leaves(branch, context)
+    dims, _is_jagged = _from_leaves(branch, context)
 
     try:
         if len(branch.member("fLeaves")) == 0:
@@ -534,14 +604,10 @@ def _parse_error(pos, typename, file):
     in_file = ""
     if file is not None:
         in_file = f"\nin file {file.file_path}"
-    raise ValueError(
-        """invalid C++ type name syntax at char {}
+    raise ValueError("""invalid C++ type name syntax at char {}
 
     {}
-{}{}""".format(
-            pos, typename, "-" * (4 + pos) + "^", in_file
-        )
-    )
+{}{}""".format(pos, typename, "-" * (4 + pos) + "^", in_file))
 
 
 def _parse_expect(what, tokens, i, typename, file):
@@ -556,7 +622,7 @@ def _parse_ignore_extra_arguments(tokens, i, typename, file, at_most):
     while tokens[i].group(0) == ",":
         if at_most == 0:
             _parse_error(tokens[i].start() + 1, typename, file)
-        i, values = _parse_node(tokens, i + 1, typename, file, True, False, False)
+        i, _values = _parse_node(tokens, i + 1, typename, file, True, False, False)
         at_most -= 1
 
     return i

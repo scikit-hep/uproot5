@@ -13,6 +13,7 @@ and sometimes freeing data.
 
 See :doc:`uproot.writing._cascade` for a general overview of the cascading writer concept.
 """
+
 from __future__ import annotations
 
 import datetime
@@ -227,7 +228,7 @@ class Tree:
                                 {"kind": "record", "name": branch_name, "keys": keys}
                             )
 
-                            for key, cont in zip(keys, contents):
+                            for key, cont in zip(keys, contents, strict=True):
                                 subname = self._field_name(branch_name, key)
                                 dtype = self._branch_ak_to_np(cont)
                                 if dtype is None:
@@ -273,7 +274,7 @@ class Tree:
                             {"kind": "record", "name": branch_name, "keys": keys}
                         )
 
-                        for key, content in zip(keys, contents):
+                        for key, content in zip(keys, contents, strict=True):
                             subname = self._field_name(branch_name, key)
                             dtype = self._branch_ak_to_np(content)
                             if dtype is None:
@@ -525,7 +526,7 @@ class Tree:
                     }
                 else:
                     provided = {}
-                for k, v in zip(awkward.fields(data), awkward.unzip(data)):
+                for k, v in zip(awkward.fields(data), awkward.unzip(data), strict=True):
                     provided[k] = v
 
         if isinstance(data, numpy.ndarray) and data.dtype.fields is not None:

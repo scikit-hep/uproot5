@@ -10,7 +10,7 @@ from concurrent.futures import Executor
 from uproot.source.chunk import SourcePerformanceCounters
 
 try:
-    from typing import TYPE_CHECKING, Final
+    from typing import TYPE_CHECKING, Final, NamedTuple
 
     from typing_extensions import Any, Protocol, TypeVar
 except ImportError:
@@ -118,11 +118,19 @@ def dask(
         decompression_executor (None or Executor with a ``submit`` method): The
             executor that is used to decompress ``TBaskets``; if None, a
             :doc:`uproot.source.futures.TrivialExecutor` is created.
+            This option is primarily useful for very large, CPU-intensive TBaskets
+            (e.g. LZMA compression) and can lead to nested parallelism, leaving it as None is recommended
+            for most cases. These options are particularly useful in very high thread-count scenarios,
+            such as when using Python 3.13 free-threading.
             Executors attached to a file are ``shutdown`` when the file is closed.
         interpretation_executor (None or Executor with a ``submit`` method): The
             executor that is used to interpret uncompressed ``TBasket`` data as
             arrays; if None, a :doc:`uproot.source.futures.TrivialExecutor`
             is created.
+            It is primarily useful when interpretation is CPU-intensive (e.g. for certain Awkward
+            ''AsObjects'') and can lead to nested parallelism, leaving it as None is recommended
+            for most cases. These options are particularly useful in very high thread-count scenarios,
+            such as when using Python 3.13 free-threading.
             Executors attached to a file are ``shutdown`` when the file is closed.
         options: See below.
 
@@ -169,6 +177,7 @@ def dask(
     * handler (:doc:`uproot.source.chunk.Source` class; None)
     * timeout (float for HTTP, int for XRootD; 30)
     * max_num_elements (None or int; None)
+        The maximum number of elements to be requested in a single vector read, when using XRootD.
     * num_workers (int; 1)
     * use_threads (bool; False on the emscripten platform (i.e. in a web browser), else True)
     * num_fallback_workers (int; 10)
@@ -430,7 +439,7 @@ def _dask_array_from_map(
         # Structure inputs such that the tuple of arguments pair each 0th,
         # 1st, 2nd, ... elements together; for example:
         # from_map(f, [1, 2, 3], [4, 5, 6]) --> [f(1, 4), f(2, 5), f(3, 6)]
-        inputs = list(zip(*iters))
+        inputs = list(zip(*iters, strict=True))
         packed = True
 
     # Define collection name
@@ -543,7 +552,7 @@ class _UprootOpenAndReadNumpy:
             start, stop = (istep_or_start * events_per_steps), min(
                 (istep_or_start + 1) * events_per_steps, num_entries
             )
-        elif (not 0 <= start < num_entries) or (not 0 <= stop <= num_entries):
+        elif (not 0 <= start <= num_entries) or (not 0 <= stop <= num_entries):
             raise ValueError(
                 f"""explicit entry start ({start}) or stop ({stop}) from uproot.dask 'files' argument is out of bounds for file
 
@@ -685,10 +694,8 @@ def _get_dask_array(
 
     for key in common_keys:
         dt = ttrees[0][key].interpretation.numpy_dtype
-        if dt.subdtype is None:
-            inner_shape = ()
-        else:
-            dt, inner_shape = dt.subdtype
+        if dt.subdtype is not None:
+            dt, _inner_shape = dt.subdtype
 
         chunks = []
         chunk_args = []
@@ -705,7 +712,7 @@ def _get_dask_array(
                         chunk_args.append((i, start, stop))
             else:
                 for start, stop in explicit_chunks[i]:
-                    if (not 0 <= start < entry_stop) or (not 0 <= stop <= entry_stop):
+                    if (not 0 <= start <= entry_stop) or (not 0 <= stop <= entry_stop):
                         raise ValueError(
                             f"""explicit entry start ({start}) or stop ({stop}) from uproot.dask 'files' argument is out of bounds for file
 
@@ -779,10 +786,8 @@ def _get_dask_array_delay_open(
 
     for key in common_keys:
         dt = obj[key].interpretation.numpy_dtype
-        if dt.subdtype is None:
-            inner_shape = ()
-        else:
-            dt, inner_shape = dt.subdtype
+        if dt.subdtype is not None:
+            dt, _inner_shape = dt.subdtype
 
         partitions = []
         partition_args = []
@@ -913,7 +918,7 @@ class TrivialFormMappingInfo(ImplementsFormMappingInfo):
         keys: set[str] = set()
         for buffer_key in buffer_keys:
             # Identify form key
-            form_key, attribute = buffer_key.rsplit("-", maxsplit=1)
+            form_key, _attribute = buffer_key.rsplit("-", maxsplit=1)
             # Identify key from form_key
             keys.add(self._form_key_to_key[form_key])
         return frozenset(keys)
@@ -954,9 +959,9 @@ class TrivialFormMappingInfo(ImplementsFormMappingInfo):
         # subform, as they're derived from `branch.interpretation.awkward_form`
         # Therefore, we can correlate the subform keys using `expected_from_buffers`
         container = {}
-        for key, array in zip(keys, arrays):
+        for key, array in zip(keys, arrays, strict=True):
             # First, convert the sub-array into buffers
-            ttree_subform, length, ttree_container = awkward.to_buffers(array)
+            ttree_subform, _length, ttree_container = awkward.to_buffers(array)
 
             # Load the associated projection subform
             projection_subform = self._form.content(key)
@@ -965,6 +970,7 @@ class TrivialFormMappingInfo(ImplementsFormMappingInfo):
             for (src, src_dtype), (dst, dst_dtype) in zip(
                 ttree_subform.expected_from_buffers().items(),
                 projection_subform.expected_from_buffers(self.buffer_key).items(),
+                strict=True,
             ):
                 assert src_dtype == dst_dtype  # Sanity check!
                 container[dst] = ttree_container[src]
@@ -972,11 +978,90 @@ class TrivialFormMappingInfo(ImplementsFormMappingInfo):
         return container
 
 
+class FormMappingInfoWithVirtualArrays(TrivialFormMappingInfo):
+    def buffer_replacements(
+        self,
+        tree: HasBranches,
+        keys: frozenset[str],
+        start: int,
+        stop: int,
+        decompression_executor,
+        interpretation_executor,
+        options: Any,
+    ) -> Mapping[str, AwkArray]:
+        awkward = uproot.extras.awkward()
+
+        def generator(tree, buffer_key):
+            form_key, _ = self.parse_buffer_key(buffer_key)
+            key = self._form_key_to_key[form_key]
+            branch = tree[key]
+
+            def _generator():
+                array = branch.array(
+                    entry_start=start,
+                    entry_stop=stop,
+                    interpretation_executor=interpretation_executor,
+                    decompression_executor=decompression_executor,
+                    library="ak",
+                    ak_add_doc=options.get("ak_add_doc"),
+                )
+
+                # add to access_log
+                access_log = options.get("access_log")
+                if access_log is not None:
+                    if not hasattr(access_log, "__iadd__"):
+                        raise ValueError(
+                            f"{access_log=} needs to implement '__iadd__'."
+                        )
+                    else:
+                        access_log += [Accessed(branch=key, buffer_key=buffer_key)]
+
+                # Convert the sub-array into buffers
+                ttree_subform, _, ttree_container = awkward.to_buffers(array)
+
+                # Load the associated projection subform
+                projection_subform = self._form.content(key)
+
+                # Correlate each TTree form key with the projection form key
+                for (src, src_dtype), (dst, dst_dtype) in zip(
+                    ttree_subform.expected_from_buffers().items(),
+                    projection_subform.expected_from_buffers(self.buffer_key).items(),
+                    strict=True,
+                ):
+                    # Return the corresponding array from the TTree if buffer key matches
+                    if buffer_key == dst:
+                        if src_dtype != dst_dtype:
+                            raise TypeError(
+                                f"Data type mismatch: {src_dtype} != {dst_dtype}"
+                            )
+                        return ttree_container[src]
+
+                # Raise an error if the buffer key is not found
+                raise ValueError(
+                    f"Buffer key {buffer_key} not found in form {self._form}"
+                )
+
+            return _generator
+
+        container = {}
+        for buffer_key, _ in self._form.expected_from_buffers().items():
+            container[buffer_key] = generator(tree, buffer_key)
+
+        return container
+
+
 class TrivialFormMapping(ImplementsFormMapping):
     def __call__(self, form: Form) -> tuple[Form, TrivialFormMappingInfo]:
-        dask_awkward = uproot.extras.dask_awkward()
-        new_form = dask_awkward.lib.utils.form_with_unique_keys(form, "<root>")
+        awkward = uproot.extras.awkward()
+        new_form = awkward.forms.form_with_unique_keys(form, ("<root>",))
         return new_form, TrivialFormMappingInfo(new_form)
+
+
+class FormMappingWithVirtualArrays(ImplementsFormMapping):
+    def __call__(self, form: Form) -> tuple[Form, FormMappingInfoWithVirtualArrays]:
+        awkward = uproot.extras.awkward()
+        new_form = awkward.forms.form_with_unique_keys(form, ("<root>",))
+        return new_form, FormMappingInfoWithVirtualArrays(new_form)
 
 
 T = TypeVar("T")
@@ -1039,7 +1124,18 @@ class UprootReadMixin:
             # but not two of the keys required for buffer B
             if all(k in self.common_keys for k in keys_for_buffer):
                 container[buffer_key] = mapping[buffer_key]
-            # Otherwise, introduce a placeholder
+            # if the form mapping info provides a replacements, use it
+            elif hasattr(self.form_mapping_info, "buffer_replacements"):
+                container[buffer_key] = self.form_mapping_info.buffer_replacements(
+                    tree,
+                    keys_for_buffer,
+                    start,
+                    stop,
+                    self.decompression_executor,
+                    self.interpretation_executor,
+                    self.interp_options,
+                )[buffer_key]
+            # Otherwise, introduce a placeholder (default replacement)
             else:
                 container[buffer_key] = awkward.typetracer.PlaceholderArray(
                     nplike=nplike,
@@ -1309,7 +1405,7 @@ class _UprootOpenAndRead(UprootReadMixin):
         num_entries = ttree.num_entries
         if is_chunk:
             start, stop = i_step_or_start, n_steps_or_stop
-            if (not 0 <= start < num_entries) or (not 0 <= stop <= num_entries):
+            if (not 0 <= start <= num_entries) or (not 0 <= stop <= num_entries):
                 raise ValueError(
                     f"""explicit entry start ({start}) or stop ({stop}) from uproot.dask 'files' argument is out of bounds for file
 
@@ -1406,15 +1502,26 @@ def _get_ttree_form(
     contents = []
     for key in common_keys:
         branch = ttree[key]
-        content_form = branch.interpretation.awkward_form(ttree.file)
+        if isinstance(branch, HasFields):
+            content_form = branch.to_akform()[0].content(0)
+        else:
+            content_form = branch.interpretation.awkward_form(ttree.file)
         content_parameters = {}
         if isinstance(ak_add_doc, bool):
             if ak_add_doc:
-                content_parameters["__doc__"] = branch.title
+                content_parameters["__doc__"] = (
+                    branch.description
+                    if isinstance(branch, HasFields)
+                    else branch.title
+                )
         elif isinstance(ak_add_doc, dict):
             content_parameters.update(
                 {
-                    key: branch.__getattribute__(value)
+                    key: branch.__getattribute__(
+                        "description"
+                        if isinstance(branch, HasFields) and value == "title"
+                        else value
+                    )
                     for key, value in ak_add_doc.items()
                 }
             )
@@ -1423,10 +1530,24 @@ def _get_ttree_form(
         contents.append(content_form)
 
     if isinstance(ak_add_doc, bool):
-        parameters = {"__doc__": ttree.title} if ak_add_doc else None
+        parameters = (
+            {
+                "__doc__": (
+                    ttree.description if isinstance(ttree, HasFields) else ttree.title
+                )
+            }
+            if ak_add_doc
+            else None
+        )
     elif isinstance(ak_add_doc, dict):
         parameters = (
-            {"__doc__": ttree.title} if "__doc__" in ak_add_doc.keys() else None
+            {
+                "__doc__": (
+                    ttree.description if isinstance(ttree, HasFields) else ttree.title
+                )
+            }
+            if "__doc__" in ak_add_doc.keys()
+            else None
         )
     else:
         parameters = None
@@ -1543,7 +1664,7 @@ def _get_dak_array(
         entry_stop = ttree.num_entries
 
         if isinstance(ttree, HasFields):
-            akform = ttree.to_akform(filter_name=common_keys)
+            akform, _ = ttree.to_akform(filter_name=common_keys)
             ttree_step = _RNTuple_regularize_step_size(
                 ttree, akform, step_size, entry_start, entry_stop
             )
@@ -1575,7 +1696,7 @@ def _get_dak_array(
                     partition_args.append((i, start, stop))
         else:
             for start, stop in explicit_chunks[i]:
-                if (not 0 <= start < entry_stop) or (not 0 <= stop <= entry_stop):
+                if (not 0 <= start <= entry_stop) or (not 0 <= stop <= entry_stop):
                     raise ValueError(
                         f"""explicit entry start ({start}) or stop ({stop}) from uproot.dask 'files' argument is out of bounds for file
 
@@ -1593,7 +1714,7 @@ which has {entry_stop} entries"""
                     partition_args.append((i, start, stop))
 
     if isinstance(ttrees[0], HasFields):
-        base_form = ttrees[0].to_akform(filter_name=common_keys)
+        base_form, _ = ttrees[0].to_akform(filter_name=common_keys)
     else:
         base_form = _get_ttree_form(
             awkward, ttrees[0], common_keys, interp_options.get("ak_add_doc")
@@ -1604,9 +1725,7 @@ which has {entry_stop} entries"""
         partition_args.append((0, 0, 0))
 
     if form_mapping is None:
-        expected_form = dask_awkward.lib.utils.form_with_unique_keys(
-            base_form, "<root>"
-        )
+        expected_form = awkward.forms.form_with_unique_keys(base_form, ("<root>",))
         form_mapping_info = TrivialFormMappingInfo(expected_form)
     else:
         expected_form, form_mapping_info = form_mapping(base_form)
@@ -1623,12 +1742,15 @@ which has {entry_stop} entries"""
         interpretation_executor=interpretation_executor,
     )
 
-    return dask_awkward.from_map(
+    out = dask_awkward.from_map(
         fn,
         partition_args,
         divisions=tuple(divisions),
         label="from-uproot",
     )
+    if allow_read_errors_with_report:
+        out[0].clear_divisions()
+    return out
 
 
 def _get_dak_array_delay_open(
@@ -1711,9 +1833,7 @@ def _get_dak_array_delay_open(
                 )
 
     if form_mapping is None:
-        expected_form = dask_awkward.lib.utils.form_with_unique_keys(
-            base_form, "<root>"
-        )
+        expected_form = awkward.forms.form_with_unique_keys(base_form, ("<root>",))
         form_mapping_info = TrivialFormMappingInfo(expected_form)
     else:
         expected_form, form_mapping_info = form_mapping(base_form)
@@ -1732,9 +1852,17 @@ def _get_dak_array_delay_open(
         interpretation_executor=interpretation_executor,
     )
 
-    return dask_awkward.from_map(
+    out = dask_awkward.from_map(
         fn,
         partition_args,
         divisions=None if divisions is None else tuple(divisions),
         label="from-uproot",
     )
+    if allow_read_errors_with_report:
+        out[0].clear_divisions()
+    return out
+
+
+class Accessed(NamedTuple):
+    branch: str
+    buffer_key: str

@@ -8,21 +8,27 @@ import uproot
 
 ak = pytest.importorskip("awkward")
 cupy = pytest.importorskip("cupy")
-pytestmark = pytest.mark.skipif(
-    cupy.cuda.runtime.driverGetVersion() == 0, reason="No available CUDA driver."
-)
+pytestmark = [
+    pytest.mark.skipif(
+        cupy.cuda.runtime.driverGetVersion() == 0, reason="No available CUDA driver."
+    ),
+    pytest.mark.xfail(
+        strict=False,
+        reason="There are breaking changes in new versions of KvikIO that are not yet resolved",
+    ),
+]
 
 
 @pytest.mark.parametrize(
-    ("backend", "GDS", "library"),
-    [("cuda", False, cupy), ("cuda", True, cupy)],
+    ("backend", "interpreter", "library"),
+    [("cuda", "cpu", cupy), ("cuda", "gpu", cupy)],
 )
-def test_schema_extension(backend, GDS, library):
+def test_schema_extension(backend, interpreter, library):
     filename = skhep_testdata.data_path("test_index_multicluster_rntuple_v1-0-0-0.root")
     with uproot.open(filename) as f:
         obj = f["ntuple"]
 
-        arrays = obj.arrays(backend=backend, use_GDS=GDS)
+        arrays = obj.arrays(backend=backend, interpreter=interpreter)
         int_vec_array = arrays["int_vector"]
 
         for j in range(2):

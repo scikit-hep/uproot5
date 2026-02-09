@@ -18,6 +18,7 @@ as well, which might be in another TDirectory if it's a subdirectory, etc. If th
 updates were not organized, redundant overwrites or even infinite cycles could occur.
 Thus, the structure of the cascade tree must be carefully laid out.
 """
+
 from __future__ import annotations
 
 import datetime
@@ -1014,7 +1015,7 @@ class TListOfStreamers(CascadeNode):
 
         rawstreamers = []
 
-        for (start, stop), streamer in zip(tlist.byte_ranges, tlist):
+        for (start, stop), streamer in zip(tlist.byte_ranges, tlist, strict=True):
             if isinstance(streamer, uproot.streamers.Model_TStreamerInfo):
                 rawstreamers.append(
                     RawStreamerInfo(
@@ -2091,7 +2092,7 @@ class FileHeader(CascadeLeaf):
     @classmethod
     def deserialize(cls, raw_bytes, location):
         (
-            magic,
+            _magic,
             version,
             begin,
             end,
@@ -2110,7 +2111,7 @@ class FileHeader(CascadeLeaf):
         )
         if version >= 1000000:
             (
-                magic,
+                _magic,
                 version,
                 begin,
                 end,

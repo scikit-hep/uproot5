@@ -21,7 +21,11 @@ data = ak.Array(
         "jagged_list": [[1], [2, 3], [4, 5, 6]],
         "nested_list": [[[1], []], [[2], [3, 3]], [[4, 5, 6]]],
         "string": ["one", "two", "three"],
-        "utf8_string": ["こんにちは", "⚛️💫🎆😀", "ǧ̸̛̫͍̰͖̟̈͛͑͆̆̌̃̉̅̄̔̈́̀̔͆̄͋̍͐͂̎͗̈́͒͘͝ͅö̴̮̝̪̬͎͚̜̖̜͖̞̤͕̙͂̀̀̊͛͑̈́͛͐͊͂͂̇͛̾̔͐͆͑͂̓̅̀͘͘͘̕͝͠͝͝ơ̶͍̙̻̾̈́̓̈́̀̅͑ḑ̷͚̠̹̗͉͙̞͇͕̼̲̥͉̯̞͕̲̻̞͗̓̃̊̅͗͊͊́̑̈́̎͋̇̓͛̅͜͜͠͝ͅb̷̢̢̨̨̛̛̘̠̞̰̺̘̰̖̺̞̱͇̰̙̲̱̪͕͎͉̖̞͇̹̮͙͋̀͑͂̈́̇͛̐͊̀̇͆̓̋̀̿̋̂̅̀̌̑̓̽͊̂͑̈̇̚͜͝y̶̗͇̠̞͚̦̮̦͈̹̥̋̓̓̈́̐̆̀̄̋̂̀̇͋̎̚͜͝ȩ̷̢̡͇̮̩̹̥̬̰͎͔̬̩̰̯͍̲͎̭͉̬̣̻̖͍̥̟̪͕̫̟̋̔̀͆̑̈́̐̃͐͌̍͒̔̈́̃̈́̐̔̾͊̿̓͆͑̚͜͝͝͝ͅ"],
+        "utf8_string": [
+            "こんにちは",
+            "⚛️💫🎆😀",
+            "ǧ̸̛̫͍̰͖̟̈͛͑͆̆̌̃̉̅̄̔̈́̀̔͆̄͋̍͐͂̎͗̈́͒͘͝ͅö̴̮̝̪̬͎͚̜̖̜͖̞̤͕̙͂̀̀̊͛͑̈́͛͐͊͂͂̇͛̾̔͐͆͑͂̓̅̀͘͘͘̕͝͠͝͝ơ̶͍̙̻̾̈́̓̈́̀̅͑ḑ̷͚̠̹̗͉͙̞͇͕̼̲̥͉̯̞͕̲̻̞͗̓̃̊̅͗͊͊́̑̈́̎͋̇̓͛̅͜͜͠͝ͅb̷̢̢̨̨̛̛̘̠̞̰̺̘̰̖̺̞̱͇̰̙̲̱̪͕͎͉̖̞͇̹̮͙͋̀͑͂̈́̇͛̐͊̀̇͆̓̋̀̿̋̂̅̀̌̑̓̽͊̂͑̈̇̚͜͝y̶̗͇̠̞͚̦̮̦͈̹̥̋̓̓̈́̐̆̀̄̋̂̀̇͋̎̚͜͝ȩ̷̢̡͇̮̩̹̥̬̰͎͔̬̩̰̯͍̲͎̭͉̬̣̻̖͍̥̟̪͕̫̟̋̔̀͆̑̈́̐̃͐͌̍͒̔̈́̃̈́̐̔̾͊̿̓͆͑̚͜͝͝͝ͅ",
+        ],
         "regular": ak.Array(
             ak.contents.RegularArray(
                 ak.contents.NumpyArray([1, 2, 3, 4, 5, 6, 7, 8, 9]), 3
@@ -43,6 +47,21 @@ data = ak.Array(
             ak.index.Index([1, 0, 3]),
             ak.index.Index([1, 2, 4]),
             ak.contents.NumpyArray([0, 1, 2, 3, 4, 5]),
+        ),
+        "indexed_option_array": ak.contents.IndexedOptionArray(
+            ak.index.Index([3, -1, 1]),
+            ak.contents.NumpyArray([0, 1, 2, 3, 4, 5]),
+        ),
+        "indexed_option_array32": ak.contents.IndexedOptionArray(
+            ak.index.Index32([3, -1, 1]),
+            ak.contents.NumpyArray([0, 1, 2, 3, 4, 5]),
+        ),
+        "indexed_array": ak.contents.IndexedArray(
+            ak.index.Index([3, 0, 1]),
+            ak.contents.NumpyArray([0, 1, 2, 3, 4, 5]),
+        ),
+        "numpy_regular3d": numpy.array(
+            [[[1], [2], [3]], [[4], [5], [6]], [[7], [8], [9]]]
         ),
     }
 )
@@ -71,29 +90,14 @@ def test_writing_and_reading(tmp_path):
     arrays = obj.arrays()
 
     for f in data.fields:
-        if f == "optional":
-            assert [t[0] if len(t) > 0 else None for t in arrays[f][:3]] == data[
-                f
-            ].tolist()
-            assert [t[0] if len(t) > 0 else None for t in arrays[f][3:]] == data[
-                f
-            ].tolist()
-        elif f == "optional_union":
-            assert [
-                t if isinstance(t, str) else t[0] if len(t) > 0 else None
-                for t in arrays[f][:3]
-            ] == data[f].tolist()
-            assert [
-                t if isinstance(t, str) else t[0] if len(t) > 0 else None
-                for t in arrays[f][3:]
-            ] == data[f].tolist()
-        else:
-            assert arrays[f][:3].tolist() == data[f].tolist()
-            assert arrays[f][3:].tolist() == data[f].tolist()
+        assert arrays[f][:3].tolist() == data[f].tolist()
+        assert arrays[f][3:].tolist() == data[f].tolist()
 
 
 def test_writing_then_reading_with_ROOT(tmp_path, capfd):
     ROOT = pytest.importorskip("ROOT")
+    if ROOT.gROOT.GetVersionInt() < 63400:
+        pytest.skip("ROOT version does not support RNTuple v1.0.0.0")
 
     filepath = os.path.join(tmp_path, "test.root")
 
@@ -102,7 +106,10 @@ def test_writing_then_reading_with_ROOT(tmp_path, capfd):
         obj.extend(data)
         obj.extend(data)  # test multiple cluster groups
 
-    RT = ROOT.Experimental.RNTupleReader.Open("ntuple", filepath)
+    if ROOT.gROOT.GetVersionInt() < 63600:
+        RT = ROOT.Experimental.RNTupleReader.Open("ntuple", filepath)
+    else:
+        RT = ROOT.RNTupleReader.Open("ntuple", filepath)
     RT.PrintInfo()
     RT.Show(0)
     RT.Show(2)
@@ -138,6 +145,15 @@ def test_writing_then_reading_with_ROOT(tmp_path, capfd):
         in out
     )
     assert "* Field 17           : list_array (std::vector<std::int64_t>)" in out
+    assert (
+        "* Field 18           : indexed_option_array (std::optional<std::int64_t>)"
+        in out
+    )
+    assert (
+        "* Field 19           : indexed_option_array32 (std::optional<std::int64_t>)"
+        in out
+    )
+    assert "* Field 20           : indexed_array (std::int64_t)" in out
 
 
 def test_field_descriptions(tmp_path):

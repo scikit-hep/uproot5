@@ -42,7 +42,7 @@ def test_2dim_interface(tmp_path):
     newfile = os.path.join(tmp_path, "newfile.root")
 
     with uproot.recreate(newfile, compression=None) as fout:
-        fout["tree"] = {"branch": np.array([[1.1, 2.2, 3.3], [4.4, 5.5, 6.6]])}
+        fout.mktree("tree", {"branch": np.array([[1.1, 2.2, 3.3], [4.4, 5.5, 6.6]])})
         fout["tree"].extend(
             {"branch": np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]])}
         )
@@ -78,7 +78,7 @@ def test_2dim_interface_2(tmp_path):
     newfile = os.path.join(tmp_path, "newfile.root")
 
     with uproot.recreate(newfile, compression=None) as fout:
-        fout["tree"] = {"branch": [[1.1, 2.2, 3.3], [4.4, 5.5, 6.6]]}
+        fout.mktree("tree", {"branch": [[1.1, 2.2, 3.3], [4.4, 5.5, 6.6]]})
         fout["tree"].extend(
             {"branch": [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]]}
         )
@@ -114,8 +114,11 @@ def test_structured_array(tmp_path):
     newfile = os.path.join(tmp_path, "newfile.root")
 
     with uproot.recreate(newfile, compression=None) as fout:
-        fout["tree"] = np.array(
-            [(1, 1.1), (2, 2.2), (3, 3.3)], [("x", np.int32), ("y", np.float64)]
+        fout.mktree(
+            "tree",
+            np.array(
+                [(1, 1.1), (2, 2.2), (3, 3.3)], [("x", np.int32), ("y", np.float64)]
+            ),
         )
         fout["tree"].extend(
             np.array(
@@ -151,7 +154,7 @@ def test_pandas(tmp_path):
     df2 = pandas.DataFrame({"x": [4, 5, 6], "y": [4.4, 5.5, 6.6]})
 
     with uproot.recreate(newfile, compression=None) as fout:
-        fout["tree"] = df1
+        fout.mktree("tree", df1)
         fout["tree"].extend(df2)
 
     f1 = ROOT.TFile(newfile)
@@ -181,17 +184,17 @@ def test_histogram_interface(tmp_path):
 
     with uproot.open(skhep_testdata.data_path("uproot-hepdata-example.root")) as fin:
         h1d, h2d = fin["hpx"], fin["hpxpy"]
-        (h1d_entries_1, h1d_xedges_1) = h1d.to_numpy()
-        (h2d_entries_1, h2d_xedges_1, h2d_yedges_1) = h2d.to_numpy(dd=False)
-        (h2d_dd_entries_1, (h2d_dd_xedges_1, h2d_dd_yedges_1)) = h2d.to_numpy(dd=True)
+        h1d_entries_1, h1d_xedges_1 = h1d.to_numpy()
+        h2d_entries_1, h2d_xedges_1, h2d_yedges_1 = h2d.to_numpy(dd=False)
+        h2d_dd_entries_1, (h2d_dd_xedges_1, h2d_dd_yedges_1) = h2d.to_numpy(dd=True)
 
         with uproot.recreate(newfile) as fout:
             fout["h1d"] = h1d.to_numpy()
             fout["h2d"] = h2d.to_numpy(dd=False)
             fout["h2d_dd"] = h2d.to_numpy(dd=True)
-            (h1d_entries_2, h1d_xedges_2) = fout["h1d"].to_numpy()
-            (h2d_entries_2, h2d_xedges_2, h2d_yedges_2) = fout["h2d"].to_numpy(dd=False)
-            (h2d_dd_entries_2, (h2d_dd_xedges_2, h2d_dd_yedges_2)) = fout[
+            h1d_entries_2, h1d_xedges_2 = fout["h1d"].to_numpy()
+            h2d_entries_2, h2d_xedges_2, h2d_yedges_2 = fout["h2d"].to_numpy(dd=False)
+            h2d_dd_entries_2, (h2d_dd_xedges_2, h2d_dd_yedges_2) = fout[
                 "h2d_dd"
             ].to_numpy(dd=True)
 

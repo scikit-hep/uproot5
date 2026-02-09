@@ -6,6 +6,7 @@ This module interpretations and models for standard containers, such as
 
 See :doc:`uproot.interpretation` and :doc:`uproot.model`.
 """
+
 from __future__ import annotations
 
 import struct
@@ -490,8 +491,8 @@ class AsString(AsContainer):
             start_cursor = cursor.copy()
             (
                 num_bytes,
-                instance_version,
-                is_memberwise,
+                _instance_version,
+                _is_memberwise,
             ) = uproot.deserialization.numbytes_version(chunk, cursor, context)
             if forth_obj is not None:
                 cursor_jump = cursor._index - start_cursor._index
@@ -720,7 +721,7 @@ class AsArray(AsContainer):
             start_cursor = cursor.copy()
             (
                 num_bytes,
-                instance_version,
+                _instance_version,
                 is_memberwise,
             ) = uproot.deserialization.numbytes_version(chunk, cursor, context)
             if is_memberwise:
@@ -932,7 +933,7 @@ class AsVectorLike(AsContainer):
             start_cursor = cursor.copy()
             (
                 num_bytes,
-                instance_version,
+                _instance_version,
                 is_memberwise,
             ) = uproot.deserialization.numbytes_version(chunk, cursor, context)
             if forth_obj is not None:
@@ -1317,7 +1318,7 @@ class AsMap(AsContainer):
             start_cursor = cursor.copy()
             (
                 num_bytes,
-                instance_version,
+                _instance_version,
                 is_memberwise,
             ) = uproot.deserialization.numbytes_version(chunk, cursor, context)
         else:

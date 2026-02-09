@@ -3,6 +3,7 @@
 """
 This module defines the behavior of ``TProfile``.
 """
+
 from __future__ import annotations
 
 import numpy
@@ -186,7 +187,7 @@ class Profile(uproot.behaviors.TH1.Histogram):
 
         Setting ``flow=True`` increases the length of each dimension by two.
         """
-        values, errors = self._values_errors(flow, error_mode)
+        _values, errors = self._values_errors(flow, error_mode)
         return errors
 
     def variances(self, flow=False, error_mode=""):
@@ -212,7 +213,7 @@ class Profile(uproot.behaviors.TH1.Histogram):
 
         Setting ``flow=True`` increases the length of each dimension by two.
         """
-        values, errors = self._values_errors(flow, error_mode)
+        _values, errors = self._values_errors(flow, error_mode)
         return numpy.square(errors)
 
 

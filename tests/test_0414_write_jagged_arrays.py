@@ -99,7 +99,7 @@ def test_awkward_record_dict_2(tmp_path):
     with uproot.recreate(newfile, compression=None) as fout:
         b1 = np.array([1, 2, 3], np.int32)
         b2 = {"x": np.array([1.1, 2.2, 3.3]), "y": np.array([4, 5, 6], np.int64)}
-        fout["tree"] = {"b1": b1, "b2": b2}
+        fout.mktree("tree", {"b1": b1, "b2": b2})
         fout["tree"].extend({"b1": b1, "b2": b2})
 
     with uproot.open(newfile) as fin:
@@ -119,7 +119,7 @@ def test_awkward_record_recarray(tmp_path):
         b2 = np.array(
             [(1.1, 4), (2.2, 5), (3.3, 6)], [("x", np.float64), ("y", np.int64)]
         )
-        fout["tree"] = {"b1": b1, "b2": b2}
+        fout.mktree("tree", {"b1": b1, "b2": b2})
         fout["tree"].extend({"b1": b1, "b2": b2})
 
     with uproot.open(newfile) as fin:
@@ -139,7 +139,7 @@ def test_awkward_record_pandas(tmp_path):
     with uproot.recreate(newfile, compression=None) as fout:
         b1 = np.array([1, 2, 3], np.int32)
         b2 = pandas.DataFrame({"x": [1.1, 2.2, 3.3], "y": [4, 5, 6]})
-        fout["tree"] = {"b1": b1, "b2": b2}
+        fout.mktree("tree", {"b1": b1, "b2": b2})
         fout["tree"].extend({"b1": b1, "b2": b2})
 
     with uproot.open(newfile) as fin:
@@ -158,7 +158,7 @@ def test_top_level(tmp_path):
     df2 = awkward.Array({"x": [4, 5, 6], "y": [4.4, 5.5, 6.6]})
 
     with uproot.recreate(newfile, compression=None) as fout:
-        fout["tree"] = df1
+        fout.mktree("tree", df1)
         fout["tree"].extend(df2)
 
     f1 = ROOT.TFile(newfile)
@@ -306,7 +306,7 @@ def test_awkward_jagged_data_2(tmp_path):
         b2 = awkward.Array(
             [[0.0, 1.1, 2.2], [], [3.3, 4.4], [5.5], [6.6, 7.7, 8.8, 9.9]]
         )
-        fout["tree"] = {"b1": b1, "b2": b2}
+        fout.mktree("tree", {"b1": b1, "b2": b2})
         fout["tree"].extend({"b1": b1[:3], "b2": b2[:3]})
 
     with uproot.open(newfile) as fin:
@@ -349,7 +349,7 @@ def test_awkward_jagged_data_3(tmp_path):
         big = awkward.Array(
             [[0.0, 1.1, 2.2], [], [3.3, 4.4], [5.5], [6.6, 7.7, 8.8, 9.9]] * 300
         )
-        fout["tree"] = {"big": big}
+        fout.mktree("tree", {"big": big})
         # more than 1000 entries, a special number for fNevBufSize and fEntryOffsetLen
 
     with uproot.open(newfile) as fin:
@@ -392,7 +392,7 @@ def test_awkward_jagged_record_1(tmp_path):
                 [{"x": 4, "y": 4.4}, {"x": 5, "y": 5.5}],
             ]
         )
-        fout["tree"] = {"array": array}
+        fout.mktree("tree", {"array": array})
         fout["tree"].extend({"array": array})
 
     with uproot.open(newfile) as fin:
@@ -415,12 +415,15 @@ def test_awkward_jagged_record_2(tmp_path):
     newfile = os.path.join(tmp_path, "newfile.root")
 
     with uproot.recreate(newfile, compression=None) as fout:
-        fout["tree"] = awkward.Array(
-            [
-                [{"x": 1, "y": 1.1}, {"x": 2, "y": 2.2}, {"x": 3, "y": 3.3}],
-                [],
-                [{"x": 4, "y": 4.4}, {"x": 5, "y": 5.5}],
-            ]
+        fout.mktree(
+            "tree",
+            awkward.Array(
+                [
+                    [{"x": 1, "y": 1.1}, {"x": 2, "y": 2.2}, {"x": 3, "y": 3.3}],
+                    [],
+                    [{"x": 4, "y": 4.4}, {"x": 5, "y": 5.5}],
+                ]
+            ),
         )
         fout["tree"].extend(
             awkward.Array(

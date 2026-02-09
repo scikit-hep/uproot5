@@ -18,6 +18,7 @@ The :doc:`uproot.interpretation.objects.ObjectArray` and
 while an array is being built from ``TBaskets``. Its final form is determined
 by the :doc:`uproot.interpretation.library.Library`.
 """
+
 from __future__ import annotations
 
 import contextlib
@@ -385,8 +386,7 @@ class AsObjects(uproot.interpretation.Interpretation):
             },
         )
 
-        raise Exception(
-            f"""EXPECTED FORM:
+        raise Exception(f"""EXPECTED FORM:
 {expected_form}
 
 DISCOVERED FORM:
@@ -403,8 +403,7 @@ input stream
     stream seek
     {"".join(forth_obj.final_code)}
     loop
-    """
-        )
+    """)
 
     def _discover_forth(self, data, byte_offsets, branch, context, cursor_offset):
         output = numpy.empty(len(byte_offsets) - 1, dtype=numpy.dtype(object))
@@ -755,7 +754,7 @@ class AsStridedObjects(uproot.interpretation.numerical.AsDtype):
                 break
 
         for i in range(first_value_loc, len(members)):
-            member, value = members[i]
+            member, _value = members[i]
             if member is not None and not all_headers_prepended:
                 all_headers_prepended = True
             if (member is None and all_headers_prepended) or len(members) == 1:

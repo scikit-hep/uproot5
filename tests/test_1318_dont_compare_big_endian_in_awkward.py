@@ -15,4 +15,4 @@ def test(tmp_path):
     Muon_pt = ak.Array([[1.1], [2.2, 3.3], [4.4, 5.5, 6.6]])
 
     with uproot.recreate(filename) as file:
-        file["tree"] = {"nMuon_pt": nMuon_pt, "Muon_pt": Muon_pt}
+        file.mktree("tree", {"nMuon_pt": nMuon_pt, "Muon_pt": Muon_pt})

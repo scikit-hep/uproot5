@@ -10,11 +10,13 @@ Most of the functionality of RNTuple-reading is implemented here.
 See :doc:`uproot.models.RNTuple` for deserialization of the ``RNTuple``
 objects themselves.
 """
+
 from __future__ import annotations
 
 import sys
 import warnings
 from collections.abc import Mapping
+from functools import partial
 
 import numpy
 
@@ -23,6 +25,7 @@ import uproot.interpretation.grouped
 import uproot.language.python
 import uproot.source.chunk
 from uproot._util import no_filter, unset
+from uproot.behaviors.TBranch import _regularize_array_cache
 
 
 def iterate(
@@ -139,6 +142,7 @@ def iterate(
     * handler (:doc:`uproot.source.chunk.Source` class; None)
     * timeout (float for HTTP, int for XRootD; 30)
     * max_num_elements (None or int; None)
+        The maximum number of elements to be requested in a single vector read, when using XRootD.
     * num_workers (int; 1)
     * use_threads (bool; False on the emscripten platform (i.e. in a web browser), else True)
     * num_fallback_workers (int; 10)
@@ -207,6 +211,8 @@ def concatenate(
     entry_stop=None,
     decompression_executor=None,  # TODO: Not implemented yet
     library="ak",  # TODO: Not implemented yet
+    backend="cpu",
+    interpreter="cpu",
     ak_add_doc=False,
     how=None,
     allow_missing=False,
@@ -311,6 +317,7 @@ def concatenate(
     * handler (:doc:`uproot.source.chunk.Source` class; None)
     * timeout (float for HTTP, int for XRootD; 30)
     * max_num_elements (None or int; None)
+        The maximum number of elements to be requested in a single vector read, when using XRootD.
     * num_workers (int; 1)
     * use_threads (bool; False on the emscripten platform (i.e. in a web browser), else True)
     * num_fallback_workers (int; 10)
@@ -382,6 +389,8 @@ def concatenate(
                     decompression_executor=decompression_executor,
                     array_cache=None,
                     library=library,
+                    backend=backend,
+                    interpreter=interpreter,
                     ak_add_doc=ak_add_doc,
                     how=how,
                     filter_branch=filter_branch,
@@ -458,8 +467,13 @@ class HasFields(Mapping):
                 fields = [
                     rntuple.all_fields[i]
                     for i, f in enumerate(rntuple.field_records)
-                    if f.parent_field_id == self._fid and f.parent_field_id != i
+                    if f.parent_field_id == self._fid
+                    and f.parent_field_id != i
+                    and not rntuple.all_fields[i].is_ignored
                 ]
+                # If the child field is anonymous, we return the grandchildren
+                if len(fields) == 1 and fields[0].is_anonymous:
+                    fields = fields[0].fields
             self._fields = fields
         return self._fields
 
@@ -468,15 +482,21 @@ class HasFields(Mapping):
         """
         The full path of the field in the :doc:`uproot.models.RNTuple.RNTuple`. When it is
         the ``RNTuple`` itself, this is ``"."``.
+
+        Note that this is not the full path within the ROOT file.
         """
         if isinstance(self, uproot.behaviors.RNTuple.RNTuple):
             return "."
+        # For some anonymous fields, the path is not available
+        if self.is_anonymous or self.is_ignored:
+            return None
         if self._path is None:
             path = self.name
             parent = self.parent
             field = self
             while not isinstance(parent, uproot.behaviors.RNTuple.RNTuple):
-                path = f"{parent.name}.{path}"
+                if not parent.is_anonymous:
+                    path = f"{parent.name}.{path}"
                 field = parent
                 parent = field.parent
             self._path = path
@@ -510,7 +530,9 @@ class HasFields(Mapping):
                 for compatibility with software that was used for :doc:`uproot.behaviors.TBranch.TBranch`. This argument should not be used
                 and will be removed in a future version.
 
-        Returns the an Awkward Form with the structure of the data in the ``RNTuple`` or ``RField``.
+        Returns a 2-tuple where the first entry is the Awkward Form with the structure of the data in the ``RNTuple`` or ``RField``,
+        and the second entry is the relative path of the requested RField. The second entry is needed in cases where the requested RField
+        is a subfield of a collection, which requires constructing the form with information about the parent field.
         """
         ak = uproot.extras.awkward()
 
@@ -525,6 +547,7 @@ class HasFields(Mapping):
         top_names = []
         record_list = []
         if self is rntuple:
+            field_path = None
             for field in self.fields:
                 # the field needs to be in the keys or be a parent of a field in the keys
                 if any(
@@ -536,14 +559,39 @@ class HasFields(Mapping):
                         rntuple.field_form(field.field_id, keys, ak_add_doc=ak_add_doc)
                     )
         else:
+            # If it is a subfield of a collection, we need to include the collection in the keys
+            path_keys = self.path.split(".")
+            top_collection = None
+            tmp_field = self.ntuple
+            field_path = [self.name]
+            for i, key in enumerate(path_keys):
+                tmp_field = tmp_field[key]
+                if (
+                    tmp_field.record.struct_role
+                    == uproot.const.RNTupleFieldRole.COLLECTION
+                ):
+                    top_collection = tmp_field
+                    field_path = path_keys[i:]
+                    break
             # Always use the full path for keys
             # Also include the field itself
             keys = [self.path] + [f"{self.path}.{k}" for k in keys]
-            # The field needs to be in the keys or be a parent of a field in the keys
-            if any(key.startswith(f"{self.path}.") or key == self.path for key in keys):
-                top_names.append(self.name)
+            if top_collection is None:
+                # The field needs to be in the keys or be a parent of a field in the keys
+                if any(
+                    key.startswith(f"{self.path}.") or key == self.path for key in keys
+                ):
+                    top_names.append(self.name)
+                    record_list.append(
+                        rntuple.field_form(self.field_id, keys, ak_add_doc=ak_add_doc)
+                    )
+            else:
+                keys += [top_collection.path]
+                top_names.append(top_collection.name)
                 record_list.append(
-                    rntuple.field_form(self.field_id, keys, ak_add_doc=ak_add_doc)
+                    rntuple.field_form(
+                        top_collection.field_id, keys, ak_add_doc=ak_add_doc
+                    )
                 )
 
         parameters = None
@@ -557,7 +605,7 @@ class HasFields(Mapping):
         form = ak.forms.RecordForm(
             record_list, top_names, form_key="toplevel", parameters=parameters
         )
-        return form
+        return (form, field_path)
 
     def arrays(
         self,
@@ -572,12 +620,14 @@ class HasFields(Mapping):
         entry_start=None,
         entry_stop=None,
         decompression_executor=None,  # TODO: Not implemented yet
-        array_cache="inherit",  # TODO: Not implemented yet
+        array_cache="inherit",
         library="ak",  # TODO: Not implemented yet
-        backend="cpu",  # TODO: Not Implemented yet
-        use_GDS=False,
+        backend="cpu",
+        interpreter="cpu",
         ak_add_doc=False,
         how=None,
+        virtual=False,
+        access_log=None,
         # For compatibility reasons we also accepts kwargs meant for TTrees
         interpretation_executor=None,
         filter_branch=unset,
@@ -616,15 +666,14 @@ class HasFields(Mapping):
                 is used. (Not implemented yet.)
             array_cache ("inherit", None, MutableMapping, or memory size): Cache of arrays;
                 if "inherit", use the file's cache; if None, do not use a cache;
-                if a memory size, create a new cache of this size. (Not implemented yet.)
+                if a memory size, create a new cache of this size.
             library (str or :doc:`uproot.interpretation.library.Library`): The library
                 that is used to represent arrays. Options are ``"np"`` for NumPy,
                 ``"ak"`` for Awkward Array, and ``"pd"`` for Pandas. (Not implemented yet.)
             backend (str): The backend Awkward Array will use.
-            use_GDS (bool): If True and ``backend="cuda"`` will use kvikIO bindings
-                to CuFile to provide direct memory access (DMA) transfers between GPU
-                memory and storage. KvikIO bindings to nvcomp decompress data
-                buffers.
+            interpreter (str): If "cpu" will use cpu to interpret raw data. If "gpu" and
+                ``backend="cuda"`` will use KvikIO bindings to CuFile and nvCOMP to
+                interpret raw data on gpu if available.
             ak_add_doc (bool | dict ): If True and ``library="ak"``, add the RField ``description``
                 to the Awkward ``__doc__`` parameter of the array.
                 if dict = {key:value} and ``library="ak"``, add the RField ``value`` to the
@@ -634,6 +683,11 @@ class HasFields(Mapping):
                 ``list``, and ``dict``. Note that the container *type itself*
                 must be passed as ``how``, not an instance of that type (i.e.
                 ``how=tuple``, not ``how=()``).
+            virtual (bool): If True, return virtual Awkward arrays, meaning that the data will not be
+                loaded into memory until it is accessed.
+            access_log (None or object with a ``__iadd__`` method): If an access_log is
+                provided, e.g. a list, all materializations of the arrays are
+                tracked inside this reference. Only applies if ``virtual=True``.
             interpretation_executor (None): This argument is not used and is only included for now
                 for compatibility with software that was used for :doc:`uproot.behaviors.TBranch.TBranch`. This argument should not be used
                 and will be removed in a future version.
@@ -656,93 +710,7 @@ class HasFields(Mapping):
         See also :ref:`uproot.behaviors.RNTuple.HasFields.iterate` to iterate over
         the array in contiguous ranges of entries.
         """
-        if not use_GDS:
-            return self._arrays(
-                expressions,
-                cut,
-                filter_name=filter_name,
-                filter_typename=filter_typename,
-                filter_field=filter_field,
-                aliases=aliases,  # TODO: Not implemented yet
-                language=language,  # TODO: Not implemented yet
-                entry_start=entry_start,
-                entry_stop=entry_stop,
-                decompression_executor=decompression_executor,  # TODO: Not implemented yet
-                array_cache=array_cache,  # TODO: Not implemented yet
-                library=library,  # TODO: Not implemented yet
-                backend=backend,  # TODO: Not Implemented yet
-                ak_add_doc=ak_add_doc,
-                how=how,
-                # For compatibility reasons we also accepts kwargs meant for TTrees
-                interpretation_executor=interpretation_executor,
-                filter_branch=filter_branch,
-            )
 
-        elif use_GDS and backend == "cuda":
-            return self._arrays_GDS(
-                expressions,
-                cut,
-                filter_name=filter_name,
-                filter_typename=filter_typename,
-                filter_field=filter_field,
-                aliases=aliases,  # TODO: Not implemented yet
-                language=language,  # TODO: Not implemented yet
-                entry_start=entry_start,
-                entry_stop=entry_stop,
-                decompression_executor=decompression_executor,  # TODO: Not implemented yet
-                array_cache=array_cache,  # TODO: Not implemented yet
-                library=library,  # TODO: Not implemented yet
-                backend=backend,  # TODO: Not Implemented yet
-                ak_add_doc=ak_add_doc,
-                how=how,
-                # For compatibility reasons we also accepts kwargs meant for TTrees
-                interpretation_executor=interpretation_executor,
-                filter_branch=filter_branch,
-            )
-
-        elif use_GDS and backend != "cuda":
-            raise NotImplementedError(
-                f"Backend {backend} GDS support not implemented.".format(backend)
-            )
-
-    def _arrays(
-        self,
-        expressions=None,  # TODO: Not implemented yet
-        cut=None,  # TODO: Not implemented yet
-        *,
-        filter_name=no_filter,
-        filter_typename=no_filter,
-        filter_field=no_filter,
-        aliases=None,  # TODO: Not implemented yet
-        language=uproot.language.python.python_language,  # TODO: Not implemented yet
-        entry_start=None,
-        entry_stop=None,
-        decompression_executor=None,  # TODO: Not implemented yet
-        array_cache="inherit",  # TODO: Not implemented yet
-        library="ak",  # TODO: Not implemented yet
-        backend="cpu",  # TODO: Not Implemented yet
-        ak_add_doc=False,
-        how=None,
-        # For compatibility reasons we also accepts kwargs meant for TTrees
-        interpretation_executor=None,
-        filter_branch=unset,
-    ):
-        """
-        Returns a group of arrays from the ``RNTuple``.
-
-        For example:
-
-        .. code-block:: python
-
-            >>> my_ntuple.arrays()
-            <Array [{my_vector: [1, 2]}, {...}] type='2 * {my_vector: var * int64}'>
-
-        See also :ref:`uproot.behaviors.RNTuple.HasFields.array` to read a single
-        ``RField`` as an array.
-
-        See also :ref:`uproot.behaviors.RNTuple.HasFields.iterate` to iterate over
-        the array in contiguous ranges of entries.
-        """
         # This temporarily provides basic functionality while expressions are properly implemented
         if expressions is not None:
             if filter_name == no_filter:
@@ -751,6 +719,25 @@ class HasFields(Mapping):
                 raise ValueError(
                     "Expressions are not supported yet. They are currently equivalent to filter_name."
                 )
+
+        if virtual:
+            # some kwargs can't be used with virtual arrays
+            err = "'{}' cannot be used with 'virtual=True'".format
+            if how is not None:
+                raise ValueError(err("how"))
+            if library != "ak":
+                raise ValueError(err("library"))
+            if expressions is not None:
+                raise ValueError(err("expressions"))
+            if cut is not None:
+                raise ValueError(err("cut"))
+            if aliases is not None:
+                raise ValueError(err("aliases"))
+        else:
+            # some kwargs can't be used with eager arrays
+            err = "'{}' cannot be used with 'virtual=False'".format
+            if access_log is not None:
+                raise ValueError(err("access_log"))
 
         entry_start, entry_stop = (
             uproot.behaviors.TBranch._regularize_entries_start_stop(
@@ -766,10 +753,13 @@ class HasFields(Mapping):
         )
         stop_cluster_idx = numpy.searchsorted(cluster_starts, entry_stop, side="right")
         cluster_num_entries = numpy.sum(
-            [c.num_entries for c in clusters[start_cluster_idx:stop_cluster_idx]]
+            [c.num_entries for c in clusters[start_cluster_idx:stop_cluster_idx]],
+            dtype=int,
         )
 
-        form = self.to_akform(
+        array_cache = _regularize_array_cache(array_cache, self.ntuple._file)
+
+        form, field_path = self.to_akform(
             filter_name=filter_name,
             filter_typename=filter_typename,
             filter_field=filter_field,
@@ -782,33 +772,91 @@ class HasFields(Mapping):
         container_dict = {}
         _recursive_find(form, target_cols)
 
+        if interpreter == "gpu" and backend == "cuda":
+            clusters_datas = self.ntuple.gpu_read_clusters(
+                target_cols, start_cluster_idx, stop_cluster_idx
+            )
+            clusters_datas._decompress()
+            content_dict = self.ntuple.gpu_deserialize_decompressed_content(
+                clusters_datas,
+                start_cluster_idx,
+                stop_cluster_idx,
+            )
+
         for key in target_cols:
-            if "column" in key and "union" not in key:
+            if "column" in key:
                 key_nr = int(key.split("-")[1])
-
-                dtype_byte = self.ntuple.column_records[key_nr].type
-
-                content = self.ntuple.read_col_pages(
-                    key_nr,
-                    range(start_cluster_idx, stop_cluster_idx),
-                    dtype_byte=dtype_byte,
-                    pad_missing_element=True,
+                # Find how many elements should be padded at the beginning
+                n_padding = self.ntuple.column_records[key_nr].first_element_index
+                n_padding -= (
+                    cluster_starts[start_cluster_idx] if start_cluster_idx >= 0 else 0
                 )
-                _fill_container_dict(container_dict, content, key, dtype_byte)
+                n_padding = max(n_padding, 0)
+                dtype = None
+                if interpreter == "cpu":
+                    content_generator = partial(
+                        self.ntuple.read_cluster_range,
+                        key_nr,
+                        start_cluster_idx,
+                        stop_cluster_idx,
+                        missing_element_padding=n_padding,
+                        array_cache=array_cache,
+                        access_log=access_log,
+                    )
+                    if virtual:
+                        total_length, _, dtype = (
+                            self.ntuple._expected_array_length_starts_dtype(
+                                key_nr,
+                                start_cluster_idx,
+                                stop_cluster_idx,
+                                missing_element_padding=n_padding,
+                            )
+                        )
+                        if "cardinality" in key:
+                            total_length -= 1
+                        content = (total_length, content_generator)
+                    else:
+                        content = content_generator()
+                elif interpreter == "gpu" and backend == "cuda":
+                    content = content_dict[key_nr]
+                elif interpreter == "gpu":
+                    raise NotImplementedError(
+                        f"Backend {backend} GDS support not implemented."
+                    )
+                else:
+                    raise NotImplementedError(f"Backend {backend} not implemented.")
+                dtype_byte = self.ntuple.column_records[key_nr].type
+                _fill_container_dict(container_dict, content, key, dtype_byte, dtype)
 
-        cluster_offset = cluster_starts[start_cluster_idx]
+        cluster_offset = (
+            cluster_starts[start_cluster_idx] if start_cluster_idx >= 0 else 0
+        )
         entry_start -= cluster_offset
         entry_stop -= cluster_offset
         arrays = uproot.extras.awkward().from_buffers(
             form,
             cluster_num_entries,
             container_dict,
-            allow_noncanonical_form=True,
+            backend="cuda" if interpreter == "gpu" and backend == "cuda" else "cpu",
         )[entry_start:entry_stop]
 
         arrays = uproot.extras.awkward().to_backend(arrays, backend=backend)
         # no longer needed; save memory
         del container_dict
+
+        # If we constructed some parent fields, we need to get back to the requested field
+        if field_path is not None:
+            for field in field_path[:-1]:
+                if field in arrays.fields:
+                    arrays = arrays[field]
+                # tuples are a trickier since indices no longer match
+                else:
+                    if field.isdigit() and arrays.fields == ["0"]:
+                        arrays = arrays["0"]
+                    else:
+                        raise AssertionError(
+                            "The array was not constructed correctly. Please report this issue."
+                        )
 
         # FIXME: This is not right, but it might temporarily work
         if library.name == "np":
@@ -825,126 +873,6 @@ class HasFields(Mapping):
             raise ValueError(
                 f"unrecognized 'how' parameter: {how}. Options are None, tuple, list and dict."
             )
-
-        return arrays
-
-    def _arrays_GDS(
-        self,
-        expressions=None,  # TODO: Not implemented yet
-        cut=None,  # TODO: Not implemented yet
-        *,
-        filter_name=no_filter,
-        filter_typename=no_filter,
-        filter_field=no_filter,
-        aliases=None,  # TODO: Not implemented yet
-        language=uproot.language.python.python_language,  # TODO: Not implemented yet
-        entry_start=None,
-        entry_stop=None,
-        decompression_executor=None,  # TODO: Not implemented yet
-        array_cache="inherit",  # TODO: Not implemented yet
-        library="ak",  # TODO: Not implemented yet
-        backend="cuda",  # TODO: Not Implemented yet
-        ak_add_doc=False,
-        how=None,
-        # For compatibility reasons we also accepts kwargs meant for TTrees
-        interpretation_executor=None,
-        filter_branch=unset,
-    ):
-        """
-        Current GDS support is limited to nvidia GPUs. The python library kvikIO is
-        a required dependency for Uproot GDS reading which can be installed by
-        calling pip install uproot[GDS_cuX] where X corresponds to the major cuda
-        version available on the user's system.
-
-        Returns a group of arrays from the ``RNTuple``.
-
-        For example:
-
-        .. code-block:: python
-
-            >>> my_ntuple.arrays(useGDS = True, backend = "cuda")
-            <Array [{my_vector: [1, 2]}, {...}] type='2 * {my_vector: var * int64}'>
-
-
-        """
-        # This temporarily provides basic functionality while expressions are properly implemented
-        if expressions is not None:
-            if filter_name == no_filter:
-                filter_name = expressions
-            else:
-                raise ValueError(
-                    "Expressions are not supported yet. They are currently equivalent to filter_name."
-                )
-
-        #####
-        # Find clusters to read that contain data from entry_start to entry_stop
-        entry_start, entry_stop = (
-            uproot.behaviors.TBranch._regularize_entries_start_stop(
-                self.num_entries, entry_start, entry_stop
-            )
-        )
-        clusters = self.ntuple.cluster_summaries
-        cluster_starts = numpy.array([c.num_first_entry for c in clusters])
-        start_cluster_idx = (
-            numpy.searchsorted(cluster_starts, entry_start, side="right") - 1
-        )
-        stop_cluster_idx = numpy.searchsorted(cluster_starts, entry_stop, side="right")
-        cluster_num_entries = numpy.sum(
-            [c.num_entries for c in clusters[start_cluster_idx:stop_cluster_idx]]
-        )
-
-        # Get form for requested columns
-        form = self.to_akform(
-            filter_name=filter_name,
-            filter_typename=filter_typename,
-            filter_field=filter_field,
-            filter_branch=filter_branch,
-        )
-
-        # Only read columns mentioned in the awkward form
-        target_cols = []
-        container_dict = {}
-
-        _recursive_find(form, target_cols)
-
-        #####
-        # Read and decompress all columns' data
-        clusters_datas = self.ntuple.gpu_read_clusters(
-            target_cols, start_cluster_idx, stop_cluster_idx
-        )
-        clusters_datas._decompress()
-        #####
-        # Deserialize decompressed datas
-        content_dict = self.ntuple.gpu_deserialize_decompressed_content(
-            clusters_datas, start_cluster_idx, stop_cluster_idx
-        )
-        #####
-        # Reconstitute arrays to an awkward array
-        container_dict = {}
-        # Debugging
-        for key in target_cols:
-            if "column" in key and "union" not in key:
-                key_nr = int(key.split("-")[1])
-
-                dtype_byte = self.ntuple.column_records[key_nr].type
-                content = content_dict[key_nr]
-                _fill_container_dict(container_dict, content, key, dtype_byte)
-
-        cluster_offset = cluster_starts[start_cluster_idx]
-        entry_start -= cluster_offset
-        entry_stop -= cluster_offset
-
-        arrays = uproot.extras.awkward().from_buffers(
-            form,
-            cluster_num_entries,
-            container_dict,
-            allow_noncanonical_form=True,
-            backend="cuda",
-        )[entry_start:entry_stop]
-
-        # Free memory
-        del content_dict, container_dict, clusters_datas
-
         return arrays
 
     def __array__(self, *args, **kwargs):
@@ -972,6 +900,8 @@ class HasFields(Mapping):
         step_size="100 MB",
         decompression_executor=None,  # TODO: Not implemented yet
         library="ak",  # TODO: Not implemented yet
+        backend="cpu",
+        interpreter="cpu",
         ak_add_doc=False,
         how=None,
         report=False,  # TODO: Not implemented yet
@@ -1069,7 +999,7 @@ class HasFields(Mapping):
             )
         )
 
-        akform = self.to_akform(
+        akform, _ = self.to_akform(
             filter_name=filter_name,
             filter_typename=filter_typename,
             filter_field=filter_field,
@@ -1082,13 +1012,15 @@ class HasFields(Mapping):
         )
         # TODO: This can be done more efficiently
         for start in range(0, self.num_entries, step_size):
-            yield self._arrays(
+            yield self.arrays(
                 filter_name=filter_name,
                 filter_typename=filter_typename,
                 filter_field=filter_field,
                 entry_start=start,
                 entry_stop=start + step_size,
                 library=library,
+                backend=backend,
+                interpreter=interpreter,
                 how=how,
                 filter_branch=filter_branch,
             )
@@ -1423,7 +1355,7 @@ class HasFields(Mapping):
                 and (filter_typename is no_filter or filter_typename(field.typename))
                 and (filter_field is no_filter or filter_field(field))
             ):
-                if ignore_duplicates and field.name in keys_set:
+                if field.is_anonymous or (ignore_duplicates and field.name in keys_set):
                     pass
                 else:
                     keys_set.add(field.name)
@@ -1437,7 +1369,11 @@ class HasFields(Mapping):
                     filter_field=filter_field,
                     full_paths=full_paths,
                 ):
-                    k2 = f"{field.name}.{k1}" if full_paths else k1
+                    k2 = (
+                        f"{field.name}.{k1}"
+                        if full_paths and not field.is_anonymous
+                        else k1
+                    )
                     if filter_name is no_filter or _filter_name_deep(
                         filter_name, self, v
                     ):
@@ -1483,9 +1419,10 @@ class HasFields(Mapping):
         for k, v in self.iteritems(
             filter_name=filter_name,
             filter_typename=filter_typename,
-            filter_branch=filter_branch,
+            filter_field=filter_field,
             recursive=recursive,
             full_paths=full_paths,
+            filter_branch=filter_branch,
         ):
             yield k, v.typename
 
@@ -1574,12 +1511,15 @@ class HasFields(Mapping):
             )
         )
 
-        akform = self.to_akform(
+        akform, _ = self.to_akform(
             filter_name=filter_name,
             filter_typename=filter_typename,
             filter_field=filter_field,
             filter_branch=filter_branch,
         )
+
+        if len(akform.contents) == 0:
+            return
 
         return _num_entries_for(self, akform, target_num_bytes, entry_start, entry_stop)
 
@@ -1616,8 +1556,8 @@ class HasFields(Mapping):
                 raise uproot.KeyInFileError(
                     original_where,
                     keys=self.keys(recursive=recursive),
-                    file_path=self._file.file_path,  # TODO
-                    object_path=self.object_path,  # TODO
+                    file_path=self.ntuple.parent._file.file_path,
+                    object_path=self.path,
                 ) from None
             return this
 
@@ -1629,8 +1569,8 @@ class HasFields(Mapping):
                 raise uproot.KeyInFileError(
                     original_where,
                     keys=self.keys(recursive=recursive),
-                    file_path=self._file.file_path,
-                    object_path=self.object_path,
+                    file_path=self.ntuple.parent._file.file_path,
+                    object_path=self.path,
                 )
 
         else:
@@ -1654,14 +1594,9 @@ class HasFields(Mapping):
         filter_typename=no_filter,
         filter_field=no_filter,
         recursive=True,
-        name_width=20,
-        typename_width=24,
-        path_width=30,
+        max_width=80,
         stream=sys.stdout,
-        # For compatibility reasons we also accepts kwargs meant for TTrees
-        full_paths=unset,
-        filter_branch=unset,
-        interpretation_width=unset,
+        **kwargs,
     ):
         """
         Args:
@@ -1674,23 +1609,9 @@ class HasFields(Mapping):
                 :doc:`uproot.models.RNTuple.RField` object. The ``RField`` is
                 included if the function returns True, excluded if it returns False.
             recursive (bool): If True, recursively descend into subfields.
-            name_width (int): Number of characters to reserve for the ``TBranch``
-                names.
-            typename_width (int): Number of characters to reserve for the C++
-                typenames.
-            interpretation_width (int): Number of characters to reserve for the
-                :doc:`uproot.interpretation.Interpretation` displays.
+            max_width (int): Maximum number of characters to display in a line.
             stream (object with a ``write(str)`` method): Stream to write the
                 output to.
-            full_paths (None): This argument is not used and is only included for now
-                for compatibility with software that was used for :doc:`uproot.behaviors.TBranch.TBranch`. This argument should not be used
-                and will be removed in a future version.
-            filter_branch (None or function of :doc:`uproot.models.RNTuple.RField` \u2192 bool): An alias for ``filter_field`` included
-                for compatibility with software that was used for :doc:`uproot.behaviors.TBranch.TBranch`. This argument should not be used
-                and will be removed in a future version.
-            interpretation_width (None): This argument is not used and is only included for now
-                for compatibility with software that was used for :doc:`uproot.behaviors.TBranch.TBranch`. This argument should not be used
-                and will be removed in a future version.
 
         Interactively display the ``RFields``.
 
@@ -1699,54 +1620,52 @@ class HasFields(Mapping):
         .. code-block::
 
             >>> my_ntuple.show()
-            name                 | typename                 | path
-            ---------------------+--------------------------+-------------------------------
-            my_int               | std::int64_t             | my_int
-            my_vec               | std::vector<std::int6... | my_vec
-            _0                   | std::int64_t             | my_vec._0
+            my_ntuple (ROOT::RNTuple)
+            Description: The description of the ntuple
+            ├─ my_int (std::int64_t)
+            │  Description: The description of the field
+            ├─ jagged_list (std::vector<std::int64_t>)
+            ├─ nested_list (std::vector<std::vector<std::int64_t>>)
+            ├─ struct (MyStruct)
+            │  ├─ x (std::int64_t)
+            │  └─ y (std::int64_t)
+            └─ other_struct (OtherStruct)
+                ├─ a (SubStruct)
+                │  Description: The description of the subfield
+                │  ├─ x (std::int64_t)
+                │  └─ y (std::int64_t)
+                └─ b (std::int64_t)
         """
-        if name_width < 3:
-            raise ValueError("'name_width' must be at least 3")
-        if typename_width < 3:
-            raise ValueError("'typename_width' must be at least 3")
-        if path_width < 3:
-            raise ValueError("'path_width' must be at least 3")
+        elbow = "└─ "
+        pipe = "│  "
+        tee = "├─ "
+        blank = "   "
 
-        formatter = f"{{0:{name_width}.{name_width}}} | {{1:{typename_width}.{typename_width}}} | {{2:{path_width}.{path_width}}}"
+        def recursive_show(field, header="", first=True, last=True, recursive=True):
+            outstr = f"""{header}{"" if first else (elbow if last else tee)}{field.name} ({'ROOT::RNTuple' if isinstance(field, uproot.behaviors.RNTuple.RNTuple) else field.typename})"""
+            stream.write(outstr[:max_width] + "\n")
+            if field.description != "":
+                outstr = f"""{header}{'' if first else (blank if last else pipe)}Description: {field.description}"""
+                stream.write(outstr[:max_width] + "\n")
+            if len(field) > 0 and (recursive or first):
+                subfields = list(
+                    field.itervalues(
+                        filter_name=filter_name,
+                        filter_typename=filter_typename,
+                        filter_field=filter_field,
+                        recursive=False,
+                    )
+                )
+                for i, subfield in enumerate(subfields):
+                    recursive_show(
+                        subfield,
+                        header=f"{header}{'' if first else (blank if last else pipe)}",
+                        first=False,
+                        last=i == len(subfields) - 1,
+                        recursive=recursive,
+                    )
 
-        stream.write(formatter.format("name", "typename", "path"))
-        stream.write(
-            "\n"
-            + "-" * name_width
-            + "-+-"
-            + "-" * typename_width
-            + "-+-"
-            + "-" * path_width
-            + "\n"
-        )
-
-        if isinstance(self, uproot.models.RNTuple.RField):
-            stream.write(formatter.format(self.name, self.typename, self.path) + "\n")
-
-        for field in self.itervalues(
-            filter_name=filter_name,
-            filter_typename=filter_typename,
-            filter_field=filter_field,
-            recursive=recursive,
-            filter_branch=filter_branch,
-        ):
-            name = field.name
-            typename = field.typename
-            path = field.path
-
-            if len(name) > name_width:
-                name = name[: name_width - 3] + "..."
-            if len(typename) > typename_width:
-                typename = typename[: typename_width - 3] + "..."
-            if len(path) > path_width:
-                path = path[: path_width - 3] + "..."
-
-            stream.write(formatter.format(name, typename, path).rstrip(" ") + "\n")
+        recursive_show(self, recursive=recursive)
 
     @property
     def source(self) -> uproot.source.chunk.Source | None:
@@ -1826,20 +1745,6 @@ def _filter_name_deep(filter_name, hasfields, field):
     return filter_name("." + name)
 
 
-def _keys_deep(hasbranches):
-    out = set()
-    for branch in hasbranches.itervalues(recursive=True):
-        name = branch.name
-        out.add(name)
-        while branch is not hasbranches:
-            branch = branch.parent  # noqa: PLW2901 (overwriting branch)
-            if branch is not hasbranches:
-                name = branch.name + "/" + name
-        out.add(name)
-        out.add("/" + name)
-    return out
-
-
 def _get_recursive(hasfields, where):
     if hasfields._lookup is None:
         hasfields._lookup = {f.name: f for f in hasfields.fields}
@@ -1869,7 +1774,7 @@ def _num_entries_for(ntuple, akform, target_num_bytes, entry_start, entry_stop):
 
     total_bytes = 0
     for key in target_cols:
-        if "column" in key and "union" not in key:
+        if "column" in key:
             key_nr = int(key.split("-")[1])
             for cluster in range(start_cluster_idx, stop_cluster_idx):
                 pages = ntuple.page_link_list[cluster][key_nr].pages
@@ -1909,31 +1814,144 @@ def _recursive_find(form, res):
         _recursive_find(form.content, res)
 
 
-def _fill_container_dict(container_dict, content, key, dtype_byte):
-    array_library_string = uproot._util.get_array_library(content)
+def _cupy_insert(arr, obj, value):
+    # obj is assumed to be sorted
+    # both arr and obj are assumed to be flat arrays
+    cupy = uproot.extras.cupy()
+    out_size = arr.size + obj.size
+    out = cupy.empty(out_size, dtype=arr.dtype)
+    src_i = 0
+    dst_i = 0
+    for idx in obj.get():
+        n = idx - src_i
+        if n > 0:
+            out[dst_i : dst_i + n] = arr[src_i : src_i + n]
+            dst_i += n
+            src_i += n
+        out[dst_i] = value
+        dst_i += 1
+    if src_i < arr.size:
+        out[dst_i:] = arr[src_i:]
+    return out
+
+
+def _fill_container_dict(container_dict, content, key, dtype_byte, dtype):
+    ak = uproot.extras.awkward()
+    Numpy = ak._nplikes.numpy.Numpy
+
+    if isinstance(content, tuple):
+        # Virtual arrays not yet implemented for GPU
+        array_library_string = "numpy"
+        virtual = True
+        length = int(content[0])
+        raw_generator = content[1]
+    else:
+        virtual = False
+        array_library_string = uproot._util.get_array_library(content)
+        length = len(content)
+
+        def raw_generator():
+            return content
+
+    if virtual:
+        from packaging.version import Version
+
+        if Version(ak.__version__) < Version("2.8.11"):
+            raise ImportError("Virtual arrays require Awkward version 2.8.11 or later")
+        VirtualNDArray = ak._nplikes.virtual.VirtualNDArray
 
     library = numpy if array_library_string == "numpy" else uproot.extras.cupy()
 
     if "cardinality" in key:
-        content = library.diff(content)
 
-    if dtype_byte == uproot.const.rntuple_col_type_to_num_dict["switch"]:
-        kindex, tags = uproot.models.RNTuple._split_switch_bits(content)
-        # Find invalid variants and adjust buffers accordingly
-        invalid = numpy.flatnonzero(tags == -1)
-        if len(invalid) > 0:
-            kindex = numpy.delete(kindex, invalid)
-            tags = numpy.delete(tags, invalid)
-            invalid -= numpy.arange(len(invalid))
-            optional_index = numpy.insert(
-                numpy.arange(len(kindex), dtype=numpy.int64), invalid, -1
+        def generator():
+            materialized = raw_generator()
+            materialized = library.diff(materialized)
+            return materialized
+
+        if virtual:
+            virtual_array = VirtualNDArray(
+                Numpy.instance(), shape=(length,), dtype=dtype, generator=generator
             )
+            container_dict[f"{key}-data"] = virtual_array
         else:
-            optional_index = numpy.arange(len(kindex), dtype=numpy.int64)
-        container_dict[f"{key}-index"] = library.array(optional_index)
-        container_dict[f"{key}-union-index"] = library.array(kindex)
-        container_dict[f"{key}-union-tags"] = library.array(tags)
+            container_dict[f"{key}-data"] = generator()
+
+    elif "optional" in key:
+
+        def generator():
+            # We need to convert from a ListOffsetArray to an IndexedOptionArray
+            materialized = raw_generator()
+            diff = library.diff(materialized)
+            missing = library.nonzero(diff == 0)[0]
+            missing -= library.arange(len(missing), dtype=missing.dtype)
+            dtype = "int64" if materialized.dtype == library.int64 else "int32"
+            indices = library.arange(len(materialized) - len(missing), dtype=dtype)
+            if array_library_string == "numpy":
+                indices = numpy.insert(indices, missing, -1)
+            else:
+                indices = _cupy_insert(indices, missing, -1)
+            return indices[:-1]  # We need to delete the last index
+
+        if virtual:
+            virtual_array = VirtualNDArray(
+                Numpy.instance(), shape=(length - 1,), dtype=dtype, generator=generator
+            )
+            container_dict[f"{key}-index"] = virtual_array
+        else:
+            container_dict[f"{key}-index"] = generator()
+
+    elif dtype_byte == uproot.const.rntuple_col_type_to_num_dict["switch"]:
+
+        def tag_generator():
+            content = raw_generator()
+            return content["tag"].astype(numpy.int8)
+
+        def index_generator():
+            content = raw_generator()
+            tags = content["tag"].astype(numpy.int8)
+            kindex = content["index"]
+            # Find invalid variants and adjust buffers accordingly
+            invalid = numpy.flatnonzero(tags == 0)
+            kindex[invalid] = 0  # Might not be necessary, but safer
+            return kindex
+
+        def nones_index_generator():
+            return library.array([-1], dtype=numpy.int64)
+
+        if virtual:
+            tag_virtual_array = VirtualNDArray(
+                Numpy.instance(),
+                shape=(length,),
+                dtype=numpy.int8,
+                generator=tag_generator,
+            )
+            container_dict[f"{key}-tags"] = tag_virtual_array
+            index_virtual_array = VirtualNDArray(
+                Numpy.instance(),
+                shape=(length,),
+                dtype=numpy.int64,
+                generator=index_generator,
+            )
+            container_dict[f"{key}-index"] = index_virtual_array
+            nones_index_virtual_array = VirtualNDArray(
+                Numpy.instance(),
+                shape=(1,),
+                dtype=numpy.int64,
+                generator=nones_index_generator,
+            )
+            container_dict["nones-index"] = nones_index_virtual_array
+        else:
+            container_dict[f"{key}-tags"] = tag_generator()
+            container_dict[f"{key}-index"] = index_generator()
+            container_dict["nones-index"] = nones_index_generator()
     else:
-        # don't distinguish data and offsets
-        container_dict[f"{key}-data"] = content
-        container_dict[f"{key}-offsets"] = content
+        if virtual:
+            virtual_array = VirtualNDArray(
+                Numpy.instance(), shape=(length,), dtype=dtype, generator=raw_generator
+            )
+            container_dict[f"{key}-data"] = virtual_array
+            container_dict[f"{key}-offsets"] = virtual_array
+        else:
+            container_dict[f"{key}-data"] = content
+            container_dict[f"{key}-offsets"] = content

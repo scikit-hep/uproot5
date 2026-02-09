@@ -100,8 +100,10 @@ def test_counter_shadows_branch_5(tmp_path):
 
     with uproot.recreate(newfile) as fout:
         with pytest.raises(ValueError):
-            fout["tree"] = {"nb": [1, 2, 3], "b": [[1.1, 2.2, 3.3], [], [4.4, 5.5]]}
-        fout["tree"] = {"nb": [3, 0, 2], "b": [[1.1, 2.2, 3.3], [], [4.4, 5.5]]}
+            fout.mktree(
+                "tree", {"nb": [1, 2, 3], "b": [[1.1, 2.2, 3.3], [], [4.4, 5.5]]}
+            )
+        fout.mktree("tree", {"nb": [3, 0, 2], "b": [[1.1, 2.2, 3.3], [], [4.4, 5.5]]})
 
     with uproot.open(newfile) as fin:
         assert fin["tree/nb"].array().tolist() == [3, 0, 2]
@@ -113,8 +115,10 @@ def test_counter_shadows_branch_6(tmp_path):
 
     with uproot.recreate(newfile) as fout:
         with pytest.raises(ValueError):
-            fout["tree"] = {"b": [[1.1, 2.2, 3.3], [], [4.4, 5.5]], "nb": [1, 2, 3]}
-        fout["tree"] = {"b": [[1.1, 2.2, 3.3], [], [4.4, 5.5]], "nb": [3, 0, 2]}
+            fout.mktree(
+                "tree", {"b": [[1.1, 2.2, 3.3], [], [4.4, 5.5]], "nb": [1, 2, 3]}
+            )
+        fout.mktree("tree", {"b": [[1.1, 2.2, 3.3], [], [4.4, 5.5]], "nb": [3, 0, 2]})
 
     with uproot.open(newfile) as fin:
         assert fin["tree/nb"].array().tolist() == [3, 0, 2]

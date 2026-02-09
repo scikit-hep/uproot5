@@ -2,7 +2,7 @@
 
 [![PyPI version](https://badge.fury.io/py/uproot.svg)](https://pypi.org/project/uproot)
 [![Conda-Forge](https://img.shields.io/conda/vn/conda-forge/uproot)](https://github.com/conda-forge/uproot-feedstock)
-[![Python 3.9‒3.13](https://img.shields.io/badge/python-3.9%E2%80%923.13-blue)](https://www.python.org)
+[![Python 3.10‒3.14](https://img.shields.io/badge/python-3.10%E2%80%923.14-blue)](https://www.python.org)
 [![BSD-3 Clause License](https://img.shields.io/badge/license-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
 [![Continuous integration tests](https://github.com/scikit-hep/uproot5/actions/workflows/build-test.yml/badge.svg)](https://github.com/scikit-hep/uproot5/actions)
 
@@ -81,7 +81,7 @@ The following libraries are also useful in conjunction with Uproot, but are not 
 
 **For accessing remote files:**
 
-   * `minio`: if reading files with `s3://` URIs.
+   * `s3fs`: if reading files with `s3://` URIs.
    * `xrootd`: if reading files with `root://` URIs.
    * HTTP/S access is built in (Python standard library).
 
@@ -198,6 +198,13 @@ Thanks especially to the gracious help of Uproot contributors (including the [or
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/rossodisera"><img src="https://avatars.githubusercontent.com/u/46961664?v=4?s=100" width="100px;" alt="Andrea Serafini"/><br /><sub><b>Andrea Serafini</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot5/commits?author=rossodisera" title="Code">💻</a></td>
       <td align="center" valign="top" width="14.28%"><a href="http://www.ariostas.com"><img src="https://avatars.githubusercontent.com/u/7596837?v=4?s=100" width="100px;" alt="Andres Rios Tascon"/><br /><sub><b>Andres Rios Tascon</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot5/commits?author=ariostas" title="Code">💻</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/ikrommyd"><img src="https://avatars.githubusercontent.com/u/82155404?v=4?s=100" width="100px;" alt="Iason Krommydas"/><br /><sub><b>Iason Krommydas</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot5/commits?author=ikrommyd" title="Code">💻</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/fstrug"><img src="https://avatars.githubusercontent.com/u/84533949?v=4?s=100" width="100px;" alt="fstrug"/><br /><sub><b>fstrug</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot5/commits?author=fstrug" title="Code">💻</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/zlmarshall"><img src="https://avatars.githubusercontent.com/u/10702398?v=4?s=100" width="100px;" alt="Zach Marshall"/><br /><sub><b>Zach Marshall</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot5/commits?author=zlmarshall" title="Code">💻</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/mrzimu"><img src="https://avatars.githubusercontent.com/u/74824770?v=4?s=100" width="100px;" alt="Mingrun Li"/><br /><sub><b>Mingrun Li</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot5/commits?author=mrzimu" title="Code">💻</a></td>
+    </tr>
+    <tr>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/ianna"><img src="https://avatars.githubusercontent.com/u/1390682?v=4?s=100" width="100px;" alt="Ianna Osborne"/><br /><sub><b>Ianna Osborne</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot5/commits?author=ianna" title="Code">💻</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/Rachit931"><img src="https://avatars.githubusercontent.com/u/199397286?v=4?s=100" width="100px;" alt="Rachit931"/><br /><sub><b>Rachit931</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot5/commits?author=Rachit931" title="Documentation">📖</a></td>
     </tr>
   </tbody>
 </table>

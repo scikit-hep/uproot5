@@ -8,6 +8,7 @@ The implementation in this module does not use the RNTuple infrastructure in
 
 See :doc:`uproot.writing._cascade` for a general overview of the cascading writer concept.
 """
+
 from __future__ import annotations
 
 import datetime
@@ -43,6 +44,7 @@ from uproot.models.RNTuple import (
     _rntuple_repetition_format,
 )
 from uproot.writing._cascade import CascadeLeaf, CascadeNode, Key, String
+from uproot.writing.writable import _regularize_input_type_to_awkward
 
 _rntuple_string_length_format = struct.Struct("<I")
 
@@ -81,16 +83,11 @@ _ak_primitive_to_num_dict = {
 
 
 def _cpp_typename(akform, subcall=False):
+    # All numpy arrays are flattened beforehand
     if isinstance(akform, awkward.forms.NumpyForm) and akform.inner_shape == ():
         ak_primitive = akform.primitive
         typename = _ak_primitive_to_typename_dict[ak_primitive]
-    elif isinstance(akform, awkward.forms.NumpyForm):
-        ak_primitive = akform.primitive
-        inner_shape = akform.inner_shape
-        typename = _ak_primitive_to_typename_dict[ak_primitive]
-        for arr_size in inner_shape[::-1]:
-            typename = f"std::array<{typename},{arr_size}>"
-    elif isinstance(akform, (awkward.forms.ListOffsetForm, awkward.forms.ListForm)):
+    elif isinstance(akform, awkward.forms.ListOffsetForm):
         content_typename = _cpp_typename(akform.content, subcall=True)
         typename = f"std::vector<{content_typename}>"
         # Check if it contains strings and fix the type
@@ -114,7 +111,8 @@ def _cpp_typename(akform, subcall=False):
     elif isinstance(akform, awkward.forms.UnmaskedForm):
         return _cpp_typename(akform.content, subcall=True)
     else:
-        raise NotImplementedError(f"Form type {type(akform)} cannot be written yet")
+        msg = "This should not have happened. Please report this issue to the Uproot developers."
+        raise AssertionError(msg)
     if not subcall and "UntypedRecord" in typename:
         typename = ""  # empty types for anything that contains UntypedRecord
     return typename
@@ -268,7 +266,7 @@ class NTuple_Header(CascadeLeaf):
     def __init__(self, location, name, ntuple_description, akform):
         self._name = name
         self._ntuple_description = ntuple_description
-        self._akform = akform
+        self._akform = _to_packed_form(akform)
 
         self._serialize = None
         self._checksum = None
@@ -297,7 +295,7 @@ class NTuple_Header(CascadeLeaf):
         self._ak_node_count += 1
         if "__doc__" in akform.parameters:
             description = akform.parameters["__doc__"]
-        if isinstance(akform, awkward.forms.NumpyForm) and akform.inner_shape == ():
+        if isinstance(akform, awkward.forms.NumpyForm):
             type_name = _cpp_typename(akform)
             field = NTuple_Field_Description(
                 parent_fid,
@@ -311,37 +309,6 @@ class NTuple_Header(CascadeLeaf):
             else:
                 field_id = parent_fid
             ak_primitive = akform.parameters.get("__array__", akform.primitive)
-            type_num = _ak_primitive_to_num_dict[ak_primitive]
-            type_size = uproot.const.rntuple_col_num_to_size_dict[type_num]
-            col = NTuple_Column_Description(type_num, type_size, field_id, 0, 0)
-            self._column_records.append(col)
-            self._column_keys.append(f"node{self._ak_node_count}-data")
-        elif isinstance(akform, awkward.forms.NumpyForm):
-            reg_akform = akform.to_RegularForm()
-            inner_shape = (*akform.inner_shape, None)
-            for i, arr_size in enumerate(inner_shape):
-                if i > 0:
-                    parent_fid = field_id
-                    field_id = len(self._field_records)
-                    field_name = "_0"
-                    reg_akform = reg_akform.content
-                repetitive_flag = (
-                    uproot.const.RNTupleFieldFlags.NOFLAG
-                    if arr_size is None
-                    else uproot.const.RNTupleFieldFlags.REPETITIVE
-                )
-                type_name = _cpp_typename(reg_akform)
-                field = NTuple_Field_Description(
-                    parent_fid,
-                    uproot.const.RNTupleFieldRole.LEAF,
-                    field_name,
-                    type_name,
-                    flags=repetitive_flag,
-                    repetition=arr_size,
-                    field_description=description,
-                )
-                self._field_records.append(field)
-            ak_primitive = akform.primitive
             type_num = _ak_primitive_to_num_dict[ak_primitive]
             type_size = uproot.const.rntuple_col_num_to_size_dict[type_num]
             col = NTuple_Column_Description(type_num, type_size, field_id, 0, 0)
@@ -367,34 +334,6 @@ class NTuple_Header(CascadeLeaf):
             col = NTuple_Column_Description(type_num, type_size, field_id, 0, 0)
             self._column_records.append(col)
             self._column_keys.append(f"node{self._ak_node_count}-offsets")
-            # content data
-            self._build_field_col_records(
-                akform.content,
-                parent_fid=field_id,
-                add_field=field_role == uproot.const.RNTupleFieldRole.COLLECTION,
-                field_name="_0",
-                description=description,
-            )
-        elif isinstance(akform, awkward.forms.ListForm):
-            type_name = _cpp_typename(akform)
-            field_role = uproot.const.RNTupleFieldRole.COLLECTION
-            if akform.parameters.get("__array__", "") == "string":
-                type_name = "std::string"
-                field_role = uproot.const.RNTupleFieldRole.LEAF
-            field = NTuple_Field_Description(
-                parent_fid,
-                field_role,
-                field_name,
-                type_name,
-                field_description=description,
-            )
-            self._field_records.append(field)
-            # They are always converted to ListOffsetArrays with Int64 offsets
-            type_num = _ak_primitive_to_num_dict["i64"]
-            type_size = uproot.const.rntuple_col_num_to_size_dict[type_num]
-            col = NTuple_Column_Description(type_num, type_size, field_id, 0, 0)
-            self._column_records.append(col)
-            self._column_keys.append(f"node{self._ak_node_count}-startstop")
             # content data
             self._build_field_col_records(
                 akform.content,
@@ -493,11 +432,12 @@ class NTuple_Header(CascadeLeaf):
                 description=description,
             )
         else:
-            raise NotImplementedError(f"Form type {type(akform)} cannot be written yet")
+            msg = "This should not have happened. Please report this issue to the Uproot developers."
+            raise AssertionError(msg)
 
     def generate_field_col_records(self):
         akform = self._akform
-        for field_name, topakform in zip(akform.fields, akform.contents):
+        for field_name, topakform in zip(akform.fields, akform.contents, strict=True):
             self._build_field_col_records(
                 topakform,
                 field_name=field_name,
@@ -916,54 +856,48 @@ class NTuple(CascadeNode):
         4. Update anchor's foot metadata values in-place
         """
 
-        # TODO: Think of a better way to do this
-        if isinstance(data, dict):
-            data = awkward.Array(data)
-        elif not isinstance(data, awkward.Array):
-            raise TypeError("data must be an awkward.Array or a dict")
+        data = _regularize_input_type_to_awkward(data)
+        if not isinstance(data, awkward.Array):
+            raise TypeError(
+                "data must be an Awkward array, a dict, or a Pandas DataFrame"
+            )
 
-        if data.layout.form != self._header._akform:
-            raise ValueError("data is not compatible with this RNTuple")
+        data = _to_packed(data.layout)
+
+        if data.form != self._header._akform:
+            msg = f"Data is not compatible with this RNTuple. Expected {self._header._akform}, got {data.form}"
+            raise ValueError(msg)
 
         # 1. Write pages
         # We write a single page for each column for now
 
         cluster_page_data = []  # list of list of (locator, len, offset)
         data_buffers = awkward.to_buffers(data)[2]
-        for idx, key in enumerate(self._header._column_keys):
-            if "switch" in key:
+
+        # We need to modify make a few modifications since not everything directly translates to RNTuples
+        for key in list(data_buffers.keys()):
+            barekey = key.split("-")[0]
+            if "offset" in key:
+                # RNTuples don't store the first offset
+                data_buffers[key] = data_buffers[key][1:]
+            elif "index" in key and barekey + "-tags" in data_buffers:
+                # We group indices and tags into a single array
                 dtype = numpy.dtype([("index", "int64"), ("tag", "int32")])
-                indices = data_buffers[key.split("-")[0] + "-index"]
-                tags = data_buffers[key.split("-")[0] + "-tags"]
+                indices = data_buffers[barekey + "-index"]
+                tags = data_buffers[barekey + "-tags"]
                 switches = numpy.zeros(len(indices), dtype=dtype)
                 switches["index"] = indices
                 switches["tag"] = tags + 1
-                col_data = switches
-            elif "startstop" in key:
-                # ListArrays need to be converted to ListOffsetArrays
-                barekey = key.split("-")[0]
-                starts = awkward.index.Index(data_buffers[f"{barekey}-starts"])
-                stops = awkward.index.Index(data_buffers[f"{barekey}-stops"])
-                next_barekey = f"node{int(barekey[4:])+1}"
-                content = awkward.contents.NumpyArray(
-                    data_buffers[f"{next_barekey}-data"]
-                )
-                tmp_buffers = awkward.to_buffers(
-                    awkward.contents.ListArray(
-                        starts, stops, content
-                    ).to_ListOffsetArray64()
-                )[2]
-                data_buffers[f"{next_barekey}-data"] = tmp_buffers["node1-data"]
-                col_data = tmp_buffers["node0-offsets"][1:]
-                # no longer need the temporary data
-                del starts, stops, content, tmp_buffers
-            else:
-                col_data = data_buffers[key]
-            if "offsets" in key:
-                col_data = col_data[1:]
+                data_buffers[barekey + "-switch"] = switches
             elif "index" in key:
-                deltas = numpy.array(col_data != -1, dtype=col_data.dtype)
-                col_data = numpy.cumsum(deltas)
+                # At this point, non-negative indices are guaranteed to be sorted
+                # so we can easily convert to a ListOffsetArray
+                index = data_buffers[key]
+                deltas = numpy.array(index >= 0, dtype=index.dtype)
+                data_buffers[key] = numpy.cumsum(deltas, dtype=deltas.dtype)
+
+        for idx, key in enumerate(self._header._column_keys):
+            col_data = data_buffers[key]
             col_len = len(col_data.reshape(-1))
             raw_data = col_data.reshape(-1).view("uint8")
             if col_data.dtype == numpy.dtype("bool"):
@@ -1111,3 +1045,168 @@ class NTuple(CascadeNode):
 
     def write_updates(self, sink):
         sink.flush()
+
+
+def _to_packed_form(form):
+    match form.__class__:
+        case awkward.forms.BitMaskedForm | awkward.forms.ByteMaskedForm:
+            return awkward.forms.IndexedOptionForm(
+                "i64", _to_packed_form(form.content), parameters=form.parameters
+            )
+        case awkward.forms.EmptyForm:
+            return form
+        case awkward.forms.IndexedForm:
+            return _to_packed_form(form.content)
+        case awkward.forms.IndexedOptionForm:
+            return awkward.forms.IndexedOptionForm(
+                form.index, _to_packed_form(form.content), parameters=form.parameters
+            )
+        case awkward.forms.ListForm | awkward.forms.ListOffsetForm:
+            return awkward.forms.ListOffsetForm(
+                "i64", _to_packed_form(form.content), parameters=form.parameters
+            )
+        case awkward.forms.NumpyForm:
+            shape = form.inner_shape
+            out = awkward.forms.NumpyForm(form.primitive, parameters=form.parameters)
+            for i in range(len(shape) - 1, -1, -1):
+                out = awkward.forms.RegularForm(out, shape[i])
+            return out
+        case awkward.forms.RecordForm:
+            return awkward.forms.RecordForm(
+                [_to_packed_form(x) for x in form.contents],
+                form._fields,
+                parameters=form.parameters,
+            )
+        case awkward.forms.RegularForm:
+            return awkward.forms.RegularForm(
+                _to_packed_form(form.content), form._size, parameters=form.parameters
+            )
+        case awkward.forms.UnionForm:
+            return awkward.forms.UnionForm(
+                "i8",
+                form.index,
+                [_to_packed_form(x) for x in form.contents],
+                parameters=form.parameters,
+            )
+        case awkward.forms.UnmaskedForm:
+            return awkward.forms.UnmaskedForm(
+                _to_packed_form(form._content), parameters=form.parameters
+            )
+        case _:
+            msg = f"Form type {type(form)} cannot be written. If you believe this should be supported, please let the Uproot developers know."
+            raise NotImplementedError(msg)
+
+
+def _to_packed(layout):
+    """
+    This is similar to `to_packed` in Awkward, but a bit more consistent.
+    """
+    match layout.__class__:
+        case awkward.contents.BitMaskedArray:
+            next = layout.to_IndexedOptionArray64()
+            content = _to_packed(next._content[: layout.length])
+            return awkward.contents.IndexedOptionArray(
+                next._index, content, parameters=next.parameters
+            )
+        case awkward.contents.ByteMaskedArray:
+            next = layout.to_IndexedOptionArray64()
+            content = _to_packed(next._content[: layout._mask.length])
+            return awkward.contents.IndexedOptionArray(
+                next._index, content, parameters=next.parameters
+            )
+        case awkward.contents.EmptyArray:
+            return layout
+        case awkward.contents.IndexedArray:
+            projected = layout.project()
+            return _to_packed(projected)
+        case awkward.contents.IndexedOptionArray:
+            nplike = layout._backend.nplike
+            original_index = layout._index.data
+            is_none = original_index < 0
+            num_none = nplike.index_as_shape_item(nplike.count_nonzero(is_none))
+            new_index = nplike.empty(layout._index.length, dtype=layout._index.dtype)
+            new_index[is_none] = -1
+            new_index[~is_none] = nplike.arange(
+                nplike.shape_item_as_index(new_index.size - num_none),
+                dtype=layout._index.dtype,
+            )
+            projected = layout.project()
+            return awkward.contents.IndexedOptionArray(
+                awkward.index.Index(new_index, nplike=layout._backend.nplike),
+                _to_packed(projected),
+                parameters=layout._parameters,
+            )
+        case awkward.contents.ListArray:
+            next = layout.to_ListOffsetArray64(True)
+            return _to_packed(next)
+        case awkward.contents.ListOffsetArray:
+            next = layout.to_ListOffsetArray64(True)
+            next_content = next._content[: next._offsets[-1]]
+            return awkward.contents.ListOffsetArray(
+                next._offsets,
+                _to_packed(next_content),
+                parameters=next._parameters,
+            )
+        case awkward.contents.NumpyArray:
+            return layout.to_contiguous().to_RegularArray()
+        case awkward.contents.RecordArray:
+            return awkward.contents.RecordArray(
+                [_to_packed(x[: layout.length]) for x in layout._contents],
+                layout._fields,
+                layout.length,
+                parameters=layout._parameters,
+                backend=layout._backend,
+            )
+        case awkward.contents.RegularArray:
+            nplike = layout._backend.nplike
+            length = layout.length * layout._size
+            content = layout._content[: nplike.shape_item_as_index(length)]
+
+            return awkward.contents.RegularArray(
+                _to_packed(content),
+                layout._size,
+                layout.length,
+                parameters=layout._parameters,
+            )
+        case awkward.contents.UnionArray:
+            nplike = layout._backend.nplike
+            tags = layout._tags.data
+            original_index = index = layout._index.data[
+                : nplike.shape_item_as_index(tags.shape[0])
+            ]
+
+            contents = list(layout._contents)
+
+            for tag in range(len(layout._contents)):
+                is_tag = tags == tag
+                num_tag = nplike.index_as_shape_item(nplike.count_nonzero(is_tag))
+
+                if (
+                    contents[tag].length is not awkward._nplikes.shape.unknown_length
+                    and num_tag is not awkward._nplikes.shape.unknown_length
+                    and contents[tag].length > num_tag
+                ):
+                    if original_index is index:
+                        index = index.copy()
+                    new_index_values = layout._backend.nplike.arange(
+                        num_tag, dtype=index.dtype
+                    )
+                    index[is_tag] = new_index_values
+                    contents[tag] = layout.project(tag)
+
+                contents[tag] = _to_packed(contents[tag])
+
+            return awkward.contents.UnionArray(
+                awkward.index.Index8(tags, nplike=layout._backend.nplike),
+                awkward.index.Index(index, nplike=layout._backend.nplike),
+                contents,
+                parameters=layout._parameters,
+            )
+        case awkward.contents.UnmaskedArray:
+            return awkward.contents.UnmaskedArray(
+                _to_packed(layout._content),
+                parameters=layout._parameters,
+            )
+        case _:
+            msg = f"Array type {type(layout)} cannot be written. If you believe this should be supported, please let the Uproot developers know."
+            raise NotImplementedError(msg)

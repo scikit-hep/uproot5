@@ -3,6 +3,7 @@
 """
 This module defines integer constants used by serialization and deserialization routines.
 """
+
 from __future__ import annotations
 
 from enum import IntFlag
@@ -138,8 +139,8 @@ rntuple_col_num_to_dtype_dict = {
     0x0B: "float16",
     0x0C: "float32",
     0x0D: "float64",
-    0x0E: "uint32",  # Index32
-    0x0F: "uint64",  # Index64
+    0x0E: "int32",  # Index32
+    0x0F: "int64",  # Index64
     0x10: "switch",  # Switch: (uint64, uint32)
     0x11: "int16",  # SplitInt16: split + zigzag encoding
     0x12: "uint16",  # SplitUInt16: split encoding
@@ -150,8 +151,8 @@ rntuple_col_num_to_dtype_dict = {
     0x17: "float16",  # SplitReal16: split encoding
     0x18: "float32",  # SplitReal32: split encoding
     0x19: "float64",  # SplitReal64: split encoding
-    0x1A: "uint32",  # SplitIndex32: split + delta encoding
-    0x1B: "uint64",  # SplitIndex64: split + delta encoding
+    0x1A: "int32",  # SplitIndex32: split + delta encoding
+    0x1B: "int64",  # SplitIndex64: split + delta encoding
     0x1C: "real32trunc",  # Real32Trunc: float32 with truncated mantissa
     0x1D: "real32quant",  # Real32Quant: float32 with quantized integer representation
 }

@@ -1122,11 +1122,13 @@ Writing TTrees to a file
 
 TTrees are a special type of object, just as TDirectories are special: data can be cumulatively added to them.
 
-However, :doc:`uproot.writing.writable.WritableTree` objects can be created in the same way as static objects, by assigning TTree-like data to a name in a directory.
+:doc:`uproot.writing.writable.WritableTree` objects can be created using the :ref:`uproot.writing.writable.WritableDirectory.mktree` method that Uproot provides for TDirectories.
+Previously, they could be created by assigning TTree-like data to a name in a directory (e.g., ``file["tree"] = {"branch": np.arange(1000)}``). However, this syntax was deprecated,
+as Uproot will switch to writing RNTuples with syntax, since the HEP community is moving towards RNTuples.
 
 .. code-block:: python
 
-    >>> file["tree1"] = {"branch1": np.arange(1000), "branch2": np.arange(1000)*1.1}
+    >>> file.mktree("tree1", {"branch1": np.arange(1000), "branch2": np.arange(1000)*1.1})
     >>> file["tree1"]
     <WritableTree '/tree1' at 0x7f2ede193e20>
     >>> file["tree1"].show()
@@ -1156,7 +1158,7 @@ Python dicts of equal-length NumPy arrays are TTree-like, as are Pandas DataFram
     999  999  1098.9
 
     [1000 rows x 2 columns]
-    >>> file["tree2"] = df
+    >>> file.mktree("tree2", df)
     >>> file["tree2"]
     <WritableTree '/tree2' at 0x7f2e7c516d90>
     >>> file["tree2"].show()
@@ -1171,7 +1173,7 @@ If the arrays are Awkward Arrays, they can contain a variable number of values p
 .. code-block:: python
 
     >>> import awkward as ak
-    >>> file["tree3"] = {"branch": ak.Array([[1.1, 2.2, 3.3], [], [4.4, 5.5]])}
+    >>> file.mktree("tree3", {"branch": ak.Array([[1.1, 2.2, 3.3], [], [4.4, 5.5]])})
     >>> file["tree3"]
     <WritableTree '/tree3' at 0x7f2e7c516dc0>
     >>> file["tree3"].show()
@@ -1184,7 +1186,7 @@ And Awkward record arrays, constructed with `ak.zip <https://awkward-array.readt
 
 .. code-block:: python
 
-    >>> file["tree4"] = {"Muon": ak.zip({"pt": muon_pt, "eta": muon_eta, "phi": muon_phi})}
+    >>> file.mktree("tree4", {"Muon": ak.zip({"pt": muon_pt, "eta": muon_eta, "phi": muon_phi})})
     >>> file["tree4"]
     <WritableTree '/tree4' at 0x7fee9e3ebc40>
     >>> file["tree4"].show()
@@ -1311,3 +1313,67 @@ Here is an example of writing an RNTuple. Since TTree is still the default forma
     >>> data = {"my_int": [1,2], "my_vector": [[1,2], [3,4,5]]}
     >>> rntuple = file.mkrntuple("my_rntuple", data)
     >>> rntuple.extend(data) # Can be extended, just like TTrees
+
+Using your own interpretation
+--------------------------------
+
+Interpretations manages how data are read from files and converted into arrays. There are many built-in interpretations, but you can also write your own. This is useful if you want to read your custom classes that are not supported by Uproot.
+
+To write your own interpretation, you need to subclass :doc:`uproot.interpretation.custom.CustomInterpretation` and implement some methods:
+
+.. code-block:: python
+
+    import uproot
+    from uproot.interpretation.custom import CustomInterpretation
+
+    class MyCustomInterpretation(CustomInterpretation):
+        def __init__(
+            self,
+            branch: uproot.behaviors.TBranch.TBranch,
+            context: dict,
+            simplify: bool,
+        ):
+            super().__init__(branch, context, simplify)
+            # Initialize your interpretation here
+
+        @classmethod
+        def match_branch(
+            self,
+            branch: uproot.behaviors.TBranch.TBranch,
+            context: dict,
+            simplify: bool,
+        ) -> bool:
+            # Return True if this interpretation can handle the branch
+            # You can also declare this method as a class method
+
+        def basket_array(
+            self,
+            data,
+            byte_offsets,
+            basket,
+            branch,
+            context,
+            cursor_offset,
+            library,
+            interp_options,
+        ):
+            # Convert the data from the basket into an array
+            # `data` is the raw binary data from the basket as `np.ndarray[np.uint8]`,
+            # `byte_offsets` is a `uint32` numpy array with the byte offsets of each entry.
+
+The ``match_branch`` method tells Uproot whether this interpretation can handle a specific branch. It is called for each branch in the file, and if it returns ``True``, Uproot will instantiate this interpretation with the same arguments passed to ``match_branch``.
+
+The ``basket_array`` method is where you convert the raw binary data from the basket into an array. The ``data`` argument is a NumPy array of type ``np.uint8``, which contains the raw bytes of the basket. The ``byte_offsets`` argument is a NumPy array of type ``np.uint32``, which contains the byte offsets of each entry in ``data``. You should return the converted data in this method.
+
+.. note::
+
+    If ``basket_array`` does not return an ``awkward``, ``numpy`` array or ``pandas`` dataframe, you need to reimplement the ``final_array`` method to concatenate the results.
+
+To use your custom interpretation, register it with Uproot like:
+
+.. code-block:: python
+
+    import uproot
+    uproot.register_interpretation(MyCustomInterpretation)
+
+Then you can use it to read data as described in the previous sections.

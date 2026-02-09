@@ -27,6 +27,8 @@ from collections.abc import Mapping, MutableMapping
 from pathlib import Path
 from typing import IO
 
+import numpy
+
 import uproot._util
 import uproot.compression
 import uproot.deserialization
@@ -35,6 +37,8 @@ import uproot.model
 import uproot.models.TObjString
 import uproot.sink.file
 import uproot.writing._cascade
+import uproot.writing._cascadetree
+import uproot.writing.identify
 from uproot._util import no_filter, no_rename
 
 
@@ -1250,7 +1254,7 @@ in file {self.file_path} in directory {self.path}"""
     def mktree(
         self,
         name,
-        branch_types,
+        branch_types_or_data,
         title="",
         *,
         counter_name=lambda counted: "n" + counted,
@@ -1261,8 +1265,10 @@ in file {self.file_path} in directory {self.path}"""
         """
         Args:
             name (str): Name of the new TTree.
-            branch_types (dict or pairs of str \u2192 NumPy dtype/Awkward type): Name
-                and type specification for the TBranches.
+            branch_types_or_data (dict of str \u2192 NumPy dtype/Awkward type,
+                or dict of str \u2192 data to be written in the TBranch): Name
+                and type specification for the TBranches. If the values are not valid
+                type specifications, they are assumed to be the actual data to be written.
             title (str): Title for the new TTree.
             counter_name (callable of str \u2192 str): Function to generate counter-TBranch
                 names for Awkward Arrays of variable-length lists.
@@ -1288,6 +1294,24 @@ in file {self.file_path} in directory {self.path}"""
         """
         if self._file.sink.closed:
             raise ValueError("cannot create a TTree in a closed file")
+
+        # If data is provided, create an empty TTree and then extend it
+        branch_types_or_data = _regularize_input_type_to_dict(branch_types_or_data)
+        if not _is_type_specification(branch_types_or_data):
+            metadata, data = _unpack_metadata_and_arrays(branch_types_or_data)
+            tree = self.mktree(
+                name,
+                metadata,
+                title=title,
+                counter_name=counter_name,
+                field_name=field_name,
+                initial_basket_capacity=initial_basket_capacity,
+                resize_factor=resize_factor,
+            )
+            tree.extend(data)
+            return tree
+
+        branch_types = branch_types_or_data
 
         try:
             at = name.rindex("/")
@@ -1347,13 +1371,14 @@ in file {self.file_path} in directory {self.path}"""
     def mkrntuple(
         self,
         name,
-        ak_form_or_data,
+        type_spec_or_data,
         description="",
     ):
         """
         Args:
             name (str): Name of the new RNTuple.
-            ak_form_or_data (Awkward RecordForm or RecordArray): Name
+            type_spec_or_data (dict of str \u2192 NumPy dtype/Awkward type,
+                Awkward RecordForm, or data in the form of a RecordArray, Pandas dataframe, or dict): Name
                 and type specification for the fields. If a RecordForm is provided,
                 the RNTuple will be empty. If a RecordArray is provided, the RNTuple
                 will be initialized with the input data.
@@ -1364,26 +1389,30 @@ in file {self.file_path} in directory {self.path}"""
         if self._file.sink.closed:
             raise ValueError("cannot create a RNTuple in a closed file")
 
-        # TODO: Think of a better alternative to this
+        if _is_type_specification(type_spec_or_data):
+            ak_form = _type_specification_to_awkward_form(type_spec_or_data)
+            return self.mkrntuple(name, ak_form, description)
+
         awkward = uproot.extras.awkward()
-        if isinstance(ak_form_or_data, awkward.Array):
-            ntuple = self.mkrntuple(name, ak_form_or_data.layout.form, description)
-            ntuple.extend(ak_form_or_data)
+        type_spec_or_data = _regularize_input_type_to_awkward(type_spec_or_data)
+        if isinstance(type_spec_or_data, awkward.Array):
+            ntuple = self.mkrntuple(name, type_spec_or_data.layout.form, description)
+            ntuple.extend(type_spec_or_data)
             return ntuple
-        elif isinstance(ak_form_or_data, dict):
-            ak_data = awkward.Array(ak_form_or_data)
-            ntuple = self.mkrntuple(name, ak_data.layout.form, description)
-            ntuple.extend(ak_data)
-            return ntuple
-        elif not isinstance(ak_form_or_data, awkward.forms.Form):
+        if isinstance(
+            type_spec_or_data, (awkward.contents.Content, awkward.forms.Form)
+        ) and not isinstance(type_spec_or_data, awkward.forms.RecordForm):
+            raise TypeError("Awkward input must be a high-level array or a RecordForm")
+        elif not isinstance(type_spec_or_data, awkward.forms.RecordForm):
             raise TypeError(
-                "Input must be an Awkward Form, an Awkward Array, or a dictionary"
+                "Input must be a type specification (in the form of an Awkward RecordForm, or a dict of str \u2192 NumPy dtype/Awkward type)"
+                "or data (in the form of a high-level Awkward record array, Pandas dataframe, or dict)"
             )
 
-        # The rest assumes that ak_form_or_data is a RecordForm
+        # The rest assumes that type_spec_or_data is a RecordForm
 
-        if description == "" and "__doc__" in ak_form_or_data.parameters:
-            description = ak_form_or_data.parameters["__doc__"]
+        if description == "" and "__doc__" in type_spec_or_data.parameters:
+            description = type_spec_or_data.parameters["__doc__"]
 
         try:
             at = name.rindex("/")
@@ -1403,7 +1432,7 @@ in file {self.file_path} in directory {self.path}"""
                 directory._file.sink,
                 treename,
                 description,
-                ak_form_or_data,
+                type_spec_or_data,
             ),
         )
         directory._file._new_ntuple(ntuple)
@@ -1471,7 +1500,7 @@ in file {source.file_path} in directory {source.path}"""
 
         notifications = queue.Queue()
         ranges = {}
-        for new_name, old_key in zip(new_names, keys):
+        for new_name, old_key in zip(new_names, keys, strict=True):
             if old_key.fClassName not in ("TDirectory", "TDirectoryFile"):
                 start = old_key.data_cursor.index
                 stop = start + old_key.data_compressed_bytes
@@ -1491,7 +1520,7 @@ in file {source.file_path} in directory {source.path}"""
         self._file._cascading.streamers.update_streamers(self._file.sink, streamers)
 
         new_dirs = {}
-        for new_name, old_key in zip(new_names, keys):
+        for new_name, old_key in zip(new_names, keys, strict=True):
             classname = old_key.fClassName
             path = new_name.strip("/").split("/")
             if classname not in ("TDirectory", "TDirectoryFile"):
@@ -1589,15 +1618,14 @@ class WritableTree:
 
     Represents a writable ``TTree`` from a ROOT file.
 
-    This object would normally be created by assigning a TTree-like data to a
-    :doc:`uproot.writing.writable.WritableDirectory`. For instance:
+    This object can be created using the :ref:`uproot.writing.writable.WritableDirectory.mktree` method. For instance:
 
     .. code-block:: python
 
-        my_directory["tree1"] = {"branch1": np.array(...), "branch2": ak.Array(...)}
-        my_directory["tree2"] = numpy_structured_array
-        my_directory["tree3"] = awkward_record_array
-        my_directory["tree4"] = pandas_dataframe
+        my_directory.mktree("tree1", {"branch1": np.array(...), "branch2": ak.Array(...)})
+        my_directory.mktree("tree2", numpy_structured_array)
+        my_directory.mktree("tree3", awkward_record_array)
+        my_directory.mktree("tree4", pandas_dataframe)
 
     Recognized data types:
 
@@ -1618,14 +1646,12 @@ class WritableTree:
 
     .. code-block:: python
 
-        my_directory["tree5"] = ak.zip({"branch1": array1, "branch2": array2, "branch3": array3})
+        my_directory.mktree("tree5", ak.zip({"branch1": array1, "branch2": array2, "branch3": array3}))
 
     would produce only one counter TBranch.
 
-    Assigning TTree-like data to a directory creates the TTree object with all of
-    its metadata and fills it with the contents of the arrays in one step. To separate
-    the process of creating the TTree metadata from filling the first TBasket, use the
-    :doc:`uproot.writing.writable.WritableDirectory.mktree` method:
+    The :doc:`uproot.writing.writable.WritableDirectory.mktree` method allows you to separate
+    the process of creating the TTree metadata from filling the first TBasket:
 
     .. code-block:: python
 
@@ -2178,3 +2204,169 @@ class WritableNTuple:
             **As a word of warning,** be sure that each call to :ref:`uproot.writing.writable.WritableNTuple.extend` includes at least 100 kB per branch/array. (NumPy and Awkward Arrays have an `nbytes <https://numpy.org/doc/stable/reference/generated/numpy.ndarray.nbytes.html>`__ property; you want at least ``100000`` per array.) If you ask Uproot to write very small TBaskets, it will spend more time working on TBasket overhead than actually writing data. The absolute worst case is one-entry-per-:ref:`uproot.writing.writable.WritableTree.extend`. See `#428 (comment) <https://github.com/scikit-hep/uproot5/pull/428#issuecomment-908703486>`__.
         """
         self._cascading.extend(self._file, self._file.sink, data)
+
+
+def _is_type_specification(obj):
+    awkward = uproot.extras.awkward()
+    to_check = [obj]
+    while len(to_check) > 0:
+        obj = to_check.pop()
+        if isinstance(obj, Mapping):
+            if all(isinstance(k, str) for k in obj.keys()):
+                to_check.extend(obj.values())
+                continue
+            else:
+                return False
+        if not isinstance(
+            obj, (numpy.dtype, awkward.types.Type, awkward.types.ArrayType, str, type)
+        ):
+            return False
+    return True
+
+
+def _type_specification_to_awkward_form(obj):
+    awkward = uproot.extras.awkward()
+    if isinstance(obj, awkward.forms.Form):
+        return obj
+    if isinstance(obj, (awkward.types.Type, awkward.types.ArrayType)):
+        return awkward.forms.from_type(obj)
+    if isinstance(obj, (numpy.dtype, type)):
+        obj = str(numpy.dtype(obj))
+    if isinstance(obj, str):
+        return awkward.forms.from_type(
+            awkward.types.from_datashape(obj, highlevel=False)
+        )
+    if isinstance(obj, Mapping):
+        return awkward.forms.RecordForm(
+            [_type_specification_to_awkward_form(v) for v in obj.values()],
+            list(obj.keys()),
+        )
+    raise TypeError(
+        f"Cannot construct an Awkward Form from {type(obj).__name__}. "
+        f"Supported types: Form, Type, ArrayType, dtype, str, Mapping"
+    )
+
+
+def _regularize_input_type_to_dict(obj):
+    if uproot._util.from_module(obj, "pandas"):
+        import pandas
+
+        if isinstance(
+            obj, pandas.DataFrame
+        ) and uproot._util.pandas_has_attr_is_numeric(pandas)(obj.index):
+            obj = uproot.writing._cascadetree.dataframe_to_dict(obj)
+
+    if uproot._util.from_module(obj, "awkward"):
+        import awkward
+
+        if isinstance(obj, awkward.Array):
+            obj = {"": obj}
+
+    if isinstance(obj, numpy.ndarray) and obj.dtype.fields is not None:
+        obj = uproot.writing._cascadetree.recarray_to_dict(obj)
+
+    return obj
+
+
+def _regularize_input_type_to_awkward(obj):
+    import awkward
+
+    if uproot._util.from_module(obj, "pandas"):
+        import pandas
+
+        if isinstance(
+            obj, pandas.DataFrame
+        ) and uproot._util.pandas_has_attr_is_numeric(pandas)(obj.index):
+            obj = uproot.writing._cascadetree.dataframe_to_dict(obj)
+            # Try to retype dtype=object columns
+            for k in obj.keys():
+                if obj[k].dtype == object:
+                    obj[k] = awkward.Array(obj[k].tolist())
+            obj = awkward.Array(obj)
+
+    elif isinstance(obj, numpy.ndarray) and obj.dtype.fields is not None:
+        obj = awkward.Array(obj)
+
+    elif isinstance(obj, dict):
+        # Sort dictionary keys to avoid issues
+        obj = {k: obj[k] for k in sorted(obj.keys())}
+        obj = awkward.Array(obj)
+
+    return obj
+
+
+def _unpack_metadata_and_arrays(obj):
+    data = {}
+    metadata = {}
+
+    for branch_name, branch_array in obj.items():
+        if uproot._util.from_module(branch_array, "pandas"):
+            import pandas
+
+            if isinstance(branch_array, pandas.DataFrame):
+                branch_array = uproot.writing._cascadetree.dataframe_to_dict(  # noqa: PLW2901 (overwriting branch_array)
+                    branch_array
+                )
+
+        if (
+            isinstance(branch_array, numpy.ndarray)
+            and branch_array.dtype.fields is not None
+        ):
+            branch_array = uproot.writing._cascadetree.recarray_to_dict(  # noqa: PLW2901 (overwriting branch_array)
+                branch_array
+            )
+
+        if isinstance(branch_array, Mapping) and all(
+            isinstance(x, str) for x in branch_array
+        ):
+            datum = {}
+            metadatum = {}
+            for kk, vv in branch_array.items():
+                try:
+                    vv = uproot._util.ensure_numpy(vv)  # noqa: PLW2901 (overwriting vv)
+                except TypeError:
+                    raise TypeError(
+                        f"unrecognizable array type {type(branch_array)} associated with {branch_name!r}"
+                    ) from None
+                datum[kk] = vv
+                branch_dtype = vv.dtype
+                branch_shape = vv.shape[1:]
+                if branch_shape != ():
+                    branch_dtype = numpy.dtype((branch_dtype, branch_shape))
+                metadatum[kk] = branch_dtype
+
+            data[branch_name] = datum
+            metadata[branch_name] = metadatum
+
+        else:
+            if uproot._util.from_module(branch_array, "awkward"):
+                data[branch_name] = branch_array
+                metadata[branch_name] = branch_array.type
+
+            else:
+                try:
+                    branch_array = uproot._util.ensure_numpy(  # noqa: PLW2901 (overwriting branch_array)
+                        branch_array
+                    )
+                except TypeError:
+                    awkward = uproot.extras.awkward()
+                    try:
+                        branch_array = awkward.from_iter(  # noqa: PLW2901 (overwriting branch_array)
+                            branch_array
+                        )
+                    except Exception:
+                        raise TypeError(
+                            f"unrecognizable array type {type(branch_array)} associated with {branch_name!r}"
+                        ) from None
+                    else:
+                        data[branch_name] = branch_array
+                        metadata[branch_name] = awkward.type(branch_array)
+
+                else:
+                    data[branch_name] = branch_array
+                    branch_dtype = branch_array.dtype
+                    branch_shape = branch_array.shape[1:]
+                    if branch_shape != ():
+                        branch_dtype = numpy.dtype((branch_dtype, branch_shape))
+                    metadata[branch_name] = branch_dtype
+    return metadata, data

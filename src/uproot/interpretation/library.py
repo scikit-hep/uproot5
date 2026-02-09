@@ -21,6 +21,7 @@ are not efficiently represented, but some jagged arrays are encoded as
 Lazy arrays (:doc:`uproot.behaviors.TBranch.lazy`) can only use the
 :doc:`uproot.interpretation.library.Awkward` library.
 """
+
 from __future__ import annotations
 
 import json
@@ -165,6 +166,9 @@ class Library:
         return repr(self.name)
 
     def __eq__(self, other):
+        if not isinstance(other, Library):
+            return NotImplemented
+
         return type(_libraries[self.name]) is type(_libraries[other.name])
 
 
@@ -294,7 +298,7 @@ def _object_to_awkward_json(form, obj):
 
     elif form["class"] == "RecordArray":
         out = {}
-        for name, subform in zip(form["fields"], form["contents"]):
+        for name, subform in zip(form["fields"], form["contents"], strict=True):
             if not name.startswith("@"):
                 if hasattr(obj, "has_member") and obj.has_member(name):
                     out[name] = _object_to_awkward_json(subform, obj.member(name))
@@ -374,7 +378,7 @@ def _awkward_json_to_array(awkward, form, array):
     elif form["class"] == "RecordArray":
         contents = []
         names = []
-        for name, subform in zip(form["fields"], form["contents"]):
+        for name, subform in zip(form["fields"], form["contents"], strict=True):
             if not name.startswith("@"):
                 if isinstance(array, awkward.contents.EmptyArray):
                     contents.append(_awkward_json_to_array(awkward, subform, array))
@@ -647,7 +651,7 @@ class Awkward(Library):
                         offsets.append(array_layout.offsets)
                         jaggeds.append([_rename(name, context)])
                     else:
-                        for o, j in zip(offsets, jaggeds):
+                        for o, j in zip(offsets, jaggeds, strict=True):
                             if numpy.array_equal(array_layout.offsets, o):
                                 j.append(_rename(name, context))
                                 break
