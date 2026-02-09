@@ -187,20 +187,21 @@ or
     conda install cramjam""") from err
     else:
         return cramjam
-    
-def numcodecs() : 
+
+
+def numcodecs():
     """
     Imports and returns ``numcodecs``.
     """
-    try : 
+    try:
         import numcodecs
-    except ModuleNotFoundError as err : 
+    except ModuleNotFoundError as err:
         raise ModuleNotFoundError("""install the `numcodecs` package with:
 
     pip install numcodecs
-                                
-or 
-            
+
+or
+
     conda install numcodecs""") from err
     else:
         return numcodecs

@@ -273,7 +273,7 @@ class LZMA(Compression, _DecompressLZMA):
             out = codec.encode(data)
             out = b"".join(out) if isinstance(out, list) else bytes(out)
             return out
-        
+
         except ModuleNotFoundError:
             # Failure due to numcodecs not installed = fall back to cramjam/stdlib
             pass
