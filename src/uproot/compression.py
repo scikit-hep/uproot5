@@ -196,9 +196,9 @@ class _DecompressLZMA:
             codec = numcodecs.LZMA()
             decoded = codec.decode(data)
 
-            if isinstance(decoded, list) : 
+            if isinstance(decoded, list):
                 decoded = b"".join(decoded)
-            else : 
+            else:
                 decoded = bytes(decoded)
 
             # numcodecs does not gaurentee outpute size ( must validate )
@@ -362,10 +362,10 @@ class _DecompressZSTD:
 
             codec = numcodecs.Zstd()
             decoded = codec.decode(data)
-            
-            if isinstance(decoded, list) : 
+
+            if isinstance(decoded, list):
                 decoded = b"".join(decoded)
-            else : 
+            else:
                 decoded = bytes(decoded)
 
             # numcodecs does NOT guarantee outpute size (must validate)
