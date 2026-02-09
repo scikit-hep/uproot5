@@ -637,11 +637,12 @@ def compress(data: bytes, compression: Compression) -> bytes:
     output would be larger than the input, the input is returned instead, in whatever
     format (bytes, memoryview, or NumPy array) it was provided.
     """
-    def _normalize_bytes(x) : 
-        if isinstance(x, list) : 
+
+    def _normalize_bytes(x):
+        if isinstance(x, list):
             return b"".join(x)
-        return x 
-    
+        return x
+
     if compression is None or compression.level == 0:
         return _normalize_bytes(data)
 
