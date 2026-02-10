@@ -278,12 +278,12 @@ class LZMA(Compression, _DecompressLZMA):
         )
         if lzma is not None:
             out = lzma.compress(data, preset=self._level)
-            return bytes((out))
+            return bytes(out)
         # Fallback : stdlib lzma
         import lzma as _stdlib_lzma
 
         out = _stdlib_lzma.compress(data, preset=self._level)
-        return bytes((out))
+        return bytes(out)
 
 
 class _DecompressLZ4:
@@ -364,7 +364,7 @@ class _DecompressZSTD:
         except ModuleNotFoundError:
             # Failure due to numcodecs not being installed = fall back
             pass
-       
+
         # Fallback : cramjam
         cramjam = uproot.extras.cramjam()
         zstd = getattr(cramjam, "zstd", None)
@@ -428,7 +428,7 @@ class ZSTD(Compression, _DecompressZSTD):
             raise RuntimeError("ZSTD compression requires ramjam or numcodecs")
 
         out = zstd.compress(data, level=self._level)
-        return bytes((out))
+        return bytes(out)
 
 
 algorithm_codes = {
