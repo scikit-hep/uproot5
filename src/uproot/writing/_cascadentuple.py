@@ -44,7 +44,6 @@ from uproot.models.RNTuple import (
     _rntuple_repetition_format,
 )
 from uproot.writing._cascade import CascadeLeaf, CascadeNode, Key, String
-from uproot.writing.writable import _regularize_input_type_to_awkward
 
 _rntuple_string_length_format = struct.Struct("<I")
 
@@ -1210,3 +1209,33 @@ def _to_packed(layout):
         case _:
             msg = f"Array type {type(layout)} cannot be written. If you believe this should be supported, please let the Uproot developers know."
             raise NotImplementedError(msg)
+
+
+def _regularize_input_type_to_awkward(obj):
+    import awkward
+
+    if uproot._util.from_module(obj, "pandas"):
+        import pandas
+
+        if isinstance(
+            obj, pandas.DataFrame
+        ) and uproot._util.pandas_has_attr_is_numeric(pandas)(obj.index):
+            obj = uproot.writing._cascadetree.dataframe_to_dict(obj)
+            # Try to retype dtype=object columns
+            for k in obj.keys():
+                if obj[k].dtype == object:
+                    obj[k] = awkward.Array(obj[k].tolist())
+            obj = awkward.Array(obj)
+
+    elif isinstance(obj, numpy.ndarray) and obj.dtype.fields is not None:
+        obj = awkward.Array(obj)
+
+    elif isinstance(obj, dict):
+        # Sort dictionary keys to avoid issues
+        obj = {k: obj[k] for k in sorted(obj.keys())}
+        obj = awkward.Array(obj)
+
+    elif isinstance(obj, awkward.contents.Content):
+        obj = awkward.Array(obj)
+
+    return obj
