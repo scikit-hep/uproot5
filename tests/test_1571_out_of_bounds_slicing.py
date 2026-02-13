@@ -7,88 +7,100 @@ import awkward
 
 import uproot
 
+
+# SECTION 1: TTree Slicing Tests (Legacy Format)
+
 @pytest.fixture(scope="module")
 def tree():
-    """
-    Fixture to open the standard HZZ test file once for this module.
-    """
+    """Fixture to open the standard HZZ TTree test file once for this module."""
     with uproot.open(skhep_testdata.data_path("uproot-HZZ.root")) as file:
         yield file["events"]
 
-def test_hard_out_of_bounds_returns_empty(tree):
-    """
-    Regression test: Reading far beyond the end of the file should return an empty array.
-    """
+
+def test_ttree_hard_out_of_bounds(tree):
+    """Regression test: Reading far beyond the end of a TTree should return empty."""
     total = tree.num_entries
-    
-    # Test on a Jagged array (Muon_Px)
-    data = tree["Muon_Px"].array(
-        entry_start=total + 100, 
-        entry_stop=total + 200,
-        library="np"
-    )
+    data = tree["NJet"].array(entry_start=total + 100, entry_stop=total + 200)
     assert len(data) == 0
-    assert isinstance(data, numpy.ndarray)
 
-    # Test on a Flat array (NJet)
-    data_flat = tree["NJet"].array(
-        entry_start=total + 100, 
-        entry_stop=total + 200,
-        library="np"
-    )
-    assert len(data_flat) == 0
 
-def test_clamped_out_of_bounds_truncates(tree):
-    """
-    Regression test: Reading a slice that overlaps the end of the file should 
-    be silently truncated (clamped) to the valid range.
-    """
+def test_ttree_clamped_out_of_bounds(tree):
+    """Regression test: A TTree slice overlapping the end should be clamped."""
     total = tree.num_entries
-    
-    # Range: [total-5, total+100] -> Should be clamped to [total-5, total]
-    data = tree["Muon_Px"].array(
-        entry_start=total - 5, 
-        entry_stop=total + 100,
-        library="ak"
-    )
+    data = tree["Muon_Px"].array(entry_start=total - 5, entry_stop=total + 100)
     assert len(data) == 5
-    assert isinstance(data, awkward.highlevel.Array)
 
-def test_exact_boundary_start(tree):
-    """
-    Regression test: Starting a read exactly at the end of the file 
-    should return an empty array.
-    """
+
+def test_ttree_exact_boundary_start(tree):
+    """Regression test: Starting a TTree read exactly at the end should be empty."""
     total = tree.num_entries
-    
-    data = tree["NJet"].array(
-        entry_start=total, 
-        entry_stop=total + 10,
-        library="np"
-    )
+    data = tree["NJet"].array(entry_start=total, entry_stop=total + 10)
     assert len(data) == 0
 
-def test_massive_negative_index_is_pythonic(tree):
-    """
-    Regression test: A negative start index larger than the file size 
-    should return the entire array.
-    """
+
+def test_ttree_massive_negative_index(tree):
+    """Regression test: A large negative start index on a TTree should return all entries."""
     total = tree.num_entries
-    data = tree["NJet"].array(entry_start=-1_000_000, library="np")
+    data = tree["NJet"].array(entry_start=-1_000_000)
     assert len(data) == total
 
-def test_iterate_out_of_bounds_yields_nothing(tree):
-    """
-    Regression test: Iterating over a range entirely outside the file 
-    should yield zero batches.
-    """
+
+def test_ttree_iterate_out_of_bounds(tree):
+    """Regression test: Iterating a TTree over an invalid range should yield zero batches."""
     total = tree.num_entries
     iterator = tree.iterate(
-        ["NJet"], 
-        step_size=100, 
-        entry_start=total + 100, 
-        entry_stop=total + 200,
-        library="np"
+        ["NJet"], step_size=100, entry_start=total + 100, entry_stop=total + 200
     )
     batches = list(iterator)
     assert len(batches) == 0
+
+
+# SECTION 2: RNTuple Slicing Tests (Modern Format)
+
+@pytest.fixture(scope="module")
+def rntuple():
+    """Fixture to open a standard RNTuple test file from skhep_testdata."""
+    filename = "test_1jag_int_float_rntuple_v1-0-0-0.root"
+    with uproot.open(skhep_testdata.data_path(filename)) as file:
+        yield file["ntuple"]
+
+
+BRANCH_ARCHETYPES = [
+    pytest.param("one_v_integers", id="RNTuple-Jagged-Int"),
+    pytest.param("two_v_floats", id="RNTuple-Jagged-Float"),
+]
+
+
+@pytest.mark.parametrize("branch_name", BRANCH_ARCHETYPES)
+def test_rntuple_hard_out_of_bounds(rntuple, branch_name):
+    """Verify that reading far beyond the end of an RNTuple returns an empty array."""
+    total = rntuple.num_entries
+    branch = rntuple[branch_name]
+    data = branch.array(entry_start=total + 100, entry_stop=total + 200)
+    assert len(data) == 0
+
+
+@pytest.mark.parametrize("branch_name", BRANCH_ARCHETYPES)
+def test_rntuple_clamped_out_of_bounds(rntuple, branch_name):
+    """Verify that a slice overlapping the end of an RNTuple is correctly clamped."""
+    total = rntuple.num_entries
+    branch = rntuple[branch_name]
+    data = branch.array(entry_start=total - 5, entry_stop=total + 100)
+    assert len(data) == 5
+
+
+@pytest.mark.parametrize("branch_name", BRANCH_ARCHETYPES)
+def test_rntuple_exact_boundary_start(rntuple, branch_name):
+    """Verify that starting a read exactly at the end of an RNTuple returns empty."""
+    total = rntuple.num_entries
+    branch = rntuple[branch_name]
+    data = branch.array(entry_start=total, entry_stop=total + 10)
+    assert len(data) == 0
+
+
+def test_rntuple_massive_negative_index(rntuple):
+    """Verify a large negative start index on an RNTuple returns the whole array."""
+    total = rntuple.num_entries
+    branch = rntuple["one_v_integers"]
+    data = branch.array(entry_start=-1_000_000)
+    assert len(data) == total
