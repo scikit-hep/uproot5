@@ -7,10 +7,10 @@ import awkward
 
 import uproot
 
-
 # ==============================================================================
 # SECTION 1: TTree Slicing Tests (Legacy Format)
 # ==============================================================================
+
 
 @pytest.fixture(scope="module")
 def tree():
@@ -70,6 +70,7 @@ def test_ttree_iterate_out_of_bounds(tree, branch_name):
 # ==============================================================================
 # SECTION 2: RNTuple Slicing Tests (Modern Format)
 # ==============================================================================
+
 
 @pytest.fixture(scope="module")
 def rntuple():
