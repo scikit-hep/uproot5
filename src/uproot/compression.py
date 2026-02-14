@@ -94,8 +94,23 @@ class _DecompressZLIB:
             raise ValueError(
                 "zlib decompression requires the number of uncompressed bytes"
             )
+        # Try numcodecs
+        if self.library == "numcodecs":
+            try:
+                numcodecs = uproot.extras.numcodecs()
+                codec = numcodecs.Zlib()
+                decoded = codec.decode(data)
 
-        if self.library == "zlib":
+                if len(decoded) != uncompressed_bytes:
+                    raise ValueError("numcodecs ZLIB produced incorrect output size")
+            
+                return decoded
+        
+            except ModuleNotFoundError:
+                #Failure due to numcodecs not installed = fall back to stdlib/isal/defalte
+                pass
+
+        elif self.library == "zlib":
             import zlib
 
             return zlib.decompress(data, bufsize=uncompressed_bytes)
@@ -110,7 +125,7 @@ class _DecompressZLIB:
 
         else:
             raise ValueError(
-                f"unrecognized ZLIB.library: {self.library!r}; must be one of ['zlib', 'isal', 'deflate']"
+                f"unrecognized ZLIB.library: {self.library!r}; must be one of ['numcodecs', 'zlib', 'isal', 'deflate']"
             )
 
 
@@ -155,7 +170,18 @@ class ZLIB(Compression, _DecompressZLIB):
         self._level = int(value)
 
     def compress(self, data: bytes) -> bytes:
-        if self.library == "zlib":
+        if self.library == "numcodecs":
+            try:
+                numcodecs = uproot.extras.numcodecs()
+                codec = numcodecs.Zlib(level=self._level)
+                out = codec.encode(data)
+            
+                return out
+            except ModuleNotFoundError:
+                # Failure due to numcodecs not installed = fall back to stdlib/isal/stdil
+                pass
+        
+        elif self.library == "zlib":
             import zlib
 
             return zlib.compress(data, level=self._level)
@@ -180,7 +206,7 @@ class ZLIB(Compression, _DecompressZLIB):
 
         else:
             raise ValueError(
-                f"unrecognized ZLIB.library: {self.library!r}; must be one of ['zlib', 'isal', 'deflate']"
+                f"unrecognized ZLIB.library: {self.library!r}; must be one of ['numcodecs', 'zlib', 'isal', 'deflate']"
             )
 
 
