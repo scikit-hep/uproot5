@@ -103,11 +103,11 @@ class _DecompressZLIB:
 
                 if len(decoded) != uncompressed_bytes:
                     raise ValueError("numcodecs ZLIB produced incorrect output size")
-            
+
                 return decoded
-        
+
             except ModuleNotFoundError:
-                #Failure due to numcodecs not installed = fall back to stdlib/isal/defalte
+                # Failure due to numcodecs not installed = fall back to stdlib/isal/defalte
                 pass
 
         elif self.library == "zlib":
@@ -175,12 +175,12 @@ class ZLIB(Compression, _DecompressZLIB):
                 numcodecs = uproot.extras.numcodecs()
                 codec = numcodecs.Zlib(level=self._level)
                 out = codec.encode(data)
-            
+
                 return out
             except ModuleNotFoundError:
                 # Failure due to numcodecs not installed = fall back to stdlib/isal/stdil
                 pass
-        
+
         elif self.library == "zlib":
             import zlib
 
