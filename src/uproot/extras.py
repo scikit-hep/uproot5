@@ -149,42 +149,6 @@ or
         return deflate
 
 
-def cramjam():
-    """
-    Import and returns ``cramjam``.
-    """
-    try:
-        import cramjam
-    except ModuleNotFoundError as err:
-        raise ModuleNotFoundError("""install the 'cramjam' package with:
-
-    pip install cramjam
-
-or
-
-    conda install cramjam""") from err
-    else:
-        return cramjam
-
-
-def xxhash():
-    """
-    Imports and returns ``xxhash``.
-    """
-    try:
-        import xxhash
-    except ModuleNotFoundError as err:
-        raise ModuleNotFoundError("""install the `xxhash` packages with:
-
-    pip install xxhash
-
-or
-
-    conda install python-xxhash""") from err
-    else:
-        return xxhash
-
-
 def boost_histogram():
     """
     Imports and returns ``boost-histogram``.

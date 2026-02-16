@@ -10,7 +10,8 @@ from __future__ import annotations
 import struct
 
 import numpy
-
+import cramjam
+import xxhash
 import uproot
 import uproot.const
 
@@ -189,7 +190,6 @@ class _DecompressLZMA:
     _method = b"\x00"
 
     def decompress(self, data: bytes, uncompressed_bytes=None) -> bytes:
-        cramjam = uproot.extras.cramjam()
         lzma = getattr(cramjam, "xz", None) or getattr(
             getattr(cramjam, "experimental", None), "lzma", None
         )
@@ -236,7 +236,6 @@ class LZMA(Compression, _DecompressLZMA):
         self._level = int(value)
 
     def compress(self, data: bytes) -> bytes:
-        cramjam = uproot.extras.cramjam()
         lzma = getattr(cramjam, "xz", None) or getattr(
             getattr(cramjam, "experimental", None), "lzma", None
         )
@@ -251,7 +250,7 @@ class _DecompressLZ4:
     _method = b"\x01"
 
     def decompress(self, data: bytes, uncompressed_bytes=None) -> bytes:
-        lz4 = uproot.extras.cramjam().lz4
+        lz4 = cramjam.lz4
         if uncompressed_bytes is None:
             raise ValueError(
                 "lz4 block decompression requires the number of uncompressed bytes"
@@ -291,7 +290,7 @@ class LZ4(Compression, _DecompressLZ4):
         self._level = int(value)
 
     def compress(self, data: bytes) -> bytes:
-        lz4 = uproot.extras.cramjam().lz4
+        lz4 = cramjam.lz4
         return lz4.compress_block(data, compression=self._level, store_size=False)
 
 
@@ -301,7 +300,7 @@ class _DecompressZSTD:
     _method = b"\x01"
 
     def decompress(self, data: bytes, uncompressed_bytes=None) -> bytes:
-        zstd = uproot.extras.cramjam().zstd
+        zstd = cramjam.zstd
         if uncompressed_bytes is None:
             raise ValueError(
                 "zstd block decompression requires the number of uncompressed bytes"
@@ -342,7 +341,7 @@ class ZSTD(Compression, _DecompressZSTD):
         self._level = int(value)
 
     def compress(self, data: bytes) -> bytes:
-        zstd = uproot.extras.cramjam().zstd
+        zstd = cramjam.zstd
         return zstd.compress(data, level=self._level)
 
 
@@ -430,7 +429,6 @@ def decompress(
             )
             data = cursor.bytes(chunk, block_compressed_bytes, context)
 
-            xxhash = uproot.extras.xxhash()
             computed_checksum = xxhash.xxh64(data).intdigest()
             if computed_checksum != expected_checksum:
                 raise ValueError(
@@ -552,7 +550,6 @@ def compress(data: bytes, compression: Compression) -> bytes:
         len_compressed = len(compressed)
 
         if isinstance(compression, LZ4):
-            xxhash = uproot.extras.xxhash()
             computed_checksum = xxhash.xxh64(compressed).intdigest()
             checksum = _decompress_checksum_format.pack(computed_checksum)
             len_compressed += 8
