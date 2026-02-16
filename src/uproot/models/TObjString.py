@@ -6,9 +6,11 @@ This module defines a versionless model for ``TObjString``.
 
 from __future__ import annotations
 
+import awkward
+
 import uproot
 import uproot.serialization
-import awkward
+
 
 class Model_TObjString(uproot.model.Model, str):
     """

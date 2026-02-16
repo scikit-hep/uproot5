@@ -9,8 +9,9 @@ from __future__ import annotations
 import struct
 from collections.abc import Sequence
 
-import numpy
 import awkward
+import numpy
+
 import uproot
 
 _tarray_format1 = struct.Struct(">i")

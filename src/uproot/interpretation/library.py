@@ -26,8 +26,9 @@ from __future__ import annotations
 
 import json
 
-import numpy
 import awkward
+import numpy
+
 import uproot
 
 
@@ -60,13 +61,15 @@ class Library:
         """
         Attempts to import the library and returns the imported module.
         """
-        if self.name == "ak" : 
+        if self.name == "ak":
             import awkward
+
             return awkward
-        elif self.name == "np" : 
+        elif self.name == "np":
             import numpy
+
             return numpy
-        else : 
+        else:
             raise AssertionError
 
     def empty(self, shape, dtype):
@@ -512,7 +515,6 @@ class Awkward(Library):
     """
 
     name = "ak"
-
 
     def finalize(self, array, branch, interpretation, entry_start, entry_stop, options):
         awkward = self.imported

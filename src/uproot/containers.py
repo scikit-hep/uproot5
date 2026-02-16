@@ -13,8 +13,9 @@ import struct
 import types
 from collections.abc import KeysView, Mapping, Sequence, Set, ValuesView
 
+import awkward
 import numpy
-import awkward 
+
 import uproot
 import uproot._awkwardforth
 
@@ -1324,7 +1325,7 @@ class AsMap(AsContainer):
                 cursor.skip(6)
                 if forth_obj is not None:
                     forth_stash.pre_code.append(
-                        f"{cursor._index-start_cursor._index} stream skip\n"
+                        f"{cursor._index - start_cursor._index} stream skip\n"
                     )
 
             length = cursor.field(chunk, _stl_container_size, context)

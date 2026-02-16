@@ -11,8 +11,9 @@ an array is being built from ``TBaskets``. Its final form is determined by
 
 from __future__ import annotations
 
-import numpy
 import awkward
+import numpy
+
 import uproot
 
 

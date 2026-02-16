@@ -13,9 +13,10 @@ import sys
 from collections import defaultdict
 from typing import NamedTuple
 
+import awkward as ak
 import numpy
 import xxhash
-import awkward as ak 
+
 import uproot
 import uproot.behaviors.RNTuple
 import uproot.const

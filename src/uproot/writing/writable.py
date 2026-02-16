@@ -27,8 +27,9 @@ from collections.abc import Mapping, MutableMapping
 from pathlib import Path
 from typing import IO
 
-import numpy
 import awkward
+import numpy
+
 import uproot._util
 import uproot.compression
 import uproot.deserialization

@@ -9,8 +9,9 @@ from ``TBasket`` objects.
 
 from __future__ import annotations
 
-import numpy
 import awkward
+import numpy
+
 import uproot
 import uproot.behaviors.TBranch
 import uproot.extras

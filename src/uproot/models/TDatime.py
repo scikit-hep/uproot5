@@ -8,8 +8,9 @@ from __future__ import annotations
 
 import struct
 
-import numpy
 import awkward
+import numpy
+
 import uproot
 import uproot.behaviors.TDatime
 

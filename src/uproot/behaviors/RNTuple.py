@@ -18,8 +18,9 @@ import warnings
 from collections.abc import Mapping
 from functools import partial
 
-import numpy
 import awkward as ak
+import numpy
+
 import uproot
 import uproot.interpretation.grouped
 import uproot.language.python
@@ -1641,10 +1642,10 @@ class HasFields(Mapping):
         blank = "   "
 
         def recursive_show(field, header="", first=True, last=True, recursive=True):
-            outstr = f"""{header}{"" if first else (elbow if last else tee)}{field.name} ({'ROOT::RNTuple' if isinstance(field, uproot.behaviors.RNTuple.RNTuple) else field.typename})"""
+            outstr = f"""{header}{"" if first else (elbow if last else tee)}{field.name} ({"ROOT::RNTuple" if isinstance(field, uproot.behaviors.RNTuple.RNTuple) else field.typename})"""
             stream.write(outstr[:max_width] + "\n")
             if field.description != "":
-                outstr = f"""{header}{'' if first else (blank if last else pipe)}Description: {field.description}"""
+                outstr = f"""{header}{"" if first else (blank if last else pipe)}Description: {field.description}"""
                 stream.write(outstr[:max_width] + "\n")
             if len(field) > 0 and (recursive or first):
                 subfields = list(

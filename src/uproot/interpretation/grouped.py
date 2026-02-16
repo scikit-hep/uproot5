@@ -8,8 +8,10 @@ not contain data but has subbranches that do.
 
 from __future__ import annotations
 
-import uproot
 import awkward
+
+import uproot
+
 
 class AsGrouped(uproot.interpretation.Interpretation):
     """

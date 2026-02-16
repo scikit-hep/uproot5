@@ -22,8 +22,9 @@ import struct
 import warnings
 from collections.abc import Mapping
 
-import numpy
 import awkward
+import numpy
+
 import uproot.compression
 import uproot.const
 import uproot.reading
@@ -125,7 +126,6 @@ class Tree:
                     branch_dtype = numpy.dtype(branch_type)
 
                 except (TypeError, ValueError) as err:
-                    
                     if isinstance(
                         branch_type,
                         (awkward.types.Type, awkward.types.ArrayType),
@@ -555,21 +555,20 @@ class Tree:
                     if getattr(v, "dtype", None) == numpy.dtype("O"):
                         v = awkward.from_iter(v)  # noqa: PLW2901 (overwriting v)
 
-                if isinstance(v, awkward.Array):
-                    if (
-                        isinstance(v, awkward.Array)
-                        and v.ndim > 1
-                        and not v.layout.purelist_isregular
+                if (
+                    isinstance(v, awkward.Array)
+                    and v.ndim > 1
+                    and not v.layout.purelist_isregular
+                ):
+                    kk = self._counter_name(k)
+                    vv = numpy.asarray(awkward.num(v, axis=1), dtype=">u4")
+                    if kk in provided and not numpy.array_equal(
+                        vv, awkward.to_numpy(provided[kk])
                     ):
-                        kk = self._counter_name(k)
-                        vv = numpy.asarray(awkward.num(v, axis=1), dtype=">u4")
-                        if kk in provided and not numpy.array_equal(
-                            vv, awkward.to_numpy(provided[kk])
-                        ):
-                            raise ValueError(
-                                f"branch {kk!r} provided both as an explicit array and generated as a counter, and they disagree"
-                            )
-                        provided[kk] = vv
+                        raise ValueError(
+                            f"branch {kk!r} provided both as an explicit array and generated as a counter, and they disagree"
+                        )
+                    provided[kk] = vv
 
                 if k in provided and not numpy.array_equal(v, provided[k]):
                     raise ValueError(
@@ -643,7 +642,6 @@ class Tree:
 
             if datum["counter"] is None:
                 if datum["dtype"] == ">U0":
-
                     layout = awkward.to_layout(branch_array)
                     if isinstance(
                         layout,
@@ -710,7 +708,6 @@ class Tree:
                         )
 
             else:
-                
                 layout = branch_array.layout
                 while not isinstance(layout, awkward.contents.ListOffsetArray):
                     if isinstance(layout, awkward.contents.IndexedArray):
@@ -1148,7 +1145,8 @@ class Tree:
             out.append(b"\x00")
 
             out[tbranch_index] = uproot.serialization.numbytes_version(
-                sum(len(x) for x in out[tbranch_index + 1 :]), 13  # TBranch
+                sum(len(x) for x in out[tbranch_index + 1 :]),
+                13,  # TBranch
             )
 
             out[any_tbranch_index] = (
@@ -1160,7 +1158,8 @@ class Tree:
             )
 
         out[tobjarray_of_branches_index] = uproot.serialization.numbytes_version(
-            sum(len(x) for x in out[tobjarray_of_branches_index + 1 :]), 3  # TObjArray
+            sum(len(x) for x in out[tobjarray_of_branches_index + 1 :]),
+            3,  # TObjArray
         )
 
         # TObjArray of TLeaf references
@@ -1189,7 +1188,8 @@ class Tree:
         out.append(b"\x00" * 28)
 
         out[ttree_header_index] = uproot.serialization.numbytes_version(
-            sum(len(x) for x in out[ttree_header_index + 1 :]), 20  # TTree
+            sum(len(x) for x in out[ttree_header_index + 1 :]),
+            20,  # TTree
         )
 
         self._metadata_start = sum(len(x) for x in out[:metadata_out_index])

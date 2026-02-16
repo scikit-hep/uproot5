@@ -9,9 +9,10 @@ from __future__ import annotations
 
 import struct
 
-import numpy
 import cramjam
+import numpy
 import xxhash
+
 import uproot
 import uproot.const
 

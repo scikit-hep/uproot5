@@ -25,8 +25,9 @@ import contextlib
 import json
 import threading
 
-import numpy
 import awkward
+import numpy
+
 import uproot
 import uproot._awkwardforth
 from uproot.interpretation.known_forth import known_forth_of
@@ -213,7 +214,7 @@ class AsObjects(uproot.interpretation.Interpretation):
         library,
         options,
     ):
-        import awkward.forth  # noqa: F811
+        import awkward.forth
 
         self.hook_before_basket_array(
             data=data,
@@ -488,12 +489,10 @@ input stream
                 to_append = basket_arrays[basket_num]
 
             if to_append is not None and has_any_awkward_types:
-
                 if isinstance(library, uproot.interpretation.library.NumPy):
                     trimmed.append(to_append)
 
                 elif isinstance(library, uproot.interpretation.library.Awkward):
-
                     if isinstance(to_append, numpy.ndarray):
                         trimmed.append(
                             uproot.interpretation.library._object_to_awkward_array(
@@ -504,7 +503,6 @@ input stream
                         trimmed.append(to_append)
 
                 elif isinstance(library, uproot.interpretation.library.Pandas):
-
                     if isinstance(to_append, numpy.ndarray):
                         trimmed.append(
                             uproot.interpretation.library._process_array_for_pandas(

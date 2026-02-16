@@ -18,8 +18,9 @@ from __future__ import annotations
 import struct
 import threading
 
-import numpy
 import awkward
+import numpy
+
 import uproot
 
 _string_4byte_size = struct.Struct(">I")

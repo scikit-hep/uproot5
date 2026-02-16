@@ -6,8 +6,9 @@ This module defines a versionless model for ``TNamed``.
 
 from __future__ import annotations
 
-import numpy
 import awkward
+import numpy
+
 import uproot
 
 
