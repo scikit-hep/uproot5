@@ -1570,6 +1570,24 @@ class ClusterGroupRecordReader:
         return out
 
 
+# https://github.com/root-project/root/blob/8cd9eed6f3a32e55ef1f0f1df8e5462e753c735d/tree/ntuple/v7/doc/BinaryFormatSpecification.md#linked-attribute-set-record-frame
+class LinkedAttributeSetRecordReader:
+    def read(self, chunk, cursor, context):
+        out = MetaData("LinkedAttributeSetRecord")
+        out.schema_version_major = cursor.field(
+            chunk, struct.Struct("<H"), context
+        )
+        out.schema_version_minor = cursor.field(
+            chunk, struct.Struct("<H"), context
+        )
+        out.anchor_uncompressed_size = cursor.field(
+            chunk, struct.Struct("<I"), context
+        )
+        out.locator = LocatorReader().read(chunk, cursor, context)
+        out.name = cursor.rntuple_string(chunk, context)
+        return out
+
+
 # https://github.com/root-project/root/blob/8cd9eed6f3a32e55ef1f0f1df8e5462e753c735d/tree/ntuple/v7/doc/BinaryFormatSpecification.md#schema-extension-record-frame
 class RNTupleSchemaExtension:
     def read(self, chunk, cursor, context):
@@ -1598,6 +1616,9 @@ class FooterReader:
         self.cluster_group_record_frames = ListFrameReader(
             RecordFrameReader(ClusterGroupRecordReader())
         )
+        self.linked_attribute_sets = ListFrameReader(
+            RecordFrameReader(LinkedAttributeSetRecordReader())
+        )
 
     def read(self, chunk, cursor, context):
         out = MetaData("Footer")
@@ -1609,6 +1630,9 @@ class FooterReader:
         out.header_checksum = cursor.field(chunk, _rntuple_checksum_format, context)
         out.extension_links = self.extension_header_links.read(chunk, cursor, context)
         out.cluster_group_records = self.cluster_group_record_frames.read(
+            chunk, cursor, context
+        )
+        out.linked_attribute_sets = self.linked_attribute_sets.read(
             chunk, cursor, context
         )
         out.checksum = cursor.field(chunk, _rntuple_checksum_format, context)
