@@ -76,7 +76,7 @@ dependencies = [
   "cramjam>=2.5.0",
   "xxhash",
   "numpy",
-  "fsspec!=2025.7.0",
+  "fsspec!=2026.2.0",
   "packaging",
   "typing_extensions>=4.1.0; python_version < '3.11'"
 ]
