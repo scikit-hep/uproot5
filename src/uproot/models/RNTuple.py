@@ -1583,9 +1583,11 @@ class ClusterGroupRecordReader:
 class LinkedAttributeSetRecordReader:
     def read(self, chunk, cursor, context):
         out = MetaData("LinkedAttributeSetRecord")
-        out.schema_version_major, out.schema_version_minor, out.anchor_uncompressed_size = cursor.fields(
-            chunk, _rntuple_linked_attribute_set_format, context
-        )
+        (
+            out.schema_version_major,
+            out.schema_version_minor,
+            out.anchor_uncompressed_size,
+        ) = cursor.fields(chunk, _rntuple_linked_attribute_set_format, context)
         out.locator = LocatorReader().read(chunk, cursor, context)
         out.name = cursor.rntuple_string(chunk, context)
         return out
