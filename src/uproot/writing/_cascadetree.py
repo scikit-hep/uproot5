@@ -504,7 +504,7 @@ class Tree:
             ) and uproot._util.pandas_has_attr_is_numeric(pandas)(data.index):
                 provided = dataframe_to_dict(data)
 
-            if isinstance(data, awkward.Array):
+            if isinstance(data, (awkward.Array, awkward.Record)):
                 if data.ndim > 1 and not data.layout.purelist_isregular:
                     provided = {
                         self._counter_name(""): numpy.asarray(
