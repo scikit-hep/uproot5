@@ -52,6 +52,8 @@ _rntuple_alias_column_format = struct.Struct("<II")
 _rntuple_extra_type_info_format = struct.Struct("<II")
 # https://github.com/root-project/root/blob/8cd9eed6f3a32e55ef1f0f1df8e5462e753c735d/tree/ntuple/v7/doc/BinaryFormatSpecification.md#cluster-group-record-frame
 _rntuple_cluster_group_format = struct.Struct("<QQI")
+# https://github.com/root-project/root/blob/2c80bed03dbe28610c5825d8cd417db2ffc3e1d6/tree/ntuple/doc/BinaryFormatSpecification.md#linked-attribute-set-record-frame
+_rntuple_linked_attribute_set_format = struct.Struct("<HHI")
 # https://github.com/root-project/root/blob/8cd9eed6f3a32e55ef1f0f1df8e5462e753c735d/tree/ntuple/v7/doc/BinaryFormatSpecification.md#cluster-summary-record-frame
 _rntuple_cluster_summary_format = struct.Struct("<QQ")
 # https://github.com/root-project/root/blob/8cd9eed6f3a32e55ef1f0f1df8e5462e753c735d/tree/ntuple/v7/doc/BinaryFormatSpecification.md#page-locations
@@ -1577,13 +1579,13 @@ class ClusterGroupRecordReader:
         return out
 
 
-# https://github.com/root-project/root/blob/8cd9eed6f3a32e55ef1f0f1df8e5462e753c735d/tree/ntuple/v7/doc/BinaryFormatSpecification.md#linked-attribute-set-record-frame
+# https://github.com/root-project/root/blob/2c80bed03dbe28610c5825d8cd417db2ffc3e1d6/tree/ntuple/doc/BinaryFormatSpecification.md#linked-attribute-set-record-frame
 class LinkedAttributeSetRecordReader:
     def read(self, chunk, cursor, context):
         out = MetaData("LinkedAttributeSetRecord")
-        out.schema_version_major = cursor.field(chunk, struct.Struct("<H"), context)
-        out.schema_version_minor = cursor.field(chunk, struct.Struct("<H"), context)
-        out.anchor_uncompressed_size = cursor.field(chunk, struct.Struct("<I"), context)
+        out.schema_version_major, out.schema_version_minor, out.anchor_uncompressed_size = cursor.fields(
+            chunk, _rntuple_linked_attribute_set_format, context
+        )
         out.locator = LocatorReader().read(chunk, cursor, context)
         out.name = cursor.rntuple_string(chunk, context)
         return out
