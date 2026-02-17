@@ -94,7 +94,23 @@ class _DecompressZLIB:
             raise ValueError(
                 "zlib decompression requires the number of uncompressed bytes"
             )
-        if self.library == "zlib":
+        # Try numcodecs
+        if self.library == "numcodecs":
+            try:
+                numcodecs = uproot.extras.numcodecs()
+                codec = numcodecs.Zlib()
+                decoded = codec.decode(data)
+
+                if len(decoded) != uncompressed_bytes:
+                    raise ValueError("numcodecs ZLIB produced incorrect output size")
+
+                return decoded
+
+            except ModuleNotFoundError:
+                # Failure due to numcodecs not installed = fall back to stdlib/isal/defalte
+                pass
+
+        elif self.library == "zlib":
             import zlib
 
             return zlib.decompress(data, bufsize=uncompressed_bytes)
@@ -109,7 +125,7 @@ class _DecompressZLIB:
 
         else:
             raise ValueError(
-                f"unrecognized ZLIB.library: {self.library!r}; must be one of ['zlib', 'isal', 'deflate']"
+                f"unrecognized ZLIB.library: {self.library!r}; must be one of ['numcodecs', 'zlib', 'isal', 'deflate']"
             )
 
 
@@ -154,7 +170,18 @@ class ZLIB(Compression, _DecompressZLIB):
         self._level = int(value)
 
     def compress(self, data: bytes) -> bytes:
-        if self.library == "zlib":
+        if self.library == "numcodecs":
+            try:
+                numcodecs = uproot.extras.numcodecs()
+                codec = numcodecs.Zlib(level=self._level)
+                out = codec.encode(data)
+
+                return out
+            except ModuleNotFoundError:
+                # Failure due to numcodecs not installed = fall back to stdlib/isal/stdil
+                pass
+
+        elif self.library == "zlib":
             import zlib
 
             return zlib.compress(data, level=self._level)
@@ -179,7 +206,7 @@ class ZLIB(Compression, _DecompressZLIB):
 
         else:
             raise ValueError(
-                f"unrecognized ZLIB.library: {self.library!r}; must be one of ['zlib', 'isal', 'deflate']"
+                f"unrecognized ZLIB.library: {self.library!r}; must be one of ['numcodecs', 'zlib', 'isal', 'deflate']"
             )
 
 
@@ -189,18 +216,41 @@ class _DecompressLZMA:
     _method = b"\x00"
 
     def decompress(self, data: bytes, uncompressed_bytes=None) -> bytes:
+        # Try numcodecs
+        try:
+            numcodecs = uproot.extras.numcodecs()
+
+            codec = numcodecs.LZMA()
+            decoded = codec.decode(data)
+
+            # numcodecs does not gaurentee outpute size ( must validate )
+            if uncompressed_bytes is not None and len(decoded) != uncompressed_bytes:
+                raise ValueError("numcodecs LZMA produced incorrect output size")
+
+            return decoded
+
+        except ModuleNotFoundError:
+            # Failure due to numcodecs not being installed = fall back to cramjam/stdlib
+            pass
+
+        # Fallback : Try cramjam(preferred) or stdlib
         cramjam = uproot.extras.cramjam()
         lzma = getattr(cramjam, "xz", None) or getattr(
             getattr(cramjam, "experimental", None), "lzma", None
         )
+
+        # Last fallback : lzma through stdlib
         if lzma is None:
             import lzma
 
             return lzma.decompress(data)
+
+        # Known output size path is required
         if uncompressed_bytes is None:
             raise ValueError(
                 "lzma decompression requires the number of uncompressed bytes"
             )
+
         return lzma.decompress(data, output_len=uncompressed_bytes)
 
 
@@ -236,13 +286,31 @@ class LZMA(Compression, _DecompressLZMA):
         self._level = int(value)
 
     def compress(self, data: bytes) -> bytes:
+        # Try numcodecs
+        try:
+            numcodecs = uproot.extras.numcodecs()
+
+            codec = numcodecs.LZMA()
+            out = codec.encode(data)
+            return out
+
+        except ModuleNotFoundError:
+            # Failure due to numcodecs not installed = fall back to cramjam/stdlib
+            pass
+
+        # Fallbac : Try cramjam
         cramjam = uproot.extras.cramjam()
         lzma = getattr(cramjam, "xz", None) or getattr(
             getattr(cramjam, "experimental", None), "lzma", None
         )
-        if lzma is None:
-            import lzma
-        return lzma.compress(data, preset=self._level)
+        if lzma is not None:
+            out = lzma.compress(data, preset=self._level)
+            return out
+        # Fallback : stdlib lzma
+        import lzma as _stdlib_lzma
+
+        out = _stdlib_lzma.compress(data, preset=self._level)
+        return out
 
 
 class _DecompressLZ4:
@@ -301,11 +369,36 @@ class _DecompressZSTD:
     _method = b"\x01"
 
     def decompress(self, data: bytes, uncompressed_bytes=None) -> bytes:
-        zstd = uproot.extras.cramjam().zstd
+        # ROOT requires exact output size
         if uncompressed_bytes is None:
             raise ValueError(
                 "zstd block decompression requires the number of uncompressed bytes"
             )
+
+        # Try numcodecs
+        try:
+            numcodecs = uproot.extras.numcodecs()
+
+            codec = numcodecs.Zstd()
+            decoded = codec.decode(data)
+
+            # numcodecs does NOT guarantee outpute size (must validate)
+            if len(decoded) != uncompressed_bytes:
+                raise ValueError("numcodecs ZSSTD produced incorrect output size")
+
+            return decoded
+
+        except ModuleNotFoundError:
+            # Failure due to numcodecs not being installed = fall back
+            pass
+
+        # Fallback : cramjam
+        cramjam = uproot.extras.cramjam()
+        zstd = getattr(cramjam, "zstd", None)
+
+        if zstd is None:
+            raise RuntimeError("ZSTD decompression requires cramjam or numcodecs")
+
         return zstd.decompress(data, output_len=uncompressed_bytes)
 
 
@@ -342,8 +435,22 @@ class ZSTD(Compression, _DecompressZSTD):
         self._level = int(value)
 
     def compress(self, data: bytes) -> bytes:
-        zstd = uproot.extras.cramjam().zstd
-        return zstd.compress(data, level=self._level)
+        # Try numcodecs :
+        try:
+            numcodecs = uproot.extras.numcodecs()
+
+            codec = numcodecs.Zstd(level=self._level)
+            out = codec.encode(data)
+            return out
+
+        except ModuleNotFoundError:
+            # Failure due to numcodecs not installed = Fall back
+            pass
+
+        # Fallback : cramjam
+        cramjam = uproot.extras.cramjam()
+        out = cramjam.zstd.compress(data, level=self._level)
+        return out
 
 
 algorithm_codes = {
@@ -539,6 +646,7 @@ def compress(data: bytes, compression: Compression) -> bytes:
     output would be larger than the input, the input is returned instead, in whatever
     format (bytes, memoryview, or NumPy array) it was provided.
     """
+
     if compression is None or compression.level == 0:
         return data
 
