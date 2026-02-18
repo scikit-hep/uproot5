@@ -26,6 +26,9 @@ import uproot.compression
 import uproot.extras
 import uproot.pyroot
 import uproot.writing
+import uproot.writing._cascade
+import uproot.writing._cascadentuple
+import uproot.writing.writable
 
 
 def add_to_directory(obj, name, directory, streamers):

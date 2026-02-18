@@ -1402,9 +1402,7 @@ in file {self.file_path} in directory {self.path}"""
         )
         if isinstance(type_spec_or_data, awkward.Array):
             form = type_spec_or_data.layout.form
-            packed_form = uproot.writing._cascadentuple._to_packed_form(
-                type_spec_or_data.layout.form
-            )
+            packed_form = uproot.writing._cascadentuple._to_packed_form(form)
             if not isinstance(packed_form, awkward.forms.RecordForm):
                 raise TypeError(
                     f"Input Awkward array must be a RecordArray or reducible to such. Got array with form {form!r}."
