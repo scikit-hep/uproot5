@@ -69,12 +69,6 @@ If you need to develop Awkward Array as well, see its [installation for develope
 
 The following libraries are also useful in conjunction with Uproot, but are not necessary. If you call a function that needs one, you'll be prompted to install it. (Conda installs most of these automatically.)
 
-**For ROOT files, compressed different ways:**
-
-   * `lz4` and `xxhash` are required for reading ROOT files that have been LZ4-compressed.
-   * `zstandard`: if reading ROOT files that have been ZSTD-compressed.
-   * ZLIB and LZMA are built in (Python standard library).
-
 **For accessing remote files:**
 
    * `s3fs`: if reading files with `s3://` URIs.
