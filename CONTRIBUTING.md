@@ -107,6 +107,23 @@ Some tests may depend on having ROOT or XRootD installed. These are covered in t
 
 ---
 
+## 🤖 AI-assisted contributions
+
+We welcome the use of AI tools as part of the development process. They can be valuable aids for drafting, refactoring, documentation, and exploration. However, contributions to Uproot require human judgment, contextual understanding, and familiarity with the project’s structure, goals, and standards.
+
+When using AI tools:
+
+* **You remain the author of the contribution.** Review, understand, and test all AI-assisted code or documentation before submitting it under your name. You should be able to explain and defend the changes on request.
+* **Avoid fully automated submissions.** Issues or pull requests generated end-to-end by automated tools, without meaningful human review or intent, are not appropriate.
+* **Be respectful of reviewers’ time.** Ensure that both the content of the PR and its description reflect your own understanding. Reviewers should not be expected to infer authorship or unknowingly interact with an AI during review.
+* **Disclose significant AI assistance.** If AI tools were used for a substantial portion of the contribution, please note this in the PR description. (This guide is an example of that: we used ChatGPT to help with the writing, and in this comment, we acknowledge that fact.)
+
+Contributors are responsible for the correctness, maintainability, and long-term impact of all submitted changes, regardless of whether AI tools were used.
+
+Pull requests that do not meet these expectations may be closed without review.
+
+---
+
 ## 🐛 Reporting Bugs
 
 1. Check if the bug is already reported on the [issue tracker](https://github.com/scikit-hep/uproot/issues).
