@@ -37,6 +37,7 @@ import uproot.model
 import uproot.models.TObjString
 import uproot.sink.file
 import uproot.writing._cascade
+import uproot.writing._cascadentuple
 import uproot.writing._cascadetree
 import uproot.writing.identify
 from uproot._util import no_filter, no_rename
@@ -1394,19 +1395,35 @@ in file {self.file_path} in directory {self.path}"""
             return self.mkrntuple(name, ak_form, description)
 
         awkward = uproot.extras.awkward()
-        type_spec_or_data = _regularize_input_type_to_awkward(type_spec_or_data)
+        type_spec_or_data = (
+            uproot.writing._cascadentuple._regularize_input_type_to_awkward(
+                type_spec_or_data
+            )
+        )
         if isinstance(type_spec_or_data, awkward.Array):
-            ntuple = self.mkrntuple(name, type_spec_or_data.layout.form, description)
+            form = type_spec_or_data.layout.form
+            packed_form = uproot.writing._cascadentuple._to_packed_form(form)
+            if not isinstance(packed_form, awkward.forms.RecordForm):
+                raise TypeError(
+                    f"Input Awkward array must be a RecordArray or reducible to such. Got array with form {form!r}."
+                )
+            ntuple = self.mkrntuple(name, packed_form, description)
             ntuple.extend(type_spec_or_data)
             return ntuple
-        if isinstance(
-            type_spec_or_data, (awkward.contents.Content, awkward.forms.Form)
-        ) and not isinstance(type_spec_or_data, awkward.forms.RecordForm):
-            raise TypeError("Awkward input must be a high-level array or a RecordForm")
-        elif not isinstance(type_spec_or_data, awkward.forms.RecordForm):
+        if isinstance(type_spec_or_data, awkward.forms.Form):
+            packed_form = uproot.writing._cascadentuple._to_packed_form(
+                type_spec_or_data
+            )
+            if not isinstance(packed_form, awkward.forms.RecordForm):
+                raise TypeError(
+                    f"Input Awkward form must be a RecordForm or reducible to such. Got {type_spec_or_data!r}."
+                )
+            type_spec_or_data = packed_form
+        else:
             raise TypeError(
-                "Input must be a type specification (in the form of an Awkward RecordForm, or a dict of str \u2192 NumPy dtype/Awkward type)"
-                "or data (in the form of a high-level Awkward record array, Pandas dataframe, or dict)"
+                "Input must be a type specification (in the form of an Awkward RecordForm, or a dict of str \u2192 NumPy dtype/Awkward type) "
+                "or data (in the form of a high-level Awkward record array, Pandas dataframe, or dict). "
+                f"Got {type(type_spec_or_data).__name__}."
             )
 
         # The rest assumes that type_spec_or_data is a RecordForm
@@ -2264,33 +2281,6 @@ def _regularize_input_type_to_dict(obj):
 
     if isinstance(obj, numpy.ndarray) and obj.dtype.fields is not None:
         obj = uproot.writing._cascadetree.recarray_to_dict(obj)
-
-    return obj
-
-
-def _regularize_input_type_to_awkward(obj):
-    import awkward
-
-    if uproot._util.from_module(obj, "pandas"):
-        import pandas
-
-        if isinstance(
-            obj, pandas.DataFrame
-        ) and uproot._util.pandas_has_attr_is_numeric(pandas)(obj.index):
-            obj = uproot.writing._cascadetree.dataframe_to_dict(obj)
-            # Try to retype dtype=object columns
-            for k in obj.keys():
-                if obj[k].dtype == object:
-                    obj[k] = awkward.Array(obj[k].tolist())
-            obj = awkward.Array(obj)
-
-    elif isinstance(obj, numpy.ndarray) and obj.dtype.fields is not None:
-        obj = awkward.Array(obj)
-
-    elif isinstance(obj, dict):
-        # Sort dictionary keys to avoid issues
-        obj = {k: obj[k] for k in sorted(obj.keys())}
-        obj = awkward.Array(obj)
 
     return obj
 
