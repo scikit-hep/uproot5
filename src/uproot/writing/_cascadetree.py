@@ -455,6 +455,7 @@ class Tree:
         # that's because completely a full fBasketEntry has nowhere to put the
         # number of entries in the last basket (it's a fencepost principle thing),
         # forcing ROOT and Uproot to look it up from the basket header.
+
         if self._num_baskets >= self._basket_capacity - 1:
             self._basket_capacity = max(
                 self._basket_capacity + 1,
@@ -504,7 +505,8 @@ class Tree:
             ) and uproot._util.pandas_has_attr_is_numeric(pandas)(data.index):
                 provided = dataframe_to_dict(data)
 
-            if isinstance(data, (awkward.Array, awkward.Record)):
+        if uproot._util.from_module(data, "awkward"):
+            if isinstance(data, awkward.Array):
                 if data.ndim > 1 and not data.layout.purelist_isregular:
                     provided = {
                         self._counter_name(""): numpy.asarray(
