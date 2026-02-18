@@ -505,20 +505,19 @@ class Tree:
             ) and uproot._util.pandas_has_attr_is_numeric(pandas)(data.index):
                 provided = dataframe_to_dict(data)
 
-        if (
-            uproot._util.from_module(data, "awkward")
-            and isinstance(data, awkward.Array)
+        if uproot._util.from_module(data, "awkward") and isinstance(
+            data, awkward.Array
         ):
-                if data.ndim > 1 and not data.layout.purelist_isregular:
-                    provided = {
-                        self._counter_name(""): numpy.asarray(
-                            awkward.num(data, axis=1), dtype=">u4"
-                        )
-                    }
-                else:
-                    provided = {}
-                for k, v in zip(awkward.fields(data), awkward.unzip(data), strict=True):
-                    provided[k] = v
+            if data.ndim > 1 and not data.layout.purelist_isregular:
+                provided = {
+                    self._counter_name(""): numpy.asarray(
+                        awkward.num(data, axis=1), dtype=">u4"
+                    )
+                }
+            else:
+                provided = {}
+            for k, v in zip(awkward.fields(data), awkward.unzip(data), strict=True):
+                provided[k] = v
 
         if isinstance(data, numpy.ndarray) and data.dtype.fields is not None:
             provided = recarray_to_dict(data)
