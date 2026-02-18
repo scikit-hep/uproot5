@@ -509,10 +509,10 @@ class Awkward(Library):
 
     @property
     def imported(self):
-        import awkward 
+        import awkward
 
         return awkward
-    
+
     def finalize(self, array, branch, interpretation, entry_start, entry_stop, options):
         awkward = self.imported
 
