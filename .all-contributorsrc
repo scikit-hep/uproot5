@@ -668,6 +668,15 @@
       "contributions": [
         "doc"
       ]
+    },
+    {
+      "login": "wdconinc",
+      "name": "Wouter Deconinck",
+      "avatar_url": "https://avatars.githubusercontent.com/u/4656391?v=4",
+      "profile": "https://github.com/wdconinc",
+      "contributions": [
+        "code"
+      ]
     }
   ],
   "contributorsPerLine": 7,

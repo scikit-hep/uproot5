@@ -52,6 +52,8 @@ _rntuple_alias_column_format = struct.Struct("<II")
 _rntuple_extra_type_info_format = struct.Struct("<II")
 # https://github.com/root-project/root/blob/8cd9eed6f3a32e55ef1f0f1df8e5462e753c735d/tree/ntuple/v7/doc/BinaryFormatSpecification.md#cluster-group-record-frame
 _rntuple_cluster_group_format = struct.Struct("<QQI")
+# https://github.com/root-project/root/blob/2c80bed03dbe28610c5825d8cd417db2ffc3e1d6/tree/ntuple/doc/BinaryFormatSpecification.md#linked-attribute-set-record-frame
+_rntuple_linked_attribute_set_format = struct.Struct("<HHI")
 # https://github.com/root-project/root/blob/8cd9eed6f3a32e55ef1f0f1df8e5462e753c735d/tree/ntuple/v7/doc/BinaryFormatSpecification.md#cluster-summary-record-frame
 _rntuple_cluster_summary_format = struct.Struct("<QQ")
 # https://github.com/root-project/root/blob/8cd9eed6f3a32e55ef1f0f1df8e5462e753c735d/tree/ntuple/v7/doc/BinaryFormatSpecification.md#page-locations
@@ -303,7 +305,14 @@ in file {self.file.file_path}"""
             cursor = self._footer_cursor.copy()
             context = {}
 
-            f = FooterReader().read(self._footer_chunk, cursor, context)
+            # Pass version information to FooterReader for version-dependent parsing
+            version = (
+                self._members["fVersionEpoch"],
+                self._members["fVersionMajor"],
+                self._members["fVersionMinor"],
+                self._members["fVersionPatch"],
+            )
+            f = FooterReader(version).read(self._footer_chunk, cursor, context)
             assert (
                 f.header_checksum == self.header.checksum
             ), f"checksum={self.header.checksum}, header_checksum={f.header_checksum}"
@@ -1589,6 +1598,20 @@ class ClusterGroupRecordReader:
         return out
 
 
+# https://github.com/root-project/root/blob/2c80bed03dbe28610c5825d8cd417db2ffc3e1d6/tree/ntuple/doc/BinaryFormatSpecification.md#linked-attribute-set-record-frame
+class LinkedAttributeSetRecordReader:
+    def read(self, chunk, cursor, context):
+        out = MetaData("LinkedAttributeSetRecord")
+        (
+            out.schema_version_major,
+            out.schema_version_minor,
+            out.anchor_uncompressed_size,
+        ) = cursor.fields(chunk, _rntuple_linked_attribute_set_format, context)
+        out.locator = LocatorReader().read(chunk, cursor, context)
+        out.name = cursor.rntuple_string(chunk, context)
+        return out
+
+
 # https://github.com/root-project/root/blob/8cd9eed6f3a32e55ef1f0f1df8e5462e753c735d/tree/ntuple/v7/doc/BinaryFormatSpecification.md#schema-extension-record-frame
 class RNTupleSchemaExtension:
     def read(self, chunk, cursor, context):
@@ -1612,11 +1635,19 @@ class RNTupleSchemaExtension:
 
 # https://github.com/root-project/root/blob/8cd9eed6f3a32e55ef1f0f1df8e5462e753c735d/tree/ntuple/v7/doc/BinaryFormatSpecification.md#footer-envelope
 class FooterReader:
-    def __init__(self):
+    def __init__(self, version=(1, 0, 0, 0)):
+        self.version = version
         self.extension_header_links = RNTupleSchemaExtension()
         self.cluster_group_record_frames = ListFrameReader(
             RecordFrameReader(ClusterGroupRecordReader())
         )
+        # Linked attribute sets were added in RNTuple v1.0.1.0
+        if version >= (1, 0, 1, 0):
+            self.linked_attribute_sets = ListFrameReader(
+                RecordFrameReader(LinkedAttributeSetRecordReader())
+            )
+        else:
+            self.linked_attribute_sets = None
 
     def read(self, chunk, cursor, context):
         out = MetaData("Footer")
@@ -1630,6 +1661,13 @@ class FooterReader:
         out.cluster_group_records = self.cluster_group_record_frames.read(
             chunk, cursor, context
         )
+        # Linked attribute sets only exist in v1.0.1.0 and later
+        if self.linked_attribute_sets is not None:
+            out.linked_attribute_sets = self.linked_attribute_sets.read(
+                chunk, cursor, context
+            )
+        else:
+            out.linked_attribute_sets = []
         out.checksum = cursor.field(chunk, _rntuple_checksum_format, context)
         return out
 
