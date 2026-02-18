@@ -61,16 +61,7 @@ class Library:
         """
         Attempts to import the library and returns the imported module.
         """
-        if self.name == "ak":
-            import awkward
-
-            return awkward
-        elif self.name == "np":
-            import numpy
-
-            return numpy
-        else:
-            raise AssertionError
+        raise AssertionError
 
     def empty(self, shape, dtype):
         """
@@ -516,6 +507,12 @@ class Awkward(Library):
 
     name = "ak"
 
+    @property
+    def imported(self):
+        import awkward 
+
+        return awkward
+    
     def finalize(self, array, branch, interpretation, entry_start, entry_stop, options):
         awkward = self.imported
 

@@ -67,8 +67,6 @@ If you need to develop Awkward Array as well, see its [installation for develope
 
 **Uproot's only strict dependencies are Awkward, Cramjam, xxhash, fsspec, NumPy, packaging.** Strict dependencies are automatically installed by pip (or conda).
 
-   * `awkward`: Uproot 5.x requires Awkward 2.x.
-
 The following libraries are also useful in conjunction with Uproot, but are not necessary. If you call a function that needs one, you'll be prompted to install it. (Conda installs most of these automatically.)
 
 **For ROOT files, compressed different ways:**
