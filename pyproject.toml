@@ -35,9 +35,14 @@ test-core = [
   "pytest>=6",
   "scikit-hep-testdata"
 ]
-test-gpu = [
+test-gpu-cu12 = [
   "kvikio-cu12",
   "nvidia-nvcomp-cu12",
+  {include-group = "test-core"}
+]
+test-gpu-cu13 = [
+  "kvikio-cu13",
+  "nvidia-nvcomp-cu13",
   {include-group = "test-core"}
 ]
 test-pyodide = [
@@ -91,11 +96,11 @@ readme = "README.md"
 requires-python = ">=3.10"
 
 [project.optional-dependencies]
-GDS_cu12 = [
+gds-cu12 = [
   "kvikio-cu12",
   "nvidia-nvcomp-cu12"
 ]
-GDS_cu13 = [
+gds-cu13 = [
   "kvikio-cu13",
   "nvidia-nvcomp-cu13"
 ]
