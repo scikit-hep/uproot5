@@ -1011,7 +1011,7 @@ class HasFields(Mapping):
             self.ntuple, akform, step_size, entry_start, entry_stop
         )
         # TODO: This can be done more efficiently
-        for start in range(0, self.num_entries, step_size):
+        for start in range(entry_start, entry_stop, step_size):
             yield self.arrays(
                 filter_name=filter_name,
                 filter_typename=filter_typename,
