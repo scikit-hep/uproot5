@@ -8,15 +8,9 @@ import uproot
 
 ak = pytest.importorskip("awkward")
 cupy = pytest.importorskip("cupy")
-pytestmark = [
-    pytest.mark.skipif(
-        cupy.cuda.runtime.driverGetVersion() == 0, reason="No available CUDA driver."
-    ),
-    pytest.mark.xfail(
-        strict=False,
-        reason="There are breaking changes in new versions of KvikIO that are not yet resolved",
-    ),
-]
+pytestmark = pytest.mark.skipif(
+    cupy.cuda.runtime.driverGetVersion() == 0, reason="No available CUDA driver."
+)
 
 
 # GPU Interpretation not yet supported

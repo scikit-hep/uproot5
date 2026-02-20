@@ -8,15 +8,9 @@ import uproot
 
 ak = pytest.importorskip("awkward")
 cupy = pytest.importorskip("cupy")
-pytestmark = [
-    pytest.mark.skipif(
-        cupy.cuda.runtime.driverGetVersion() == 0, reason="No available CUDA driver."
-    ),
-    pytest.mark.xfail(
-        strict=False,
-        reason="There are breaking changes in new versions of KvikIO that are not yet resolved",
-    ),
-]
+pytestmark = pytest.mark.skipif(
+    cupy.cuda.runtime.driverGetVersion() == 0, reason="No available CUDA driver."
+)
 
 
 @pytest.mark.parametrize(
@@ -73,7 +67,7 @@ def test_multiple_page_delta_encoding_GDS(backend, interpreter, library):
         obj = f["ntuple"]
         filehandle = uproot.source.cufile_interface.CuFileSource(filename, "rb")
         field_metadata = obj.get_field_metadata(0)
-        col_clusterbuffers = obj.gpu_read_col_cluster_pages(
+        col_clusterbuffers = obj.gpu_read_cluster_pages(
             0, 0, filehandle, field_metadata
         )
         filehandle.get_all()
