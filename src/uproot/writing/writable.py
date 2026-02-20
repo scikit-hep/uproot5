@@ -27,6 +27,7 @@ from collections.abc import Mapping, MutableMapping
 from pathlib import Path
 from typing import IO
 
+import awkward
 import numpy
 
 import uproot._util
@@ -1393,7 +1394,6 @@ in file {self.file_path} in directory {self.path}"""
             ak_form = _type_specification_to_awkward_form(type_spec_or_data)
             return self.mkrntuple(name, ak_form, description)
 
-        awkward = uproot.extras.awkward()
         type_spec_or_data = _regularize_input_type_to_awkward(type_spec_or_data)
         if isinstance(type_spec_or_data, awkward.Array):
             ntuple = self.mkrntuple(name, type_spec_or_data.layout.form, description)
@@ -2207,7 +2207,6 @@ class WritableNTuple:
 
 
 def _is_type_specification(obj):
-    awkward = uproot.extras.awkward()
     to_check = [obj]
     while len(to_check) > 0:
         obj = to_check.pop()
@@ -2225,7 +2224,6 @@ def _is_type_specification(obj):
 
 
 def _type_specification_to_awkward_form(obj):
-    awkward = uproot.extras.awkward()
     if isinstance(obj, awkward.forms.Form):
         return obj
     if isinstance(obj, (awkward.types.Type, awkward.types.ArrayType)):
@@ -2349,7 +2347,6 @@ def _unpack_metadata_and_arrays(obj):
                         branch_array
                     )
                 except TypeError:
-                    awkward = uproot.extras.awkward()
                     try:
                         branch_array = awkward.from_iter(  # noqa: PLW2901 (overwriting branch_array)
                             branch_array

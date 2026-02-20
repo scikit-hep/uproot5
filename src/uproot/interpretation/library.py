@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import json
 
+import awkward
 import numpy
 
 import uproot
@@ -508,7 +509,9 @@ class Awkward(Library):
 
     @property
     def imported(self):
-        return uproot.extras.awkward()
+        import awkward
+
+        return awkward
 
     def finalize(self, array, branch, interpretation, entry_start, entry_stop, options):
         awkward = self.imported
@@ -811,7 +814,7 @@ def _process_array_for_pandas(
         if finalize:
             return array
         else:
-            return uproot.extras.awkward().Array(array)
+            return awkward.Array(array)
     else:
         try:
             interpretation.awkward_form(None)
@@ -823,13 +826,13 @@ def _process_array_for_pandas(
                     array, branch, interpretation, entry_start, entry_stop, options
                 )
                 if isinstance(
-                    array.type.content, uproot.extras.awkward().types.NumpyType
+                    array.type.content, awkward.types.NumpyType
                 ) and array.layout.minmax_depth == (1, 1):
                     array = array.to_numpy()
                 else:
                     array = uproot.extras.awkward_pandas().AwkwardExtensionArray(array)
             else:
-                array = _object_to_awkward_array(uproot.extras.awkward(), form, array)
+                array = _object_to_awkward_array(awkward, form, array)
             return array
 
 

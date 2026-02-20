@@ -20,6 +20,7 @@ import threading
 from collections.abc import Iterable, Mapping, MutableMapping
 from keyword import iskeyword
 
+import awkward
 import numpy
 
 import uproot
@@ -193,7 +194,6 @@ def iterate(
         )
 
         if hasbranches is not None:
-
             with hasbranches:
                 try:
                     for item in hasbranches.iterate(
@@ -976,8 +976,6 @@ class HasBranches(Mapping):
         the array in contiguous ranges of entries.
         """
         from uproot._dask import FormMappingWithVirtualArrays
-
-        awkward = uproot.extras.awkward()
 
         entry_start, entry_stop = _regularize_entries_start_stop(
             self.num_entries, entry_start, entry_stop

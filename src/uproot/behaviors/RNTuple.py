@@ -18,6 +18,7 @@ import warnings
 from collections.abc import Mapping
 from functools import partial
 
+import awkward as ak
 import numpy
 
 import uproot
@@ -534,7 +535,6 @@ class HasFields(Mapping):
         and the second entry is the relative path of the requested RField. The second entry is needed in cases where the requested RField
         is a subfield of a collection, which requires constructing the form with information about the parent field.
         """
-        ak = uproot.extras.awkward()
 
         keys = self.keys(
             filter_name=filter_name,
@@ -833,14 +833,14 @@ class HasFields(Mapping):
         )
         entry_start -= cluster_offset
         entry_stop -= cluster_offset
-        arrays = uproot.extras.awkward().from_buffers(
+        arrays = ak.from_buffers(
             form,
             cluster_num_entries,
             container_dict,
             backend="cuda" if interpreter == "gpu" and backend == "cuda" else "cpu",
         )[entry_start:entry_stop]
 
-        arrays = uproot.extras.awkward().to_backend(arrays, backend=backend)
+        arrays = ak.to_backend(arrays, backend=backend)
         # no longer needed; save memory
         del container_dict
 
@@ -1642,10 +1642,10 @@ class HasFields(Mapping):
         blank = "   "
 
         def recursive_show(field, header="", first=True, last=True, recursive=True):
-            outstr = f"""{header}{"" if first else (elbow if last else tee)}{field.name} ({'ROOT::RNTuple' if isinstance(field, uproot.behaviors.RNTuple.RNTuple) else field.typename})"""
+            outstr = f"""{header}{"" if first else (elbow if last else tee)}{field.name} ({"ROOT::RNTuple" if isinstance(field, uproot.behaviors.RNTuple.RNTuple) else field.typename})"""
             stream.write(outstr[:max_width] + "\n")
             if field.description != "":
-                outstr = f"""{header}{'' if first else (blank if last else pipe)}Description: {field.description}"""
+                outstr = f"""{header}{"" if first else (blank if last else pipe)}Description: {field.description}"""
                 stream.write(outstr[:max_width] + "\n")
             if len(field) > 0 and (recursive or first):
                 subfields = list(
@@ -1803,7 +1803,6 @@ def _regularize_step_size(ntuple, akform, step_size, entry_start, entry_stop):
 
 
 def _recursive_find(form, res):
-    ak = uproot.extras.awkward()
 
     if hasattr(form, "form_key") and form.form_key not in res:
         res.append(form.form_key)
@@ -1836,7 +1835,6 @@ def _cupy_insert(arr, obj, value):
 
 
 def _fill_container_dict(container_dict, content, key, dtype_byte, dtype):
-    ak = uproot.extras.awkward()
     Numpy = ak._nplikes.numpy.Numpy
 
     if isinstance(content, tuple):

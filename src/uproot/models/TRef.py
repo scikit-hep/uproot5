@@ -9,6 +9,7 @@ from __future__ import annotations
 import struct
 from collections.abc import Sequence
 
+import awkward
 import numpy
 
 import uproot
@@ -63,7 +64,6 @@ in file {self.file.file_path}"""
 
     @classmethod
     def awkward_form(cls, file, context):
-        awkward = uproot.extras.awkward()
         contents = {}
         if context["tobject_header"]:
             contents["@pidf"] = uproot._util.awkward_form(
@@ -223,7 +223,6 @@ in file {self.file.file_path}"""
 
     @classmethod
     def awkward_form(cls, file, context):
-        awkward = uproot.extras.awkward()
         contents = {}
         contents["fName"] = uproot.containers.AsString(
             False, typename="TString"

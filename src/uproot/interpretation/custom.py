@@ -9,6 +9,7 @@ from ``TBasket`` objects.
 
 from __future__ import annotations
 
+import awkward
 import numpy
 
 import uproot
@@ -112,7 +113,6 @@ class CustomInterpretation(uproot.interpretation.Interpretation):
             tot_array = numpy.concatenate(arr_to_concat)
             return tot_array[relative_entry_start:relative_entry_stop]
 
-        awkward = uproot.extras.awkward()
         if isinstance(arr_to_concat[0], awkward.Array):
             tot_array = awkward.concatenate(arr_to_concat)
             return tot_array[relative_entry_start:relative_entry_stop]
@@ -159,7 +159,6 @@ class AsBinary(uproot.interpretation.Interpretation):
             counts = None
 
         if library.name == "ak":
-            awkward = uproot.extras.awkward()
             if counts is not None:
                 return awkward.unflatten(data, counts)
             else:
@@ -207,7 +206,6 @@ class AsBinary(uproot.interpretation.Interpretation):
         relative_entry_stop = entry_stop - basket_entry_starts[basket_start_idx]
 
         if library.name == "ak":
-            awkward = uproot.extras.awkward()
             return awkward.concatenate(arr_to_concat)[
                 relative_entry_start:relative_entry_stop
             ]

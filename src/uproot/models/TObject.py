@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import struct
 
+import awkward
 import numpy
 
 import uproot
@@ -81,7 +82,6 @@ in file {self.file.file_path}"""
 
     @classmethod
     def awkward_form(cls, file, context):
-        awkward = uproot.extras.awkward()
         contents = {}
         if context["tobject_header"]:
             contents["@instance_version"] = uproot._util.awkward_form(

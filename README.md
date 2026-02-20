@@ -65,19 +65,9 @@ If you need to develop Awkward Array as well, see its [installation for develope
 
 # Dependencies
 
-**Uproot's only strict dependencies are NumPy and packaging.** Strict dependencies are automatically installed by pip (or conda).
-
-**[Awkward Array](https://anaconda.org/conda-forge/awkward) is highly recommended** and is automatically installed by pip (or conda), though it is _possible_ to use Uproot without it. If you need a minimal installation, pass `--no-deps` to pip and pass `library="np"` to every array-fetching function, or globally set `uproot.default_library` to get NumPy arrays instead of Awkward Arrays.
-
-   * `awkward`: Uproot 5.x requires Awkward 2.x.
+**Uproot's only strict dependencies are Awkward, Cramjam, xxhash, fsspec, NumPy, packaging.** Strict dependencies are automatically installed by pip (or conda).
 
 The following libraries are also useful in conjunction with Uproot, but are not necessary. If you call a function that needs one, you'll be prompted to install it. (Conda installs most of these automatically.)
-
-**For ROOT files, compressed different ways:**
-
-   * `lz4` and `xxhash`: if reading ROOT files that have been LZ4-compressed.
-   * `zstandard`: if reading ROOT files that have been ZSTD-compressed.
-   * ZLIB and LZMA are built in (Python standard library).
 
 **For accessing remote files:**
 

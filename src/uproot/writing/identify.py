@@ -20,6 +20,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 
+import awkward
 import numpy
 
 import uproot.compression
@@ -50,8 +51,6 @@ def add_to_directory(obj, name, directory, streamers):
     Raises ``TypeError`` if ``obj`` is not recognized as writable data.
     """
     obj = uproot.writing.writable._regularize_input_type_to_awkward(obj)
-
-    awkward = uproot.extras.awkward()
 
     if isinstance(obj, Mapping) and all(isinstance(x, str) for x in obj):
         metadata, data = uproot.writing.writable._unpack_metadata_and_arrays(obj)

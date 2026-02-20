@@ -6,6 +6,8 @@ This module defines a versionless model for ``TObjString``.
 
 from __future__ import annotations
 
+import awkward
+
 import uproot
 import uproot.serialization
 
@@ -88,7 +90,6 @@ in file {self.file.file_path}"""
 
     @classmethod
     def awkward_form(cls, file, context):
-        awkward = uproot.extras.awkward()
         return awkward.forms.ListOffsetForm(
             context["index_format"],
             awkward.forms.NumpyForm("uint8", parameters={"__array__": "char"}),
