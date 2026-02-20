@@ -120,3 +120,23 @@ def test_rntuple_massive_negative_index(rntuple, branch_name):
     branch = rntuple[branch_name]
     data = branch.array(entry_start=-1_000_000)
     assert len(data) == total
+
+
+@pytest.mark.parametrize("branch_name", RNTUPLE_BRANCH_ARCHETYPES)
+def test_rntuple_iterate_out_of_bounds(rntuple, branch_name):
+    """
+    Verify that iterating over an invalid range in an RNTuple yields zero batches.
+    This acts as a regression test for the fix in behaviors/RNTuple.py.
+    """
+    total = rntuple.num_entries
+
+    iterator = rntuple.iterate(
+        [branch_name],
+        step_size=50,
+        entry_start=total + 100,
+        entry_stop=total + 200,
+        library="ak",
+    )
+
+    batches = list(iterator)
+    assert len(batches) == 0
