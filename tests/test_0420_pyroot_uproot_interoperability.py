@@ -29,6 +29,27 @@ def test_from_pyroot():
     assert uproot_vec.member("fP").member("fZ") == 3
     assert uproot_vec.member("fE") == 4
 
+    # This part just tests if the buffer relocation works
+    # which is not always triggered by TH1Fs
+    pyroot_h1 = ROOT.TH1F("h1", "Histogram", 100, 0, 1)
+    pyroot_h2 = ROOT.TH1D("h2", "Histogram", 100, 0, 1)
+    pyroot_h3 = ROOT.TH2F("h3", "Histogram", 100, 0, 1, 100, 0, 1)
+    pyroot_h4 = ROOT.TH2D("h4", "Histogram", 100, 0, 1, 100, 0, 1)
+    pyroot_h5 = ROOT.TH3F("h5", "Histogram", 100, 0, 1, 100, 0, 1, 100, 0, 1)
+    pyroot_h6 = ROOT.TH3D("h6", "Histogram", 100, 0, 1, 100, 0, 1, 100, 0, 1)
+    h1 = uproot.from_pyroot(pyroot_h1)
+    h2 = uproot.from_pyroot(pyroot_h2)
+    h3 = uproot.from_pyroot(pyroot_h3)
+    h4 = uproot.from_pyroot(pyroot_h4)
+    h5 = uproot.from_pyroot(pyroot_h5)
+    h6 = uproot.from_pyroot(pyroot_h6)
+    assert h1.classname == "TH1F"
+    assert h2.classname == "TH1D"
+    assert h3.classname == "TH2F"
+    assert h4.classname == "TH2D"
+    assert h5.classname == "TH3F"
+    assert h6.classname == "TH3D"
+
 
 def test_write_pyroot_TObjString(tmp_path):
     newfile = os.path.join(tmp_path, "newfile.root")
