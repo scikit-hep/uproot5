@@ -38,7 +38,6 @@ jobs:
             --strict-channel-priority
             conda-forge/label/python_rc::_python_rc
             python=${{ matrix.python-version }}
-            pytest-cov
 
       - uses: astral-sh/setup-uv@v7
 
@@ -46,7 +45,6 @@ jobs:
         run: python -c "import sys; assert '.'.join(str(s) for s in sys.version_info[:2]) == '${{ matrix.python-version }}', f'{version} incorrect!'"
 
       - name: Install ROOT
-        # If these values are changed, they should also be updated in the steps below
         if: matrix.python-version == 3.10  &&  runner.os == 'Linux'
         run: |
           micromamba env list
@@ -76,14 +74,7 @@ jobs:
 
       - name: Run pytest
         run: |
-          python -m pytest -vv tests --reruns 10 --reruns-delay 30 --only-rerun "(?i)http|ssl|timeout|expired|connection|socket"\
-                           ${{ matrix.python-version == 3.10  &&  runner.os == 'Linux' && '--cov --cov-branch --cov-report=xml' || '' }}
-
-      - name: Upload coverage reports to Codecov
-        if: matrix.python-version == 3.10  &&  runner.os == 'Linux'
-        uses: codecov/codecov-action@v5
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
+          python -m pytest -vv tests --reruns 10 --reruns-delay 30 --only-rerun "(?i)http|ssl|timeout|expired|connection|socket"
 
   vanilla-build:
     strategy:
@@ -244,13 +235,28 @@ jobs:
             cuda-toolkit
             cupy
             kvikio
+            pytest-cov
+            ${{ matrix.cuda-version == 13 && 'root' || '' }}
 
       - name: Pip install the package
         run: pip install --group=test .
 
-      - name: Run pytest
+      - name: Run only GPU tests
+        if: matrix.cuda-version != 13
         run: |
           python -m pytest -vv tests-cuda --reruns 10 --reruns-delay 30 --only-rerun "(?i)http|ssl|timeout|expired|connection|socket"
+
+      - name: Run full test suite and collect coverage
+        if: matrix.cuda-version == 13
+        run: |
+          python -m pytest -vv tests-cuda --reruns 10 --reruns-delay 30 --only-rerun "(?i)http|ssl|timeout|expired|connection|socket"\
+                           --cov=uproot --cov-branch --cov-report=xml
+
+      - name: Upload coverage reports to Codecov
+        if: matrix.cuda-version == 13
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
 
   pass:
     if: always()
