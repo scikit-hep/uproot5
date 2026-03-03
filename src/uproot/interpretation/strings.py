@@ -18,6 +18,7 @@ from __future__ import annotations
 import struct
 import threading
 
+import awkward
 import numpy
 
 import uproot
@@ -164,7 +165,6 @@ class AsStrings(uproot.interpretation.Interpretation):
         context = self._make_context(
             context, index_format, header, tobject_header, breadcrumbs
         )
-        awkward = uproot.extras.awkward()
         return awkward.forms.ListOffsetForm(
             context["index_format"],
             awkward.forms.NumpyForm("uint8", parameters={"__array__": "char"}),
@@ -200,7 +200,6 @@ class AsStrings(uproot.interpretation.Interpretation):
             isinstance(library, uproot.interpretation.library.Awkward)
             and byte_offsets is None
         ):
-            uproot.extras.awkward()
             import awkward.forth
 
             if self._length_bytes == "1-5" or self._length_bytes == "4":

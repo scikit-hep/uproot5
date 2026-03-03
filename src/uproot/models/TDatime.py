@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import struct
 
+import awkward
 import numpy
 
 import uproot
@@ -63,7 +64,6 @@ class Model_TDatime(uproot.behaviors.TDatime.TDatime, uproot.model.Model):
 
     @classmethod
     def awkward_form(cls, file, context):
-        awkward = uproot.extras.awkward()
         contents = {}
         if context["header"]:
             contents["@num_bytes"] = uproot._util.awkward_form(

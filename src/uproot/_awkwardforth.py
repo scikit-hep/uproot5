@@ -166,10 +166,10 @@ class Node:
         if len(self._children) != 0:
             children = "\n" + indent + "  " + children + "\n" + indent
         return f"""Node({self._name!r},
-{indent}  pre={''.join(self._pre_code)!r},
-{indent}  post={''.join(self._post_code)!r},
-{indent}  init={''.join(self._init_code)!r},
-{indent}  header={''.join(self._header_code)!r},
+{indent}  pre={"".join(self._pre_code)!r},
+{indent}  post={"".join(self._post_code)!r},
+{indent}  init={"".join(self._init_code)!r},
+{indent}  header={"".join(self._header_code)!r},
 {indent}  form_details={json.dumps(self._form_details)},
 {indent}  field_name={self._field_name!r},
 {indent}  children=[{children}])"""
