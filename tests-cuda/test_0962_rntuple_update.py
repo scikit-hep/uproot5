@@ -53,9 +53,7 @@ def test_new_support_RNTuple_split_int16_reading(backend, interpreter, library):
         assert df.one_integers[0] == 2
         assert df.one_integers[-1] == 1
         assert ak.all(
-            library.unique(
-                library.array(df.one_integers[: len(df.one_integers) // 2])
-            )
+            library.unique(library.array(df.one_integers[: len(df.one_integers) // 2]))
             == library.array([2])
         )
         assert ak.all(
