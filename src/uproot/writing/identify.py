@@ -27,6 +27,9 @@ import uproot.compression
 import uproot.extras
 import uproot.pyroot
 import uproot.writing
+import uproot.writing._cascade
+import uproot.writing._cascadentuple
+import uproot.writing.writable
 
 
 def add_to_directory(obj, name, directory, streamers):
@@ -50,7 +53,7 @@ def add_to_directory(obj, name, directory, streamers):
 
     Raises ``TypeError`` if ``obj`` is not recognized as writable data.
     """
-    obj = uproot.writing.writable._regularize_input_type_to_awkward(obj)
+    obj = uproot.writing._cascadentuple._regularize_input_type_to_awkward(obj)
 
     if isinstance(obj, Mapping) and all(isinstance(x, str) for x in obj):
         metadata, data = uproot.writing.writable._unpack_metadata_and_arrays(obj)

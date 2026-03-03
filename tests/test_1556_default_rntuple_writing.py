@@ -78,6 +78,16 @@ def test_write_form(tmp_path):
         rntuple = file["ntuple"]
         assert rntuple.arrays().tolist() == data.tolist()
 
+    sliced_data = data[data.a > 1]
+
+    with uproot.recreate(filepath) as file:
+        rntuple = file.mkrntuple("ntuple", sliced_data.layout.form)
+        rntuple.extend(sliced_data)
+
+    with uproot.open(filepath) as file:
+        rntuple = file["ntuple"]
+        assert rntuple.arrays().tolist() == sliced_data.tolist()
+
 
 def test_write_dict(tmp_path):
     filepath = os.path.join(tmp_path, "test.root")
@@ -105,6 +115,17 @@ def test_write_awkward(tmp_path):
         rntuple = file["ntuple"]
         assert rntuple.arrays()[:3].tolist() == data.tolist()
         assert rntuple.arrays()[3:].tolist() == data.tolist()
+
+    sliced_data = data[data.a > 1]
+
+    with uproot.recreate(filepath) as file:
+        rntuple = file.mkrntuple("ntuple", sliced_data)
+        rntuple.extend(sliced_data)
+
+    with uproot.open(filepath) as file:
+        rntuple = file["ntuple"]
+        assert rntuple.arrays()[:2].tolist() == sliced_data.tolist()
+        assert rntuple.arrays()[2:].tolist() == sliced_data.tolist()
 
 
 def test_write_pandas(tmp_path):
@@ -192,8 +213,6 @@ def test_invalid_inputs(tmp_path):
         with pytest.raises(ValueError):
             file["ntuple1"] = {"a": "int32", "b": "float64", "c": np.int64}
         with pytest.raises(TypeError):
-            file["ntuple2"] = data.layout
+            file["ntuple2"] = data.layout.contents[0]
         with pytest.raises(TypeError):
-            file["ntuple3"] = data.layout.contents[0]
-        with pytest.raises(TypeError):
-            file["ntuple4"] = data.layout.contents[0].form
+            file["ntuple3"] = data.layout.contents[0].form
