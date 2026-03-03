@@ -4,6 +4,9 @@ codecov:
 comment:
   layout: files
 
+ignore:
+  - tests*/*
+
 coverage:
   status:
     project:
