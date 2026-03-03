@@ -1224,7 +1224,7 @@ def _regularize_input_type_to_awkward(obj):
             # Try to retype dtype=object columns
             for k in obj.keys():
                 if obj[k].dtype == object:
-                    obj[k] = awkward.Array(obj[k].tolist())
+                    obj[k] = awkward.from_iter(obj[k])
             obj = awkward.Array(obj)
 
     elif isinstance(obj, numpy.ndarray) and obj.dtype.fields is not None:
