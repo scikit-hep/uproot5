@@ -249,7 +249,7 @@ jobs:
       - name: Run full test suite and collect coverage
         if: matrix.cuda-version == 13
         run: |
-          python -m pytest -vv tests-cuda --reruns 10 --reruns-delay 30 --only-rerun "(?i)http|ssl|timeout|expired|connection|socket"\
+          python -m pytest -vv tests tests-cuda --reruns 10 --reruns-delay 30 --only-rerun "(?i)http|ssl|timeout|expired|connection|socket"\
                            --cov=uproot --cov-branch --cov-report=xml
 
       - name: Upload coverage reports to Codecov
