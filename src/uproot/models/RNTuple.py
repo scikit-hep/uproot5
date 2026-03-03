@@ -1660,7 +1660,6 @@ class RField(uproot.behaviors.RNTuple.HasFields):
         self._lookup = None
         self._path = None
         self._is_anonymous = None
-        self._is_ignored = None
 
     def __repr__(self):
         if len(self) == 0:
@@ -1709,12 +1708,14 @@ class RField(uproot.behaviors.RNTuple.HasFields):
         """
         There are some anonymous fields in the RNTuple specification that we hide from the user
         to simplify the interface. These are fields named `_0` that are children of a collection,
-        variant, or atomic field.
+        variant, or atomic field. Fields that encode hierarchy (i.e. fields named `:_[0-9]+` that
+        are children of a record) are also considered anonymous.
 
         All children fields of variants are ignored, since they cannot be accessed directly
         in a consistent manner. They can only be accessed through the parent variant field.
         """
         if self._is_anonymous is None:
+            # children of collections, variants, or atomic fields
             self._is_anonymous = not self.top_level and (
                 self.parent.record.struct_role
                 in (
@@ -1727,29 +1728,21 @@ class RField(uproot.behaviors.RNTuple.HasFields):
                     and self.record.field_name == "_0"
                 )
             )
+            # anything within a variant
             field = self
             while not field.top_level:
                 field = field.parent
                 if field.record.struct_role == uproot.const.RNTupleFieldRole.VARIANT:
                     self._is_anonymous = True
                     break
-        return self._is_anonymous
-
-    @property
-    def is_ignored(self):
-        """
-        There are some fields in the RNTuple specification named `:_i` (for `i=0,1,2,...`)
-        that encode class hierarchy. These are not useful in Uproot, so they are ignored.
-        """
-        if self._is_ignored is None:
-            self._is_ignored = (
+            # fields that encode hierarchy
+            self._is_anonymous |= (
                 not self.top_level
                 and self.parent.record.struct_role
                 == uproot.const.RNTupleFieldRole.RECORD
                 and re.fullmatch(r":_[0-9]+", self.name) is not None
             )
-
-        return self._is_ignored
+        return self._is_anonymous
 
     @property
     def parent(self):
