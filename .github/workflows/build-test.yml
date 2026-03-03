@@ -46,6 +46,7 @@ jobs:
         run: python -c "import sys; assert '.'.join(str(s) for s in sys.version_info[:2]) == '${{ matrix.python-version }}', f'{version} incorrect!'"
 
       - name: Install ROOT
+        # If these values are changed, they should also be updated in the steps below
         if: matrix.python-version == 3.10  &&  runner.os == 'Linux'
         run: |
           micromamba env list
@@ -76,10 +77,9 @@ jobs:
       - name: Run pytest
         run: |
           python -m pytest -vv tests --reruns 10 --reruns-delay 30 --only-rerun "(?i)http|ssl|timeout|expired|connection|socket"\
-                           --cov --cov-branch --cov-report=xml
+                           ${{ matrix.python-version == 3.10  &&  runner.os == 'Linux' && '--cov --cov-branch --cov-report=xml' || '' }}
 
       - name: Upload coverage reports to Codecov
-        # This should match the condition of the step where ROOT is installed
         if: matrix.python-version == 3.10  &&  runner.os == 'Linux'
         uses: codecov/codecov-action@v5
         with:
