@@ -488,7 +488,7 @@ class HasFields(Mapping):
         if isinstance(self, uproot.behaviors.RNTuple.RNTuple):
             return "."
         # For some anonymous fields, the path is not available
-        if self.is_anonymous:
+        if self.is_anonymous or self.in_variant:
             return None
         if self._path is None:
             path = self.name
@@ -1354,7 +1354,11 @@ class HasFields(Mapping):
                 and (filter_typename is no_filter or filter_typename(field.typename))
                 and (filter_field is no_filter or filter_field(field))
             ):
-                if field.is_anonymous or (ignore_duplicates and field.name in keys_set):
+                if (
+                    field.is_anonymous
+                    or field.in_variant
+                    or (ignore_duplicates and field.name in keys_set)
+                ):
                     pass
                 else:
                     keys_set.add(field.name)
@@ -1370,7 +1374,7 @@ class HasFields(Mapping):
                 ):
                     k2 = (
                         f"{field.name}.{k1}"
-                        if full_paths and not field.is_anonymous
+                        if full_paths and not (field.is_anonymous or field.in_variant)
                         else k1
                     )
                     if filter_name is no_filter or _filter_name_deep(
