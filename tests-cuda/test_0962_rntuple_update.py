@@ -8,15 +8,9 @@ import uproot
 
 ak = pytest.importorskip("awkward")
 cupy = pytest.importorskip("cupy")
-pytestmark = [
-    pytest.mark.skipif(
-        cupy.cuda.runtime.driverGetVersion() == 0, reason="No available CUDA driver."
-    ),
-    pytest.mark.xfail(
-        strict=False,
-        reason="There are breaking changes in new versions of KvikIO that are not yet resolved",
-    ),
-]
+pytestmark = pytest.mark.skipif(
+    cupy.cuda.runtime.driverGetVersion() == 0, reason="No available CUDA driver."
+)
 
 
 @pytest.mark.parametrize(
@@ -59,10 +53,12 @@ def test_new_support_RNTuple_split_int16_reading(backend, interpreter, library):
         assert df.one_integers[0] == 2
         assert df.one_integers[-1] == 1
         assert ak.all(
-            library.unique(df.one_integers[: len(df.one_integers) // 2])
+            library.unique(library.array(df.one_integers[: len(df.one_integers) // 2]))
             == library.array([2])
         )
         assert ak.all(
-            library.unique(df.one_integers[len(df.one_integers) / 2 + 1 :])
+            library.unique(
+                library.array(df.one_integers[len(df.one_integers) / 2 + 1 :])
+            )
             == library.array([1])
         )
