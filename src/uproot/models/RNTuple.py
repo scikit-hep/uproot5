@@ -1876,7 +1876,7 @@ class RField(uproot.behaviors.RNTuple.HasFields):
             entry_start=entry_start,
             entry_stop=entry_stop,
             array_cache=array_cache,
-            library=library,
+            library="ak",  # conversion needs to be done at the end
             interpreter=interpreter,
             backend=backend,
             ak_add_doc=ak_add_doc,
@@ -1893,6 +1893,13 @@ class RField(uproot.behaviors.RNTuple.HasFields):
                 raise AssertionError(
                     "The array was not constructed correctly. Please report this issue."
                 )
+        library = uproot.interpretation.library._regularize_library(library)
+        # TODO: The conversion should be fully handled by Awkward if possible,
+        # but we need to check if the NumPy conversin is robust enough and matches
+        # the TTree behavior. Also, Pandas support is not implemented yet.
+        if library.name == "np":
+            return arrays.to_numpy()
+
         return arrays
 
 
