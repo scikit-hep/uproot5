@@ -526,7 +526,7 @@ in file {self.file.file_path}"""
                             or key == self.all_fields[i].path
                             for key in keys
                         )
-                        or self.all_fields[i].is_anonymous
+                        or self.all_fields[i].in_variant
                     ):
                         recordlist.append(
                             self.field_form(i, keys, ak_add_doc=ak_add_doc)
@@ -565,8 +565,16 @@ in file {self.file.file_path}"""
             )
         elif structural_role == uproot.const.RNTupleFieldRole.RECORD:
             newids = []
-            if this_id in self._related_ids:
-                newids = self._related_ids[this_id]
+            to_check = [this_id]
+            while to_check:
+                current_id = to_check.pop()
+                if current_id in self._related_ids:
+                    children = self._related_ids[current_id]
+                    for child in children:
+                        if self.all_fields[child].is_anonymous:
+                            to_check.append(child)
+                        else:
+                            newids.append(child)
             # go find N in the rest, N is the # of fields in struct
             recordlist = []
             namelist = []
@@ -577,7 +585,7 @@ in file {self.file.file_path}"""
                         or key == self.all_fields[i].path
                         for key in keys
                     )
-                    or self.all_fields[i].is_anonymous
+                    or self.all_fields[i].in_variant
                 ):
                     recordlist.append(self.field_form(i, keys, ak_add_doc=ak_add_doc))
                     namelist.append(field_records[i].field_name)
@@ -1679,7 +1687,7 @@ class RField(uproot.behaviors.RNTuple.HasFields):
         self._lookup = None
         self._path = None
         self._is_anonymous = None
-        self._is_ignored = None
+        self._in_variant = None
 
     def __repr__(self):
         if len(self) == 0:
@@ -1728,12 +1736,11 @@ class RField(uproot.behaviors.RNTuple.HasFields):
         """
         There are some anonymous fields in the RNTuple specification that we hide from the user
         to simplify the interface. These are fields named `_0` that are children of a collection,
-        variant, or atomic field.
-
-        All children fields of variants are ignored, since they cannot be accessed directly
-        in a consistent manner. They can only be accessed through the parent variant field.
+        variant, or atomic field. Fields that encode hierarchy (i.e. fields named `:_[0-9]+` that
+        are children of a record) are also considered anonymous.
         """
         if self._is_anonymous is None:
+            # children of collections, variants, or atomic fields
             self._is_anonymous = not self.top_level and (
                 self.parent.record.struct_role
                 in (
@@ -1746,29 +1753,30 @@ class RField(uproot.behaviors.RNTuple.HasFields):
                     and self.record.field_name == "_0"
                 )
             )
-            field = self
-            while not field.top_level:
-                field = field.parent
-                if field.record.struct_role == uproot.const.RNTupleFieldRole.VARIANT:
-                    self._is_anonymous = True
-                    break
-        return self._is_anonymous
-
-    @property
-    def is_ignored(self):
-        """
-        There are some fields in the RNTuple specification named `:_i` (for `i=0,1,2,...`)
-        that encode class hierarchy. These are not useful in Uproot, so they are ignored.
-        """
-        if self._is_ignored is None:
-            self._is_ignored = (
+            # fields that encode hierarchy
+            self._is_anonymous |= (
                 not self.top_level
                 and self.parent.record.struct_role
                 == uproot.const.RNTupleFieldRole.RECORD
                 and re.fullmatch(r":_[0-9]+", self.name) is not None
             )
+        return self._is_anonymous
 
-        return self._is_ignored
+    @property
+    def in_variant(self):
+        """
+        All children fields of variants need special treatment, since they cannot be accessed directly
+        in a consistent manner. They can only be accessed through the parent variant field.
+        """
+        if self._in_variant is None:
+            self._in_variant = False
+            field = self
+            while not field.top_level:
+                field = field.parent
+                if field.record.struct_role == uproot.const.RNTupleFieldRole.VARIANT:
+                    self._in_variant = True
+                    break
+        return self._in_variant
 
     @property
     def parent(self):

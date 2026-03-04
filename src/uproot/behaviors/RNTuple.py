@@ -465,16 +465,15 @@ class HasFields(Mapping):
                     if f.parent_field_id == i
                 ]
             else:
-                fields = [
-                    rntuple.all_fields[i]
-                    for i, f in enumerate(rntuple.field_records)
-                    if f.parent_field_id == self._fid
-                    and f.parent_field_id != i
-                    and not rntuple.all_fields[i].is_ignored
-                ]
-                # If the child field is anonymous, we return the grandchildren
-                if len(fields) == 1 and fields[0].is_anonymous:
-                    fields = fields[0].fields
+                fields = []
+                for i, f in enumerate(rntuple.field_records):
+                    if f.parent_field_id != self._fid or f.parent_field_id == i:
+                        continue
+                    if rntuple.all_fields[i].is_anonymous:
+                        # for anonymous fields, we use their children instead
+                        fields.extend(rntuple.all_fields[i].fields)
+                    else:
+                        fields.append(rntuple.all_fields[i])
             self._fields = fields
         return self._fields
 
@@ -489,7 +488,7 @@ class HasFields(Mapping):
         if isinstance(self, uproot.behaviors.RNTuple.RNTuple):
             return "."
         # For some anonymous fields, the path is not available
-        if self.is_anonymous or self.is_ignored:
+        if self.is_anonymous or self.in_variant:
             return None
         if self._path is None:
             path = self.name
@@ -1357,7 +1356,11 @@ class HasFields(Mapping):
                 and (filter_typename is no_filter or filter_typename(field.typename))
                 and (filter_field is no_filter or filter_field(field))
             ):
-                if field.is_anonymous or (ignore_duplicates and field.name in keys_set):
+                if (
+                    field.is_anonymous
+                    or field.in_variant
+                    or (ignore_duplicates and field.name in keys_set)
+                ):
                     pass
                 else:
                     keys_set.add(field.name)
@@ -1373,7 +1376,7 @@ class HasFields(Mapping):
                 ):
                     k2 = (
                         f"{field.name}.{k1}"
-                        if full_paths and not field.is_anonymous
+                        if full_paths and not (field.is_anonymous or field.in_variant)
                         else k1
                     )
                     if filter_name is no_filter or _filter_name_deep(
