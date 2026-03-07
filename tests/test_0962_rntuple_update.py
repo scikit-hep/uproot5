@@ -63,4 +63,3 @@ def test_new_support_RNTuple_split_int64_reading():
     ) as f:
         result = f["ntuple"]["value"].array().tolist()
     assert result == values
-
