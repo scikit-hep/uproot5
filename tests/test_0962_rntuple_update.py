@@ -56,7 +56,7 @@ def test_new_support_RNTuple_split_int16_extended_range():
     assert result == values
 
 
-def test_new_support_RNTuple_split_int64_reading():
+def test_new_support_RNTuple_split_int64_extended_range():
     values = [0, 1, -1, 2**62, -(2**62), 2**63 - 1, -(2**63)]
     with uproot.open(
         skhep_testdata.data_path("test_splitint64_rntuple_v1-0-1-0.root")
