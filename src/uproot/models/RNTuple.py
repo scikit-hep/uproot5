@@ -10,7 +10,7 @@ import dataclasses
 import re
 import struct
 import sys
-from collections import defaultdict
+from collections import Counter, defaultdict
 from itertools import groupby
 from typing import NamedTuple
 
@@ -174,7 +174,7 @@ in file {self.file.file_path}"""
                 if len(group_list) < 2:
                     continue
 
-                # Generate ancestor stack and remove repeating parts
+                # Step 1: Generate ancestor stack and remove top common parts
                 ancestor_stacks: list[list[str]] = []
                 for field in group_list:
                     f = field
@@ -190,8 +190,7 @@ in file {self.file.file_path}"""
                     for stack in ancestor_stacks:
                         stack.pop()
 
-                # Generate ancestor name stacks (e.g. ['member', 'Base', 'Child']) for each field
-                # according to ancestor stack
+                # Step 2: Generate ancestor name stacks (e.g. ['member', 'Base', 'Child'])
                 ancestor_name_stacks = []
                 for name_stack in ancestor_stacks:
                     ancestor_name_stacks.append(
@@ -199,7 +198,7 @@ in file {self.file.file_path}"""
                         + [field.record.type_name for field in name_stack[1:]]
                     )
 
-                # Generate unique field names by adding prefixes like `Base::` until the names are unique
+                # Step 3: Generate unique field names by adding prefixes like `Base::` until the names are unique
                 def _generate_fieldname(name_stack: list[str], n_prefix: int):
                     """
                     ['member'] -> 'member'
@@ -220,20 +219,26 @@ in file {self.file.file_path}"""
                     else:
                         return field_name
 
-                n_prefix = 0
+                n_prefixes = [0 for _ in range(len(group_list))]
                 new_names = [
                     _generate_fieldname(name_stack, n_prefix)
-                    for name_stack in ancestor_name_stacks
+                    for name_stack, n_prefix in zip(
+                        ancestor_name_stacks, n_prefixes, strict=True
+                    )
                 ]
 
-                while len(new_names) != len(set(new_names)):
-                    n_prefix += 1
-                    new_names = [
-                        _generate_fieldname(name_stack, n_prefix)
-                        for name_stack in ancestor_name_stacks
-                    ]
+                name_counter = Counter(new_names)
+                while len(new_names) != len(name_counter):
+                    for i in range(len(n_prefixes)):
+                        # For non-unique names, add one more prefix and regenerate the name
+                        if name_counter[new_names[i]] > 1:
+                            n_prefixes[i] += 1
+                            new_names[i] = _generate_fieldname(
+                                ancestor_name_stacks[i], n_prefixes[i]
+                            )
+                    name_counter = Counter(new_names)
 
-                # Rename fields
+                # Step 4: Rename fields
                 for field, new_name in zip(group_list, new_names, strict=True):
                     field._name = new_name
                     field._path = None  # invalidate path cache
