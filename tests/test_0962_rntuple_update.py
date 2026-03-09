@@ -21,9 +21,9 @@ def test_new_support_RNTuple_split_int32_reading():
 def test_new_support_RNTuple_split_int32_extended_range():
     values = [0, 1, -1, 2**30, -(2**30), 2**31 - 1, -(2**31)]
     with uproot.open(
-        skhep_testdata.data_path("test_splitint32_rntuple_v1-0-1-0.root")
+        skhep_testdata.data_path("test_splitint_rntuple_v1-0-1-0.root")
     ) as f:
-        result = f["ntuple"]["value"].array().tolist()
+        result = f["ntuple"]["int32"].array().tolist()
     assert result == values
 
 
@@ -50,16 +50,16 @@ def test_new_support_RNTuple_split_int16_reading():
 def test_new_support_RNTuple_split_int16_extended_range():
     values = [0, 1, -1, 2**14, -(2**14), 2**15 - 1, -(2**15)]
     with uproot.open(
-        skhep_testdata.data_path("test_splitint16_rntuple_v1-0-1-0.root")
+        skhep_testdata.data_path("test_splitint_rntuple_v1-0-1-0.root")
     ) as f:
-        result = f["ntuple"]["value"].array().tolist()
+        result = f["ntuple"]["int16"].array().tolist()
     assert result == values
 
 
 def test_new_support_RNTuple_split_int64_extended_range():
     values = [0, 1, -1, 2**62, -(2**62), 2**63 - 1, -(2**63)]
     with uproot.open(
-        skhep_testdata.data_path("test_splitint64_rntuple_v1-0-1-0.root")
+        skhep_testdata.data_path("test_splitint_rntuple_v1-0-1-0.root")
     ) as f:
-        result = f["ntuple"]["value"].array().tolist()
+        result = f["ntuple"]["int64"].array().tolist()
     assert result == values
