@@ -248,9 +248,11 @@ in file {self.file.file_path}"""
                     field._name = new_name
 
                     # invalidate path cache
-                    field._path = None
-                    for subfield in field.fields:
-                        subfield._path = None
+                    to_invalidate = [field]
+                    while to_invalidate:
+                        f = to_invalidate.pop()
+                        f._path = None
+                        to_invalidate.extend(f.fields)
 
         return self._all_fields
 
