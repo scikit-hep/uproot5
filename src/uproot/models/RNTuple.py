@@ -685,7 +685,6 @@ in file {self.file.file_path}"""
                     namelist.append(self.all_fields[i].name)
                     record_names.append(field_records[i].field_name)
             if all(re.fullmatch(r"_[0-9]+", name) is not None for name in record_names):
-                record_names = None
                 namelist = None
             return ak.forms.RecordForm(
                 recordlist, namelist, form_key="whatever", parameters=parameters
