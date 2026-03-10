@@ -246,7 +246,11 @@ in file {self.file.file_path}"""
                 # Step 4: Rename fields
                 for field, new_name in zip(group_list, new_names, strict=True):
                     field._name = new_name
-                    field._path = None  # invalidate path cache
+
+                    # invalidate path cache
+                    field._path = None
+                    for subfield in field.fields:
+                        subfield._path = None
 
         return self._all_fields
 
