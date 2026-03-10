@@ -985,7 +985,7 @@ By default, ``KVIKIO_NTHREADS`` is 1. Increasing this value can improve I/O perf
 
 .. code-block:: python
 
-    >>> kvikio.defaults.set({"KVIKIO_NTHREADS": 5})
+    >>> kvikio.defaults.set({"num_threads": 5})
 
 Opening a file for writing
 --------------------------
