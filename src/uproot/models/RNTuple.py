@@ -175,7 +175,7 @@ in file {self.file.file_path}"""
                     continue
 
                 # Step 1: Generate ancestor stack and remove top common parts
-                ancestor_stacks: list[list[str]] = []
+                ancestor_stacks = []
                 for field in group_list:
                     f = field
                     tmp_stack = []
@@ -199,7 +199,7 @@ in file {self.file.file_path}"""
                     )
 
                 # Step 3: Generate unique field names by adding prefixes like `Base::` until the names are unique
-                def _generate_fieldname(name_stack: list[str], n_prefix: int):
+                def _generate_fieldname(name_stack, n_prefix):
                     """
                     ['member'] -> 'member'
                     ['member', 'Base', 'Child', 'GrandChild'], n_prefix=0 -> 'member'
