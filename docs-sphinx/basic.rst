@@ -965,6 +965,28 @@ Note that for the last input we used the ``filter_field`` argument instead of ``
 
 There are still significant work required to achieve feature-parity with TTrees, but all the basic functionality is already implemented. We will continue to make the transition to RNTuples as seamless as possible.
 
+GPU reading with CUDA support
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Uproot supports GPU-based reading and processing of payload data on CUDA-capable GPUs for CUDA major versions 12 and 13. On systems that support GPU Direct Storage (GDS), raw payload data can be transferred directly from storage into GPU memory without a CPU bounce buffer. File metadata is still read by the CPU in both cases. GPU reading over HTTP is not supported.
+
+For GPU reading of RNTuple data, the values ``backend="cuda"`` and ``interpreter="gpu"`` must be passed to ``RNTuple.arrays()``.
+
+.. code-block:: python
+
+    >>> rntuple = uproot.open("ntpl001_staff_rntuple_v1-0-0-0.root:Staff")
+    >>> rntuple["Age"].array(backend="cuda", interpreter="gpu")
+    <Array [58, 63, 56, 61, 52, 60, ..., 51, 25, 35, 28, 43] type='3354 * int32'>
+    >>> rntuple.arrays(["Age", "Cost", "Nation"], backend="cuda", interpreter="gpu")
+    <Array [{Age: 58, Cost: 11975, ...}, ...] type='3354 * {Age: int32, Cost: i...'>
+
+Uproot uses the ``kvikio`` library to perform GPU-efficient I/O using CuFile and POSIX APIs. ``kvikio`` provides runtime settings that can be configured, documented `here <https://docs.rapids.ai/api/kvikio/stable/runtime_settings/#>`__.
+
+By default, ``KVIKIO_NTHREADS`` is 1. Increasing this value can improve I/O performance by allowing multiple threads to perform I/O concurrently (up to a system-dependent limit).
+
+.. code-block:: python
+
+    >>> kvikio.defaults.set({"KVIKIO_NTHREADS": 5})
+
 Opening a file for writing
 --------------------------
 
