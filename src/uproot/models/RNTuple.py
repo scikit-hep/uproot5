@@ -233,6 +233,11 @@ in file {self.file.file_path}"""
                         # For non-unique names, add one more prefix and regenerate the name
                         if name_counter[new_names[i]] > 1:
                             n_prefixes[i] += 1
+
+                            assert n_prefixes[i] < len(
+                                ancestor_name_stacks[i]
+                            ), "Ran out of prefixes to add, but names are still not unique."
+
                             new_names[i] = _generate_fieldname(
                                 ancestor_name_stacks[i], n_prefixes[i]
                             )
