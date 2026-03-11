@@ -74,7 +74,8 @@ compression_settings_dict = {
 
 
 def _from_zigzag(n):
-    return n >> 1 ^ -(n & 1)
+    u = n.view(numpy.dtype(f"uint{n.dtype.itemsize * 8}"))
+    return ((u >> 1) ^ -(u & 1)).view(n.dtype)
 
 
 def _envelop_header(chunk, cursor, context):
