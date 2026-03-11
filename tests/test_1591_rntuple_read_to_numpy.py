@@ -2,6 +2,7 @@
 
 import skhep_testdata
 import awkward as ak
+import numpy as np
 import uproot
 
 
@@ -13,9 +14,13 @@ def test_reading_into_numpy():
         obj = f["Events"]
         ak_arrays = obj.arrays(filter_name="n*")
         np_arrays = obj.arrays(library="np", filter_name="n*")
+        assert isinstance(ak_arrays, ak.Array)
+        assert isinstance(np_arrays, np.ndarray)
 
         nmuon_ak_array = obj["nMuon"].array()
         nmuon_np_array = obj["nMuon"].array(library="np")
+        assert isinstance(nmuon_ak_array, ak.Array)
+        assert isinstance(nmuon_np_array, np.ndarray)
 
         assert ak.array_equal(nmuon_ak_array, nmuon_np_array)
         assert ak.array_equal(ak_arrays["nMuon"], np_arrays["nMuon"])
