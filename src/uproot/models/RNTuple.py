@@ -195,7 +195,7 @@ in file {self.file.file_path}"""
                 ancestor_name_stacks = []
                 for name_stack in ancestor_stacks:
                     ancestor_name_stacks.append(
-                        [name_stack[0].record.field_name]
+                        [name_stack[0].name]
                         + [field.record.type_name for field in name_stack[1:]]
                     )
 
