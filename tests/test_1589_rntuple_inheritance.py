@@ -1,5 +1,4 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot5/blob/main/LICENSE
-from _pytest.assertion.rewrite import assertstate_key
 import uproot
 import skhep_testdata
 
