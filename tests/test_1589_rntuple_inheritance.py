@@ -8,6 +8,11 @@ import awkward as ak
 
 def test_inherited_fields():
 
+    # The inheritance structure of the test RNTuple is as follows:
+    # GrandChild -> Child -> BaseA
+    # MultiParent -> BaseA, BaseB
+    # MultiGrandParent -> Child(-> BaseA), MultiParent(-> BaseA, BaseB)
+
     BaseA_fields = frozenset(["base_a1", "base_a2", "base_a3"])
     BaseB_fields = frozenset(["base_b"])
     Child_fields = frozenset(["child_1", "child_2", *BaseA_fields])
@@ -15,13 +20,21 @@ def test_inherited_fields():
     MultiParent_fields = frozenset(
         ["multi_parent_1", "multi_parent_2", *BaseA_fields, *BaseB_fields]
     )
+
+    # For MultiGrandParent, BaseA fields appear twice,
+    # so we need to add prefixes to distinguish them.
     MultiGrandParent_fields = frozenset(
         [
             "multi_grand_parent1",
             "multi_grand_parent2",
-            *MultiParent_fields,
-            *Child_fields,
+            "multi_parent_1",
+            "multi_parent_2",
+            "child_1",
+            "child_2",
+            *BaseB_fields,
         ]
+        + [f"Child::{field}" for field in BaseA_fields]
+        + [f"MultiParent::{field}" for field in BaseA_fields]
     )
 
     filepath = skhep_testdata.data_path("test_class_inheritance_rntuple_v1-0-0-1.root")
@@ -40,15 +53,32 @@ def test_inherited_fields():
     assert frozenset(arrays["multi_grandparent"].fields) == MultiGrandParent_fields
 
     assert ak.array_equal(
-        arrays.multi_grandparent.base_a1, [i for i in range(10)], dtype_exact=False
+        arrays.multi_grandparent["Child::base_a1"],
+        [i for i in range(10)],
+        dtype_exact=False,
     )
     assert ak.array_equal(
-        arrays.multi_grandparent.base_a2,
+        arrays.multi_grandparent["Child::base_a2"],
         [i * 0.1 for i in range(10)],
         dtype_exact=False,
     )
     assert ak.array_equal(
-        arrays.multi_grandparent.base_a3,
+        arrays.multi_grandparent["Child::base_a3"],
+        [[i * j for j in range(3)] for i in range(10)],
+        dtype_exact=False,
+    )
+    assert ak.array_equal(
+        arrays.multi_grandparent["MultiParent::base_a1"],
+        [i for i in range(10)],
+        dtype_exact=False,
+    )
+    assert ak.array_equal(
+        arrays.multi_grandparent["MultiParent::base_a2"],
+        [i * 0.1 for i in range(10)],
+        dtype_exact=False,
+    )
+    assert ak.array_equal(
+        arrays.multi_grandparent["MultiParent::base_a3"],
         [[i * j for j in range(3)] for i in range(10)],
         dtype_exact=False,
     )
