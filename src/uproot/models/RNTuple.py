@@ -10,7 +10,8 @@ import dataclasses
 import re
 import struct
 import sys
-from collections import defaultdict
+from collections import Counter, defaultdict
+from itertools import groupby
 from typing import NamedTuple
 
 import awkward as ak
@@ -160,6 +161,101 @@ in file {self.file.file_path}"""
         """
         if self._all_fields is None:
             self._all_fields = [RField(i, self) for i in range(len(self.field_records))]
+
+            # Collect fields that have the same path
+            def _sort_key(f):
+                return f.path if f.path else ""
+
+            sorted_by_path = sorted(self._all_fields, key=_sort_key)
+            for path, group in groupby(sorted_by_path, key=_sort_key):
+                if path == "":
+                    continue
+
+                group_list = list(group)
+                if len(group_list) < 2:
+                    continue
+
+                # Step 1: Generate ancestor stack and remove top common parts
+                ancestor_stacks = []
+                for field in group_list:
+                    f = field
+                    tmp_stack = []
+                    while isinstance(f, RField):
+                        tmp_stack.append(f)
+                        f = f.parent
+                    ancestor_stacks.append(tmp_stack)
+
+                while all(
+                    stack[-1] == ancestor_stacks[0][-1] for stack in ancestor_stacks[1:]
+                ):
+                    for stack in ancestor_stacks:
+                        stack.pop()
+
+                # Step 2: Generate ancestor name stacks (e.g. ['member', 'Base', 'Child'])
+                ancestor_name_stacks = []
+                for name_stack in ancestor_stacks:
+                    ancestor_name_stacks.append(
+                        [name_stack[0].name]
+                        + [field.record.type_name for field in name_stack[1:]]
+                    )
+
+                # Step 3: Generate unique field names by adding prefixes like `Base::` until the names are unique
+                def _generate_fieldname(name_stack, n_prefix):
+                    """
+                    ['member'] -> 'member'
+                    ['member', 'Base', 'Child', 'GrandChild'], n_prefix=0 -> 'member'
+                    ['member', 'Base', 'Child', 'GrandChild'], n_prefix=1 -> 'GrandChild::member'
+                    ['member', 'Base', 'Child', 'GrandChild'], n_prefix=2 -> 'GrandChild::Child::member'
+                    """
+                    if len(name_stack) < 2:
+                        return name_stack[0]
+
+                    field_name = name_stack[0]
+
+                    n_prefix = min(n_prefix, len(name_stack) - 1)
+                    prefixes = name_stack[::-1][:n_prefix]
+
+                    if prefixes:
+                        return "::".join(prefixes) + "::" + field_name
+                    else:
+                        return field_name
+
+                n_prefixes = [0 for _ in range(len(group_list))]
+                new_names = [
+                    _generate_fieldname(name_stack, n_prefix)
+                    for name_stack, n_prefix in zip(
+                        ancestor_name_stacks, n_prefixes, strict=True
+                    )
+                ]
+
+                name_counter = Counter(new_names)
+                while len(new_names) != len(name_counter):
+                    for i in range(len(n_prefixes)):
+                        # For non-unique names, add one more prefix and regenerate the name
+                        if name_counter[new_names[i]] > 1:
+                            n_prefixes[i] += 1
+
+                            if n_prefixes[i] >= len(ancestor_name_stacks[i]):
+                                raise RuntimeError(
+                                    "Ran out of prefixes to add, but names are still not unique."
+                                )
+
+                            new_names[i] = _generate_fieldname(
+                                ancestor_name_stacks[i], n_prefixes[i]
+                            )
+                    name_counter = Counter(new_names)
+
+                # Step 4: Rename fields
+                for field, new_name in zip(group_list, new_names, strict=True):
+                    field._name = new_name
+
+                    # invalidate path cache
+                    to_invalidate = [field]
+                    while to_invalidate:
+                        f = to_invalidate.pop()
+                        f._path = None
+                        to_invalidate.extend(f.fields)
+
         return self._all_fields
 
     def _prepare_header_chunk(self):
@@ -527,7 +623,7 @@ in file {self.file.file_path}"""
                             or key == self.all_fields[i].path
                             for key in keys
                         )
-                        or self.all_fields[i].is_anonymous
+                        or self.all_fields[i].in_variant
                     ):
                         recordlist.append(
                             self.field_form(i, keys, ak_add_doc=ak_add_doc)
@@ -566,11 +662,20 @@ in file {self.file.file_path}"""
             )
         elif structural_role == uproot.const.RNTupleFieldRole.RECORD:
             newids = []
-            if this_id in self._related_ids:
-                newids = self._related_ids[this_id]
+            to_check = [this_id]
+            while to_check:
+                current_id = to_check.pop()
+                if current_id in self._related_ids:
+                    children = self._related_ids[current_id]
+                    for child in children:
+                        if self.all_fields[child].is_anonymous:
+                            to_check.append(child)
+                        else:
+                            newids.append(child)
             # go find N in the rest, N is the # of fields in struct
             recordlist = []
             namelist = []
+            record_names = []
             for i in newids:
                 if (
                     any(
@@ -578,11 +683,12 @@ in file {self.file.file_path}"""
                         or key == self.all_fields[i].path
                         for key in keys
                     )
-                    or self.all_fields[i].is_anonymous
+                    or self.all_fields[i].in_variant
                 ):
                     recordlist.append(self.field_form(i, keys, ak_add_doc=ak_add_doc))
-                    namelist.append(field_records[i].field_name)
-            if all(re.fullmatch(r"_[0-9]+", name) is not None for name in namelist):
+                    namelist.append(self.all_fields[i].name)
+                    record_names.append(field_records[i].field_name)
+            if all(re.fullmatch(r"_[0-9]+", name) is not None for name in record_names):
                 namelist = None
             return ak.forms.RecordForm(
                 recordlist, namelist, form_key="whatever", parameters=parameters
@@ -1680,7 +1786,8 @@ class RField(uproot.behaviors.RNTuple.HasFields):
         self._lookup = None
         self._path = None
         self._is_anonymous = None
-        self._is_ignored = None
+        self._in_variant = None
+        self._name = None
 
     def __repr__(self):
         if len(self) == 0:
@@ -1693,15 +1800,19 @@ class RField(uproot.behaviors.RNTuple.HasFields):
         """
         Name of the ``RField``.
         """
-        # We rename subfields of tuples to match Awkward
-        name = self._ntuple.field_records[self._fid].field_name
-        if (
-            not self.top_level
-            and self.parent.record.struct_role == uproot.const.RNTupleFieldRole.RECORD
-            and re.fullmatch(r"_[0-9]+", name) is not None
-        ):
-            name = name[1:]
-        return name
+        if self._name is None:
+            # We rename subfields of tuples to match Awkward
+            name = self._ntuple.field_records[self._fid].field_name
+            if (
+                not self.top_level
+                and self.parent.record.struct_role
+                == uproot.const.RNTupleFieldRole.RECORD
+                and re.fullmatch(r"_[0-9]+", name) is not None
+            ):
+                name = name[1:]
+
+            self._name = name
+        return self._name
 
     @property
     def description(self):
@@ -1729,12 +1840,11 @@ class RField(uproot.behaviors.RNTuple.HasFields):
         """
         There are some anonymous fields in the RNTuple specification that we hide from the user
         to simplify the interface. These are fields named `_0` that are children of a collection,
-        variant, or atomic field.
-
-        All children fields of variants are ignored, since they cannot be accessed directly
-        in a consistent manner. They can only be accessed through the parent variant field.
+        variant, or atomic field. Fields that encode hierarchy (i.e. fields named `:_[0-9]+` that
+        are children of a record) are also considered anonymous.
         """
         if self._is_anonymous is None:
+            # children of collections, variants, or atomic fields
             self._is_anonymous = not self.top_level and (
                 self.parent.record.struct_role
                 in (
@@ -1747,29 +1857,30 @@ class RField(uproot.behaviors.RNTuple.HasFields):
                     and self.record.field_name == "_0"
                 )
             )
-            field = self
-            while not field.top_level:
-                field = field.parent
-                if field.record.struct_role == uproot.const.RNTupleFieldRole.VARIANT:
-                    self._is_anonymous = True
-                    break
-        return self._is_anonymous
-
-    @property
-    def is_ignored(self):
-        """
-        There are some fields in the RNTuple specification named `:_i` (for `i=0,1,2,...`)
-        that encode class hierarchy. These are not useful in Uproot, so they are ignored.
-        """
-        if self._is_ignored is None:
-            self._is_ignored = (
+            # fields that encode hierarchy
+            self._is_anonymous |= (
                 not self.top_level
                 and self.parent.record.struct_role
                 == uproot.const.RNTupleFieldRole.RECORD
                 and re.fullmatch(r":_[0-9]+", self.name) is not None
             )
+        return self._is_anonymous
 
-        return self._is_ignored
+    @property
+    def in_variant(self):
+        """
+        All children fields of variants need special treatment, since they cannot be accessed directly
+        in a consistent manner. They can only be accessed through the parent variant field.
+        """
+        if self._in_variant is None:
+            self._in_variant = False
+            field = self
+            while not field.top_level:
+                field = field.parent
+                if field.record.struct_role == uproot.const.RNTupleFieldRole.VARIANT:
+                    self._in_variant = True
+                    break
+        return self._in_variant
 
     @property
     def parent(self):
