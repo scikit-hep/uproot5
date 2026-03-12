@@ -859,7 +859,10 @@ class HasFields(Mapping):
                             "The array was not constructed correctly. Please report this issue."
                         )
 
-        # FIXME: This is not right, but it might temporarily work
+        # TODO: The conversion would be ideally be fully handled by Awkward.
+        # However, jagged arrays fail to be converted.
+        # We still need to match the TTree behavior for jagged arrays, and implement
+        # the conversion to Pandas.
         if library.name == "np":
             return arrays.to_numpy()
 

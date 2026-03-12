@@ -1988,7 +1988,7 @@ class RField(uproot.behaviors.RNTuple.HasFields):
             entry_start=entry_start,
             entry_stop=entry_stop,
             array_cache=array_cache,
-            library=library,
+            library="ak",  # conversion needs to be done at the end
             interpreter=interpreter,
             backend=backend,
             ak_add_doc=ak_add_doc,
@@ -2005,6 +2005,14 @@ class RField(uproot.behaviors.RNTuple.HasFields):
                 raise AssertionError(
                     "The array was not constructed correctly. Please report this issue."
                 )
+        library = uproot.interpretation.library._regularize_library(library)
+        # TODO: The conversion would be ideally be fully handled by Awkward.
+        # However, jagged arrays fail to be converted.
+        # We still need to match the TTree behavior for jagged arrays, and implement
+        # the conversion to Pandas.
+        if library.name == "np":
+            return arrays.to_numpy()
+
         return arrays
 
 
