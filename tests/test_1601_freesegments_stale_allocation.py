@@ -16,8 +16,7 @@ FreeSegments.write() instead of ``self._data.allocation`` (cached).
 """
 
 import os
-
-import numpy as np
+import random
 
 import uproot
 
@@ -27,11 +26,10 @@ hist = pytest.importorskip("hist")
 
 
 def test_freesegments_consistent_after_repeated_updates(tmp_path):
-    n_histograms = 30
+    n_histograms = 60  # Error occurs at histogram 53
     n_events = 1_000
-    n_tries = 100
 
-    np.random.seed(27)  # Chosen to trigger with a low number of histograms
+    random.seed(27)  # Chosen to trigger with a low number of histograms
 
     filename = os.path.join(tmp_path, "histograms.root")
 
@@ -40,7 +38,7 @@ def test_freesegments_consistent_after_repeated_updates(tmp_path):
     for i in range(n_histograms):
         h = hist.Hist(hist.axis.Regular(50, 0, 5, name=f"x{i}", label=f"Variable {i}"))
 
-        data = np.random.normal(loc=2.5, scale=0.7, size=n_events)
+        data = [random.random() * 5 for _ in range(n_events)]
         h.fill(**{f"x{i}": data})
 
         with uproot.update(filename) as f:
