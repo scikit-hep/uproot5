@@ -21,7 +21,9 @@ import numpy as np
 
 import uproot
 
-import hist
+import pytest
+
+hist = pytest.importorskip("hist")
 
 
 def test_freesegments_consistent_after_repeated_updates(tmp_path):
