@@ -237,6 +237,7 @@ in file {self.file.file_path}"""
                             n_prefixes[i] += 1
 
                             if n_prefixes[i] >= max_prefixes:
+                                self._all_fields = None
                                 raise RuntimeError(
                                     "Reached maximum number of prefixes, but names are still not unique."
                                 )
