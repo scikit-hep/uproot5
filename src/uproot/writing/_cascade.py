@@ -474,6 +474,7 @@ class FreeSegmentsData(CascadeLeaf):
     def slices(self, value):
         if self._slices != value:
             self._file_dirty = True
+            self._allocation = None
             self._slices = value
 
     @property
@@ -484,6 +485,7 @@ class FreeSegmentsData(CascadeLeaf):
     def end(self, value):
         if self._end != value:
             self._file_dirty = True
+            self._allocation = None
             self._end = value
 
     @property
@@ -750,11 +752,11 @@ class FreeSegments(CascadeNode):
             self._data.end = self._data.location + self._key.uncompressed_bytes
 
     def write(self, sink):
-        self._key.uncompressed_bytes = self._data.num_bytes
+        self._key.uncompressed_bytes = self._data.allocation
         self._key.compressed_bytes = self._key.uncompressed_bytes
         self._data.location = self._key.location + self._key.allocation
         self._fileheader.free_location = self._key.location
-        self._fileheader.free_num_bytes = self._key.allocation + self._data.num_bytes
+        self._fileheader.free_num_bytes = self._key.allocation + self._data.allocation
         self._fileheader.free_num_slices = len(self._data.slices)
         self._fileheader.end = self._data.end
         super().write(sink)
