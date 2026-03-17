@@ -960,15 +960,8 @@ def num_entries(paths):
     """
     paths2 = uproot._util.regularize_files(paths, steps_allowed=False)
 
-    if isinstance(paths, dict):
-        paths = list(paths.items())
-    elif not isinstance(paths, str):
-        paths = [(uproot._util.file_object_path_split(path)) for path in paths]
-    else:
-        paths = [uproot._util.file_object_path_split(paths)]
-
     for i, (file_path, object_path) in enumerate(paths2):
         with uproot.open(
             {file_path: object_path}, custom_classes={"TTree": Model_TTree_NumEntries}
         ) as f:
-            yield paths[i][0], paths[i][1], f.all_members["fEntries"][0]
+            yield file_path, object_path, f.all_members["fEntries"][0]
