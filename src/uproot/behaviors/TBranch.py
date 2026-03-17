@@ -3565,7 +3565,7 @@ def _hasbranches_num_entries_for(
             start = entry_offsets[0]
             for basket_num, stop in enumerate(entry_offsets[1:]):
                 if entry_start < stop and start <= entry_stop:
-                    total_bytes += branch.basket_compressed_bytes(basket_num)
+                    total_bytes += branch.basket_uncompressed_bytes(basket_num)
                 start = stop
 
     total_entries = entry_stop - entry_start
