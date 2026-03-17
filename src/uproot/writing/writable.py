@@ -2234,8 +2234,38 @@ def _is_type_specification(obj):
             else:
                 return False
         if not isinstance(
-            obj, (numpy.dtype, awkward.types.Type, awkward.types.ArrayType, str, type)
+            obj,
+            (
+                numpy.dtype,
+                awkward.types.Type,
+                awkward.types.ArrayType,
+                type,
+                str,
+                tuple,
+            ),
         ):
+            return False
+        # for tuples and strings we need to make sure they actually specify a type and are not just data
+        if isinstance(obj, tuple):
+            try:
+                numpy.dtype(obj)
+                return True
+            except (TypeError, ValueError):
+                return False
+        if isinstance(obj, str):
+            try:
+                numpy.dtype(obj)
+                return True
+            except (TypeError, ValueError):
+                pass
+            try:
+                awkward.types.from_datashape(obj, highlevel=False)
+                return True
+            except (
+                awkward.types._awkward_datashape_parser.UnexpectedToken,
+                awkward.types._awkward_datashape_parser.UnexpectedCharacters,
+            ):
+                pass
             return False
     return True
 
@@ -2245,12 +2275,42 @@ def _type_specification_to_awkward_form(obj):
         return obj
     if isinstance(obj, (awkward.types.Type, awkward.types.ArrayType)):
         return awkward.forms.from_type(obj)
-    if isinstance(obj, (numpy.dtype, type)):
-        obj = str(numpy.dtype(obj))
+    if isinstance(obj, type):
+        try:
+            obj = numpy.dtype(obj)
+        except (TypeError, ValueError):
+            raise TypeError(
+                f"Cannot construct a NumPy dtype from {obj!r} of type {type(obj).__name__}."
+            ) from None
+    if isinstance(obj, tuple):
+        try:
+            obj = numpy.dtype(obj)
+        except (TypeError, ValueError):
+            raise TypeError(
+                f"Cannot construct a NumPy dtype from the tuple {obj!r}."
+            ) from None
+    if isinstance(obj, numpy.dtype):
+        obj = obj.newbyteorder("<")
+        if obj.subdtype is None:
+            field_shape = ()
+        else:
+            obj, field_shape = obj.subdtype
+        dims = ""
+        if len(field_shape) > 0:
+            dims = dims + "".join(str(x) + " * " for x in field_shape)
+        obj = f"{dims}{obj}"
     if isinstance(obj, str):
-        return awkward.forms.from_type(
-            awkward.types.from_datashape(obj, highlevel=False)
-        )
+        try:
+            return awkward.forms.from_type(
+                awkward.types.from_datashape(obj, highlevel=False)
+            )
+        except (
+            awkward.types._awkward_datashape_parser.UnexpectedToken,
+            awkward.types._awkward_datashape_parser.UnexpectedCharacters,
+        ):
+            raise TypeError(
+                f"Cannot construct an Awkward Form of from type specification {obj!r}"
+            ) from None
     if isinstance(obj, Mapping):
         return awkward.forms.RecordForm(
             [_type_specification_to_awkward_form(v) for v in obj.values()],
@@ -2258,7 +2318,7 @@ def _type_specification_to_awkward_form(obj):
         )
     raise TypeError(
         f"Cannot construct an Awkward Form from {type(obj).__name__}. "
-        f"Supported types: Form, Type, ArrayType, dtype, str, Mapping"
+        f"Supported types: Form, Type, ArrayType, dtype, Mapping, str, tuple."
     )
 
 
