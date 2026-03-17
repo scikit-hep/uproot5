@@ -2262,10 +2262,7 @@ def _is_type_specification(obj):
                 continue
             try:
                 awkward.types.from_datashape(obj, highlevel=False)
-            except (
-                awkward.types._awkward_datashape_parser.UnexpectedToken,
-                awkward.types._awkward_datashape_parser.UnexpectedCharacters,
-            ):
+            except Exception:
                 pass
             else:
                 continue
@@ -2282,9 +2279,7 @@ def _type_specification_to_awkward_form(obj):
         try:
             obj = numpy.dtype(obj)
         except (TypeError, ValueError):
-            raise TypeError(
-                f"Cannot construct a NumPy dtype from {obj!r} of type {type(obj).__name__}."
-            ) from None
+            raise TypeError(f"Cannot construct a NumPy dtype from {obj!r}.") from None
     if isinstance(obj, tuple):
         try:
             obj = numpy.dtype(obj)
@@ -2294,7 +2289,7 @@ def _type_specification_to_awkward_form(obj):
             ) from None
     if isinstance(obj, str):
         # First we try to interpret the string as a NumPy dtype
-        # so we can try to convert it to a string Awkward unterstands
+        # so we can try to convert it to a string Awkward understands
         try:
             dt = numpy.dtype(obj)
         except (TypeError, ValueError):
@@ -2316,10 +2311,7 @@ def _type_specification_to_awkward_form(obj):
             return awkward.forms.from_type(
                 awkward.types.from_datashape(obj, highlevel=False)
             )
-        except (
-            awkward.types._awkward_datashape_parser.UnexpectedToken,
-            awkward.types._awkward_datashape_parser.UnexpectedCharacters,
-        ):
+        except Exception:
             raise TypeError(
                 f"Cannot construct an Awkward Form from type specification {obj!r}"
             ) from None

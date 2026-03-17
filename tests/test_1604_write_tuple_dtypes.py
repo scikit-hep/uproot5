@@ -105,7 +105,7 @@ def test_unsupported_numpy_dtypes(tmp_path):
         # using some random type should not work
         dt_unknown = frozenset
         with pytest.raises(TypeError):
-            file.mktree("tree4", {"x": dt_tuple})
+            file.mktree("tree4", {"x": dt_unknown})
         with pytest.raises(TypeError):
             file.mkrntuple("ntuple4", {"x": dt_unknown})
 
