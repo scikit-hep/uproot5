@@ -56,7 +56,7 @@ def test_chunking_single_num():
 
 def test_chunking_single_string():
     test_path = skhep_testdata.data_path("uproot-Zmumu.root") + ":events"
-    assert uproot.dask(test_path, step_size="500B", library="ak").npartitions == 330
+    assert uproot.dask(test_path, step_size="500B", library="ak").npartitions == 768
 
 
 def test_chunking_multiple_num():
@@ -73,7 +73,7 @@ def test_chunking_multiple_string():
     filename2 = skhep_testdata.data_path("uproot-Zmumu-uncompressed.root") + ":events"
     assert (
         uproot.dask([filename1, filename2], step_size="500B", library="ak").npartitions
-        == 922
+        == 1536
     )
 
 
