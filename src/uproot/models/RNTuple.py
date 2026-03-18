@@ -229,15 +229,17 @@ in file {self.file.file_path}"""
                 ]
 
                 name_counter = Counter(new_names)
+                max_prefixes = max(len(stack) for stack in ancestor_name_stacks)
                 while len(new_names) != len(name_counter):
                     for i in range(len(n_prefixes)):
                         # For non-unique names, add one more prefix and regenerate the name
                         if name_counter[new_names[i]] > 1:
                             n_prefixes[i] += 1
 
-                            if n_prefixes[i] >= len(ancestor_name_stacks[i]):
+                            if n_prefixes[i] >= max_prefixes:
+                                self._all_fields = None
                                 raise RuntimeError(
-                                    "Ran out of prefixes to add, but names are still not unique."
+                                    "Reached maximum number of prefixes, but names are still not unique."
                                 )
 
                             new_names[i] = _generate_fieldname(
