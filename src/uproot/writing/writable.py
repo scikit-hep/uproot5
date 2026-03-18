@@ -2276,10 +2276,9 @@ def _type_specification_to_awkward_form(obj):
     if isinstance(obj, (awkward.types.Type, awkward.types.ArrayType)):
         return awkward.forms.from_type(obj)
     if isinstance(obj, type):
-        try:
-            obj = numpy.dtype(obj)
-        except (TypeError, ValueError):
-            raise TypeError(f"Cannot construct a NumPy dtype from {obj!r}.") from None
+        obj = numpy.dtype(obj)
+        if obj == numpy.dtype("O"):
+            raise TypeError(f"Cannot construct a NumPy dtype from {obj!r}.")
     if isinstance(obj, tuple):
         try:
             obj = numpy.dtype(obj)
