@@ -197,6 +197,7 @@ Thanks especially to the gracious help of Uproot contributors (including the [or
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/Rachit931"><img src="https://avatars.githubusercontent.com/u/199397286?v=4?s=100" width="100px;" alt="Rachit931"/><br /><sub><b>Rachit931</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot5/commits?author=Rachit931" title="Documentation">📖</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/wdconinc"><img src="https://avatars.githubusercontent.com/u/4656391?v=4?s=100" width="100px;" alt="Wouter Deconinck"/><br /><sub><b>Wouter Deconinck</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot5/commits?author=wdconinc" title="Code">💻</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/KaranSinghDev"><img src="https://avatars.githubusercontent.com/u/102300776?v=4?s=100" width="100px;" alt="Karan Singh"/><br /><sub><b>Karan Singh</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot5/commits?author=KaranSinghDev" title="Code">💻</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/nickwp"><img src="https://avatars.githubusercontent.com/u/9571544?v=4?s=100" width="100px;" alt="Nick Prouse"/><br /><sub><b>Nick Prouse</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot5/commits?author=nickwp" title="Code">💻</a></td>
     </tr>
   </tbody>
 </table>
