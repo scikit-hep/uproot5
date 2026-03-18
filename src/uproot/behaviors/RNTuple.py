@@ -1768,7 +1768,6 @@ def _get_recursive(hasfields, where):
 
 
 def _num_entries_for(ntuple, akform, target_num_bytes, entry_start, entry_stop):
-    # TODO: there might be a better way to estimate the number of entries
     clusters = ntuple.cluster_summaries
     cluster_starts = numpy.array([c.num_first_entry for c in clusters])
 
@@ -1784,9 +1783,10 @@ def _num_entries_for(ntuple, akform, target_num_bytes, entry_start, entry_stop):
     for key in target_cols:
         if "column" in key:
             key_nr = int(key.split("-")[1])
-            for cluster in range(start_cluster_idx, stop_cluster_idx):
-                pages = ntuple.page_link_list[cluster][key_nr].pages
-                total_bytes += sum(page.locator.num_bytes for page in pages)
+            n_entries, _, dt = ntuple._expected_array_length_starts_dtype(
+                key_nr, start_cluster_idx, stop_cluster_idx
+            )
+            total_bytes += n_entries * dt.itemsize
 
     total_entries = entry_stop - entry_start
     if total_bytes == 0:
@@ -1795,8 +1795,7 @@ def _num_entries_for(ntuple, akform, target_num_bytes, entry_start, entry_stop):
         num_entries = round(target_num_bytes * total_entries / total_bytes)
     if num_entries <= 0:
         return 1
-    else:
-        return num_entries
+    return num_entries
 
 
 def _regularize_step_size(ntuple, akform, step_size, entry_start, entry_stop):
