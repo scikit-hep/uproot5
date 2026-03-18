@@ -109,9 +109,20 @@ def test_unsupported_numpy_dtypes(tmp_path):
         with pytest.raises(TypeError):
             file.mkrntuple("ntuple4", {"x": dt_unknown})
 
+        with pytest.raises(AttributeError):
+            file.mktree("tree5", {1: "unknown type"})
+        with pytest.raises(ValueError):
+            file.mkrntuple("ntuple5", {1: "unknown type"})
+
+        with pytest.raises(TypeError):
+            # this one ends up creating a tree, but fails when writing the data
+            file.mktree("tree6", {"x": "unknown type"})
+        with pytest.raises(ValueError):
+            file.mkrntuple("ntuple6", {"x": "unknown type"})
+
     # make sure that things were written as data instead of being interpreted as dtypes
     with uproot.open(filepath) as file:
-        assert file.keys(cycle=False) == ["tree", "ntuple", "ntuple3"]
+        assert file.keys(cycle=False) == ["tree", "ntuple", "ntuple3", "tree6"]
         assert file["tree"].arrays().x[0] == "int32"
         assert file["tree"].arrays().x[1] == "not a type"
         assert file["ntuple"].arrays().x[0] == "int32"
@@ -120,3 +131,21 @@ def test_unsupported_numpy_dtypes(tmp_path):
         assert ak.array_equal(
             file["ntuple3"].arrays().x[1], [("real", "float32"), ("imag", "float32")]
         )
+
+
+def test_type_specification_to_awkward_form():
+    form = ak.forms.EmptyForm()
+    assert uproot.writing.writable._type_specification_to_awkward_form(form) is form
+
+    assert uproot.writing.writable._type_specification_to_awkward_form(
+        ak.types.NumpyType("int32")
+    ) == ak.forms.NumpyForm("int32")
+
+    with pytest.raises(TypeError):
+        uproot.writing.writable._type_specification_to_awkward_form(frozenset)
+
+    with pytest.raises(TypeError):
+        uproot.writing.writable._type_specification_to_awkward_form((1, 2, 3))
+
+    with pytest.raises(TypeError):
+        uproot.writing.writable._type_specification_to_awkward_form(0)
