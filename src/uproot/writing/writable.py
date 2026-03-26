@@ -1237,6 +1237,7 @@ class WritableDirectory(MutableMapping):
                     self._file.uuid_function(),
                 ),
             )
+            self._subdirs[head] = directory
 
         elif key.classname.string not in ("TDirectory", "TDirectoryFile"):
             raise TypeError(
