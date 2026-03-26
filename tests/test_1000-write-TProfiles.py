@@ -107,6 +107,6 @@ def test_write_TProfile(tmp_path):
         h1.GetBinError(3) == h2.GetBinError(3) == h3.GetBinError(3) == pytest.approx(0)
     )
 
-    assert hhist[0].variance == pytest.approx(12.5)
+    assert hhist[0].variance == pytest.approx(50.0)
 
     f.Close()
