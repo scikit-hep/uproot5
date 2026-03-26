@@ -103,11 +103,11 @@ def _values_errors_1d(error_mode, fBinEntries, root_cont, fSumw2, fNcells, fBinS
 
     root_neff = _effective_counts_1d(fBinEntries, fBinSumw2, fNcells)
 
-    root_eprim2 = numpy.zeros(len(root_cont), dtype=numpy.float64)
-    root_eprim2[nonzero] = abs(
+    root_eprisum_sq_dev = numpy.zeros(len(root_cont), dtype=numpy.float64)
+    root_eprisum_sq_dev[nonzero] = abs(
         root_err2[nonzero] / root_sum[nonzero] - root_contsum[nonzero] ** 2
     )
-    root_eprim = numpy.sqrt(root_eprim2)
+    root_eprim = numpy.sqrt(root_eprisum_sq_dev)
 
     if error_mode == _kERRORSPREADI:
         numer = numpy.ones(len(root_cont), dtype=numpy.float64)
@@ -298,10 +298,33 @@ class TProfile(Profile):
         boost_histogram = uproot.extras.boost_histogram()
 
         effective_counts = self.counts(flow=True)
-        _, errors = self._values_errors(True, self.member("fErrorMode"))
-        values = self._bases[0]._bases[-1]
-        variances = numpy.square(errors)
-        sum_of_bin_weights = numpy.asarray(self.member("fBinEntries"))
+        sum_of_bin_weights = numpy.asarray(
+            self.member("fBinEntries"), dtype=numpy.float64
+        )
+        raw_values = numpy.asarray(self._bases[0]._bases[-1], dtype=numpy.float64)
+        fSumw2_member = self.member("fSumw2", none_if_missing=True)
+        fNcells = self.member("fNcells")
+
+        # Compute mean = sum(y) / count (ROOT TProfile stores sum(y) in the TArray)
+        nonzero = sum_of_bin_weights != 0
+        mean_values = numpy.zeros(len(raw_values), dtype=numpy.float64)
+        mean_values[nonzero] = raw_values[nonzero] / sum_of_bin_weights[nonzero]
+
+        # Compute sum_sq_dev = sum(y^2) - count * mean^2 directly from fSumw2.
+        # fErrorMode is intentionally ignored here: it controls how ROOT displays
+        # bin errors but does not change the underlying data. boost-hostogram's
+        # storage has a fixed meaning for _sum_of_weighted_deltas_squared,
+        # so we can't change it based on fErrorMode.
+        if fSumw2_member is not None:
+            fSumw2 = numpy.asarray(fSumw2_member, dtype=numpy.float64)
+        else:
+            fSumw2 = numpy.array([], dtype=numpy.float64)
+        if len(fSumw2) == fNcells:
+            sum_sq_dev = numpy.maximum(
+                fSumw2 - sum_of_bin_weights * mean_values**2, 0.0
+            )
+        else:
+            sum_sq_dev = numpy.zeros(len(raw_values), dtype=numpy.float64)
 
         storage = boost_histogram.storage.WeightedMean()
 
@@ -312,8 +335,8 @@ class TProfile(Profile):
 
         if isinstance(xaxis, boost_histogram.axis.StrCategory):
             effective_counts = effective_counts[1:]
-            values = values[1:]
-            variances = variances[1:]
+            mean_values = mean_values[1:]
+            sum_sq_dev = sum_sq_dev[1:]
             sum_of_bin_weights = sum_of_bin_weights[1:]
 
         out.metadata = {"fSumw2": self.member("fSumw2")}
@@ -325,13 +348,11 @@ class TProfile(Profile):
 
         # TODO: Drop this when boost-histogram has a way to set using the constructor.
         # New version should look something like this:
-        # view[...] = np.stack(sum_of_bin_weights, sum_of_bin_weights_squared, values, variances)
+        # view[...] = np.stack(sum_of_bin_weights, sum_of_bin_weights_squared, mean_values, sum_sq_dev)
         # Current / classic version:
         view["sum_of_weights"] = sum_of_bin_weights
         view["sum_of_weights_squared"] = sum_of_bin_weights_squared
-        view["value"] = values
-        view["_sum_of_weighted_deltas_squared"] = variances * (
-            sum_of_bin_weights - sum_of_bin_weights_squared / sum_of_bin_weights
-        )
+        view["value"] = mean_values
+        view["_sum_of_weighted_deltas_squared"] = sum_sq_dev
 
         return out

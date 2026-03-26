@@ -272,13 +272,20 @@ def to_writable(obj):
                         fTsumw = obj_sum["sum_of_weights"]
                         fTsumw2 = obj_sum["sum_of_weights_squared"]
                     else:
-                        fSumw2 = obj.view()["count"]
+                        _view_flow = obj.view(flow=True)
+                        _count = numpy.asarray(_view_flow["count"], dtype=numpy.float64)
+                        _value = numpy.asarray(_view_flow["value"], dtype=numpy.float64)
+                        _sum_sq_dev = numpy.asarray(
+                            _view_flow["_sum_of_deltas_squared"], dtype=numpy.float64
+                        )
+                        # ROOT TProfile convention: data = sum(y), fSumw2 = sum(y^2) = sum_sq_dev + count*mean^2
+                        fSumw2 = _sum_sq_dev + _count * _value**2
                         fTsumw = obj_sum["count"]
                         fTsumw2 = obj_sum["count"]
                     return to_TProfile(
                         fName=None,
                         fTitle=title,
-                        data=obj.values(flow=True),
+                        data=obj.counts(flow=True) * obj.values(flow=True),
                         fEntries=obj.size + 1,
                         fTsumw=fTsumw,
                         fTsumw2=fTsumw2,
