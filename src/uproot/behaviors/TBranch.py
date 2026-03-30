@@ -2655,6 +2655,8 @@ in file {self._file.file_path}"""
         if 0 <= basket_num < self._num_normal_baskets:
             start = self.member("fBasketSeek")[basket_num]
             stop = start + self.basket_compressed_bytes(basket_num)
+            # xrootd doesn't like NumPy ints
+            start, stop = int(start), int(stop)
             cursor = uproot.source.cursor.Cursor(start)
             chunk = self._file.source.chunk(start, stop)
             return chunk, cursor
