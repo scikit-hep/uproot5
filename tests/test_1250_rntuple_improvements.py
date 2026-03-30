@@ -63,15 +63,15 @@ def test_iterate():
 
         for i, arrays in enumerate(obj.iterate(step_size="10 kB")):
             if i == 0:
-                assert len(arrays) == 384
+                assert len(arrays) == 158
                 expected_pt = [10.763696670532227, 15.736522674560547]
                 expected_charge = [-1, -1]
                 assert arrays["Muon_pt"][0].tolist() == expected_pt
                 assert arrays["Muon_charge"][0].tolist() == expected_charge
-            elif i == 1:
-                assert len(arrays) == 384
-            elif i == 2:
-                assert len(arrays) == 232
+            elif i in range(1, 6):
+                assert len(arrays) == 158
+            elif i == 6:
+                assert len(arrays) == 52
             else:
                 assert False
 
@@ -84,10 +84,12 @@ def test_iterate():
 
         for i, arrays in enumerate(Muon_pt.iterate(step_size="5 kB")):
             if i == 0:
-                assert len(arrays) == 611
+                assert len(arrays) == 286
                 expected_pt = [10.763696670532227, 15.736522674560547]
                 assert arrays["Muon_pt"][0].tolist() == expected_pt
-            elif i == 1:
-                assert len(arrays) == 389
+            elif i in (1, 2):
+                assert len(arrays) == 286
+            elif i == 3:
+                assert len(arrays) == 142
             else:
                 assert False

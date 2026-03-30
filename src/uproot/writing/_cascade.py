@@ -474,6 +474,7 @@ class FreeSegmentsData(CascadeLeaf):
     def slices(self, value):
         if self._slices != value:
             self._file_dirty = True
+            self._allocation = None
             self._slices = value
 
     @property
@@ -484,6 +485,7 @@ class FreeSegmentsData(CascadeLeaf):
     def end(self, value):
         if self._end != value:
             self._file_dirty = True
+            self._allocation = None
             self._end = value
 
     @property

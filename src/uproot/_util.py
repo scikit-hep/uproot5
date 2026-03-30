@@ -414,7 +414,7 @@ def memory_size(data, error_message=None) -> int:
     """
     if isinstance(data, str):
         m = re.match(
-            r"^\s*([+-]?(\d+(\.\d*)?|\.\d+)(e[+-]?\d+)?)\s*([kmgtpezy]?b)\s*$",
+            r"^\s*([+-]?(\d+(\.\d*)?|\.\d+)(e[+-]?\d+)?)\s*([kmgtpezy]?[i]?b)\s*$",
             data,
             re.I,
         )
