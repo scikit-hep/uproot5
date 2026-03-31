@@ -264,21 +264,50 @@ def to_writable(obj):
                         and obj.metadata is not None
                         and "fSumw2" in obj.metadata.keys()
                     ):
+                        _view_flow = obj.view(flow=True)
+                        _sumw = numpy.asarray(
+                            _view_flow["sum_of_weights"], dtype=numpy.float64
+                        )
+                        _sumw2 = numpy.asarray(
+                            _view_flow["sum_of_weights_squared"], dtype=numpy.float64
+                        )
+                        _value = numpy.asarray(_view_flow["value"], dtype=numpy.float64)
                         fSumw2 = obj.metadata["fSumw2"]
                         fTsumw = obj_sum["sum_of_weights"]
                         fTsumw2 = obj_sum["sum_of_weights_squared"]
                     elif obj.storage_type is boost_histogram.storage.WeightedMean:
-                        fSumw2 = obj.view()["sum_of_weights_squared"]
+                        _view_flow = obj.view(flow=True)
+                        _sumw = numpy.asarray(
+                            _view_flow["sum_of_weights"], dtype=numpy.float64
+                        )
+                        _sumw2 = numpy.asarray(
+                            _view_flow["sum_of_weights_squared"], dtype=numpy.float64
+                        )
+                        _value = numpy.asarray(_view_flow["value"], dtype=numpy.float64)
+                        _sum_sq_dev = numpy.asarray(
+                            _view_flow["_sum_of_weighted_deltas_squared"],
+                            dtype=numpy.float64,
+                        )
+                        # ROOT TProfile convention: fSumw2 = sum(w*y^2) = sum_sq_dev + sum(w)*mean^2
+                        fSumw2 = _sum_sq_dev + _sumw * _value**2
                         fTsumw = obj_sum["sum_of_weights"]
                         fTsumw2 = obj_sum["sum_of_weights_squared"]
                     else:
-                        fSumw2 = obj.view()["count"]
+                        _view_flow = obj.view(flow=True)
+                        _sumw = numpy.asarray(_view_flow["count"], dtype=numpy.float64)
+                        _sumw2 = _sumw  # unweighted: sum(w^2) = sum(1^2) = count
+                        _value = numpy.asarray(_view_flow["value"], dtype=numpy.float64)
+                        _sum_sq_dev = numpy.asarray(
+                            _view_flow["_sum_of_deltas_squared"], dtype=numpy.float64
+                        )
+                        # ROOT TProfile convention: data = sum(y), fSumw2 = sum(y^2) = sum_sq_dev + count*mean^2
+                        fSumw2 = _sum_sq_dev + _sumw * _value**2
                         fTsumw = obj_sum["count"]
                         fTsumw2 = obj_sum["count"]
                     return to_TProfile(
                         fName=None,
                         fTitle=title,
-                        data=obj.values(flow=True),
+                        data=_sumw * _value,
                         fEntries=obj.size + 1,
                         fTsumw=fTsumw,
                         fTsumw2=fTsumw2,
@@ -287,8 +316,8 @@ def to_writable(obj):
                         fTsumwy=0,
                         fTsumwy2=0,
                         fSumw2=fSumw2,
-                        fBinEntries=obj.counts(flow=True),
-                        fBinSumw2=numpy.asarray([], numpy.float64),
+                        fBinEntries=_sumw,
+                        fBinSumw2=_sumw2,
                         fXaxis=axes[0],
                     )
                 else:
