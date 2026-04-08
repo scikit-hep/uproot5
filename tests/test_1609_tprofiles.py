@@ -160,3 +160,46 @@ def test_roundtrip(tmp_path, storage):
     assert np.allclose(expected_density, uproot_density, equal_nan=True)
     assert np.allclose(expected_values, uproot_values, equal_nan=True)
     assert np.allclose(expected_variances, uproot_variances, equal_nan=True)
+
+
+def test_tprofile_strcategory(tmp_path):
+    axis_x = hist.axis.StrCategory(["A", "B", "C"])
+    h = hist.Hist(axis_x, storage=hist.storage.Mean())
+
+    sample_A = np.array([10, 20, 30])
+    sample_B = np.array([5, 15])
+    h.fill(["A", "A", "A"], sample=sample_A)
+    h.fill(["B", "B"], sample=sample_B)
+
+    expected_count_A = len(sample_A)
+    expected_count_B = len(sample_B)
+    expected_mean_A = np.mean(sample_A)
+    expected_mean_B = np.mean(sample_B)
+    expected_variance_A = np.var(sample_A, ddof=1)
+    expected_variance_B = np.var(sample_B, ddof=1)
+
+    # boost-histogram Mean storage variances() returns variance of the mean (SEM squared)
+    assert np.isclose(expected_variance_A / expected_count_A, h.variances()[0])
+    assert np.isclose(expected_variance_B / expected_count_B, h.variances()[1])
+
+    filepath = os.path.join(tmp_path, "test_str.root")
+
+    with uproot.recreate(filepath) as f:
+        f["h"] = h
+
+    with uproot.open(filepath) as f:
+        h_read = f["h"].to_hist()
+
+        # h_read will have WeightedMean storage (as all TProfiles do)
+        uproot_mean_A = h_read["A"].value
+        uproot_mean_B = h_read["B"].value
+        # boost-histogram WeightedMean storage variances() returns s^2 / n (SEM squared)
+        uproot_variance_A = h_read.variances()[0]
+        uproot_variance_B = h_read.variances()[1]
+
+    assert np.isclose(expected_count_A, h_read["A"].sum_of_weights)
+    assert np.isclose(expected_count_B, h_read["B"].sum_of_weights)
+    assert np.isclose(expected_mean_A, uproot_mean_A)
+    assert np.isclose(expected_mean_B, uproot_mean_B)
+    assert np.isclose(expected_variance_A / expected_count_A, uproot_variance_A)
+    assert np.isclose(expected_variance_B / expected_count_B, uproot_variance_B)

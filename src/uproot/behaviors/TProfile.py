@@ -333,7 +333,10 @@ class TProfile(Profile):
         for k, v in metadata.items():
             setattr(out, k, self.member(v))
 
-        if isinstance(xaxis, boost_histogram.axis.StrCategory):
+        if self.member("fXaxis").member("fLabels") is not None:
+            # ROOT's categorical axes (with fLabels) always have an underflow bin (bin 0).
+            # boost-histogram's Category axes do not have underflow.
+            # We slice off the first ROOT bin (underflow) to align with boost-histogram.
             effective_counts = effective_counts[1:]
             mean_values = mean_values[1:]
             sum_sq_dev = sum_sq_dev[1:]

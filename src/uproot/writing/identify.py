@@ -275,6 +275,7 @@ def to_writable(obj):
                         fSumw2 = obj.metadata["fSumw2"]
                         fTsumw = obj_sum["sum_of_weights"]
                         fTsumw2 = obj_sum["sum_of_weights_squared"]
+                        fEntries = fTsumw
                     elif obj.storage_type is boost_histogram.storage.WeightedMean:
                         _view_flow = obj.view(flow=True)
                         _sumw = numpy.asarray(
@@ -292,6 +293,7 @@ def to_writable(obj):
                         fSumw2 = _sum_sq_dev + _sumw * _value**2
                         fTsumw = obj_sum["sum_of_weights"]
                         fTsumw2 = obj_sum["sum_of_weights_squared"]
+                        fEntries = fTsumw
                     else:
                         _view_flow = obj.view(flow=True)
                         _sumw = numpy.asarray(_view_flow["count"], dtype=numpy.float64)
@@ -304,11 +306,28 @@ def to_writable(obj):
                         fSumw2 = _sum_sq_dev + _sumw * _value**2
                         fTsumw = obj_sum["count"]
                         fTsumw2 = obj_sum["count"]
+                        fEntries = fTsumw
+
+                    _data = _sumw * _value
+                    _fBinEntries = _sumw
+                    _fBinSumw2 = _sumw2
+
+                    # Categorical axes in boost-histogram do not have underflow.
+                    # ROOT histograms always have underflow (bin 0).
+                    # We prepend a zero to all arrays to align boost-histogram bin 0 with ROOT bin 1.
+                    if hasattr(obj.axes[0], "traits") and getattr(
+                        obj.axes[0].traits, "discrete", False
+                    ):
+                        _data = numpy.insert(_data, 0, 0)
+                        _fBinEntries = numpy.insert(_fBinEntries, 0, 0)
+                        _fBinSumw2 = numpy.insert(_fBinSumw2, 0, 0)
+                        fSumw2 = numpy.insert(fSumw2, 0, 0)
+
                     return to_TProfile(
                         fName=None,
                         fTitle=title,
-                        data=_sumw * _value,
-                        fEntries=obj.size + 1,
+                        data=_data,
+                        fEntries=fEntries,
                         fTsumw=fTsumw,
                         fTsumw2=fTsumw2,
                         fTsumwx=0,
@@ -316,8 +335,8 @@ def to_writable(obj):
                         fTsumwy=0,
                         fTsumwy2=0,
                         fSumw2=fSumw2,
-                        fBinEntries=_sumw,
-                        fBinSumw2=_sumw2,
+                        fBinEntries=_fBinEntries,
+                        fBinSumw2=_fBinSumw2,
                         fXaxis=axes[0],
                     )
                 else:
