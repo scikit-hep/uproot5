@@ -229,10 +229,9 @@ jobs:
           init-shell: bash
           create-args: >-
             -c rapidsai
-            -c nvidia
             python=3.13
             cuda-version=${{ matrix.cuda-version }}
-            cuda-core>=0.6.0
+            cuda-core
             cuda-toolkit
             cuda-python
             cccl-python
