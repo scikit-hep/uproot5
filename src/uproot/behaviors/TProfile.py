@@ -342,7 +342,10 @@ class TProfile(Profile):
             sum_sq_dev = sum_sq_dev[1:]
             sum_of_bin_weights = sum_of_bin_weights[1:]
 
-        out.metadata = {"fSumw2": self.member("fSumw2")}
+        out.metadata = {
+            "fSumw2": self.member("fSumw2"),
+            "fEntries": self.member("fEntries"),
+        }
         view = out.view(flow=True)
 
         # https://github.com/root-project/root/blob/ffc7c588ac91aca30e75d356ea971129ee6a836a/hist/hist/src/TProfileHelper.h#L668-L671

@@ -281,7 +281,7 @@ def to_writable(obj):
                             if obj_sum["sum_of_weights"] > 0
                             else 0
                         )
-                        fEntries = fTsumw
+                        fEntries = obj.metadata.get("fEntries", fTsumw)
                     elif obj.storage_type is boost_histogram.storage.WeightedMean:
                         _view_flow = obj.view(flow=True)
                         _sumw = numpy.asarray(
@@ -305,7 +305,11 @@ def to_writable(obj):
                             if obj_sum["sum_of_weights"] > 0
                             else 0
                         )
-                        fEntries = fTsumw
+                        fEntries = (
+                            obj.metadata.get("fEntries", fTsumw)
+                            if obj.metadata is not None
+                            else fTsumw
+                        )
                     else:
                         _view_flow = obj.view(flow=True)
                         _sumw = numpy.asarray(_view_flow["count"], dtype=numpy.float64)
@@ -324,7 +328,11 @@ def to_writable(obj):
                             if obj_sum["count"] > 0
                             else 0
                         )
-                        fEntries = fTsumw
+                        fEntries = (
+                            obj.metadata.get("fEntries", fTsumw)
+                            if obj.metadata is not None
+                            else fTsumw
+                        )
 
                     _data = _sumw * _value
                     _fBinEntries = _sumw

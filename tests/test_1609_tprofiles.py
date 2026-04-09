@@ -206,38 +206,53 @@ def test_tprofile_strcategory(tmp_path):
 
 
 def test_tprofile_stats(tmp_path):
+    # Unweighted case: Mean storage. count is the number of values.
     axis = hist.axis.Regular(2, 0, 2)
-    h = hist.Hist(axis, storage=hist.storage.WeightedMean())
+    h = hist.Hist(axis, storage=hist.storage.Mean())
 
-    # Bin 1 (0 to 1): x=0.5, weight=1, sample=10  => sumw=1, sumw2=1, sumwx=0.5, sumwx2=0.25, sumwy=10, sumwy2=100
-    # Bin 2 (1 to 2): x=1.5, weight=2, sample=20  => sumw=2, sumw2=4, sumwx=3.0, sumwx2=4.50, sumwy=40, sumwy2=800
-    # Total:          entries=2, sumw=3, sumw2=5, sumwx=3.5, sumwx2=4.75, sumwy=50, sumwy2=900
+    # Bin 1 (0 to 1): x=0.5, sample=10  => sumw=1, sumwx=0.5, sumwx2=0.25, sumwy=10, sumwy2=100, count=1
+    # Bin 2 (1 to 2): x=1.5, sample=20  => sumw=1, sumwx=1.5, sumwx2=2.25, sumwy=20, sumwy2=400, count=1
+    # Total:          entries=2, sumw=2, sumwx=2.0, sumwx2=2.50, sumwy=30, sumwy2=500, count=2
 
-    h.fill([0.5], weight=[1], sample=[10])
-    h.fill([1.5], weight=[2], sample=[20])
+    h.fill([0.5], sample=[10])
+    h.fill([1.5], sample=[20])
 
     expected_entries = 2
-    expected_tsumw = 3
-    expected_tsumw2 = 5
-    expected_tsumwx = 3.5
-    expected_tsumwx2 = 4.75
-    expected_tsumwy = 50
-    expected_tsumwy2 = 900
+    expected_tsumw = 2
+    expected_tsumw2 = 2
+    expected_tsumwx = 2.0
+    expected_tsumwx2 = 2.5
+    expected_tsumwy = 30
+    expected_tsumwy2 = 500
 
-    filepath = os.path.join(tmp_path, "test_stats.root")
+    filepath = os.path.join(tmp_path, "test_stats_mean.root")
     with uproot.recreate(filepath) as f:
         f["h"] = h
 
     with uproot.open(filepath) as f:
         p = f["h"]
-        # uproot sets fEntries to fTsumw for weighted histograms
-        assert np.isclose(p.member("fEntries"), expected_tsumw)
+        assert np.isclose(p.member("fEntries"), expected_entries)
         assert np.isclose(p.member("fTsumw"), expected_tsumw)
         assert np.isclose(p.member("fTsumw2"), expected_tsumw2)
         assert np.isclose(p.member("fTsumwx"), expected_tsumwx)
         assert np.isclose(p.member("fTsumwx2"), expected_tsumwx2)
         assert np.isclose(p.member("fTsumwy"), expected_tsumwy)
         assert np.isclose(p.member("fTsumwy2"), expected_tsumwy2)
+
+    # Weighted case with manual fEntries in metadata
+    h_weighted = hist.Hist(axis, storage=hist.storage.WeightedMean())
+    h_weighted.fill([0.5], weight=[1], sample=[10])
+    h_weighted.fill([1.5], weight=[2], sample=[20])
+    h_weighted.metadata = {"fEntries": 2}
+
+    filepath_w = os.path.join(tmp_path, "test_stats_weighted.root")
+    with uproot.recreate(filepath_w) as f:
+        f["h"] = h_weighted
+
+    with uproot.open(filepath_w) as f:
+        p = f["h"]
+        assert np.isclose(p.member("fEntries"), 2)
+        assert np.isclose(p.member("fTsumw"), 3)
 
 
 def test_tprofile_pyroot_stats(tmp_path):
