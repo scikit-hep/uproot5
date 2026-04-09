@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import struct
 
+import awkward
 import numpy
 
 import uproot
@@ -55,6 +56,35 @@ class Model_TMatrixTSym_3c_double_3e__v5(uproot.model.VersionedModel):
             chunk, num_elements, self._dtype0, context
         )
         self._num_bytes += self._members["fElements"].nbytes
+
+    @classmethod
+    def awkward_form(cls, file, context):
+        return awkward.forms.RecordForm(
+            [
+                awkward.forms.NumpyForm("int32"),
+                awkward.forms.NumpyForm("int32"),
+                awkward.forms.NumpyForm("int32"),
+                awkward.forms.NumpyForm("int32"),
+                awkward.forms.NumpyForm("uint32"),
+                awkward.forms.NumpyForm("int32"),
+                awkward.forms.NumpyForm("float64"),
+                awkward.forms.ListOffsetForm(
+                    context["index_format"],
+                    awkward.forms.NumpyForm("float64"),
+                ),
+            ],
+            [
+                "fNrows",
+                "fNcols",
+                "fRowLwb",
+                "fColLwb",
+                "fNelems",
+                "fNrowIndex",
+                "fTol",
+                "fElements",
+            ],
+            parameters={"__record__": "TMatrixTSym<double>"},
+        )
 
     _format0 = struct.Struct(">iiiiiid")
     _format_memberwise0 = struct.Struct(">i")
