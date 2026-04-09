@@ -275,6 +275,12 @@ def to_writable(obj):
                         fSumw2 = obj.metadata["fSumw2"]
                         fTsumw = obj_sum["sum_of_weights"]
                         fTsumw2 = obj_sum["sum_of_weights_squared"]
+                        fTsumwy = obj_sum["value"] * obj_sum["sum_of_weights"]
+                        fTsumwy2 = obj_sum["_sum_of_weighted_deltas_squared"] + (
+                            obj_sum["value"] ** 2 * obj_sum["sum_of_weights"]
+                            if obj_sum["sum_of_weights"] > 0
+                            else 0
+                        )
                         fEntries = fTsumw
                     elif obj.storage_type is boost_histogram.storage.WeightedMean:
                         _view_flow = obj.view(flow=True)
@@ -293,6 +299,12 @@ def to_writable(obj):
                         fSumw2 = _sum_sq_dev + _sumw * _value**2
                         fTsumw = obj_sum["sum_of_weights"]
                         fTsumw2 = obj_sum["sum_of_weights_squared"]
+                        fTsumwy = obj_sum["value"] * obj_sum["sum_of_weights"]
+                        fTsumwy2 = obj_sum["_sum_of_weighted_deltas_squared"] + (
+                            obj_sum["value"] ** 2 * obj_sum["sum_of_weights"]
+                            if obj_sum["sum_of_weights"] > 0
+                            else 0
+                        )
                         fEntries = fTsumw
                     else:
                         _view_flow = obj.view(flow=True)
@@ -306,6 +318,12 @@ def to_writable(obj):
                         fSumw2 = _sum_sq_dev + _sumw * _value**2
                         fTsumw = obj_sum["count"]
                         fTsumw2 = obj_sum["count"]
+                        fTsumwy = obj_sum["value"] * obj_sum["count"]
+                        fTsumwy2 = obj_sum["_sum_of_deltas_squared"] + (
+                            obj_sum["value"] ** 2 * obj_sum["count"]
+                            if obj_sum["count"] > 0
+                            else 0
+                        )
                         fEntries = fTsumw
 
                     _data = _sumw * _value
@@ -313,15 +331,41 @@ def to_writable(obj):
                     _fBinSumw2 = _sumw2
 
                     # Categorical axes in boost-histogram do not have underflow.
-                    # ROOT histograms always have underflow (bin 0).
+                    # ROOT histograms always have underflow (bin 0) AND overflow.
+                    # boost-histogram category axis view already includes overflow if flow=True.
                     # We prepend a zero to all arrays to align boost-histogram bin 0 with ROOT bin 1.
+                    # We also append a zero for the ROOT overflow bin if needed.
                     if hasattr(obj.axes[0], "traits") and getattr(
                         obj.axes[0].traits, "discrete", False
                     ):
+                        # boost-histogram categorical axis with flow=True has nbins + 1 (data + overflow)
+                        # ROOT expects nbins + 2 (underflow + data + overflow)
                         _data = numpy.insert(_data, 0, 0)
                         _fBinEntries = numpy.insert(_fBinEntries, 0, 0)
                         _fBinSumw2 = numpy.insert(_fBinSumw2, 0, 0)
                         fSumw2 = numpy.insert(fSumw2, 0, 0)
+
+                        if len(_fBinEntries) == len(obj.axes[0]) + 1:
+                            _data = numpy.append(_data, 0)
+                            _fBinEntries = numpy.append(_fBinEntries, 0)
+                            _fBinSumw2 = numpy.append(_fBinSumw2, 0)
+                            fSumw2 = numpy.append(fSumw2, 0)
+
+                        # Now _fBinEntries is nbins + 2.
+                        # Edges should be nbins + 3 to have nbins + 2 centers.
+                        _edges = numpy.arange(
+                            -1, len(obj.axes[0]) + 2, dtype=numpy.float64
+                        )
+                    else:
+                        # Regular axis: prepend and append a bin width to edges for flow bins.
+                        _edges = obj.axes[0].edges
+                        width = _edges[1] - _edges[0]
+                        _edges = numpy.insert(_edges, 0, _edges[0] - width)
+                        _edges = numpy.append(_edges, _edges[-1] + width)
+
+                    _fTsumw, _fTsumw2, fTsumwx, fTsumwx2 = _root_stats_1d(
+                        _fBinEntries, _edges
+                    )
 
                     return to_TProfile(
                         fName=None,
@@ -330,10 +374,10 @@ def to_writable(obj):
                         fEntries=fEntries,
                         fTsumw=fTsumw,
                         fTsumw2=fTsumw2,
-                        fTsumwx=0,
-                        fTsumwx2=0,
-                        fTsumwy=0,
-                        fTsumwy2=0,
+                        fTsumwx=fTsumwx,
+                        fTsumwx2=fTsumwx2,
+                        fTsumwy=fTsumwy,
+                        fTsumwy2=fTsumwy2,
                         fSumw2=fSumw2,
                         fBinEntries=_fBinEntries,
                         fBinSumw2=_fBinSumw2,

@@ -203,3 +203,90 @@ def test_tprofile_strcategory(tmp_path):
     assert np.isclose(expected_mean_B, uproot_mean_B)
     assert np.isclose(expected_variance_A / expected_count_A, uproot_variance_A)
     assert np.isclose(expected_variance_B / expected_count_B, uproot_variance_B)
+
+
+def test_tprofile_stats(tmp_path):
+    axis = hist.axis.Regular(2, 0, 2)
+    h = hist.Hist(axis, storage=hist.storage.WeightedMean())
+
+    # Bin 1 (0 to 1): x=0.5, weight=1, sample=10  => sumw=1, sumw2=1, sumwx=0.5, sumwx2=0.25, sumwy=10, sumwy2=100
+    # Bin 2 (1 to 2): x=1.5, weight=2, sample=20  => sumw=2, sumw2=4, sumwx=3.0, sumwx2=4.50, sumwy=40, sumwy2=800
+    # Total:          entries=2, sumw=3, sumw2=5, sumwx=3.5, sumwx2=4.75, sumwy=50, sumwy2=900
+
+    h.fill([0.5], weight=[1], sample=[10])
+    h.fill([1.5], weight=[2], sample=[20])
+
+    expected_entries = 2
+    expected_tsumw = 3
+    expected_tsumw2 = 5
+    expected_tsumwx = 3.5
+    expected_tsumwx2 = 4.75
+    expected_tsumwy = 50
+    expected_tsumwy2 = 900
+
+    filepath = os.path.join(tmp_path, "test_stats.root")
+    with uproot.recreate(filepath) as f:
+        f["h"] = h
+
+    with uproot.open(filepath) as f:
+        p = f["h"]
+        # uproot sets fEntries to fTsumw for weighted histograms
+        assert np.isclose(p.member("fEntries"), expected_tsumw)
+        assert np.isclose(p.member("fTsumw"), expected_tsumw)
+        assert np.isclose(p.member("fTsumw2"), expected_tsumw2)
+        assert np.isclose(p.member("fTsumwx"), expected_tsumwx)
+        assert np.isclose(p.member("fTsumwx2"), expected_tsumwx2)
+        assert np.isclose(p.member("fTsumwy"), expected_tsumwy)
+        assert np.isclose(p.member("fTsumwy2"), expected_tsumwy2)
+
+
+def test_tprofile_pyroot_stats(tmp_path):
+    ROOT = pytest.importorskip("ROOT")
+
+    # Create TProfile in PyROOT with a unique name to avoid collisions
+    import uuid
+
+    tp_name = "tp_" + uuid.uuid4().hex
+    root_tp = ROOT.TProfile(tp_name, "title", 2, 0, 2)
+    # Fill bin 1 (x=0.5, y=10)
+    root_tp.Fill(0.5, 10)
+    # Fill bin 2 (x=1.5, y=20, weight=2)
+    root_tp.Fill(1.5, 20)
+    root_tp.Fill(1.5, 20)
+
+    # Equivalent hist
+    axis = hist.axis.Regular(2, 0, 2)
+    h = hist.Hist(axis, storage=hist.storage.Mean())
+    h.fill([0.5], sample=[10])
+    h.fill([1.5, 1.5], sample=[20, 20])
+
+    filepath = os.path.join(tmp_path, "test_pyroot_stats.root")
+
+    # Use PyROOT to write the reference histogram
+    f_root = ROOT.TFile(filepath, "RECREATE")
+    root_tp.Write("from_pyroot")
+    f_root.Close()
+
+    # Use uproot to write the version to be tested
+    with uproot.update(filepath) as f:
+        f["from_uproot"] = h
+
+    with uproot.open(filepath) as f:
+        p_uproot = f["from_uproot"]
+        p_pyroot = f["from_pyroot"]
+
+        # Compare all TProfile stats
+        for member in [
+            "fEntries",
+            "fTsumw",
+            "fTsumw2",
+            "fTsumwx",
+            "fTsumwx2",
+            "fTsumwy",
+            "fTsumwy2",
+        ]:
+            val_uproot = p_uproot.member(member)
+            val_pyroot = p_pyroot.member(member)
+            assert np.isclose(
+                val_uproot, val_pyroot
+            ), f"Mismatch in {member}: {val_uproot} != {val_pyroot}"
