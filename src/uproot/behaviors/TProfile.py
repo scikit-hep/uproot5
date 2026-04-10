@@ -237,7 +237,7 @@ class TProfile(Profile):
     @property
     def weighted(self):
         fBinSumw2 = self.member("fBinSumw2", none_if_missing=True)
-        return fBinSumw2 is None or len(fBinSumw2) != len(self.member("fNcells"))
+        return fBinSumw2 is not None and len(fBinSumw2) == self.member("fNcells")
 
     def counts(self, flow=True):
         out = _effective_counts_1d(
@@ -326,7 +326,10 @@ class TProfile(Profile):
         else:
             sum_sq_dev = numpy.zeros(len(raw_values), dtype=numpy.float64)
 
-        storage = boost_histogram.storage.WeightedMean()
+        if self.weighted:
+            storage = boost_histogram.storage.WeightedMean()
+        else:
+            storage = boost_histogram.storage.Mean()
 
         xaxis = uproot.behaviors.TH1._boost_axis(self.member("fXaxis"), axis_metadata)
         out = boost_histogram.Histogram(xaxis, storage=storage)
@@ -342,22 +345,29 @@ class TProfile(Profile):
             sum_sq_dev = sum_sq_dev[1:]
             sum_of_bin_weights = sum_of_bin_weights[1:]
 
+        # TODO: This should only be needed for weighted storage, but there seems to be some bug in Uproot's serialization of fBinSumw2
+        # that causes weighted TProfiles to appear unweighted when read back in.
         out.metadata = {
             "fEntries": self.member("fEntries"),
         }
         view = out.view(flow=True)
 
         # https://github.com/root-project/root/blob/ffc7c588ac91aca30e75d356ea971129ee6a836a/hist/hist/src/TProfileHelper.h#L668-L671
-        with numpy.errstate(divide="ignore", invalid="ignore"):
-            sum_of_bin_weights_squared = (sum_of_bin_weights**2) / effective_counts
+        if self.weighted:
+            with numpy.errstate(divide="ignore", invalid="ignore"):
+                sum_of_bin_weights_squared = (sum_of_bin_weights**2) / effective_counts
 
-        # TODO: Drop this when boost-histogram has a way to set using the constructor.
-        # New version should look something like this:
-        # view[...] = np.stack(sum_of_bin_weights, sum_of_bin_weights_squared, mean_values, sum_sq_dev)
-        # Current / classic version:
-        view["sum_of_weights"] = sum_of_bin_weights
-        view["sum_of_weights_squared"] = sum_of_bin_weights_squared
-        view["value"] = mean_values
-        view["_sum_of_weighted_deltas_squared"] = sum_sq_dev
+            # TODO: Drop this when boost-histogram has a way to set using the constructor.
+            # New version should look something like this:
+            # view[...] = np.stack(sum_of_bin_weights, sum_of_bin_weights_squared, mean_values, sum_sq_dev)
+            # Current / classic version:
+            view["sum_of_weights"] = sum_of_bin_weights
+            view["sum_of_weights_squared"] = sum_of_bin_weights_squared
+            view["value"] = mean_values
+            view["_sum_of_weighted_deltas_squared"] = sum_sq_dev
+        else:
+            view["count"] = sum_of_bin_weights
+            view["value"] = mean_values
+            view["_sum_of_deltas_squared"] = sum_sq_dev
 
         return out
