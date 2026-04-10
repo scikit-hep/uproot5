@@ -343,7 +343,6 @@ class TProfile(Profile):
             sum_of_bin_weights = sum_of_bin_weights[1:]
 
         out.metadata = {
-            "fSumw2": self.member("fSumw2"),
             "fEntries": self.member("fEntries"),
         }
         view = out.view(flow=True)

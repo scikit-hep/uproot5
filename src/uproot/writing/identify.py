@@ -258,32 +258,9 @@ def to_writable(obj):
             if obj.kind == "MEAN":
                 if hasattr(obj, "storage_type"):
                     obj_sum = obj.sum()
-                    # Use __dir__ instead of hasattr to avoid a warning
-                    if (
-                        "metadata" in obj.__dir__()
-                        and obj.metadata is not None
-                        and "fSumw2" in obj.metadata.keys()
-                    ):
-                        _view_flow = obj.view(flow=True)
-                        _sumw = numpy.asarray(
-                            _view_flow["sum_of_weights"], dtype=numpy.float64
-                        )
-                        _sumw2 = numpy.asarray(
-                            _view_flow["sum_of_weights_squared"], dtype=numpy.float64
-                        )
-                        _value = numpy.asarray(_view_flow["value"], dtype=numpy.float64)
-                        fSumw2 = obj.metadata["fSumw2"]
-                        fTsumw = obj_sum["sum_of_weights"]
-                        fTsumw2 = obj_sum["sum_of_weights_squared"]
-                        fTsumwy = obj_sum["value"] * obj_sum["sum_of_weights"]
-                        fTsumwy2 = obj_sum["_sum_of_weighted_deltas_squared"] + (
-                            obj_sum["value"] ** 2 * obj_sum["sum_of_weights"]
-                            if obj_sum["sum_of_weights"] > 0
-                            else 0
-                        )
-                        fEntries = obj.metadata.get("fEntries", fTsumw)
-                    elif obj.storage_type is boost_histogram.storage.WeightedMean:
-                        _view_flow = obj.view(flow=True)
+                    _view_flow = obj.view(flow=True)
+
+                    if obj.storage_type is boost_histogram.storage.WeightedMean:
                         _sumw = numpy.asarray(
                             _view_flow["sum_of_weights"], dtype=numpy.float64
                         )
@@ -295,8 +272,6 @@ def to_writable(obj):
                             _view_flow["_sum_of_weighted_deltas_squared"],
                             dtype=numpy.float64,
                         )
-                        # ROOT TProfile convention: fSumw2 = sum(w*y^2) = sum_sq_dev + sum(w)*mean^2
-                        fSumw2 = _sum_sq_dev + _sumw * _value**2
                         fTsumw = obj_sum["sum_of_weights"]
                         fTsumw2 = obj_sum["sum_of_weights_squared"]
                         fTsumwy = obj_sum["value"] * obj_sum["sum_of_weights"]
@@ -305,22 +280,13 @@ def to_writable(obj):
                             if obj_sum["sum_of_weights"] > 0
                             else 0
                         )
-                        fEntries = (
-                            obj.metadata.get("fEntries", fTsumw)
-                            # Use __dir__ instead of hasattr to avoid a warning
-                            if "metadata" in obj.__dir__() and obj.metadata is not None
-                            else fTsumw
-                        )
                     else:
-                        _view_flow = obj.view(flow=True)
                         _sumw = numpy.asarray(_view_flow["count"], dtype=numpy.float64)
                         _sumw2 = _sumw  # unweighted: sum(w^2) = sum(1^2) = count
                         _value = numpy.asarray(_view_flow["value"], dtype=numpy.float64)
                         _sum_sq_dev = numpy.asarray(
                             _view_flow["_sum_of_deltas_squared"], dtype=numpy.float64
                         )
-                        # ROOT TProfile convention: data = sum(y), fSumw2 = sum(y^2) = sum_sq_dev + count*mean^2
-                        fSumw2 = _sum_sq_dev + _sumw * _value**2
                         fTsumw = obj_sum["count"]
                         fTsumw2 = obj_sum["count"]
                         fTsumwy = obj_sum["value"] * obj_sum["count"]
@@ -329,12 +295,15 @@ def to_writable(obj):
                             if obj_sum["count"] > 0
                             else 0
                         )
-                        fEntries = (
-                            obj.metadata.get("fEntries", fTsumw)
-                            # Use __dir__ instead of hasattr to avoid a warning
-                            if "metadata" in obj.__dir__() and obj.metadata is not None
-                            else fTsumw
-                        )
+
+                    # ROOT TProfile convention: fSumw2 = sum(w*y^2) = sum_sq_dev + sum(w)*mean^2
+                    fSumw2 = _sum_sq_dev + _sumw * _value**2
+
+                    fEntries = (
+                        obj.metadata.get("fEntries", fTsumw)
+                        if ("metadata" in obj.__dir__() and obj.metadata is not None)
+                        else fTsumw
+                    )
 
                     _data = _sumw * _value
                     _fBinEntries = _sumw
