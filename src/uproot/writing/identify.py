@@ -307,7 +307,8 @@ def to_writable(obj):
                         )
                         fEntries = (
                             obj.metadata.get("fEntries", fTsumw)
-                            if obj.metadata is not None
+                            # Use __dir__ instead of hasattr to avoid a warning
+                            if "metadata" in obj.__dir__() and obj.metadata is not None
                             else fTsumw
                         )
                     else:
@@ -330,7 +331,8 @@ def to_writable(obj):
                         )
                         fEntries = (
                             obj.metadata.get("fEntries", fTsumw)
-                            if obj.metadata is not None
+                            # Use __dir__ instead of hasattr to avoid a warning
+                            if "metadata" in obj.__dir__() and obj.metadata is not None
                             else fTsumw
                         )
 
