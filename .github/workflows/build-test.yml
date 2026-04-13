@@ -16,7 +16,7 @@ jobs:
       fail-fast: false
       matrix:
         platform: [windows-latest, macos-latest, ubuntu-latest]
-        python-version: ['3.10', '3.14', 3.14t]
+        python-version: ['3.10', '3.14', 3.14 python-freethreading]
 
     runs-on: ${{ matrix.platform }}
     timeout-minutes: 30
