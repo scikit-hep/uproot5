@@ -39,6 +39,10 @@ jobs:
             conda-forge/label/python_rc::_python_rc
             python=${{ matrix.python-version }}
 
+      - name: Set PYTHON_GIL=0 for free-threaded builds
+        if: contains(matrix.python-version, 'python-freethreading')
+        run: echo "PYTHON_GIL=0" >> $GITHUB_ENV
+
       - uses: astral-sh/setup-uv@v8.0.0
 
       - name: Check active Python version
