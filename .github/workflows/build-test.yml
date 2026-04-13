@@ -162,7 +162,7 @@ jobs:
           echo "emsdk-version=$EMSCRIPTEN_VERSION" >> $GITHUB_OUTPUT
 
       - name: Install EMSDK
-        uses: mymindstorm/setup-emsdk@v15
+        uses: mymindstorm/setup-emsdk@v16
         with:
           version: ${{ steps.compute-emsdk-version.outputs.emsdk-version }}
 
