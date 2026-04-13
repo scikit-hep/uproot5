@@ -42,7 +42,7 @@ jobs:
       - uses: astral-sh/setup-uv@v8.0.0
 
       - name: Check active Python version
-        run: python -c "import sys; assert '.'.join(str(s) for s in sys.version_info[:2]) == '${{ matrix.python-version }}', f'{version} incorrect!'"
+        run: python -c "import sys; assert '.'.join(str(s) for s in sys.version_info[:2]) == '${{ matrix.python-version }}'.split()[0], f'{version} incorrect!'"
 
       - name: Install ROOT
         if: matrix.python-version == 3.10  &&  runner.os == 'Linux'
