@@ -646,7 +646,7 @@ in file {file_path}""")
         :ref:`uproot.reading.ReadOnlyFile.object_cache` would still be
         accessible.
         """
-        if hasattr(self, "source"):
+        if hasattr(self, "_source") and hasattr(self._source, "close"):
             self._source.close()
         if hasattr(self._decompression_executor, "shutdown"):
             self._decompression_executor.shutdown()
@@ -678,7 +678,7 @@ in file {file_path}""")
         return self
 
     def __exit__(self, exception_type, exception_value, traceback):
-        if hasattr(self, "_source"):
+        if hasattr(self, "_source") and hasattr(self._source, "__exit__"):
             self._source.__exit__(exception_type, exception_value, traceback)
         if hasattr(self._decompression_executor, "shutdown"):
             self._decompression_executor.shutdown()
