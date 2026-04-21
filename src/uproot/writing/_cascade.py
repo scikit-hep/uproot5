@@ -451,6 +451,28 @@ _free_format_small = struct.Struct(">HII")
 _free_format_big = struct.Struct(">HQQ")
 
 
+def _slices_bytes(slices):
+    total = 0
+    for _, stop in slices:
+        if stop - 1 >= uproot.const.kStartBigFile:
+            total += _free_format_big.size
+        else:
+            total += _free_format_small.size
+    return total
+
+
+def _free_segments_num_bytes(slices, file_end, data_location=0):
+    total = _slices_bytes(slices)
+
+    if file_end is None:
+        file_end = (data_location or 0) + total + _free_format_small.size
+
+    if file_end >= uproot.const.kStartBigFile:
+        return total + _free_format_big.size
+    else:
+        return total + _free_format_small.size
+
+
 class FreeSegmentsData(CascadeLeaf):
     """
     A :doc:`uproot.writing._cascade.CascadeLeaf` for the FreeSegments record
@@ -502,38 +524,12 @@ class FreeSegmentsData(CascadeLeaf):
 
     @property
     def num_bytes(self):
-        total = 0
-        for _, stop in self._slices:
-            if stop - 1 >= uproot.const.kStartBigFile:
-                total += _free_format_big.size
-            else:
-                total += _free_format_small.size
-
-        if self._end is None:
-            if total + _free_format_small.size >= uproot.const.kStartBigFile:
-                total += _free_format_big.size
-            else:
-                total += _free_format_small.size
-        elif self._end >= uproot.const.kStartBigFile:
-            total += _free_format_big.size
-        else:
-            total += _free_format_small.size
-
-        return total
+        return _free_segments_num_bytes(self._slices, self._end, self._location)
 
     def required_end(self, data_location):
-        total = 0
-        for _, stop in self._slices:
-            if stop - 1 >= uproot.const.kStartBigFile:
-                total += _free_format_big.size
-            else:
-                total += _free_format_small.size
-
-        tentative_end = data_location + total + _free_format_small.size
-        if tentative_end < uproot.const.kStartBigFile:
-            return tentative_end
-        else:
-            return data_location + total + _free_format_big.size
+        return data_location + _free_segments_num_bytes(
+            self._slices, None, data_location
+        )
 
     def serialize(self):
         pairs = []
@@ -721,13 +717,7 @@ class FreeSegments(CascadeNode):
 
     @staticmethod
     def _slices_bytes(slices):
-        total = 0
-        for _, stop in slices:
-            if stop - 1 >= uproot.const.kStartBigFile:
-                total += _free_format_big.size
-            else:
-                total += _free_format_small.size
-        return total
+        return _slices_bytes(slices)
 
     def release(self, start, stop):
         new_slices = self._another_slice(self._data.slices, start, stop)
