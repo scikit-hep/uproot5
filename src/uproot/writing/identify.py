@@ -258,37 +258,108 @@ def to_writable(obj):
             if obj.kind == "MEAN":
                 if hasattr(obj, "storage_type"):
                     obj_sum = obj.sum()
-                    # Use __dir__ instead of hasattr to avoid a warning
-                    if (
-                        "metadata" in obj.__dir__()
-                        and obj.metadata is not None
-                        and "fSumw2" in obj.metadata.keys()
-                    ):
-                        fSumw2 = obj.metadata["fSumw2"]
+                    _view_flow = obj.view(flow=True)
+
+                    if obj.storage_type is boost_histogram.storage.WeightedMean:
+                        _sumw = numpy.asarray(
+                            _view_flow["sum_of_weights"], dtype=numpy.float64
+                        )
+                        _sumw2 = numpy.asarray(
+                            _view_flow["sum_of_weights_squared"], dtype=numpy.float64
+                        )
+                        _value = numpy.asarray(_view_flow["value"], dtype=numpy.float64)
+                        _sum_sq_dev = numpy.asarray(
+                            _view_flow["_sum_of_weighted_deltas_squared"],
+                            dtype=numpy.float64,
+                        )
                         fTsumw = obj_sum["sum_of_weights"]
                         fTsumw2 = obj_sum["sum_of_weights_squared"]
-                    elif obj.storage_type is boost_histogram.storage.WeightedMean:
-                        fSumw2 = obj.view()["sum_of_weights_squared"]
-                        fTsumw = obj_sum["sum_of_weights"]
-                        fTsumw2 = obj_sum["sum_of_weights_squared"]
+                        fTsumwy = obj_sum["value"] * obj_sum["sum_of_weights"]
+                        fTsumwy2 = obj_sum["_sum_of_weighted_deltas_squared"] + (
+                            obj_sum["value"] ** 2 * obj_sum["sum_of_weights"]
+                            if obj_sum["sum_of_weights"] > 0
+                            else 0
+                        )
                     else:
-                        fSumw2 = obj.view()["count"]
+                        _sumw = numpy.asarray(_view_flow["count"], dtype=numpy.float64)
+                        _sumw2 = _sumw  # unweighted: sum(w^2) = sum(1^2) = count
+                        _value = numpy.asarray(_view_flow["value"], dtype=numpy.float64)
+                        _sum_sq_dev = numpy.asarray(
+                            _view_flow["_sum_of_deltas_squared"], dtype=numpy.float64
+                        )
                         fTsumw = obj_sum["count"]
                         fTsumw2 = obj_sum["count"]
+                        fTsumwy = obj_sum["value"] * obj_sum["count"]
+                        fTsumwy2 = obj_sum["_sum_of_deltas_squared"] + (
+                            obj_sum["value"] ** 2 * obj_sum["count"]
+                            if obj_sum["count"] > 0
+                            else 0
+                        )
+
+                    # ROOT TProfile convention: fSumw2 = sum(w*y^2) = sum_sq_dev + sum(w)*mean^2
+                    fSumw2 = _sum_sq_dev + _sumw * _value**2
+
+                    fEntries = (
+                        obj.metadata.get("fEntries", fTsumw)
+                        if ("metadata" in obj.__dir__() and obj.metadata is not None)
+                        else fTsumw
+                    )
+
+                    _data = _sumw * _value
+                    _fBinEntries = _sumw
+                    _fBinSumw2 = _sumw2
+
+                    # Categorical axes in boost-histogram do not have underflow.
+                    # ROOT histograms always have underflow (bin 0) AND overflow.
+                    # boost-histogram category axis view already includes overflow if flow=True.
+                    # We prepend a zero to all arrays to align boost-histogram bin 0 with ROOT bin 1.
+                    # We also append a zero for the ROOT overflow bin if needed.
+                    if hasattr(obj.axes[0], "traits") and getattr(
+                        obj.axes[0].traits, "discrete", False
+                    ):
+                        # boost-histogram categorical axis with flow=True has nbins + 1 (data + overflow)
+                        # ROOT expects nbins + 2 (underflow + data + overflow)
+                        _data = numpy.insert(_data, 0, 0)
+                        _fBinEntries = numpy.insert(_fBinEntries, 0, 0)
+                        _fBinSumw2 = numpy.insert(_fBinSumw2, 0, 0)
+                        fSumw2 = numpy.insert(fSumw2, 0, 0)
+
+                        if len(_fBinEntries) == len(obj.axes[0]) + 1:
+                            _data = numpy.append(_data, 0)
+                            _fBinEntries = numpy.append(_fBinEntries, 0)
+                            _fBinSumw2 = numpy.append(_fBinSumw2, 0)
+                            fSumw2 = numpy.append(fSumw2, 0)
+
+                        # Now _fBinEntries is nbins + 2.
+                        # Edges should be nbins + 3 to have nbins + 2 centers.
+                        _edges = numpy.arange(
+                            -1, len(obj.axes[0]) + 2, dtype=numpy.float64
+                        )
+                    else:
+                        # Regular axis: prepend and append a bin width to edges for flow bins.
+                        _edges = obj.axes[0].edges
+                        width = _edges[1] - _edges[0]
+                        _edges = numpy.insert(_edges, 0, _edges[0] - width)
+                        _edges = numpy.append(_edges, _edges[-1] + width)
+
+                    _fTsumw, _fTsumw2, fTsumwx, fTsumwx2 = _root_stats_1d(
+                        _fBinEntries, _edges
+                    )
+
                     return to_TProfile(
                         fName=None,
                         fTitle=title,
-                        data=obj.values(flow=True),
-                        fEntries=obj.size + 1,
+                        data=_data,
+                        fEntries=fEntries,
                         fTsumw=fTsumw,
                         fTsumw2=fTsumw2,
-                        fTsumwx=0,
-                        fTsumwx2=0,
-                        fTsumwy=0,
-                        fTsumwy2=0,
+                        fTsumwx=fTsumwx,
+                        fTsumwx2=fTsumwx2,
+                        fTsumwy=fTsumwy,
+                        fTsumwy2=fTsumwy2,
                         fSumw2=fSumw2,
-                        fBinEntries=obj.counts(flow=True),
-                        fBinSumw2=numpy.asarray([], numpy.float64),
+                        fBinEntries=_fBinEntries,
+                        fBinSumw2=_fBinSumw2,
                         fXaxis=axes[0],
                     )
                 else:
