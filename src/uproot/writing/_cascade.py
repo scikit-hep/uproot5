@@ -451,6 +451,28 @@ _free_format_small = struct.Struct(">HII")
 _free_format_big = struct.Struct(">HQQ")
 
 
+def _slices_bytes(slices):
+    total = 0
+    for _, stop in slices:
+        if stop - 1 >= uproot.const.kStartBigFile:
+            total += _free_format_big.size
+        else:
+            total += _free_format_small.size
+    return total
+
+
+def _free_segments_num_bytes(slices, file_end, data_location=0):
+    total = _slices_bytes(slices)
+
+    if file_end is None:
+        file_end = (data_location or 0) + total + _free_format_small.size
+
+    if file_end >= uproot.const.kStartBigFile:
+        return total + _free_format_big.size
+    else:
+        return total + _free_format_small.size
+
+
 class FreeSegmentsData(CascadeLeaf):
     """
     A :doc:`uproot.writing._cascade.CascadeLeaf` for the FreeSegments record
@@ -502,24 +524,12 @@ class FreeSegmentsData(CascadeLeaf):
 
     @property
     def num_bytes(self):
-        total = 0
-        for _, stop in self._slices:
-            if stop - 1 >= uproot.const.kStartBigFile:
-                total += _free_format_big.size
-            else:
-                total += _free_format_small.size
+        return _free_segments_num_bytes(self._slices, self._end, self._location)
 
-        if self._end is None:
-            if total + _free_format_small.size >= uproot.const.kStartBigFile:
-                total += _free_format_big.size
-            else:
-                total += _free_format_small.size
-        elif self._end >= uproot.const.kStartBigFile:
-            total += _free_format_big.size
-        else:
-            total += _free_format_small.size
-
-        return total
+    def required_end(self, data_location):
+        return data_location + _free_segments_num_bytes(
+            self._slices, None, data_location
+        )
 
     def serialize(self):
         pairs = []
@@ -660,8 +670,8 @@ class FreeSegments(CascadeNode):
             out = self._key.location
             if not dry_run:
                 self._key.location = self._key.location + num_bytes
-                self._data.end = (
-                    self._key.location + self._key.allocation + self._data.allocation
+                self._data.end = self._data.required_end(
+                    self._key.location + self._key.num_bytes
                 )
             return out
 
@@ -707,25 +717,18 @@ class FreeSegments(CascadeNode):
 
     @staticmethod
     def _slices_bytes(slices):
-        total = 0
-        for _, stop in slices:
-            if stop - 1 >= uproot.const.kStartBigFile:
-                total += _free_format_big.size
-            else:
-                total += _free_format_small.size
-        return total
+        return _slices_bytes(slices)
 
     def release(self, start, stop):
         new_slices = self._another_slice(self._data.slices, start, stop)
 
         if self.at_end:
             self._data.slices = new_slices
-            self._data.allocation = None
+            self._data.end = self._data.required_end(
+                self._key.location + self._key.num_bytes
+            )
             self._key.uncompressed_bytes = self._data.allocation
             self._key.compressed_bytes = self._key.uncompressed_bytes
-            self._data.end = (
-                self._key.location + self._key.allocation + self._key.uncompressed_bytes
-            )
 
         elif self._slices_bytes(new_slices) <= self._slices_bytes(self._data.slices):
             # Wherever the FreeSegments record is, it's not getting bigger.
@@ -744,12 +747,12 @@ class FreeSegments(CascadeNode):
                 self._key.location,
                 self._key.location + self._key.allocation + self._data.allocation,
             )
-            self._data.allocation = None
+            self._key.location = self._data.end
+            self._data.end = self._data.required_end(
+                self._key.location + self._key.num_bytes
+            )
             self._key.uncompressed_bytes = self._data.allocation
             self._key.compressed_bytes = self._key.uncompressed_bytes
-            self._key.location = self._data.end
-            self._data.location = self._key.location + self._key.allocation
-            self._data.end = self._data.location + self._key.uncompressed_bytes
 
     def write(self, sink):
         self._key.uncompressed_bytes = self._data.allocation
