@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import concurrent.futures
+import contextlib
 import queue
 import re
 
@@ -55,20 +56,20 @@ class FSSpecSource(uproot.source.chunk.Source):
 
         file_path = _maybe_wrap_remote_url(file_path)
 
-        fsspec_options = {
+        self._fsspec_options = {
             k: v for k, v in options.items() if k not in uproot.reading.open.defaults
         }
-        self._fs, self._file_path = fsspec.core.url_to_fs(file_path, **fsspec_options)
-
-        # What should we do when there is a chain of filesystems?
-        self._async_impl = self._fs.async_impl
-
+        self._file_path_orig = file_path
         self._open()
-
-        self.__enter__()
 
     def _open(self):
         self._executor = FSSpecLoopExecutor()
+        self._open_file = fsspec.open(self._file_path_orig, **self._fsspec_options)
+        self._fs = self._open_file.fs
+        self._file_path = self._open_file.path
+        self._fo = self._open_file.__enter__()
+        self._async_impl = self._fs.async_impl
+        self._closed = False
 
     def __repr__(self):
         path = repr(self._file_path)
@@ -79,6 +80,9 @@ class FSSpecSource(uproot.source.chunk.Source):
     def __getstate__(self):
         state = dict(self.__dict__)
         state.pop("_executor")
+        state.pop("_open_file")
+        state.pop("_fo")
+        state.pop("_fs")
         return state
 
     def __setstate__(self, state):
@@ -90,6 +94,19 @@ class FSSpecSource(uproot.source.chunk.Source):
 
     def __exit__(self, exception_type, exception_value, traceback):
         self._executor.shutdown()
+        if not self._closed:
+            self._open_file.__exit__(exception_type, exception_value, traceback)
+
+            # Workaround for leaking fsspec filesystems (like ZipFileSystem/TarFileSystem)
+            # that don't correctly close their underlying file objects.
+            if hasattr(self._fs, "close"):
+                with contextlib.suppress(Exception):
+                    self._fs.close()
+            if hasattr(self._fs, "of") and hasattr(self._fs.of, "__exit__"):
+                with contextlib.suppress(Exception):
+                    self._fs.of.__exit__(None, None, None)
+
+            self._closed = True
 
     def chunk(self, start: int, stop: int) -> uproot.source.chunk.Chunk:
         """
@@ -199,8 +216,7 @@ class FSSpecSource(uproot.source.chunk.Source):
         True if the associated file/connection/thread pool is closed; False
         otherwise.
         """
-        # FSSpecSource uses entirely stateless interfaces
-        return False
+        return self._closed
 
 
 class FSSpecLoopExecutor(uproot.source.futures.Executor):

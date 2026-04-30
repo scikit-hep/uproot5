@@ -646,11 +646,15 @@ in file {file_path}""")
         :ref:`uproot.reading.ReadOnlyFile.object_cache` would still be
         accessible.
         """
-        self._source.close()
+        if hasattr(self, "_source") and hasattr(self._source, "close"):
+            self._source.close()
         if hasattr(self._decompression_executor, "shutdown"):
-            getattr(self._decompression_executor, "shutdown", None)()
+            self._decompression_executor.shutdown()
         if hasattr(self._interpretation_executor, "shutdown"):
-            getattr(self._interpretation_executor, "shutdown", None)()
+            self._interpretation_executor.shutdown()
+
+    def __del__(self):
+        self.close()
 
     @property
     def closed(self):
@@ -674,11 +678,12 @@ in file {file_path}""")
         return self
 
     def __exit__(self, exception_type, exception_value, traceback):
-        self._source.__exit__(exception_type, exception_value, traceback)
+        if hasattr(self, "_source") and hasattr(self._source, "__exit__"):
+            self._source.__exit__(exception_type, exception_value, traceback)
         if hasattr(self._decompression_executor, "shutdown"):
-            getattr(self._decompression_executor, "shutdown", None)()
+            self._decompression_executor.shutdown()
         if hasattr(self._interpretation_executor, "shutdown"):
-            getattr(self._interpretation_executor, "shutdown", None)()
+            self._interpretation_executor.shutdown()
 
     @property
     def source(self):
