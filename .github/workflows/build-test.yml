@@ -16,7 +16,7 @@ jobs:
       fail-fast: false
       matrix:
         platform: [windows-latest, macos-latest, ubuntu-latest]
-        python-version: ['3.10', '3.11', '3.12', '3.13', '3.14']
+        python-version: ['3.10', '3.14', 3.14 python-freethreading]
 
     runs-on: ${{ matrix.platform }}
     timeout-minutes: 30
@@ -39,10 +39,14 @@ jobs:
             conda-forge/label/python_rc::_python_rc
             python=${{ matrix.python-version }}
 
+      - name: Set PYTHON_GIL=0 for free-threaded builds
+        if: contains(matrix.python-version, 'python-freethreading')
+        run: echo "PYTHON_GIL=0" >> $GITHUB_ENV
+
       - uses: astral-sh/setup-uv@v8.1.0
 
       - name: Check active Python version
-        run: python -c "import sys; assert '.'.join(str(s) for s in sys.version_info[:2]) == '${{ matrix.python-version }}', f'{version} incorrect!'"
+        run: python -c "import sys; assert '.'.join(str(s) for s in sys.version_info[:2]) == '${{ matrix.python-version }}'.split()[0], f'{version} incorrect!'"
 
       - name: Install ROOT
         if: matrix.python-version == 3.10  &&  runner.os == 'Linux'
@@ -262,9 +266,10 @@ jobs:
 
       - name: Upload test results to Codecov
         if: ${{ !cancelled() && matrix.cuda-version == 13 }}
-        uses: codecov/test-results-action@v1
+        uses: codecov/codecov-action@v6
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
+          report_type: test_results
 
   pass:
     if: always()
