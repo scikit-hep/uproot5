@@ -924,6 +924,8 @@ Reading RNTuples
 
 TTree has been the default format to store large datasets in ROOT files for decades. However, it has slowly become outdated and is not optimized for modern systems. This is where the RNTuple format comes in. It is a modern serialization format that is designed with modern systems in mind and is planned to replace TTree in the coming years. `Version 1.0.0.0 <https://cds.cern.ch/record/2923186>`__ is out and will be supported "forever".
 
+Starting in Uproot v5.7.0, RNTuple is the default format for writing. When you use the dict-like syntax to write data to a file, Uproot will create an RNTuple instead of a TTree.
+
 RNTuples are deliberately simpler than TTrees by design. For the first time, there’s an official specification, making it much easier for third-party I/O tools like Uproot to support it. Uproot already supports reading the full RNTuple specification, meaning that you can read any RNTuple you find in the wild. It also already supports writing a large part of the specification, and intends to support as much as it makes sense for data analysis.
 
 To ease the transition into RNTuples, we are designing the interface to closely match the existing TTree interface. Many of the functionality explained in the previous subsections works in the same way. However, there the terminology is slightly different (e.g. "branch" becomes "field") and arguments may vary slightly, accordingly.
@@ -1145,8 +1147,10 @@ Writing TTrees to a file
 TTrees are a special type of object, just as TDirectories are special: data can be cumulatively added to them.
 
 :doc:`uproot.writing.writable.WritableTree` objects can be created using the :ref:`uproot.writing.writable.WritableDirectory.mktree` method that Uproot provides for TDirectories.
-Previously, they could be created by assigning TTree-like data to a name in a directory (e.g., ``file["tree"] = {"branch": np.arange(1000)}``). However, this syntax was deprecated,
-as Uproot will switch to writing RNTuples with syntax, since the HEP community is moving towards RNTuples.
+
+.. note::
+
+    Starting in v5.7.0, Uproot uses RNTuples as the default format for writing data when using the dict-like assignment syntax (e.g., ``file["my_data"] = {"my_array": np.arange(1000)}``). If you specifically want to write a TTree, you should use the :ref:`uproot.writing.writable.WritableDirectory.mktree` method.
 
 .. code-block:: python
 
@@ -1327,14 +1331,21 @@ Writing RNTuples
 
 Just like with reading, writing RNTuples is similar to writing TTree objects. Since RNTuples are much simpler, we aim to be able to write almost any RNTuple that you might want.
 
-Here is an example of writing an RNTuple. Since TTree is still the default format for the near future, writing an RNTuple is a bit more verbose.
+RNTuples are the default format for writing data starting in Uproot v5.7.0. You can write an RNTuple by using a dict-like syntax:
 
 .. code-block:: python
 
     >>> file = uproot.recreate("example.root")
     >>> data = {"my_int": [1,2], "my_vector": [[1,2], [3,4,5]]}
-    >>> rntuple = file.mkrntuple("my_rntuple", data)
-    >>> rntuple.extend(data) # Can be extended, just like TTrees
+    >>> file["my_rntuple"] = data
+    >>> file["my_rntuple"].extend(data) # Can be extended, just like TTrees
+
+You can also use the :ref:`uproot.writing.writable.WritableDirectory.mkrntuple` method for more explicit RNTuple creation, and to have the ability to initialize an empty RNTuple from a type specification dictionary or an Awkward form.
+
+.. code-block:: python
+
+    >>> file.mkrntuple("ntuple", {"x": "f4", "y": "var * int64"})
+    <WritableNTuple '/ntuple' at 0x000131ff30e0>
 
 Using your own interpretation
 --------------------------------

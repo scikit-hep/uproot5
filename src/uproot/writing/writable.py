@@ -521,9 +521,11 @@ class WritableDirectory(MutableMapping):
     Subdirectories created this way will never be empty; to make an empty directory,
     use :ref:`uproot.writing.writable.WritableDirectory.mkdir`.
 
-    Similarly, non-empty TTrees can be created by assignment (see :doc:`uproot.writing.writable.WritableTree`
-    for recognized TTree-like data), but empty TTrees require the
-    :ref:`uproot.writing.writable.WritableDirectory.mktree` method.
+    Similarly, non-empty RNTuples can be created by assignment starting in Uproot
+    v5.7.0 (see :doc:`uproot.writing.writable.WritableNTuple` for recognized
+    RNTuple-like data), but empty RNTuples require the
+    :ref:`uproot.writing.writable.WritableDirectory.mkrntuple` method.
+    Writing a TTree requires the :ref:`uproot.writing.writable.WritableDirectory.mktree` method.
     """
 
     def __init__(self, path, file, cascading):
@@ -1285,15 +1287,9 @@ in file {self.file_path} in directory {self.path}"""
 
         Creates an empty TTree in this directory.
 
-        Note that TTrees can be created by assigning TTree-like data to a directory
-        (see :doc:`uproot.writing.writable.WritableTree` for recognized TTree-like types):
-
-        .. code-block:: python
-
-            my_directory["tree"] = {"branch1": np.array(...), "branch2": ak.Array(...)}
-
-        but TTrees created this way will never be empty. Use this method
-        to make an empty TTree or to control its parameters.
+        Note that starting in v5.7.0, Uproot uses RNTuples as the default format for writing
+        data when using the dict-like assignment syntax. Writing a TTree requires using this
+        method.
         """
         if self._file.sink.closed:
             raise ValueError("cannot create a TTree in a closed file")
@@ -1388,6 +1384,16 @@ in file {self.file_path} in directory {self.path}"""
             description (str): Description for the new RNTuple.
 
         Creates an empty RNTuple in this directory.
+
+        Note that starting in v5.7.0, non-empty RNTuples can be created by
+        assigning RNTuple-like data to a directory:
+
+        .. code-block:: python
+
+            my_directory["ntuple"] = {"field1": np.array(...), "field2": ak.Array(...)}
+
+        but RNTuples created this way will never be empty. Use this method
+        to make an empty RNTuple or to control its parameters.
         """
         if self._file.sink.closed:
             raise ValueError("cannot create a RNTuple in a closed file")
@@ -2012,10 +2018,11 @@ class WritableNTuple:
 
     Represents a writable ``RNTuple`` from a ROOT file.
 
-    Assigning TTree-like data to a directory creates the TTree object with all of
-    its metadata and fills it with the contents of the arrays in one step. To separate
-    the process of creating the TTree metadata from filling the first TBasket, use the
-    :doc:`uproot.writing.writable.WritableDirectory.mktree` method:
+    Assigning data to a directory creates an RNTuple object by default starting in Uproot v5.7.0.
+    This creates the RNTuple object with all of its metadata and fills it with
+    the contents of the arrays in one step. To separate the process of creating the
+    RNTuple metadata from filling the first cluster, use the
+    :doc:`uproot.writing.writable.WritableDirectory.mkrntuple` method:
 
     .. code-block:: python
 
@@ -2039,8 +2046,8 @@ class WritableNTuple:
     and slow to read (especially for Uproot, but also for ROOT).
 
     For instance, if you want to write a million events and have enough memory
-    available to do that 100 thousand events at a time (total of 10 TBaskets),
-    then do so. Filling the RNTuple a hundred events at a time (total of 10000 TBaskets)
+    available to do that 100 thousand events at a time (total of 10 clusters),
+    then do so. Filling the RNTuple a hundred events at a time (total of 10000 clusters)
     would be considerably slower for writing and reading, and the file would be much
     larger than it could otherwise be, even with compression.
     """
