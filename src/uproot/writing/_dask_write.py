@@ -176,19 +176,22 @@ def ak_to_root(
         **(storage_options or {}),
     )
 
-    branch_types = {name: array[name].type for name in array.fields}
+    try:
+        branch_types = {name: array[name].type for name in array.fields}
 
-    out_file.mktree(
-        tree_name,
-        branch_types,
-        title=title,
-        counter_name=counter_name,
-        field_name=field_name,
-        initial_basket_capacity=initial_basket_capacity,
-        resize_factor=resize_factor,
-    )
+        out_file.mktree(
+            tree_name,
+            branch_types,
+            title=title,
+            counter_name=counter_name,
+            field_name=field_name,
+            initial_basket_capacity=initial_basket_capacity,
+            resize_factor=resize_factor,
+        )
 
-    out_file[tree_name].extend({name: array[name] for name in array.fields})
+        out_file[tree_name].extend({name: array[name] for name in array.fields})
+    finally:
+        out_file.close()
 
 
 def none_to_none(*_):

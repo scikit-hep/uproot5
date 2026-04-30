@@ -16,7 +16,7 @@ jobs:
       fail-fast: false
       matrix:
         platform: [windows-latest, macos-latest, ubuntu-latest]
-        python-version: ['3.10', '3.11', '3.12', '3.13', '3.14']
+        python-version: ['3.10', '3.14', 3.14 python-freethreading]
 
     runs-on: ${{ matrix.platform }}
     timeout-minutes: 30
@@ -39,10 +39,14 @@ jobs:
             conda-forge/label/python_rc::_python_rc
             python=${{ matrix.python-version }}
 
-      - uses: astral-sh/setup-uv@v7
+      - name: Set PYTHON_GIL=0 for free-threaded builds
+        if: contains(matrix.python-version, 'python-freethreading')
+        run: echo "PYTHON_GIL=0" >> $GITHUB_ENV
+
+      - uses: astral-sh/setup-uv@v8.1.0
 
       - name: Check active Python version
-        run: python -c "import sys; assert '.'.join(str(s) for s in sys.version_info[:2]) == '${{ matrix.python-version }}', f'{version} incorrect!'"
+        run: python -c "import sys; assert '.'.join(str(s) for s in sys.version_info[:2]) == '${{ matrix.python-version }}'.split()[0], f'{version} incorrect!'"
 
       - name: Install ROOT
         if: matrix.python-version == 3.10  &&  runner.os == 'Linux'
@@ -94,7 +98,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
           allow-prereleases: true
 
-      - uses: astral-sh/setup-uv@v7
+      - uses: astral-sh/setup-uv@v8.1.0
 
       - name: Pip install the package
         run: uv pip install --system -e. --group=dev
@@ -120,7 +124,7 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - uses: astral-sh/setup-uv@v7
+      - uses: astral-sh/setup-uv@v8.1.0
 
       - name: Pip install the package
         run: |
@@ -148,7 +152,7 @@ jobs:
         with:
           python-version: '3.13'
 
-      - uses: astral-sh/setup-uv@v7
+      - uses: astral-sh/setup-uv@v8.1.0
 
       - name: Install pyodide-build
         run: python3 -m pip install pyodide-build==$PYODIDE_BUILD_VERSION
@@ -162,7 +166,7 @@ jobs:
           echo "emsdk-version=$EMSCRIPTEN_VERSION" >> $GITHUB_OUTPUT
 
       - name: Install EMSDK
-        uses: mymindstorm/setup-emsdk@v15
+        uses: mymindstorm/setup-emsdk@v16
         with:
           version: ${{ steps.compute-emsdk-version.outputs.emsdk-version }}
 
@@ -262,9 +266,10 @@ jobs:
 
       - name: Upload test results to Codecov
         if: ${{ !cancelled() && matrix.cuda-version == 13 }}
-        uses: codecov/test-results-action@v1
+        uses: codecov/codecov-action@v6
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
+          report_type: test_results
 
   pass:
     if: always()
