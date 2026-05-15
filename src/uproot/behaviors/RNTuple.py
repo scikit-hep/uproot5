@@ -1016,7 +1016,7 @@ class HasFields(Mapping):
         )
         # TODO: This can be done more efficiently
         for start in range(entry_start, entry_stop, step_size):
-            yield self.arrays(
+            arrays = self.arrays(
                 filter_name=filter_name,
                 filter_typename=filter_typename,
                 filter_field=filter_field,
@@ -1028,6 +1028,13 @@ class HasFields(Mapping):
                 how=how,
                 filter_branch=filter_branch,
             )
+            if report:
+                sub_entry_stop = min(start + step_size, entry_stop)
+                yield arrays, uproot.behaviors.TBranch.Report(
+                    self, start, sub_entry_stop
+                )
+            else:
+                yield arrays
 
     def keys(
         self,
