@@ -41,7 +41,7 @@ def iterate(
     language=uproot.language.python.python_language,  # TODO: Not implemented yet
     step_size="100 MB",
     decompression_executor=None,  # TODO: Not implemented yet
-    library="ak",  # TODO: Not implemented yet
+    library="ak",
     ak_add_doc=False,
     how=None,
     report=False,  # TODO: Not implemented yet
@@ -84,7 +84,7 @@ def iterate(
             :doc:`uproot.source.futures.TrivialExecutor` is created. (Not implemented yet.)
         library (str or :doc:`uproot.interpretation.library.Library`): The library
             that is used to represent arrays. Options are ``"np"`` for NumPy,
-            ``"ak"`` for Awkward Array, and ``"pd"`` for Pandas. (Not implemented yet.)
+            ``"ak"`` for Awkward Array, and ``"pd"`` for Pandas.
         ak_add_doc (bool | dict ): If True and ``library="ak"``, add the RField ``description``
             to the Awkward ``__doc__`` parameter of the array.
             if dict = {key:value} and ``library="ak"``, add the RField ``value`` to the
@@ -211,7 +211,7 @@ def concatenate(
     entry_start=None,
     entry_stop=None,
     decompression_executor=None,  # TODO: Not implemented yet
-    library="ak",  # TODO: Not implemented yet
+    library="ak",
     backend="cpu",
     interpreter="cpu",
     ak_add_doc=False,
@@ -257,7 +257,7 @@ def concatenate(
             :doc:`uproot.source.futures.TrivialExecutor` is created. (Not implemented yet.)
         library (str or :doc:`uproot.interpretation.library.Library`): The library
             that is used to represent arrays. Options are ``"np"`` for NumPy,
-            ``"ak"`` for Awkward Array, and ``"pd"`` for Pandas. (Not implemented yet.)
+            ``"ak"`` for Awkward Array, and ``"pd"`` for Pandas.
         ak_add_doc (bool | dict ): If True and ``library="ak"``, add the RField ``description``
             to the Awkward ``__doc__`` parameter of the array.
             if dict = {key:value} and ``library="ak"``, add the RField ``value`` to the
@@ -522,9 +522,9 @@ class HasFields(Mapping):
                 filter to select ``RFields`` using the full
                 :doc:`uproot.models.RNTuple.RField` object. The ``RField`` is
                 included if the function returns True, excluded if it returns False.
-            ak_add_doc (bool | dict ): If True and ``library="ak"``, add the RField ``description``
+            ak_add_doc (bool | dict ): If True, add the RField ``description``
                 to the Awkward ``__doc__`` parameter of the array.
-                if dict = {key:value} and ``library="ak"``, add the RField ``value`` to the
+                if dict = {key:value}, add the RField ``value`` to the
                 Awkward ``key`` parameter of the array.
             filter_branch (None or function of :doc:`uproot.models.RNTuple.RField` \u2192 bool): An alias for ``filter_field`` included
                 for compatibility with software that was used for :doc:`uproot.behaviors.TBranch.TBranch`. This argument should not be used
@@ -620,7 +620,7 @@ class HasFields(Mapping):
         entry_stop=None,
         decompression_executor=None,  # TODO: Not implemented yet
         array_cache="inherit",
-        library="ak",  # TODO: Not implemented yet
+        library="ak",
         backend="cpu",
         interpreter="cpu",
         ak_add_doc=False,
@@ -668,7 +668,7 @@ class HasFields(Mapping):
                 if a memory size, create a new cache of this size.
             library (str or :doc:`uproot.interpretation.library.Library`): The library
                 that is used to represent arrays. Options are ``"np"`` for NumPy,
-                ``"ak"`` for Awkward Array, and ``"pd"`` for Pandas. (Not implemented yet.)
+                ``"ak"`` for Awkward Array, and ``"pd"`` for Pandas.
             backend (str): The backend Awkward Array will use.
             interpreter (str): If "cpu" will use cpu to interpret raw data. If "gpu" and
                 ``backend="cuda"`` will use KvikIO bindings to CuFile and nvCOMP to
@@ -860,11 +860,22 @@ class HasFields(Mapping):
                         )
 
         # TODO: The conversion would be ideally be fully handled by Awkward.
-        # However, jagged arrays fail to be converted.
-        # We still need to match the TTree behavior for jagged arrays, and implement
-        # the conversion to Pandas.
-        if library.name == "np":
-            return arrays.to_numpy()
+        if library.name in ("np", "pd"):
+            numpy_data = {}
+            for f in arrays.fields:
+                try:
+                    numpy_data[f] = arrays[f].to_numpy()
+                except (ValueError, TypeError):
+                    try:
+                        numpy_data[f] = _jagged_to_numpy(arrays[f].tolist())
+                    except Exception:
+                        msg = f"Field {f} cannot be converted to NumPy/Pandas"
+                        raise ValueError(msg) from None
+            if library.name == "pd":
+                pd = uproot.extras.pandas()
+                pandas_data = pd.DataFrame(numpy_data)
+                return pandas_data
+            return numpy_data
 
         # TODO: This should be done with library.group, if possible
         if how is tuple:
@@ -903,7 +914,7 @@ class HasFields(Mapping):
         entry_stop=None,
         step_size="100 MB",
         decompression_executor=None,  # TODO: Not implemented yet
-        library="ak",  # TODO: Not implemented yet
+        library="ak",
         backend="cpu",
         interpreter="cpu",
         ak_add_doc=False,
@@ -951,11 +962,11 @@ class HasFields(Mapping):
                 is used. (Not implemented yet.)
             library (str or :doc:`uproot.interpretation.library.Library`): The library
                 that is used to represent arrays. Options are ``"np"`` for NumPy,
-                ``"ak"`` for Awkward Array, and ``"pd"`` for Pandas. (Not implemented yet.)
+                ``"ak"`` for Awkward Array, and ``"pd"`` for Pandas.
             ak_add_doc (bool | dict ): If True and ``library="ak"``, add the RField ``description``
                 to the Awkward ``__doc__`` parameter of the array.
                 if dict = {key:value} and ``library="ak"``, add the RField ``value`` to the
-                Awkward ``key`` parameter of the array. (Not implemented yet.)
+                Awkward ``key`` parameter of the array.
             how (None, str, or container type): Library-dependent instructions
                 for grouping. The only recognized container types are ``tuple``,
                 ``list``, and ``dict``. Note that the container *type itself*
@@ -1960,3 +1971,18 @@ def _fill_container_dict(container_dict, content, key, dtype_byte, dtype):
         else:
             container_dict[f"{key}-data"] = content
             container_dict[f"{key}-offsets"] = content
+
+
+def _jagged_to_numpy(data):
+    if not isinstance(data, list) or len(data) == 0:
+        return numpy.asarray(data)
+
+    converted = [_jagged_to_numpy(item) for item in data]
+
+    shapes = [c.shape for c in converted]
+    if len(set(shapes)) == 1:
+        return numpy.array(converted)
+
+    arr = numpy.empty(len(converted), dtype=object)
+    arr[:] = converted
+    return arr
