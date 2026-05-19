@@ -210,6 +210,7 @@ def iterate(
                         filter_branch=(
                             filter_branch
                             if isinstance(hasbranches, HasBranches)
+                            or filter_branch is not no_filter
                             else unset
                         ),
                         **(
@@ -437,7 +438,10 @@ def concatenate(
                     filter_name=filter_name,
                     filter_typename=filter_typename,
                     filter_branch=(
-                        filter_branch if isinstance(hasbranches, HasBranches) else unset
+                        filter_branch
+                        if isinstance(hasbranches, HasBranches)
+                        or filter_branch is not no_filter
+                        else unset
                     ),
                     **(
                         {}
