@@ -2021,7 +2021,7 @@ class RField(uproot.behaviors.RNTuple.HasFields):
                     raise ValueError(msg) from None
             if library.name == "pd":
                 pd = uproot.extras.pandas()
-                pandas_data = pd.DataFrame({self.name: numpy_data})
+                pandas_data = pd.Series(numpy_data)
                 return pandas_data
             return numpy_data
 
