@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import sys
 import warnings
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from functools import partial
 
 import awkward as ak
@@ -866,11 +866,12 @@ class HasFields(Mapping):
                 try:
                     numpy_data[f] = arrays[f].to_numpy()
                 except (ValueError, TypeError):
-                    try:
-                        numpy_data[f] = _jagged_to_numpy(arrays[f].tolist())
-                    except Exception:
-                        msg = f"Field {f} cannot be converted to NumPy/Pandas"
-                        raise ValueError(msg) from None
+                    # try:
+                    #     numpy_data[f] = _jagged_to_numpy(arrays[f])
+                    # except Exception:
+                    #     msg = f"Field {f} cannot be converted to NumPy/Pandas"
+                    #     raise ValueError(msg) from None
+                    numpy_data[f] = _jagged_to_numpy(arrays[f])
             if library.name == "pd":
                 pd = uproot.extras.pandas()
                 pandas_data = pd.DataFrame(numpy_data)
@@ -1974,12 +1975,28 @@ def _fill_container_dict(container_dict, content, key, dtype_byte, dtype):
 
 
 def _jagged_to_numpy(data):
-    if not isinstance(data, list) or len(data) == 0:
+    if isinstance(data, str):
+        return data
+
+    if isinstance(data, ak.Array) and isinstance(data.layout, ak.contents.RecordArray):
+        try:
+            return data.to_numpy()
+        except (TypeError, ValueError):
+            fields = data.fields
+            arrays = [_jagged_to_numpy(data[f]) for f in fields]
+            dtypes = [arr.dtype if len(arr.shape) == 1 else "O" for arr in arrays]
+            tuple_array = [tuple(arr[i] for arr in arrays) for i in range(len(data))]
+            del arrays
+            return numpy.array(
+                tuple_array, dtype=list(zip(fields, dtypes, strict=True))
+            )
+
+    if not isinstance(data, Iterable) or len(data) == 0:
         return numpy.asarray(data)
 
     converted = [_jagged_to_numpy(item) for item in data]
 
-    shapes = [c.shape for c in converted]
+    shapes = [c.shape if isinstance(c, numpy.ndarray) else (1,) for c in converted]
     if len(set(shapes)) == 1:
         return numpy.array(converted)
 
