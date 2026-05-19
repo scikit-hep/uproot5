@@ -44,7 +44,7 @@ def iterate(
     library="ak",  # TODO: Not implemented yet
     ak_add_doc=False,
     how=None,
-    report=False,  # TODO: Not implemented yet
+    report=False,
     allow_missing=False,  # TODO: Not implemented yet
     # For compatibility reasons we also accepts kwargs meant for TTrees
     filter_branch=unset,
@@ -908,7 +908,7 @@ class HasFields(Mapping):
         interpreter="cpu",
         ak_add_doc=False,
         how=None,
-        report=False,  # TODO: Not implemented yet
+        report=False,
         # For compatibility reasons we also accepts kwargs meant for TTrees
         interpretation_executor=None,
         filter_branch=unset,
@@ -964,7 +964,7 @@ class HasFields(Mapping):
             report (bool): If True, this generator yields
                 (arrays, :doc:`uproot.behaviors.TBranch.Report`) pairs; if False,
                 it only yields arrays. The report has data about the ``TFile``,
-                ``RNTuple``, and global and local entry ranges. (Not implemented yet.)
+                ``RNTuple``, and global and local entry ranges.
             interpretation_executor (None): This argument is not used and is only included for now
                 for compatibility with software that was used for :doc:`uproot.behaviors.TBranch.TBranch`. This argument should not be used
                 and will be removed in a future version.
