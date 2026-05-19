@@ -156,7 +156,9 @@ jobs:
       - uses: astral-sh/setup-uv@v8.1.0
 
       - name: Install pyodide-build
-        run: python3 -m pip install pyodide-build==$PYODIDE_BUILD_VERSION
+        run: >
+          python3 -m pip install pyodide-build==$PYODIDE_BUILD_VERSION
+          pydantic==2.13.3 pydantic_core==2.46.3 # unpin after checking if newer versions allow checking emscripten versions as before
 
       - name: Determine EMSDK version
         id: compute-emsdk-version
