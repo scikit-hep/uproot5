@@ -27,7 +27,7 @@ import uproot
 import uproot.interpretation.grouped
 import uproot.language.python
 import uproot.source.chunk
-from uproot._util import get_ttree_form, no_filter
+from uproot._util import get_ttree_form, no_filter, unset
 
 np_uint8 = numpy.dtype("u1")
 
@@ -57,6 +57,7 @@ def iterate(
     filter_name=no_filter,
     filter_typename=no_filter,
     filter_branch=no_filter,
+    filter_field=no_filter,
     aliases=None,
     language=uproot.language.python.python_language,
     step_size="100 MB",
@@ -90,7 +91,12 @@ def iterate(
             returns True, it is included with its standard
             :ref:`uproot.behaviors.TBranch.TBranch.interpretation`; if an
             :doc:`uproot.interpretation.Interpretation`, this interpretation
-            overrules the standard one.
+            overrules the standard one. Only used for TTrees.
+        filter_field (None or function of :doc:`uproot.models.RNTuple.RField` \u2192 bool, or None): A
+            filter to select ``RFields`` using the full
+            :doc:`uproot.models.RNTuple.RField` object. If the function
+            returns False or None, the ``RField`` is excluded; if the function
+            returns True, it is included. Only used for RNTuples.
         aliases (None or dict of str \u2192 str): Mathematical expressions that
             can be used in ``expressions`` or other aliases (without cycles).
             Uses the ``language`` engine to evaluate. If None, only the
@@ -201,7 +207,16 @@ def iterate(
                         cut=cut,
                         filter_name=filter_name,
                         filter_typename=filter_typename,
-                        filter_branch=filter_branch,
+                        filter_branch=(
+                            filter_branch
+                            if isinstance(hasbranches, HasBranches)
+                            else unset
+                        ),
+                        **(
+                            {}
+                            if isinstance(hasbranches, HasBranches)
+                            else {"filter_field": filter_field}
+                        ),
                         aliases=aliases,
                         language=language,
                         step_size=step_size,
@@ -243,6 +258,7 @@ def concatenate(
     filter_name=no_filter,
     filter_typename=no_filter,
     filter_branch=no_filter,
+    filter_field=no_filter,
     aliases=None,
     language=uproot.language.python.python_language,
     entry_start=None,
@@ -276,7 +292,12 @@ def concatenate(
             returns True, it is included with its standard
             :ref:`uproot.behaviors.TBranch.TBranch.interpretation`; if an
             :doc:`uproot.interpretation.Interpretation`, this interpretation
-            overrules the standard one.
+            overrules the standard one. Only used for TTrees.
+        filter_field (None or function of :doc:`uproot.models.RNTuple.RField` \u2192 bool, or None): A
+            filter to select ``RFields`` using the full
+            :doc:`uproot.models.RNTuple.RField` object. If the function
+            returns False or None, the ``RField`` is excluded; if the function
+            returns True, it is included. Only used for RNTuples.
         aliases (None or dict of str \u2192 str): Mathematical expressions that
             can be used in ``expressions`` or other aliases (without cycles).
             Uses the ``language`` engine to evaluate. If None, only the
@@ -415,7 +436,14 @@ def concatenate(
                     cut=cut,
                     filter_name=filter_name,
                     filter_typename=filter_typename,
-                    filter_branch=filter_branch,
+                    filter_branch=(
+                        filter_branch if isinstance(hasbranches, HasBranches) else unset
+                    ),
+                    **(
+                        {}
+                        if isinstance(hasbranches, HasBranches)
+                        else {"filter_field": filter_field}
+                    ),
                     aliases=aliases,
                     language=language,
                     entry_start=local_entry_start,
