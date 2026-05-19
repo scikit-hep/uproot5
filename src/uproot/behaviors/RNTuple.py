@@ -866,12 +866,11 @@ class HasFields(Mapping):
                 try:
                     numpy_data[f] = arrays[f].to_numpy()
                 except (ValueError, TypeError):
-                    # try:
-                    #     numpy_data[f] = _jagged_to_numpy(arrays[f])
-                    # except Exception:
-                    #     msg = f"Field {f} cannot be converted to NumPy/Pandas"
-                    #     raise ValueError(msg) from None
-                    numpy_data[f] = _jagged_to_numpy(arrays[f])
+                    try:
+                        numpy_data[f] = _awkward_to_numpy(arrays[f])
+                    except Exception:
+                        msg = f"Field {f} cannot be converted to NumPy/Pandas"
+                        raise ValueError(msg) from None
             if library.name == "pd":
                 pd = uproot.extras.pandas()
                 pandas_data = pd.DataFrame(numpy_data)
@@ -1974,7 +1973,7 @@ def _fill_container_dict(container_dict, content, key, dtype_byte, dtype):
             container_dict[f"{key}-offsets"] = content
 
 
-def _jagged_to_numpy(data):
+def _awkward_to_numpy(data):
     if isinstance(data, str):
         return data
 
@@ -1983,7 +1982,7 @@ def _jagged_to_numpy(data):
             return data.to_numpy()
         except (TypeError, ValueError):
             fields = data.fields
-            arrays = [_jagged_to_numpy(data[f]) for f in fields]
+            arrays = [_awkward_to_numpy(data[f]) for f in fields]
             dtypes = [arr.dtype if len(arr.shape) == 1 else "O" for arr in arrays]
             tuple_array = [tuple(arr[i] for arr in arrays) for i in range(len(data))]
             del arrays
@@ -1994,7 +1993,7 @@ def _jagged_to_numpy(data):
     if not isinstance(data, Iterable) or len(data) == 0:
         return numpy.asarray(data)
 
-    converted = [_jagged_to_numpy(item) for item in data]
+    converted = [_awkward_to_numpy(item) for item in data]
 
     shapes = [c.shape if isinstance(c, numpy.ndarray) else (1,) for c in converted]
     if len(set(shapes)) == 1:

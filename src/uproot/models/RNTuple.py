@@ -2015,7 +2015,7 @@ class RField(uproot.behaviors.RNTuple.HasFields):
                 numpy_data = arrays.to_numpy()
             except (ValueError, TypeError):
                 try:
-                    numpy_data = uproot.behaviors.RNTuple._jagged_to_numpy(arrays)
+                    numpy_data = uproot.behaviors.RNTuple._awkward_to_numpy(arrays)
                 except Exception:
                     msg = f"Field {self.name} cannot be converted to NumPy/Pandas"
                     raise ValueError(msg) from None
