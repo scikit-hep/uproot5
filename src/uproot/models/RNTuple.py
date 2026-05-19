@@ -2021,7 +2021,11 @@ class RField(uproot.behaviors.RNTuple.HasFields):
                     raise ValueError(msg) from None
             if library.name == "pd":
                 pd = uproot.extras.pandas()
-                pandas_data = pd.Series(numpy_data)
+                index_start = 0 if entry_start is None else entry_start
+                pandas_index = pd.RangeIndex(
+                    start=index_start, stop=index_start + len(arrays)
+                )
+                pandas_data = pd.Series(numpy_data, index=pandas_index)
                 return pandas_data
             return numpy_data
 

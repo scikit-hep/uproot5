@@ -875,7 +875,10 @@ class HasFields(Mapping):
                         raise ValueError(msg) from None
             if library.name == "pd":
                 pd = uproot.extras.pandas()
-                pandas_data = pd.DataFrame(numpy_data)
+                pandas_index = pd.RangeIndex(
+                    start=entry_start, stop=entry_start + len(arrays)
+                )
+                pandas_data = pd.DataFrame(numpy_data, index=pandas_index)
                 arrays = pandas_data
             else:
                 arrays = numpy_data
