@@ -859,6 +859,8 @@ class HasFields(Mapping):
                             "The array was not constructed correctly. Please report this issue."
                         )
 
+        expression_context = [(f, None) for f in arrays.fields]
+
         # TODO: The conversion would be ideally be fully handled by Awkward.
         if library.name in ("np", "pd"):
             numpy_data = {}
@@ -874,20 +876,12 @@ class HasFields(Mapping):
             if library.name == "pd":
                 pd = uproot.extras.pandas()
                 pandas_data = pd.DataFrame(numpy_data)
-                return pandas_data
-            return numpy_data
+                arrays = pandas_data
+            arrays = numpy_data
 
-        # TODO: This should be done with library.group, if possible
-        if how is tuple:
-            arrays = tuple(arrays[f] for f in arrays.fields)
-        elif how is list:
-            arrays = [arrays[f] for f in arrays.fields]
-        elif how is dict:
-            arrays = {f: arrays[f] for f in arrays.fields}
-        elif how is not None:
-            raise ValueError(
-                f"unrecognized 'how' parameter: {how}. Options are None, tuple, list and dict."
-            )
+        if how is not None:
+            arrays = library.group(arrays, expression_context, how)
+
         return arrays
 
     def __array__(self, *args, **kwargs):
