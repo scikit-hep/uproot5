@@ -38,6 +38,7 @@ jobs:
             --strict-channel-priority
             conda-forge/label/python_rc::_python_rc
             python=${{ matrix.python-version }}
+          micromamba-version: 2.6.0-0   # unpin when there is a release newer than 2.6.1-0
 
       - name: Set PYTHON_GIL=0 for free-threaded builds
         if: contains(matrix.python-version, 'python-freethreading')
