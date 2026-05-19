@@ -877,7 +877,8 @@ class HasFields(Mapping):
                 pd = uproot.extras.pandas()
                 pandas_data = pd.DataFrame(numpy_data)
                 arrays = pandas_data
-            arrays = numpy_data
+            else:
+                arrays = numpy_data
 
         if how is not None:
             arrays = library.group(arrays, expression_context, how)
