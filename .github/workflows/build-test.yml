@@ -10,8 +10,12 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   build:
+    name: Test on ${{ matrix.platform }} with Python ${{ matrix.python-version }}
     strategy:
       fail-fast: false
       matrix:
@@ -28,6 +32,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
 
       - name: Get micromamba
         uses: mamba-org/setup-micromamba@d7c9bd84e824b79d2af72a2d4196c7f4300d3476 # v3.0.0
@@ -47,7 +53,9 @@ jobs:
       - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
 
       - name: Check active Python version
-        run: python -c "import sys; assert '.'.join(str(s) for s in sys.version_info[:2]) == '${{ matrix.python-version }}'.split()[0], f'{version} incorrect!'"
+        env:
+          EXPECTED_PYTHON_VERSION: ${{ matrix.python-version }}
+        run: python -c "import os, sys; actual = '.'.join(str(s) for s in sys.version_info[:2]); expected = os.environ['EXPECTED_PYTHON_VERSION'].split()[0]; assert actual == expected, f'{actual} incorrect!'"
 
       - name: Install ROOT
         if: matrix.python-version == 3.10  &&  runner.os == 'Linux'
@@ -82,6 +90,7 @@ jobs:
           python -m pytest -vv tests --reruns 10 --reruns-delay 30 --only-rerun "(?i)http|ssl|timeout|expired|connection|socket"
 
   vanilla-build:
+    name: Vanilla test on ${{ matrix.platform }} with Python ${{ matrix.python-version }}
     strategy:
       fail-fast: false
       matrix:
@@ -93,6 +102,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
 
       - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
         with:
@@ -109,6 +120,7 @@ jobs:
           python -m pytest -vv tests --reruns 10 --reruns-delay 30 --only-rerun "(?i)http|ssl|timeout|expired|connection|socket"
 
   numpy1-build:
+    name: NumPy 1 test on ${{ matrix.platform }} with Python ${{ matrix.python-version }}
     strategy:
       fail-fast: false
       matrix:
@@ -120,6 +132,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
 
       - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
         with:
@@ -137,6 +151,7 @@ jobs:
           uv run --no-sync pytest -vv tests --reruns 10 --reruns-delay 30 --only-rerun "(?i)http|ssl|timeout|expired|connection|socket"
 
   pyodide-build:
+    name: Pyodide test
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
@@ -147,6 +162,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
 
       - name: Setup Python
         uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
@@ -206,6 +223,7 @@ jobs:
           pytest -vv --dist-dir=./pyodide-dist/ --runner=selenium --runtime=firefox tests-wasm
 
   gpu-build:
+    name: GPU test with CUDA ${{ matrix.cuda-version }}
     strategy:
       fail-fast: false
       matrix:
@@ -226,6 +244,8 @@ jobs:
           rm -rf ~/micromamba* || echo "Nothing to clean"
 
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
 
       - name: Get micromamba
         uses: mamba-org/setup-micromamba@d7c9bd84e824b79d2af72a2d4196c7f4300d3476 # v3.0.0
@@ -261,18 +281,19 @@ jobs:
 
       - name: Upload coverage reports to Codecov
         if: matrix.cuda-version == 13
-        uses: codecov/codecov-action@v6
+        uses: codecov/codecov-action@e79a6962e0d4c0c17b229090214935d2e33f8354 # v6.0.1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
 
       - name: Upload test results to Codecov
         if: ${{ !cancelled() && matrix.cuda-version == 13 }}
-        uses: codecov/codecov-action@v6
+        uses: codecov/codecov-action@e79a6962e0d4c0c17b229090214935d2e33f8354 # v6.0.1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           report_type: test_results
 
   pass:
+    name: Check required tests
     if: always()
     needs: [build, vanilla-build, numpy1-build, pyodide-build]
     runs-on: ubuntu-latest

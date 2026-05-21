@@ -10,6 +10,9 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
 
   build_dist:
@@ -18,14 +21,15 @@ jobs:
     uses: ./.github/workflows/build-distributions.yml
 
   publish:
+    name: Publish to PyPI
     environment:
       name: pypi
     needs: [build_dist]
     runs-on: ubuntu-latest
     if: github.event_name == 'release' && github.event.action == 'published'
     permissions:
-      id-token: write
-      attestations: write
+      id-token: write # Required for trusted publishing to PyPI.
+      attestations: write # Required to generate artifact attestations for the release artifacts.
       contents: read
 
     steps:

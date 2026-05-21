@@ -12,6 +12,9 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref }}
   cancel-in-progress: true
 
+permissions:
+  pull-requests: read # Required to inspect pull request titles.
+
 jobs:
   main:
     name: Validate PR title
