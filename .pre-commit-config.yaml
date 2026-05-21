@@ -42,4 +42,4 @@ repos:
     hooks:
       - id: zizmor
         files: ^\.github
-        args: [--persona=pendatic]
+        args: [--persona=pendantic]
