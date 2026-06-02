@@ -68,11 +68,9 @@ jobs:
           ssh -o StrictHostKeyChecking=no localhost echo "ssh connection successful"
 
       - name: Install XRootD
-        if: runner.os != 'Windows'
+        if: runner.os != 'Windows' && !contains(matrix.python-version, 'python-freethreading')
         run: |
-          micromamba env list
-          micromamba install xrootd
-          micromamba list
+          uv pip install --group=test-xrootd
 
       - name: Pip install the package
         run: uv pip install --system -e. --group=dev
