@@ -32,11 +32,11 @@
           "wall_clock_s": 0.0
         }
       ],
-      "phase": "REVIEW",
+      "phase": "DONE",
       "reject_count": 0
     }
   },
   "repo": "uproot5-graphed-mvp",
   "schema_version": 1,
-  "updated_at": "2026-06-07T20:20:52Z"
+  "updated_at": "2026-06-07T20:27:53Z"
 }
