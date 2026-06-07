@@ -42,7 +42,11 @@ jobs:
           # dask-awkward, hist, boost_histogram, skhep_testdata, rangehttpserver, pytest, ...)
           python -m pip install -e . --group dev
       - name: Run the full uproot suite + the graphed tests
+        # The whole tests/ dir (uproot + graphed), excluding only the 'xrootd' marker: those tests
+        # need a running XRootD server, which this lightweight job does not provision (upstream
+        # installs it via micromamba in a dedicated job). Everything else — readers, writers,
+        # dask-awkward, and the graphed integration — runs, so graphed regressions are caught.
         run: |
-          python -m pytest -vv tests \
+          python -m pytest -vv tests -m "not xrootd" \
             --reruns 10 --reruns-delay 30 \
             --only-rerun "(?i)http|ssl|timeout|expired|connection|socket"
