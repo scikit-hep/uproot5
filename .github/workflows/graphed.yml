@@ -34,10 +34,12 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install "${{ env.CORE }}" "${{ env.FRONTEND }}" "${{ env.AWKWARD }}"
-          python -m pip install -e ".[test]"
+          # uproot's test requirements are a PEP 735 dependency-group (pytest, pytest-timeout,
+          # rangehttpserver, scikit-hep-testdata, ...), not an extra.
+          python -m pip install -e . --group test
       - name: Run the graphed integration tests
         run: |
-          pytest -v \
+          python -m pytest -v \
             tests/test_graphed_for_awkward.py \
             tests/test_graphed_column_projection.py \
             tests/test_graphed_write.py
