@@ -1,0 +1,42 @@
+{
+  "milestones": {
+    "UPROOT": {
+      "dispute_count": 0,
+      "escalated": false,
+      "freeze_tag": "freeze-UPROOT-0",
+      "gates": {
+        "benchmark": null,
+        "coverage": true,
+        "determinism": true,
+        "frozen_tests": true,
+        "integrity_scan": true,
+        "lint": true,
+        "types": true
+      },
+      "incident": null,
+      "l0_count": 0,
+      "metrics_history": [
+        {
+          "benchmark_ok": null,
+          "coverage_ok": true,
+          "determinism_ok": true,
+          "diff_lines": 0,
+          "fail_set_hash": "e3b0c44298fc1c14",
+          "integrity_ok": true,
+          "iteration_index": 0,
+          "lint_ok": true,
+          "pass_count": 11,
+          "tokens_spent": 0,
+          "tree_hash": "local",
+          "types_ok": true,
+          "wall_clock_s": 0.0
+        }
+      ],
+      "phase": "REVIEW",
+      "reject_count": 0
+    }
+  },
+  "repo": "uproot5-graphed-mvp",
+  "schema_version": 1,
+  "updated_at": "2026-06-07T20:20:52Z"
+}

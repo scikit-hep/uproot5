@@ -1,0 +1,43 @@
+name: graphed
+
+# graphed-backed uproot reading/writing (the graphed-mvp integration). Runs only on the graphed-mvp
+# branch so it does not collide with uproot's own build-test matrix (which runs on main / PRs).
+on:
+  push:
+    branches: [graphed-mvp]
+  workflow_dispatch:
+
+concurrency:
+  group: graphed-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CORE: "graphed-core @ git+https://github.com/graphed-org/graphed-core-mvp@main"
+  FRONTEND: "graphed @ git+https://github.com/graphed-org/graphed-mvp@main"
+  AWKWARD: "graphed-awkward @ git+https://github.com/graphed-org/graphed-awkward-mvp@main"
+
+jobs:
+  graphed:
+    name: graphed read/write ${{ matrix.python }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install graphed (mvp) siblings + uproot + test deps
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install "${{ env.CORE }}" "${{ env.FRONTEND }}" "${{ env.AWKWARD }}"
+          python -m pip install -e ".[test]"
+      - name: Run the graphed integration tests
+        run: |
+          pytest -v \
+            tests/test_graphed_for_awkward.py \
+            tests/test_graphed_column_projection.py \
+            tests/test_graphed_write.py
