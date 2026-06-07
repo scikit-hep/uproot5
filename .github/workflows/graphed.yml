@@ -47,6 +47,6 @@ jobs:
         # installs it via micromamba in a dedicated job). Everything else — readers, writers,
         # dask-awkward, and the graphed integration — runs, so graphed regressions are caught.
         run: |
-          python -m pytest -vv tests -m "not xrootd" \
+          python -m pytest -vv tests -m "not xrootd" -k "not xrootd" \
             --reruns 10 --reruns-delay 30 \
             --only-rerun "(?i)http|ssl|timeout|expired|connection|socket"
