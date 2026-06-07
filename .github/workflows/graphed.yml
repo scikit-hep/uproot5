@@ -1,7 +1,9 @@
 name: graphed
 
-# graphed-backed uproot reading/writing (the graphed-mvp integration). Runs only on the graphed-mvp
-# branch so it does not collide with uproot's own build-test matrix (which runs on main / PRs).
+# The graphed-mvp integration. Runs the FULL uproot test suite together with the graphed tests, so
+# regressions from the graphed additions (e.g. the uproot.__init__ / writing.__init__ edits) are
+# caught — not just the graphed tests in isolation. Runs only on the graphed-mvp branch, so it does
+# not collide with uproot's own build-test matrix (which runs on main / PRs).
 on:
   push:
     branches: [graphed-mvp]
@@ -17,9 +19,10 @@ env:
   AWKWARD: "graphed-awkward @ git+https://github.com/graphed-org/graphed-awkward-mvp@main"
 
 jobs:
-  graphed:
-    name: graphed read/write ${{ matrix.python }}
+  tests:
+    name: uproot + graphed tests ${{ matrix.python }}
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
@@ -30,16 +33,16 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
       - uses: dtolnay/rust-toolchain@stable
-      - name: Install graphed (mvp) siblings + uproot + test deps
+      - name: Install graphed (mvp) siblings + uproot (full dev group)
         run: |
           python -m pip install --upgrade pip
+          # the graphed-*-mvp siblings (so the graphed tests run, not importorskip-skipped)
           python -m pip install "${{ env.CORE }}" "${{ env.FRONTEND }}" "${{ env.AWKWARD }}"
-          # uproot's test requirements are a PEP 735 dependency-group (pytest, pytest-timeout,
-          # rangehttpserver, scikit-hep-testdata, ...), not an extra.
-          python -m pip install -e . --group test
-      - name: Run the graphed integration tests
+          # uproot + its full test environment (PEP 735 'dev' group = 'extra' + 'test':
+          # dask-awkward, hist, boost_histogram, skhep_testdata, rangehttpserver, pytest, ...)
+          python -m pip install -e . --group dev
+      - name: Run the full uproot suite + the graphed tests
         run: |
-          python -m pytest -v \
-            tests/test_graphed_for_awkward.py \
-            tests/test_graphed_column_projection.py \
-            tests/test_graphed_write.py
+          python -m pytest -vv tests \
+            --reruns 10 --reruns-delay 30 \
+            --only-rerun "(?i)http|ssl|timeout|expired|connection|socket"
