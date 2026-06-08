@@ -22,6 +22,8 @@ env:
   EXEC: "graphed-exec-local @ git+https://github.com/graphed-org/graphed-exec-local-mvp@main"
   # graphed-checkpoint (run_resumable / dead-letter); depends on graphed-core (+ cloudpickle from PyPI)
   CHECKPOINT: "graphed-checkpoint @ git+https://github.com/graphed-org/graphed-checkpoint-mvp@main"
+  # graphed-preserve (preservation bundle); deps = graphed-core + graphed + graphed-awkward + graphed-checkpoint
+  PRESERVE: "graphed-preserve @ git+https://github.com/graphed-org/graphed-preserve-mvp@main"
 
 jobs:
   tests:
@@ -44,7 +46,7 @@ jobs:
           # the graphed-*-mvp siblings (so the graphed tests run, not importorskip-skipped); all in
           # one command so the inter-sibling deps (e.g. exec-local -> graphed-debug) resolve to these
           # git URLs rather than PyPI
-          python -m pip install "${{ env.CORE }}" "${{ env.DEBUG }}" "${{ env.FRONTEND }}" "${{ env.AWKWARD }}" "${{ env.EXEC }}" "${{ env.CHECKPOINT }}"
+          python -m pip install "${{ env.CORE }}" "${{ env.DEBUG }}" "${{ env.FRONTEND }}" "${{ env.AWKWARD }}" "${{ env.EXEC }}" "${{ env.CHECKPOINT }}" "${{ env.PRESERVE }}"
           # uproot + its full test environment (PEP 735 'dev' group = 'extra' + 'test':
           # dask-awkward, hist, boost_histogram, skhep_testdata, rangehttpserver, pytest, ...)
           python -m pip install -e . --group dev
