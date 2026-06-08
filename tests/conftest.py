@@ -96,6 +96,8 @@ def xrootd_server(tmpdir_factory):
     temp_path = os.path.join(server_dir, "Folder")
     os.mkdir(temp_path)
     xrootd = shutil.which("xrootd")
+    if xrootd is None:
+        pytest.skip("xrootd server executable is not available on PATH")
     proc = subprocess.Popen([xrootd, server_dir])
     time.sleep(2)  # give it some startup
     yield "root://localhost/" + str(temp_path), temp_path
