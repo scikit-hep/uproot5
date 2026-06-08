@@ -244,7 +244,7 @@ jobs:
             ${{ matrix.cuda-version == 13 && 'root' || '' }}
 
       - name: Pip install the package
-        run: pip install --group=dev .
+        run: pip install --group=dev --group=test-xrootd .
 
       - name: Run only GPU tests
         if: matrix.cuda-version != 13
