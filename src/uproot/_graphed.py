@@ -22,6 +22,7 @@ import uproot._util
 import uproot.interpretation.library
 from uproot._dask import _get_ttree_form
 from uproot._util import no_filter
+from uproot.behaviors.RNTuple import HasFields
 
 
 class _GraphedTTreeSource:
@@ -113,13 +114,15 @@ def graphed(
         )
         if obj is None:
             continue
+        # TTrees take filter_branch; RNTuples (HasFields) take filter_field (cf. uproot._dask)
+        filter_kw = "filter_field" if isinstance(obj, HasFields) else "filter_branch"
         keys = obj.keys(
             recursive=recursive,
             filter_name=filter_name,
             filter_typename=filter_typename,
-            filter_branch=filter_branch,
             full_paths=full_paths,
             ignore_duplicates=True,
+            **{filter_kw: filter_branch},
         )
         if common_keys is None:
             common_keys = list(keys)
@@ -135,7 +138,11 @@ def graphed(
     if not common_keys:
         raise ValueError("uproot.graphed: the TTrees have no TBranches in common")
 
-    record_form = _get_ttree_form(awkward, first_ttree, common_keys, ak_add_doc)
+    # RNTuples (HasFields) expose the awkward form directly; TTrees build it from branch interpretations
+    if isinstance(first_ttree, HasFields):
+        record_form = first_ttree.to_akform(filter_name=common_keys)[0]
+    else:
+        record_form = _get_ttree_form(awkward, first_ttree, common_keys, ak_add_doc)
     typetracer = awkward.Array(
         record_form.length_zero_array(highlevel=False).to_typetracer(forget_length=True)
     )
