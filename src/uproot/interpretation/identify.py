@@ -98,7 +98,7 @@ def _leaf_to_dtype(leaf, getdims):
     if getdims:
         m = _title_has_dims.match(leaf.member("fTitle"))
         if m is not None:
-            dims = tuple(eval(m.group(2).replace("][", ", ")))
+            dims = tuple(ast.literal_eval(m.group(2).replace("][", ", ")))
 
     if leaf.classname == "TLeafO":
         return numpy.dtype((numpy.bool_, dims))
