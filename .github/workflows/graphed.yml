@@ -15,8 +15,10 @@ concurrency:
 
 env:
   CORE: "graphed-core @ git+https://github.com/graphed-org/graphed-core-mvp@main"
+  DEBUG: "graphed-debug @ git+https://github.com/graphed-org/graphed-debug-mvp@main"
   FRONTEND: "graphed @ git+https://github.com/graphed-org/graphed-mvp@main"
   AWKWARD: "graphed-awkward @ git+https://github.com/graphed-org/graphed-awkward-mvp@main"
+  # graphed-exec-local depends on graphed-core + graphed-debug + graphed (all git siblings, not on PyPI)
   EXEC: "graphed-exec-local @ git+https://github.com/graphed-org/graphed-exec-local-mvp@main"
 
 jobs:
@@ -37,8 +39,10 @@ jobs:
       - name: Install graphed (mvp) siblings + uproot (full dev group)
         run: |
           python -m pip install --upgrade pip
-          # the graphed-*-mvp siblings (so the graphed tests run, not importorskip-skipped)
-          python -m pip install "${{ env.CORE }}" "${{ env.FRONTEND }}" "${{ env.AWKWARD }}" "${{ env.EXEC }}"
+          # the graphed-*-mvp siblings (so the graphed tests run, not importorskip-skipped); all in
+          # one command so the inter-sibling deps (e.g. exec-local -> graphed-debug) resolve to these
+          # git URLs rather than PyPI
+          python -m pip install "${{ env.CORE }}" "${{ env.DEBUG }}" "${{ env.FRONTEND }}" "${{ env.AWKWARD }}" "${{ env.EXEC }}"
           # uproot + its full test environment (PEP 735 'dev' group = 'extra' + 'test':
           # dask-awkward, hist, boost_histogram, skhep_testdata, rangehttpserver, pytest, ...)
           python -m pip install -e . --group dev
