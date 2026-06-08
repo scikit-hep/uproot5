@@ -36,11 +36,10 @@ def _counts(values) -> np.ndarray:
 
 
 def process(part: Partition, res: object) -> np.ndarray:
-    # open the file once per worker (HDD locality), read only this chunk's needed columns
+    # open the file once per worker (HDD locality), read only this chunk's needed columns; the reader
+    # resolves blind partitions (open_files=False) against the file's actual entry count
     tree = res.open_once(part.uri, uproot.open)[part.tree]  # type: ignore[attr-defined]
-    chunk = tree.arrays(
-        list(COLUMNS), entry_start=part.entry_start, entry_stop=part.entry_stop, library="ak"
-    )
+    chunk = uproot.read_graphed_partition(part, COLUMNS, tree=tree)
     s = Session(AwkwardBackend())
     ev = from_awkward(s, "events", chunk)
     return _counts(s.materialize(analysis(ev)))  # record + execute the analysis ON THE CHUNK
