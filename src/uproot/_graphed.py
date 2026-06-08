@@ -5,11 +5,13 @@ This module defines :doc:`uproot._graphed.graphed`, which reads ``TTrees`` into 
 :doc:`uproot._dask.dask` for the ``graphed`` task-graph system (MVP).
 
 ``uproot.graphed(files, library="ak")`` returns a deferred ``graphed`` ``Array`` (recorded on the
-``graphed-awkward`` backend). Construction reads only metadata (the ``TTree`` form); the event data is
-read by ``uproot`` lazily when the expression is computed. Because ``graphed`` computes the *necessary
-buffers* of the recorded graph (column projection), ``uproot.graphed(...).compute()`` reads only the
-``TBranches`` the analysis actually touches — the same necessary-columns optimization ``uproot.dask``
-provides, expressed through ``graphed``.
+``graphed-awkward`` backend); construction reads only metadata (the ``TTree`` form). ``graphed`` does
+not impersonate a deferred-array ``.compute()`` — instead, a recorded analysis is executed the way one
+actually runs a task graph: per partition through the ``graphed-exec-local`` executors
+(``ProcessExecutor`` / ``ThreadExecutor``) and tree-reduced. :doc:`uproot._graphed.graphed_partitions`
+builds the ``graphed_core.Task`` chunks; :doc:`uproot._graphed.necessary_columns` reports the column
+projection (so each chunk reads only the ``TBranches`` the analysis touches — the dask-awkward
+necessary-columns optimization, expressed through ``graphed``).
 
 ``graphed`` (and its backends) are imported lazily, so importing ``uproot`` does not require them.
 """
@@ -152,20 +154,42 @@ def necessary_columns(array, *, on_fail="raise"):
     return dict(project(array, on_fail=on_fail).read_columns)
 
 
-def compute(array, *, project=True, on_fail="warn"):
-    """Read the data and evaluate ``array`` (the ``graphed`` analogue of ``dask``'s ``.compute()``).
+def graphed_partitions(
+    files,
+    *,
+    steps_per_file=1,
+    custom_classes=None,
+    allow_missing=False,
+    **options,
+):
+    """Partition a uproot dataset into ``graphed_core.Task`` chunks for the ``graphed-exec-local``
+    executors. Each ``TTree`` is split into ``steps_per_file`` contiguous entry ranges; every chunk is
+    a ``Task(key, Partition(file_path, tree, entry_start, entry_stop))``.
 
-    With ``project=True`` (default), only the ``TBranches`` the recorded graph touches are read from
-    the file(s) — ``graphed``'s column projection driving ``uproot``'s read."""
-    session = array.session
-    if project:
-        from graphed_awkward.projection import project as _project
+    The chunks feed a ``graphed_core.Plan`` run by ``graphed_exec_local.ProcessExecutor`` /
+    ``ThreadExecutor`` — the per-partition, tree-reduced execution that a deferred-array ``.compute()``
+    hides. ``graphed`` is *not* needed here (this only resolves files + entry counts), so it is not
+    imported."""
+    from graphed_core import Partition, Task
 
-        proj = _project(array, on_fail=on_fail)
-        for nid in session.source_ids():
-            data = session._sources.get(nid)
-            if isinstance(data, _GraphedTTreeSource):
-                cols = proj.columns_for(session.source_name(nid))
-                if cols:
-                    data.columns = sorted(cols)
-    return session.materialize(array)
+    real_options = options.copy()
+    real_options.setdefault("num_workers", 1)
+    resolved = uproot._util.regularize_files(files, steps_allowed=False, **options)
+
+    tasks = []
+    key = 0
+    for ftuple in resolved:
+        file_path, object_path = ftuple[0], ftuple[1]
+        obj = uproot._util.regularize_object_path(
+            file_path, object_path, custom_classes, allow_missing, real_options
+        )
+        if obj is None:
+            continue
+        n_entries = obj.num_entries
+        for i in range(steps_per_file):
+            start = (i * n_entries) // steps_per_file
+            stop = ((i + 1) * n_entries) // steps_per_file
+            if stop > start:
+                tasks.append(Task(key, Partition(file_path, object_path, int(start), int(stop))))
+                key += 1
+    return tasks

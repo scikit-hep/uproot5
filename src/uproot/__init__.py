@@ -192,7 +192,7 @@ from uproot.behavior import behavior_of
 
 from uproot._util import no_filter
 from uproot._dask import dask, ImplementsFormMapping, ImplementsFormMappingInfo
-from uproot._graphed import graphed, compute as graphed_compute, necessary_columns
+from uproot._graphed import graphed, graphed_partitions, necessary_columns
 
 from uproot.pyroot import from_pyroot
 from uproot.pyroot import to_pyroot
