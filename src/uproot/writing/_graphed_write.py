@@ -41,13 +41,8 @@ def _recreate_kwargs(compression, compression_level):
 def _write_partition(out_paths, columns, tree_name, compression, compression_level, partition, resources):
     """Read this partition's chunk via uproot (file opened once per worker) and write it to its own
     ``part{N}.root``. Returns ``None`` — the write is the task's only effect."""
-    file = resources.open_once(partition.uri, uproot.open)
-    chunk = file[partition.tree].arrays(
-        list(columns),
-        entry_start=partition.entry_start,
-        entry_stop=partition.entry_stop,
-        library="ak",
-    )
+    tree = resources.open_once(partition.uri, uproot.open)[partition.tree]
+    chunk = uproot.read_graphed_partition(partition, columns, tree=tree)
     record = {name: chunk[name] for name in chunk.fields}
     path = out_paths[(partition.uri, partition.tree, partition.entry_start, partition.entry_stop)]
     with uproot.recreate(path, **_recreate_kwargs(compression, compression_level)) as out:

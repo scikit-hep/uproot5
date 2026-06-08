@@ -21,7 +21,7 @@ import uproot
 import uproot._util
 import uproot.interpretation.library
 from uproot._dask import _get_ttree_form
-from uproot._util import no_filter
+from uproot._util import no_filter, unset
 from uproot.behaviors.RNTuple import HasFields
 
 
@@ -164,20 +164,39 @@ def necessary_columns(array, *, on_fail="raise"):
 def graphed_partitions(
     files,
     *,
-    steps_per_file=1,
+    step_size=unset,
+    steps_per_file=unset,
+    open_files=True,
     custom_classes=None,
     allow_missing=False,
     **options,
 ):
     """Partition a uproot dataset into ``graphed_core.Task`` chunks for the ``graphed-exec-local``
-    executors. Each ``TTree`` is split into ``steps_per_file`` contiguous entry ranges; every chunk is
-    a ``Task(key, Partition(file_path, tree, entry_start, entry_stop))``.
+    executors. Every chunk is a ``Task(key, Partition(file_path, tree, entry_start, entry_stop))``.
+
+    Mirrors :doc:`uproot._dask.dask`'s chunking knobs:
+
+    - ``steps_per_file`` (default 1): split each ``TTree`` into that many contiguous chunks.
+    - ``step_size`` (int entries, or a memory string like ``"100 MB"``): cap each chunk's size.
+      Mutually exclusive with ``steps_per_file``, and **incompatible with** ``open_files=False``.
+    - ``open_files`` (default ``True``): open every file to read its entry count and emit exact entry
+      ranges. ``open_files=False`` is the **blind-steps** mode — files are *not* opened here; each
+      chunk records ``(step_index, n_steps)`` instead (encoded as ``entry_start=step_index``,
+      ``entry_stop=-n_steps``) and the real entry range is resolved against the file's own count when
+      the chunk is read (:doc:`uproot._graphed.read_graphed_partition`).
 
     The chunks feed a ``graphed_core.Plan`` run by ``graphed_exec_local.ProcessExecutor`` /
     ``ThreadExecutor`` — the per-partition, tree-reduced execution that a deferred-array ``.compute()``
-    hides. ``graphed`` is *not* needed here (this only resolves files + entry counts), so it is not
-    imported."""
+    hides."""
     from graphed_core import Partition, Task
+
+    have_step_size = not isinstance(step_size, uproot._util._Unset)
+    have_steps_per_file = not isinstance(steps_per_file, uproot._util._Unset)
+    if have_step_size and not open_files:
+        raise TypeError("step_size cannot be used with open_files=False; use steps_per_file")
+    if have_step_size and have_steps_per_file:
+        raise TypeError("step_size and steps_per_file are mutually exclusive; set only one")
+    n_steps = int(steps_per_file) if have_steps_per_file else 1
 
     real_options = options.copy()
     real_options.setdefault("num_workers", 1)
@@ -187,16 +206,43 @@ def graphed_partitions(
     key = 0
     for ftuple in resolved:
         file_path, object_path = ftuple[0], ftuple[1]
+        if not open_files:
+            # BLIND: do not open the file; emit (step_index, n_steps) chunks resolved at read time
+            for step in range(n_steps):
+                tasks.append(Task(key, Partition(file_path, object_path, step, -n_steps)))
+                key += 1
+            continue
         obj = uproot._util.regularize_object_path(
             file_path, object_path, custom_classes, allow_missing, real_options
         )
         if obj is None:
             continue
         n_entries = obj.num_entries
-        for i in range(steps_per_file):
-            start = (i * n_entries) // steps_per_file
-            stop = ((i + 1) * n_entries) // steps_per_file
+        if have_step_size:
+            per = step_size if isinstance(step_size, int) else obj.num_entries_for(step_size)
+            per = max(1, int(per))
+            ranges = [(s, min(s + per, n_entries)) for s in range(0, n_entries, per)]
+        else:
+            ranges = [((i * n_entries) // n_steps, ((i + 1) * n_entries) // n_steps) for i in range(n_steps)]
+        for start, stop in ranges:
             if stop > start:
                 tasks.append(Task(key, Partition(file_path, object_path, int(start), int(stop))))
                 key += 1
     return tasks
+
+
+def read_graphed_partition(partition, columns, *, tree=None, library="ak", **open_options):
+    """Read a ``graphed_core.Partition``'s chunk of ``columns`` from its ROOT file.
+
+    Resolves **blind** partitions (``entry_stop < 0`` encodes ``step_index`` / ``n_steps`` from
+    ``graphed_partitions(..., open_files=False)``) against the file's *actual* entry count here, so a
+    blindly-stepped dataset still reads every entry exactly once. Pass an already-open ``tree`` to reuse
+    a per-worker ``open_once`` handle."""
+    if tree is None:
+        tree = uproot.open(partition.uri, **open_options)[partition.tree]
+    start, stop = partition.entry_start, partition.entry_stop
+    if stop < 0:  # blind: step `start` of `-stop` steps, resolved against this file's num_entries
+        n_steps, step, n_entries = -stop, start, tree.num_entries
+        start = (step * n_entries) // n_steps
+        stop = ((step + 1) * n_entries) // n_steps
+    return tree.arrays(list(columns), entry_start=start, entry_stop=stop, library=library)
