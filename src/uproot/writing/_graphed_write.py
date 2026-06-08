@@ -54,9 +54,20 @@ def graphed_write(
     analogue of :doc:`uproot.writing._dask_write.dask_write`.
     """
     if _is_graphed_array(array):
-        from uproot._graphed import compute as _graphed_compute
+        from uproot._graphed import _GraphedTTreeSource
 
-        materialized = _graphed_compute(array, project=project, on_fail=on_fail)
+        session = array.session
+        if project:
+            from graphed_awkward.projection import project as _project
+
+            proj = _project(array, on_fail=on_fail)
+            for nid in session.source_ids():
+                data = session._sources.get(nid)
+                if isinstance(data, _GraphedTTreeSource):
+                    cols = proj.columns_for(session.source_name(nid))
+                    if cols:
+                        data.columns = sorted(cols)
+        materialized = session.materialize(array)
     else:
         materialized = array
 
