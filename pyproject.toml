@@ -189,3 +189,6 @@ isort.required-imports = ["from __future__ import annotations"]
 
 [tool.setuptools_scm]
 write_to = "src/uproot/_version.py"
+
+[tool.uv]
+exclude-newer = "7 days"
