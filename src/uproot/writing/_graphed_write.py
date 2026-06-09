@@ -37,14 +37,37 @@ def _recreate_kwargs(compression, compression_level):
     return {"compression": resolved}
 
 
+def _step_ranges(n_entries, steps_per_file):
+    """The non-empty contiguous step ranges of one file — the SAME rule the driver used, so a
+    worker can recompute its own part index from its partition alone (no per-partition path table
+    is pickled into every task)."""
+    ranges = []
+    for i in range(steps_per_file):
+        start = (i * n_entries) // steps_per_file
+        stop = ((i + 1) * n_entries) // steps_per_file
+        if stop > start:
+            ranges.append((start, stop))
+    return ranges
+
+
 # ---- module-level so a spawned ProcessExecutor worker can pickle/import them --------------------
-def _write_partition(out_paths, columns, tree_name, compression, compression_level, partition, resources):
+def _write_partition(
+    destination, prefix, columns, tree_name, compression, compression_level,
+    steps_per_file, file_bases, partition, resources,
+):
     """Read this partition's chunk via uproot (file opened once per worker) and write it to its own
-    ``part{N}.root``. Returns ``None`` — the write is the task's only effect."""
+    ``part{N}.root``. ``N`` = the file's base index + this chunk's position among the file's step
+    ranges, recomputed here from the open file. Returns ``None`` — the write is the task's only
+    effect."""
     tree = resources.open_once(partition.uri, uproot.open)[partition.tree]
     chunk = uproot.read_graphed_partition(partition, columns, tree=tree)
     record = {name: chunk[name] for name in chunk.fields}
-    path = out_paths[(partition.uri, partition.tree, partition.entry_start, partition.entry_stop)]
+    ranges = _step_ranges(tree.num_entries, steps_per_file)
+    idx = file_bases[(partition.uri, partition.tree)] + ranges.index(
+        (partition.entry_start, partition.entry_stop)
+    )
+    name = f"{prefix}-part{idx}.root" if prefix else f"part{idx}.root"
+    path = os.path.join(destination, name)
     with uproot.recreate(path, **_recreate_kwargs(compression, compression_level)) as out:
         out[tree_name] = record
     return None
@@ -104,45 +127,48 @@ def graphed_write(
     if not _is_graphed_array(array):
         raise TypeError("graphed_write expects a uproot.graphed Array")
 
-    from uproot._graphed import _GraphedTTreeSource
+    from uproot._graphed import _GraphedTTreeSource, necessary_columns
 
     session = array.session
-    source = next(
-        (
-            session._sources[nid]
-            for nid in session.source_ids()
-            if isinstance(session._sources.get(nid), _GraphedTTreeSource)
-        ),
-        None,
-    )
-    if source is None:
+    uproot_sources = [
+        (nid, s)
+        for nid, s in session.sources().items()  # the public accessor (graphed M10) — no internals
+        if isinstance(s, _GraphedTTreeSource)
+    ]
+    if not uproot_sources:
         raise TypeError("graphed_write: the array is not backed by a uproot.graphed source")
+    if len(uproot_sources) > 1:
+        raise TypeError(
+            f"graphed_write supports exactly one uproot.graphed source per array; "
+            f"this array is backed by {len(uproot_sources)}"
+        )
+    (nid, source) = uproot_sources[0]
 
-    columns = tuple(source._common_keys)
+    # write only the branches the recorded array actually carries (its necessary columns); a bare
+    # source read projects to every common key, reproducing the old behavior
+    projected = necessary_columns(array).get(session.source_name(nid), frozenset())
+    columns = tuple(k for k in source._common_keys if k in projected) or tuple(source._common_keys)
     os.makedirs(destination, exist_ok=True)
 
-    # one partition (one output file) per (file x step)
+    # one partition (one output file) per (file x step); workers recompute their own part index
+    # from (file base + step ranges), so only the O(#files) base table travels with the task
     tasks: list = []
-    out_paths: dict = {}
     ordered_paths: list = []
+    file_bases: dict = {}
     idx = 0
     for file_path, object_path in source._file_tree:
         n_entries = uproot.open(file_path)[object_path].num_entries
-        for i in range(steps_per_file):
-            start = (i * n_entries) // steps_per_file
-            stop = ((i + 1) * n_entries) // steps_per_file
-            if stop <= start:
-                continue
+        file_bases[(file_path, object_path)] = idx
+        for start, stop in _step_ranges(n_entries, steps_per_file):
             part = Partition(file_path, object_path, int(start), int(stop))
             name = f"{prefix}-part{idx}.root" if prefix else f"part{idx}.root"
-            path = os.path.join(destination, name)
-            out_paths[(file_path, object_path, int(start), int(stop))] = path
-            ordered_paths.append(path)
+            ordered_paths.append(os.path.join(destination, name))
             tasks.append(Task(idx, part))
             idx += 1
 
     process = functools.partial(
-        _write_partition, out_paths, columns, tree_name, compression, compression_level
+        _write_partition, destination, prefix, columns, tree_name, compression,
+        compression_level, steps_per_file, file_bases,
     )
     plan = Plan(process=process, combine=_combine_none, empty=_empty_none, tasks=tasks)
 

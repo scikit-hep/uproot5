@@ -161,6 +161,47 @@ def necessary_columns(array, *, on_fail="raise"):
     return dict(project(array, on_fail=on_fail).read_columns)
 
 
+def necessary_buffers(array, *, on_fail="raise"):
+    """Buffer-granular projection (graphed M10): per source, each needed column with its
+    :class:`graphed.BufferNeed` (``DATA`` — the leaf values are read; ``OFFSETS`` — only the list
+    STRUCTURE is needed, e.g. a multiplicity). Strictly finer than :doc:`necessary_columns`: a
+    count-only analysis truthfully reports ``{collection: OFFSETS}`` where the column view reports
+    the empty set — feed it to :doc:`resolve_read_branches` to serve the count from the jagged
+    branch's COUNTER branch without reading the payload baskets."""
+    from graphed_awkward.projection import project_buffers
+
+    return {
+        name: dict(needs)
+        for name, needs in project_buffers(array, on_fail=on_fail).read_buffers.items()
+    }
+
+
+def resolve_read_branches(obj, needs):
+    """Translate buffer needs from :doc:`necessary_buffers` into the concrete branches to read
+    from ``obj`` (an open ``TTree`` or ``RNTuple``).
+
+    ``DATA`` needs read the branch itself. An ``OFFSETS``-only need reads the jagged ``TBranch``'s
+    **counter branch** when the file provides one (``TBranch.count_branch``) — the list lengths
+    without the payload baskets; where no counter exists (or for ``RNTuple``, whose index column is
+    not independently addressable through the public API) it falls back to the branch itself.
+    Returns ``{branch_to_read: requested_path}``."""
+    from graphed import BufferNeed
+
+    out = {}
+    for path, need in needs.items():
+        if need is BufferNeed.DATA or str(need) == "data":
+            out[path] = path
+            continue
+        counter = None
+        if not isinstance(obj, HasFields):  # TTree: jagged branches carry a counter branch
+            try:
+                counter = obj[path].count_branch
+            except (KeyError, AttributeError):
+                counter = None
+        out[counter.name if counter is not None else path] = path
+    return out
+
+
 def graphed_partitions(
     files,
     *,
@@ -207,9 +248,11 @@ def graphed_partitions(
     for ftuple in resolved:
         file_path, object_path = ftuple[0], ftuple[1]
         if not open_files:
-            # BLIND: do not open the file; emit (step_index, n_steps) chunks resolved at read time
+            # BLIND: do not open the file; emit first-class blind chunks (graphed_core M10:
+            # ``Partition.blind`` records (step, n_steps) explicitly — the old negative-entry_stop
+            # sentinel is retired) resolved against the file's actual entry count at read time
             for step in range(n_steps):
-                tasks.append(Task(key, Partition(file_path, object_path, step, -n_steps)))
+                tasks.append(Task(key, Partition.blind(file_path, object_path, step, n_steps)))
                 key += 1
             continue
         obj = uproot._util.regularize_object_path(
@@ -240,8 +283,10 @@ def read_graphed_partition(partition, columns, *, tree=None, library="ak", **ope
     a per-worker ``open_once`` handle."""
     if tree is None:
         tree = uproot.open(partition.uri, **open_options)[partition.tree]
+    if getattr(partition, "is_blind", False):
+        partition = partition.resolve(tree.num_entries)
     start, stop = partition.entry_start, partition.entry_stop
-    if stop < 0:  # blind: step `start` of `-stop` steps, resolved against this file's num_entries
+    if stop < 0:  # legacy blind sentinel (pre-M10 serialized plans): step `start` of `-stop` steps
         n_steps, step, n_entries = -stop, start, tree.num_entries
         start = (step * n_entries) // n_steps
         stop = ((step + 1) * n_entries) // n_steps

@@ -58,14 +58,18 @@ def test_graphed_blind_steps(step_size, steps_per_file, open_files):
 
 
 def test_blind_partitions_do_not_open_the_file():
-    # open_files=False must build partitions without reading entry counts: blind chunks encode
-    # (step_index, n_steps) as entry_start / -entry_stop, resolved only at read time.
+    # open_files=False must build partitions without reading entry counts: blind chunks are
+    # FIRST-CLASS graphed_core blind partitions carrying (step, n_steps) explicitly, resolved only
+    # at read time. (freeze-UPROOT-1 amendment: this previously pinned the negative-entry_stop
+    # sentinel encoding, which graphed-core M10 retired — same intent, honest representation.)
     test_path = skhep_testdata.data_path("uproot-Zmumu.root") + ":events"
     tasks = uproot.graphed_partitions(test_path, steps_per_file=5, open_files=False)
     assert len(tasks) == 5
-    starts = sorted(t.partition.entry_start for t in tasks)
-    assert starts == [0, 1, 2, 3, 4]
-    assert all(t.partition.entry_stop == -5 for t in tasks)
+    assert all(t.partition.is_blind for t in tasks)
+    assert sorted(t.partition.blind_step for t in tasks) == [0, 1, 2, 3, 4]
+    assert all(t.partition.blind_n_steps == 5 for t in tasks)
+    # no sentinel left behind: the entry range is genuinely unset until resolve()
+    assert all(t.partition.entry_start == 0 and t.partition.entry_stop == 0 for t in tasks)
 
 
 def test_blind_and_eager_partitions_agree():
