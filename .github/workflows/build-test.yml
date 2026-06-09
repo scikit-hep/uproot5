@@ -10,8 +10,12 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   build:
+    name: Test on ${{ matrix.platform }} with Python ${{ matrix.python-version }}
     strategy:
       fail-fast: false
       matrix:
@@ -27,10 +31,12 @@ jobs:
         shell: bash -l {0}
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
 
       - name: Get micromamba
-        uses: mamba-org/setup-micromamba@v3
+        uses: mamba-org/setup-micromamba@d7c9bd84e824b79d2af72a2d4196c7f4300d3476 # v3.0.0
         with:
           environment-name: test-env
           init-shell: bash
@@ -44,10 +50,12 @@ jobs:
         if: contains(matrix.python-version, 'python-freethreading')
         run: echo "PYTHON_GIL=0" >> $GITHUB_ENV
 
-      - uses: astral-sh/setup-uv@v8.1.0
+      - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
 
       - name: Check active Python version
-        run: python -c "import sys; assert '.'.join(str(s) for s in sys.version_info[:2]) == '${{ matrix.python-version }}'.split()[0], f'{version} incorrect!'"
+        env:
+          EXPECTED_PYTHON_VERSION: ${{ matrix.python-version }}
+        run: python -c "import os, sys; actual = '.'.join(str(s) for s in sys.version_info[:2]); expected = os.environ['EXPECTED_PYTHON_VERSION'].split()[0]; assert actual == expected, f'{actual} incorrect!'"
 
       - name: Install ROOT
         if: matrix.python-version == 3.10  &&  runner.os == 'Linux'
@@ -68,11 +76,9 @@ jobs:
           ssh -o StrictHostKeyChecking=no localhost echo "ssh connection successful"
 
       - name: Install XRootD
-        if: runner.os != 'Windows'
+        if: runner.os != 'Windows' && !contains(matrix.python-version, 'python-freethreading')
         run: |
-          micromamba env list
-          micromamba install xrootd
-          micromamba list
+          uv pip install --group=test-xrootd
 
       - name: Pip install the package
         run: uv pip install --system -e. --group=dev
@@ -82,6 +88,7 @@ jobs:
           python -m pytest -vv tests --reruns 10 --reruns-delay 30 --only-rerun "(?i)http|ssl|timeout|expired|connection|socket"
 
   vanilla-build:
+    name: Vanilla test on ${{ matrix.platform }} with Python ${{ matrix.python-version }}
     strategy:
       fail-fast: false
       matrix:
@@ -92,14 +99,16 @@ jobs:
     timeout-minutes: 30
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
 
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
         with:
           python-version: ${{ matrix.python-version }}
           allow-prereleases: true
 
-      - uses: astral-sh/setup-uv@v8.1.0
+      - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
 
       - name: Pip install the package
         run: uv pip install --system -e. --group=dev
@@ -109,6 +118,7 @@ jobs:
           python -m pytest -vv tests --reruns 10 --reruns-delay 30 --only-rerun "(?i)http|ssl|timeout|expired|connection|socket"
 
   numpy1-build:
+    name: NumPy 1 test on ${{ matrix.platform }} with Python ${{ matrix.python-version }}
     strategy:
       fail-fast: false
       matrix:
@@ -119,13 +129,15 @@ jobs:
     timeout-minutes: 30
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
 
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
         with:
           python-version: ${{ matrix.python-version }}
 
-      - uses: astral-sh/setup-uv@v8.1.0
+      - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
 
       - name: Pip install the package
         run: |
@@ -137,6 +149,7 @@ jobs:
           uv run --no-sync pytest -vv tests --reruns 10 --reruns-delay 30 --only-rerun "(?i)http|ssl|timeout|expired|connection|socket"
 
   pyodide-build:
+    name: Pyodide test
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
@@ -146,14 +159,16 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
 
       - name: Setup Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
         with:
           python-version: '3.13'
 
-      - uses: astral-sh/setup-uv@v8.1.0
+      - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
 
       - name: Install pyodide-build
         run: python3 -m pip install pyodide-build==$PYODIDE_BUILD_VERSION
@@ -167,7 +182,7 @@ jobs:
           echo "emsdk-version=$EMSCRIPTEN_VERSION" >> $GITHUB_OUTPUT
 
       - name: Install EMSDK
-        uses: mymindstorm/setup-emsdk@v16
+        uses: mymindstorm/setup-emsdk@4528d102f7230f0e7b276855c01ea1159be0e984 # v16
         with:
           version: ${{ steps.compute-emsdk-version.outputs.emsdk-version }}
 
@@ -181,13 +196,13 @@ jobs:
           rm -rf dependencies/
 
       - name: Download Pyodide
-        uses: pyodide/pyodide-actions/download-pyodide@v2
+        uses: pyodide/pyodide-actions/download-pyodide@012fa537869d343726d01863a34b773fc4d96a14 # v2
         with:
           version: ${{ env.PYODIDE_VERSION }}
           to: pyodide-dist
 
       - name: Install browser
-        uses: pyodide/pyodide-actions/install-browser@v2
+        uses: pyodide/pyodide-actions/install-browser@012fa537869d343726d01863a34b773fc4d96a14 # v2
         with:
           runner: selenium
           browser: chrome firefox
@@ -206,6 +221,7 @@ jobs:
           pytest -vv --dist-dir=./pyodide-dist/ --runner=selenium --runtime=firefox tests-wasm
 
   gpu-build:
+    name: GPU test with CUDA ${{ matrix.cuda-version }}
     strategy:
       fail-fast: false
       matrix:
@@ -225,10 +241,12 @@ jobs:
           rm -rf * .[!.]* || echo "Nothing to clean"
           rm -rf ~/micromamba* || echo "Nothing to clean"
 
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
 
       - name: Get micromamba
-        uses: mamba-org/setup-micromamba@v3
+        uses: mamba-org/setup-micromamba@d7c9bd84e824b79d2af72a2d4196c7f4300d3476 # v3.0.0
         with:
           environment-name: test-env
           init-shell: bash
@@ -246,7 +264,7 @@ jobs:
             ${{ matrix.cuda-version == 13 && 'root' || '' }}
 
       - name: Pip install the package
-        run: pip install --group=dev .
+        run: pip install --group=dev --group=test-xrootd .
 
       - name: Run only GPU tests
         if: matrix.cuda-version != 13
@@ -261,24 +279,25 @@ jobs:
 
       - name: Upload coverage reports to Codecov
         if: matrix.cuda-version == 13
-        uses: codecov/codecov-action@v6
+        uses: codecov/codecov-action@e79a6962e0d4c0c17b229090214935d2e33f8354 # v6.0.1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
 
       - name: Upload test results to Codecov
         if: ${{ !cancelled() && matrix.cuda-version == 13 }}
-        uses: codecov/codecov-action@v6
+        uses: codecov/codecov-action@e79a6962e0d4c0c17b229090214935d2e33f8354 # v6.0.1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           report_type: test_results
 
   pass:
+    name: Check required tests
     if: always()
     needs: [build, vanilla-build, numpy1-build, pyodide-build]
     runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:
       - name: Decide whether the needed jobs succeeded or failed
-        uses: re-actors/alls-green@release/v1
+        uses: re-actors/alls-green@05ac9388f0aebcb5727afa17fcccfecd6f8ec5fe # v1.2.2
         with:
           jobs: ${{ toJSON(needs) }}
