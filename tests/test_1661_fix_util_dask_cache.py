@@ -1,7 +1,7 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot5/blob/main/LICENSE
 
 """
-Regression tests for PR #1660: utility-layer bugs (steps leakage, dask error
+Regression tests for PR #1661: utility-layer bugs (steps leakage, dask error
 paths, LRU cache) and Py2-era cleanup.
 
 Covers:
