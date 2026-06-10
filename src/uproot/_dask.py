@@ -6,18 +6,9 @@ import socket
 import time
 from collections.abc import Callable, Iterable, Mapping
 from concurrent.futures import Executor
+from typing import TYPE_CHECKING, Any, Final, NamedTuple, Protocol, TypeVar
 
 import awkward
-
-from uproot.source.chunk import SourcePerformanceCounters
-
-try:
-    from typing import TYPE_CHECKING, Final, NamedTuple
-
-    from typing_extensions import Any, Protocol, TypeVar
-except ImportError:
-    from typing import TYPE_CHECKING, Any, Final, Protocol, TypeVar
-
 import numpy
 
 import uproot
@@ -27,6 +18,7 @@ from uproot.behaviors.RNTuple import (
     _regularize_step_size as _RNTuple_regularize_step_size,
 )
 from uproot.behaviors.TBranch import HasBranches, TBranch, _regularize_step_size
+from uproot.source.chunk import SourcePerformanceCounters
 
 if TYPE_CHECKING:
     from awkward._nplikes.typetracer import TypeTracerReport
@@ -649,6 +641,16 @@ def _get_dask_array(
                 new_keys = set(new_keys)
                 common_keys = [key for key in common_keys if key in new_keys]
 
+    if count == 0:
+        raise ValueError(
+            "allow_missing=True and no TTrees found in\n\n    {}".format(
+                "\n    ".join(
+                    f"{{{f.file_path if isinstance(f, HasBranches) else f!r}: {f.object_path if isinstance(f, HasBranches) else o!r}}}"
+                    for f, o, *_ in files
+                )
+            )
+        )
+
     # this is the earliest time we can deal with an unset step_size
     if step_size is unset:
         assert steps_per_file is not unset  # either assigned or assumed to be 1
@@ -656,22 +658,12 @@ def _get_dask_array(
         total_entries = sum(ttree.num_entries for ttree in ttrees)
         step_size = max(1, math.ceil(total_entries / (total_files * steps_per_file)))
 
-    if count == 0:
-        raise ValueError(
-            "allow_missing=True and no TTrees found in\n\n    {}".format(
-                "\n    ".join(
-                    f"{{{f.file_path if isinstance(f, HasBranches) else f!r}: {f.object_path if isinstance(f, HasBranches) else o!r}}}"
-                    for f, o in files
-                )
-            )
-        )
-
     if len(common_keys) == 0 or not (all(is_self) or not any(is_self)):
         raise ValueError(
             "TTrees in\n\n    {}\n\nhave no TBranches in common".format(
                 "\n    ".join(
                     f"{{{f.file_path if isinstance(f, HasBranches) else f!r}: {f.object_path if isinstance(f, HasBranches) else o!r}}}"
-                    for f, o in files
+                    for f, o, *_ in files
                 )
             )
         )
@@ -1622,6 +1614,16 @@ def _get_dak_array(
                 new_keys = set(new_keys)
                 common_keys = [key for key in common_keys if key in new_keys]
 
+    if count == 0:
+        raise ValueError(
+            "allow_missing=True and no TTrees found in\n\n    {}".format(
+                "\n    ".join(
+                    f"{{{f.file_path if isinstance(f, HasBranches) else f!r}: {f.object_path if isinstance(f, HasBranches) else o!r}}}"
+                    for f, o, *_ in files
+                )
+            )
+        )
+
     # this is the earliest time we can deal with an unset step_size
     if step_size is unset:
         assert steps_per_file is not unset  # either assigned or assumed to be 1
@@ -1629,22 +1631,12 @@ def _get_dak_array(
         total_entries = sum(ttree.num_entries for ttree in ttrees)
         step_size = max(1, math.ceil(total_entries / (total_files * steps_per_file)))
 
-    if count == 0:
-        raise ValueError(
-            "allow_missing=True and no TTrees found in\n\n    {}".format(
-                "\n    ".join(
-                    f"{{{f.file_path if isinstance(f, HasBranches) else f!r}: {f.object_path if isinstance(f, HasBranches) else o!r}}}"
-                    for f, o in files
-                )
-            )
-        )
-
     if len(common_keys) == 0 or not (all(is_self) or not any(is_self)):
         raise ValueError(
             "TTrees in\n\n    {}\n\nhave no TBranches in common".format(
                 "\n    ".join(
                     f"{{{f.file_path if isinstance(f, HasBranches) else f!r}: {f.object_path if isinstance(f, HasBranches) else o!r}}}"
-                    for f, o in files
+                    for f, o, *_ in files
                 )
             )
         )
