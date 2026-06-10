@@ -19,7 +19,6 @@ import uproot
 import uproot._util
 from uproot.cache import LRUCache
 
-
 # ---------------------------------------------------------------------------
 # Finding 1: maybe_steps leakage in regularize_files
 # ---------------------------------------------------------------------------
