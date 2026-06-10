@@ -430,6 +430,7 @@ def concatenate(
                 arrays = library.global_index(arrays, global_start)
             except uproot.exceptions.KeyInFileError:
                 if allow_missing:
+                    global_start = global_stop
                     continue
                 else:
                     raise
@@ -2777,7 +2778,9 @@ in file {self._file.file_path}"""
         out = []
         start = entry_offsets[0]
         for basket_num, stop in enumerate(entry_offsets[1:]):
-            if entry_start < stop and start <= entry_stop:
+            if entry_start < stop and (
+                start < entry_stop or entry_start == entry_stop == start
+            ):
                 if 0 <= basket_num < self._num_normal_baskets:
                     byte_start = self.member("fBasketSeek")[basket_num]
                     byte_stop = byte_start + self.basket_compressed_bytes(basket_num)
@@ -3566,7 +3569,9 @@ def _hasbranches_num_entries_for(
             entry_offsets = branch.entry_offsets
             start = entry_offsets[0]
             for basket_num, stop in enumerate(entry_offsets[1:]):
-                if entry_start < stop and start <= entry_stop:
+                if entry_start < stop and (
+                    start < entry_stop or entry_start == entry_stop == start
+                ):
                     total_bytes += branch.basket_uncompressed_bytes(basket_num)
                 start = stop
 
