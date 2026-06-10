@@ -12,9 +12,7 @@ def _write_multi_basket_tree(path, num_baskets=3, basket_size=10):
     with uproot.recreate(path) as f:
         f.mktree("t", {"x": "int64"})
         for i in range(num_baskets):
-            f["t"].extend(
-                {"x": numpy.arange(i * basket_size, (i + 1) * basket_size)}
-            )
+            f["t"].extend({"x": numpy.arange(i * basket_size, (i + 1) * basket_size)})
 
 
 def test_basket_selection_no_extra_basket_on_boundary(tmp_path):
@@ -64,9 +62,7 @@ def test_basket_boundary_reads_are_correct(tmp_path):
 
         # empty ranges (including on boundaries) yield empty arrays
         for start, stop in [(0, 0), (10, 10), (15, 15), (30, 30)]:
-            assert (
-                branch.array(entry_start=start, entry_stop=stop).tolist() == []
-            )
+            assert branch.array(entry_start=start, entry_stop=stop).tolist() == []
 
 
 def test_basket_boundary_jagged_and_strings(tmp_path):
