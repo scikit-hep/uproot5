@@ -123,7 +123,7 @@ from uproot.writing import WritableTree
 from uproot.writing import WritableBranch
 from uproot.writing import to_writable
 from uproot.writing import dask_write
-from uproot.writing import graphed_to_parquet, graphed_write
+from uproot.writing import graphed_write
 
 from uproot.writing.interpret import as_TGraph
 

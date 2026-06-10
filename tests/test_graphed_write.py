@@ -1,9 +1,12 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot5/blob/main/LICENSE
 """``uproot.graphed_write`` — one output ROOT file per partition, mirroring ``dask_write``.
 
-``compute=False`` returns the write **task graph** (a ``graphed_core.Plan`` of side-effecting,
-nothing-returning write tasks) without writing; ``compute=True`` runs it through a ``graphed-exec-local``
-executor (``ProcessExecutor`` by default).
+``compute=False`` returns the write **task graph** (a ``graphed_core.Plan`` of write tasks, each
+REPORTING its part path — the ``graphed.write`` base's contract) without writing; ``compute=True``
+runs it through a ``graphed-exec-local`` executor (``ProcessExecutor`` by default).
+
+[freeze-UPROOT-2, user-authorized amendments 2026-06-10: part names follow the base's
+``part_path`` (``part-00000.root``); write tasks report their paths instead of returning None.]
 """
 
 import os
@@ -36,7 +39,9 @@ def test_writes_one_file_per_partition(tmp_path):
     paths = uproot.graphed_write(g, outdir, steps_per_file=4, tree_name="events")
 
     assert len(paths) == 4
-    assert sorted(os.listdir(outdir)) == ["part0.root", "part1.root", "part2.root", "part3.root"]
+    assert sorted(os.listdir(outdir)) == [
+        "part-00000.root", "part-00001.root", "part-00002.root", "part-00003.root"
+    ]
     pieces = [uproot.open(p + ":events").arrays() for p in paths]
     assert [len(p) for p in pieces] == [5, 5, 5, 5]  # four contiguous quarters of 20 entries
     back = ak.concatenate(pieces)
@@ -51,7 +56,7 @@ def test_prefix_names_the_part_files(tmp_path):
 
     uproot.graphed_write(g, outdir, steps_per_file=2, prefix="data", tree_name="events")
 
-    assert sorted(os.listdir(outdir)) == ["data-part0.root", "data-part1.root"]
+    assert sorted(os.listdir(outdir)) == ["data-00000.root", "data-00001.root"]
 
 
 def test_compute_false_returns_task_graph_and_writes_nothing(tmp_path):
@@ -66,10 +71,13 @@ def test_compute_false_returns_task_graph_and_writes_nothing(tmp_path):
     assert len(plan.tasks) == 3
     assert os.listdir(outdir) == []
 
-    # running the task graph (each task writes a partition, returns nothing) writes the part files
+    # running the task graph writes the part files; each task REPORTS its part path up the
+    # deterministic combine tree (the graphed.write base's contract)
     result = ProcessExecutor(max_workers=2).run(plan)
-    assert result.value is None  # write tasks return nothing
-    assert sorted(os.listdir(outdir)) == ["part0.root", "part1.root", "part2.root"]
+    assert [os.path.basename(p) for p in result.value] == [
+        "part-00000.root", "part-00001.root", "part-00002.root"
+    ]
+    assert sorted(os.listdir(outdir)) == ["part-00000.root", "part-00001.root", "part-00002.root"]
 
 
 @pytest.mark.parametrize("executor", ["process", "thread"])
