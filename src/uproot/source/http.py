@@ -22,6 +22,7 @@ import queue
 import re
 import socket
 import sys
+import threading
 import urllib.parse
 from urllib.parse import urlparse
 
@@ -433,10 +434,8 @@ for URL {source.file_path}"""
 
         original_futures = dict(futures)
 
-        num_found = 0
         while len(futures) > 0:
             range_string, _size = self.next_header(response_buffer)
-            num_found += 1
             if range_string is None:
                 self.handle_no_multipart(source, ranges, original_futures, results)
                 return
@@ -450,8 +449,7 @@ for URL {source.file_path}"""
 
             if len(data) != length:
                 raise http.client.HTTPException(
-                    f"""wrong chunk length {len(data)} (expected {length}) for byte range {range_string.decode()!r} "
-                    "in HTTP multipart
+                    f"""wrong chunk length {len(data)} (expected {length}) for byte range {range_string.decode()!r} in HTTP multipart
 for URL {self._file_path}"""
                 )
 
@@ -493,21 +491,37 @@ for URL {self._file_path}"""
         Helper function for :ref:`uproot.source.http.HTTPResource.multifuture`
         to return the next header from the ``response_buffer``.
         """
-        line = response_buffer.readline()
         range_string, size = None, None
-        while range_string is None:
-            m = self._content_range_size.match(line)
-            if m is not None:
-                range_string = m.group(1)
-                size = int(m.group(2))
-            else:
-                m = self._content_range.match(line)
+        # Read the part headers up to (and including) the blank line that
+        # separates them from the body, capturing the Content-Range wherever it
+        # appears. The Content-Range is not guaranteed to be the last header, so
+        # we must keep reading until the blank line is consumed; otherwise any
+        # leftover header bytes would shift the part payload. Leading blank
+        # lines (e.g. the CRLF trailing the previous part's data) and the part
+        # boundary line are skipped before the headers begin.
+        seen_header = False
+        while True:
+            line = response_buffer.readline()
+            if len(line) == 0:
+                # End of stream.
+                break
+            if len(line.strip()) == 0:
+                if seen_header:
+                    # Blank line terminating this part's headers.
+                    break
+                # Leading blank line before the part's headers; skip it.
+                continue
+            seen_header = True
+            if range_string is None:
+                m = self._content_range_size.match(line)
                 if m is not None:
                     range_string = m.group(1)
-                    size = None
-            line = response_buffer.readline()
-            if len(line.strip()) == 0:
-                break
+                    size = int(m.group(2))
+                else:
+                    m = self._content_range.match(line)
+                    if m is not None:
+                        range_string = m.group(1)
+                        size = None
         return range_string, size
 
     @staticmethod
@@ -593,6 +607,7 @@ class HTTPSource(uproot.source.chunk.Source):
         self._num_bytes = None
 
         self._fallback = None
+        self._fallback_lock = threading.Lock()
         self._fallback_options = options.copy()
         self._fallback_options["num_workers"] = self._num_fallback_workers
 
@@ -617,10 +632,12 @@ class HTTPSource(uproot.source.chunk.Source):
     def __getstate__(self):
         state = dict(self.__dict__)
         state.pop("_executor")
+        state.pop("_fallback_lock")
         return state
 
     def __setstate__(self, state):
         self.__dict__ = state
+        self._fallback_lock = threading.Lock()
         self._open()
 
     def __repr__(self):
@@ -669,36 +686,30 @@ class HTTPSource(uproot.source.chunk.Source):
 
                 return futures, results
 
-            i, j = 1, 0
-            range_header = {"Range": "bytes=" + f"{ranges[0][0]}-{ranges[0][1] - 1}"}
-            last_batch_appended = False
+            def submit_batch(batch, range_header):
+                futures, results = set_futures_and_results(batch)
+                self._executor.submit(
+                    self.ResourceClass.multifuture(
+                        self, range_header, batch, futures, results
+                    )
+                )
 
-            while i < len(ranges):
-                new_range_to_append = ", " + f"{ranges[i][0]}-{ranges[i][1] - 1}"
+            batch_start = 0
+            range_header = {"Range": "bytes=" + f"{ranges[0][0]}-{ranges[0][1] - 1}"}
+
+            for i in range(1, len(ranges)):
+                this_range = f"{ranges[i][0]}-{ranges[i][1] - 1}"
+                new_range_to_append = ", " + this_range
                 if len(range_header["Range"]) < self._http_max_header_bytes - len(
                     new_range_to_append
                 ):
                     range_header["Range"] += new_range_to_append
-                    last_batch_appended = False
                 else:
-                    futures, results = set_futures_and_results(ranges[j : j + i])
-                    self._executor.submit(
-                        self.ResourceClass.multifuture(
-                            self, range_header, ranges[j : j + i], futures, results
-                        )
-                    )
-                    j += i
-                    range_header = {"Range": "bytes=" + new_range_to_append[1:]}
-                    last_batch_appended = True
-                i += 1
+                    submit_batch(ranges[batch_start:i], range_header)
+                    batch_start = i
+                    range_header = {"Range": "bytes=" + this_range}
 
-            if i == len(ranges) and not last_batch_appended:
-                futures, results = set_futures_and_results(ranges[j:])
-                self._executor.submit(
-                    self.ResourceClass.multifuture(
-                        self, range_header, ranges[j : j + i], futures, results
-                    )
-                )
+            submit_batch(ranges[batch_start:], range_header)
 
             return chunks
 
@@ -721,7 +732,7 @@ class HTTPSource(uproot.source.chunk.Source):
         return self
 
     def __exit__(self, exception_type, exception_value, traceback):
-        self._executor.shutdown()
+        self._executor.__exit__(exception_type, exception_value, traceback)
         if self._fallback is not None:
             self._fallback.__exit__(exception_type, exception_value, traceback)
 
@@ -766,9 +777,11 @@ class HTTPSource(uproot.source.chunk.Source):
         return self._fallback
 
     def _set_fallback(self):
-        self._fallback = MultithreadedHTTPSource(
-            self._file_path, **self._fallback_options
-        )
+        with self._fallback_lock:
+            if self._fallback is None:
+                self._fallback = MultithreadedHTTPSource(
+                    self._file_path, **self._fallback_options
+                )
 
 
 class MultithreadedHTTPSource(uproot.source.chunk.MultithreadedSource):
