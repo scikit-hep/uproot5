@@ -39,7 +39,7 @@
     "UPROOT-2": {
       "dispute_count": 0,
       "escalated": false,
-      "freeze_tag": "freeze-UPROOT-2",
+      "freeze_tag": "freeze-UPROOT-3",
       "gates": {
         "benchmark": null,
         "coverage": true,
@@ -75,5 +75,5 @@
   },
   "repo": "uproot5-graphed-mvp",
   "schema_version": 1,
-  "updated_at": "2026-06-10T20:11:28Z"
+  "updated_at": "2026-06-10T22:20:12Z"
 }
