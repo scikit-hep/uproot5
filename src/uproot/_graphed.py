@@ -55,6 +55,23 @@ class _GraphedTTreeSource:
             return awkward.Array([])
         return parts[0] if len(parts) == 1 else awkward.concatenate(parts)
 
+    # ---- graphed.write.PartitionedSource (P3.6 revision): partition-wise reading -------------
+    def partitions(self, steps_per_file=1):
+        """BLIND partitions, one per (file x step): planning opens no files (R7.9)."""
+        from graphed_core import Partition
+
+        return tuple(
+            Partition.blind(file_path, object_path, s, steps_per_file)
+            for (file_path, object_path) in self._file_tree
+            for s in range(steps_per_file)
+        )
+
+    def read_partition(self, partition, columns, resources):
+        """Read one partition's branches (file opened once per worker via ``resources``)."""
+        tree = resources.open_once(partition.uri, uproot.open)[partition.tree]
+        cols = list(columns) if columns else list(self._common_keys)
+        return read_graphed_partition(partition, cols, tree=tree)
+
 
 def graphed(
     files,

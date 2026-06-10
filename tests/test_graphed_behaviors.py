@@ -89,17 +89,21 @@ def test_unknown_attributes_fail_at_record_time(kinematics_file):
         _ = v.definitely_not_a_property
 
 
-def test_behavior_flows_through_graphed_to_parquet(kinematics_file, tmp_path):
+def test_behavior_flows_through_the_generic_to_parquet(kinematics_file, tmp_path):
     pytest.importorskip("pyarrow")
     pytest.importorskip("graphed_exec_local")
+    import graphed_awkward.io as gio
+    from graphed_exec_local import ProcessExecutor
+
     where, cols = kinematics_file
     g = uproot.graphed(where, library="ak", behavior=BEHAVIOR)
     pt = _vectors(g).pt
     # process workers cannot pickle vector's behavior dict (it contains lambdas): pass an
     # IMPORTABLE module:attr reference, resolved in each worker (the OpSpec pattern)
-    paths = uproot.graphed_to_parquet(
+    paths = gio.to_parquet(
         pt, os.path.join(tmp_path, "pt"), steps_per_file=2,
         behavior="vector.backends.awkward:behavior",
+        executor=ProcessExecutor(max_workers=2),
     )
     back = ak.concatenate([ak.from_parquet(p) for p in paths])
     assert ak.array_equal(back["data"], _reference(cols).pt)

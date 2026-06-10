@@ -30,3 +30,24 @@ test_graphed_to_parquet.py (6), test_graphed_behaviors.py (4), test_graphed_head
   base (graphed M20); graphed_to_parquet specializes it. graphed_write deliberately does NOT —
   two of its behaviors are frozen pins predating the base (tasks return None; empty step ranges
   are skipped); documented in the module, alignment would be a recorded freeze bump.
+
+## UPROOT-3 / freeze-UPROOT-2 — P3.6 revision (user-confirmed plan, 2026-06-10)
+
+USER-AUTHORIZED FROZEN AMENDMENTS to tests/test_graphed_write.py (freeze tag bumped
+freeze-UPROOT-1 -> freeze-UPROOT-2; each amendment named in the confirmed plan):
+  1. `result.value is None` -> workers REPORT their part paths (the graphed.write base contract);
+  2. part-name pins -> the base's part_path naming (part-00000.root / data-00000.root);
+  3. the module/suite docstrings describing nothing-returning tasks.
+No other frozen test was altered.
+
+- uproot.graphed_to_parquet REMOVED: `graphed_awkward.io.to_parquet(uproot.graphed(...), ...)`
+  is the same functionality through ONE generic entry point — _GraphedTTreeSource implements
+  graphed.write.PartitionedSource (blind partitions; open-once partition reads). Efficiency
+  WITNESSED in the rewritten tests: the source's whole-dataset loader never runs
+  (last_columns_read stays None), planning opens no files, the read list is pinned.
+- uproot.graphed_write now SPECIALIZES graphed.write: blind partitions (the driver no longer
+  opens every file for num_entries), write_plan with path-reporting workers, base part naming,
+  blind_part_index from the partition alone. A step resolving empty (fewer entries than steps)
+  is skipped — no empty part files; numbering may gap in that corner case (documented).
+- Recorded for future work: compile_ir output-accumulation footgun (compiling two different
+  expressions from one session yields a multi-output IR).
