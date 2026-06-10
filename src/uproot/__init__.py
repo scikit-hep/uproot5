@@ -123,7 +123,7 @@ from uproot.writing import WritableTree
 from uproot.writing import WritableBranch
 from uproot.writing import to_writable
 from uproot.writing import dask_write
-from uproot.writing import graphed_write
+from uproot.writing import graphed_to_parquet, graphed_write
 
 from uproot.writing.interpret import as_TGraph
 
@@ -194,6 +194,7 @@ from uproot._util import no_filter
 from uproot._dask import dask, ImplementsFormMapping, ImplementsFormMappingInfo
 from uproot._graphed import (
     graphed,
+    graphed_head,
     graphed_partitions,
     necessary_buffers,
     necessary_columns,

@@ -13,6 +13,7 @@ and :doc:`uproot.writing.writable.update`.
 from __future__ import annotations
 
 from uproot.writing._dask_write import dask_write
+from uproot.writing._graphed_to_parquet import graphed_to_parquet
 from uproot.writing._graphed_write import graphed_write
 from uproot.writing.identify import (
     to_TArray,
@@ -43,6 +44,7 @@ __all__ = [
     "WritableTree",
     "create",
     "dask_write",
+    "graphed_to_parquet",
     "graphed_write",
     "recreate",
     "to_TArray",
