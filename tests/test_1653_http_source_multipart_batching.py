@@ -169,9 +169,7 @@ def test_next_header_handles_header_after_content_range():
         ],
     )
     buffer = uproot.source.http._ResponseBuffer(io.BytesIO(body))
-    resource = uproot.source.http.HTTPResource.__new__(
-        uproot.source.http.HTTPResource
-    )
+    resource = uproot.source.http.HTTPResource.__new__(uproot.source.http.HTTPResource)
 
     range_string, size = resource.next_header(buffer)
     assert range_string == b"0-4"
