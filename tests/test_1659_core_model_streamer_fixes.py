@@ -59,9 +59,7 @@ def test_fixed_array_dtype_index_consistent():
     # must be referenced in both read_members and read_member_n. Previously the
     # dtypes.append happened between the two emissions, so read_member_n used
     # _dtype{N+1} (off-by-one).
-    element = _make_basic_type_array_element(
-        "fArray", uproot.const.kInt, 5, "int"
-    )
+    element = _make_basic_type_array_element("fArray", uproot.const.kInt, 5, "int")
 
     class _FakeStreamerInfo:
         name = "SyntheticClass"
@@ -91,12 +89,8 @@ def test_fixed_array_dtype_index_consistent():
     rm = "\n".join(read_members)
     rmn = "\n".join(read_member_n)
 
-    rm_indices = set(
-        re.findall(r"cursor\.array\(chunk, \d+, self\._dtype(\d+)", rm)
-    )
-    rmn_indices = set(
-        re.findall(r"cursor\.array\(chunk, \d+, self\._dtype(\d+)", rmn)
-    )
+    rm_indices = set(re.findall(r"cursor\.array\(chunk, \d+, self\._dtype(\d+)", rm))
+    rmn_indices = set(re.findall(r"cursor\.array\(chunk, \d+, self\._dtype(\d+)", rmn))
 
     assert rm_indices == {"0"}
     assert rmn_indices == {"0"}
