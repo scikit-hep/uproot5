@@ -96,13 +96,13 @@ class Numerical(uproot.interpretation.Interpretation):
                     basket_array = basket_arrays[basket_num]
                     output[: stop - entry_start] = basket_array[local_start:local_stop]
 
-                elif start <= entry_stop <= stop:
+                elif start < entry_stop <= stop:
                     local_start = 0
                     local_stop = entry_stop - start
                     basket_array = basket_arrays[basket_num]
                     output[start - entry_start :] = basket_array[local_start:local_stop]
 
-                elif entry_start < stop and start <= entry_stop:
+                elif entry_start < stop and start < entry_stop:
                     basket_array = basket_arrays[basket_num]
                     output[start - entry_start : stop - entry_start] = basket_array
 
