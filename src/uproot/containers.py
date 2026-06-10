@@ -1150,8 +1150,23 @@ class AsBitSet(AsVectorLike):
 
     _specialpathitem_name = "bitset"
 
+    def __init__(self, header, keys):
+        super().__init__(header, keys)
+        # ``std::bitset<N>`` is parameterized by its number of bits, which the
+        # shared base class discards (it stores a bool dtype for the items).
+        self._num_bits = keys if isinstance(keys, int) else None
+
+    @property
+    def num_bits(self):
+        """
+        The number of bits in the ``std::bitset``, or None if unknown.
+        """
+        return self._num_bits
+
     @property
     def typename(self):
+        if self._num_bits is not None:
+            return f"std::bitset<{self._num_bits}>"
         return f"std::bitset<{_content_typename(self.keys)}>"
 
     @property
@@ -1674,7 +1689,7 @@ class STLBitSet(Container, Sequence):
 
     def __str__(self, limit=85):
         def tostring(i):
-            return _tostring(self._values[i])
+            return _tostring(self._numbytes[i])
 
         return _str_with_ellipsis(tostring, len(self), "[", "]", limit)
 
@@ -1685,7 +1700,7 @@ class STLBitSet(Container, Sequence):
         return self._numbytes[where]
 
     def __len__(self):
-        return self._numbytes
+        return len(self._numbytes)
 
     def __iter__(self):
         return iter(self._numbytes)
@@ -1792,7 +1807,7 @@ class STLMap(Container, Mapping):
         return STLMap(mapping.keys(), mapping.values())
 
     def __init__(self, keys, values):
-        if KeysView is not None and isinstance(keys, KeysView):
+        if isinstance(keys, KeysView):
             keys = numpy.asarray(list(keys))
         elif isinstance(keys, types.GeneratorType):
             keys = numpy.asarray(list(keys))
@@ -1801,7 +1816,7 @@ class STLMap(Container, Mapping):
         else:
             keys = numpy.asarray(keys)
 
-        if ValuesView is not None and isinstance(values, ValuesView):
+        if isinstance(values, ValuesView):
             values = numpy.asarray(list(values))
         elif isinstance(values, types.GeneratorType):
             values = numpy.asarray(list(values))
