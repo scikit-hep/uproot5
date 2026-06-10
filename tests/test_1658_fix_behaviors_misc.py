@@ -19,7 +19,6 @@ import skhep_testdata
 import uproot
 from uproot.behaviors.RNTuple import iterate as rn_iterate
 
-
 # ---------------------------------------------------------------------------
 # Fix 1: RField.__getitem__ with non-recursive miss raises KeyInFileError
 # ---------------------------------------------------------------------------
@@ -110,9 +109,7 @@ def test_leaf_tbranch_iterate_forwards_ak_add_doc():
     filename = skhep_testdata.data_path("uproot-HZZ.root")
     with uproot.open(filename) as f:
         branch = f["events"]["NJet"]
-        chunks = list(
-            branch.iterate(entry_stop=10, ak_add_doc=True, step_size=10)
-        )
+        chunks = list(branch.iterate(entry_stop=10, ak_add_doc=True, step_size=10))
     assert len(chunks) == 1
     doc = chunks[0]["NJet"].layout.parameters.get("__doc__")
     assert doc is not None, "ak_add_doc=True must set __doc__ on the inner array"
