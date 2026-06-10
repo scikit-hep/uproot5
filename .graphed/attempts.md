@@ -51,3 +51,9 @@ No other frozen test was altered.
   is skipped — no empty part files; numbering may gap in that corner case (documented).
 - Recorded for future work: compile_ir output-accumulation footgun (compiling two different
   expressions from one session yields a multi-output IR).
+
+## 2026-06-10 — freeze-UPROOT-3 (user-authorized respin, graphed-core freeze-M22-1)
+
+- mark_output was removed from graphed-core's public API (outputs are per compile request). The
+  frozen report helper (tests/graphed_uproot_report.py) respun to serialize(outputs=[...]) —
+  bytes unchanged for its single-output graph. 78/78 green.
