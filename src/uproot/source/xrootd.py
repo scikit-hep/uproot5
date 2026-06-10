@@ -14,7 +14,6 @@ from __future__ import annotations
 
 import contextlib
 import queue
-import sys
 
 import uproot
 import uproot.source.chunk
@@ -243,10 +242,9 @@ class XRootDResource(uproot.source.chunk.Resource):
             if status.error:
                 try:
                     self._xrd_error(status)
-                except Exception:
-                    excinfo = sys.exc_info()
+                except Exception as err:
                     for future in futures.values():
-                        future._set_excinfo(excinfo)
+                        future._set_excinfo(err)
             else:
                 for chunk in response.chunks:
                     start, stop = chunk.offset, chunk.offset + chunk.length
@@ -330,7 +328,7 @@ class XRootDSource(uproot.source.chunk.Source):
         return uproot.source.chunk.Chunk(self, start, stop, future)
 
     def chunks(
-        self, ranges: list[(int, int)], notifications: queue.Queue
+        self, ranges: list[tuple[int, int]], notifications: queue.Queue
     ) -> list[uproot.source.chunk.Chunk]:
         self._num_requests += 1
         self._num_requested_chunks += len(ranges)
@@ -345,7 +343,7 @@ class XRootDSource(uproot.source.chunk.Source):
         sub_ranges = {}
 
         def add_request_range(
-            start: int, length: int, sub_ranges_list: list[(int, int)]
+            start: int, length: int, sub_ranges_list: list[tuple[int, int]]
         ):
             if len(all_request_ranges[-1]) >= self._max_num_elements:
                 all_request_ranges.append([])
@@ -378,7 +376,7 @@ class XRootDSource(uproot.source.chunk.Source):
 
         # submit the xrootd vector reads
         global_futures = {}
-        for _, request_ranges in enumerate(all_request_ranges):
+        for request_ranges in all_request_ranges:
             futures = {}
             results = {}
             for start, size in request_ranges:

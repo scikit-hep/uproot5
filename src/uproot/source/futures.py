@@ -9,8 +9,7 @@ This module defines a Python-like Future and Executor for Uproot in three levels
 2. :doc:`uproot.source.futures.Future`, :doc:`uproot.source.futures.Worker`,
    and :doc:`uproot.source.futures.ThreadPoolExecutor`: similar to Python's
    own Future, Thread, and ThreadPoolExecutor, though only a minimal
-   implementation is provided. These exist to unify behavior between Python 2
-   and 3 and provide a base class for the following.
+   implementation is provided. These provide a base class for the following.
 3. :doc:`uproot.source.futures.ResourceFuture`,
    :doc:`uproot.source.futures.ResourceWorker`,
    and :doc:`uproot.source.futures.ResourceThreadPoolExecutor`: like the above
@@ -25,9 +24,7 @@ from __future__ import annotations
 
 import os
 import queue
-import sys
 import threading
-import time
 from abc import ABC, abstractmethod
 
 
@@ -114,7 +111,7 @@ class Future:
         args (tuple): Arguments for the function.
 
     Like Python 3 ``concurrent.futures.Future`` except that it has only
-    the subset of the interface Uproot needs and is available in Python 2.
+    the subset of the interface Uproot needs.
 
     The :doc:`uproot.source.futures.ResourceFuture` extends this class.
     """
@@ -134,21 +131,21 @@ class Future:
         If the task raises an exception in its background thread, this function
         raises that exception on the thread on which it is called.
         """
-        self._finished.wait(timeout=timeout)
+        if not self._finished.wait(timeout=timeout):
+            raise TimeoutError("Future.result timed out")
         if self._excinfo is None:
             return self._result
         else:
-            delayed_raise(*self._excinfo)
+            raise self._excinfo
 
     def _run(self):
         try:
             if self._task is None:
                 raise RuntimeError("cannot run Future twice")
             self._result = self._task(*self._args)
-        except Exception:
-            self._excinfo = sys.exc_info()
+        except Exception as err:
+            self._excinfo = err
         self._finished.set()
-        del self._task, self._args
         self._task = None
         self._args = ()
 
@@ -203,22 +200,14 @@ class ThreadPoolExecutor(Executor):
         If None, use ``os.cpu_count()``.
 
     Like Python 3 ``concurrent.futures.ThreadPoolExecutor`` except that it has
-    only the subset of the interface Uproot needs and is available in Python 2.
+    only the subset of the interface Uproot needs.
 
     The :doc:`uproot.source.futures.ResourceThreadPoolExecutor` extends this
     class.
     """
 
     def __init__(self, max_workers: int | None = None):
-        if max_workers is None:
-            if hasattr(os, "cpu_count"):
-                self._max_workers = os.cpu_count()
-            else:
-                import multiprocessing
-
-                self._max_workers = multiprocessing.cpu_count()
-        else:
-            self._max_workers = max_workers
+        self._max_workers = max_workers or os.cpu_count()
 
         self._work_queue = queue.Queue()
         self._workers = []
@@ -264,18 +253,14 @@ class ThreadPoolExecutor(Executor):
 
     def shutdown(self, wait: bool = True):
         """
-        Stop every :doc:`uproot.source.futures.Worker` by putting None
-        on the :ref:`uproot.source.futures.Worker.work_queue` until none of
-        them satisfy ``worker.is_alive()``.
+        Stop every :doc:`uproot.source.futures.Worker` by putting one None per
+        worker on the :ref:`uproot.source.futures.Worker.work_queue` and
+        joining each worker thread.
         """
-        while True:
-            for worker in self._workers:
-                if worker.is_alive():
-                    self._work_queue.put(None)
-            if any(worker.is_alive() for worker in self._workers):
-                time.sleep(0.001)
-            else:
-                break
+        for _ in self._workers:
+            self._work_queue.put(None)
+        for worker in self._workers:
+            worker.join()
 
 
 ##################### use-case 3: worker-bound resources for I/O
@@ -312,12 +297,11 @@ class ResourceFuture(Future):
     def _run(self, resource):
         try:
             self._result = self._task(resource)
-        except Exception:
-            self._excinfo = sys.exc_info()
+        except Exception as err:
+            self._excinfo = err
         self._finished.set()
         if self._notify is not None:
             self._notify()
-            del self._notify
             self._notify = None
 
 

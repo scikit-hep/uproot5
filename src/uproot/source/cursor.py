@@ -481,16 +481,13 @@ class Cursor:
         null-terminated, UTF-8 encoded string.
         """
         remainder = chunk.remainder(self._index, self, context)
-        local_stop = 0
-        char = None
-        while char != 0:
-            if local_stop > len(remainder):
-                raise OSError(
-                    f"""C-style string has no terminator (null byte) in Chunk {self._start}:{self._stop}
-of file path {self._source.file_path}"""
-                )
-            char = remainder[local_stop]
-            local_stop += 1
+        terminator = remainder.tobytes().find(0)
+        if terminator < 0:
+            raise OSError(
+                f"""C-style string has no terminator (null byte) in Chunk {chunk.start}:{chunk.stop}
+of file path {chunk.source.file_path}"""
+            )
+        local_stop = terminator + 1
 
         if move:
             self._index += local_stop
