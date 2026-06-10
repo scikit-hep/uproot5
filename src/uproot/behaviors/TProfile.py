@@ -239,7 +239,7 @@ class TProfile(Profile):
         fBinSumw2 = self.member("fBinSumw2", none_if_missing=True)
         return fBinSumw2 is not None and len(fBinSumw2) == self.member("fNcells")
 
-    def counts(self, flow=True):
+    def counts(self, flow=False):
         out = _effective_counts_1d(
             self.member("fBinEntries"),
             self.member("fBinSumw2"),
