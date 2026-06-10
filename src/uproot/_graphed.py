@@ -68,6 +68,7 @@ def graphed(
     ak_add_doc=False,
     custom_classes=None,
     allow_missing=False,
+    behavior=None,
     **options,
 ):
     """
@@ -80,6 +81,10 @@ def graphed(
         library (str): Only ``"ak"`` is supported (a single deferred ``graphed`` array). ``"np"`` and
             ``"pd"`` raise ``NotImplementedError``.
         ak_add_doc, custom_classes, allow_missing: As in :doc:`uproot._dask.dask`.
+        behavior (dict or None): An awkward behavior dict (e.g. ``vector``'s) registered on the
+            recording backend (graphed M18): with ``gak.with_name``, behavior PROPERTIES
+            (``.pt``, ``.mass``) work through plain attribute access — typetracer forms at record
+            time, projectable down to exactly the branches a property reads.
         options: Passed through to file opening.
 
     Returns a deferred ``graphed`` ``Array`` for the selected ``TTree``(s). Construction reads only
@@ -147,7 +152,7 @@ def graphed(
         record_form.length_zero_array(highlevel=False).to_typetracer(forget_length=True)
     )
 
-    session = Session(AwkwardBackend())
+    session = Session(AwkwardBackend(behavior=behavior))
     source = _GraphedTTreeSource(file_tree, common_keys, custom_classes, allow_missing, real_options)
     name = getattr(first_ttree, "name", None) or "events"
     return session.source(name, form=AwkwardForm(typetracer), data=source)
@@ -291,3 +296,71 @@ def read_graphed_partition(partition, columns, *, tree=None, library="ak", **ope
         start = (step * n_entries) // n_steps
         stop = ((step + 1) * n_entries) // n_steps
     return tree.arrays(list(columns), entry_start=start, entry_stop=stop, library=library)
+
+
+def _evaluation_columns(array, source_node_id, common_keys):
+    """The per-task read list: every branch the recorded graph SYNTACTICALLY accesses on the
+    source. Compiled-IR evaluation replays every node — including field accesses whose BUFFERS
+    the output never touches (e.g. the pz/E legs of a zip whose only consumed property is .pt) —
+    so the buffer projection (what data is needed) UNDER-supplies evaluation (what fields must
+    exist). The structure-only/offsets story is unchanged: a jagged branch read here is also its
+    own offsets carrier."""
+    needed = set()
+    sentinel = object()
+
+    def on_source(nid):
+        return (sentinel, nid)
+
+    def on_op(_nid, name, ins, params):
+        is_source_input = any(
+            isinstance(x, tuple) and len(x) == 2 and x[0] is sentinel and x[1] == source_node_id
+            for x in ins
+        )
+        if is_source_input:
+            if name == "field":
+                needed.add(str(params["field"]))
+            elif name == "fields":
+                needed.update(f for f in str(params["fields"]).split(",") if f)
+            else:
+                needed.update(common_keys)  # a non-field op consumes the whole source record
+        return None
+
+    array.session.walk(array, source=on_source, op=on_op, external=lambda _n, _f, ins: None)
+    if not needed:  # a bare source read (the array IS the source): every selected branch
+        return tuple(common_keys)
+    return tuple(k for k in common_keys if k in needed)
+
+
+def graphed_head(array, n=5):
+    """EAGER peek at the first ``n`` rows of a recorded analysis, reading ONLY the first file's
+    leading entries (and only the branches the graph accesses) and evaluating through the
+    compiled IR — never the whole dataset. Clamps to the first file's entry count.
+
+    The ``graphed`` analogue of a dask collection's ``head``.
+    """
+    from graphed import compile_ir, evaluate_ir
+    from graphed_core import Partition
+
+    session = array.session
+    uproot_sources = [
+        (nid, s) for nid, s in session.sources().items() if isinstance(s, _GraphedTTreeSource)
+    ]
+    if len(uproot_sources) != 1:
+        raise TypeError(
+            f"graphed_head supports exactly one uproot.graphed source per array; "
+            f"this array is backed by {len(uproot_sources)}"
+        )
+    (nid, source) = uproot_sources[0]
+    columns = _evaluation_columns(array, nid, source._common_keys)
+    compiled = compile_ir(session, array)
+
+    file_path, object_path = source._file_tree[0]
+    obj = uproot._util.regularize_object_path(
+        file_path, object_path, source._custom_classes, source._allow_missing, source._options
+    )
+    stop = min(int(n), obj.num_entries)
+    chunk = read_graphed_partition(
+        Partition(file_path, object_path, 0, stop), list(columns), tree=obj
+    )
+    (out,) = evaluate_ir(compiled, session.backend, {session.source_name(nid): chunk})
+    return out

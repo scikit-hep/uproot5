@@ -12,6 +12,14 @@ thread pool) — exactly the way a deferred-array ``.compute()`` hides a thread/
 
 ``graphed`` / ``graphed_core`` / ``graphed_exec_local`` are imported lazily, so importing ``uproot``
 does not require them.
+
+NOTE (P3.6 review, 2026-06-10): this module deliberately does NOT sit on the ``graphed.write``
+partitioned-write base that ``graphed_to_parquet`` specializes. Two of its behaviors are FROZEN
+pins predating the base: write tasks return ``None`` (the suite asserts ``result.value is None``),
+where the base's tasks report their part paths; and ``_step_ranges`` SKIPS empty ranges when a
+file has fewer entries than ``steps_per_file``, where the base's ``step_of`` math does not.
+Aligning them would amend frozen tests — a recorded freeze bump to do deliberately, not as part
+of a refactor.
 """
 from __future__ import annotations
 

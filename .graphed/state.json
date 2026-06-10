@@ -35,9 +35,45 @@
       "note": "freeze-UPROOT-1 (2026-06-09, human-directed M10 remediation): test_blind_partitions_do_not_open_the_file amended from the negative-entry_stop sentinel pin to first-class graphed_core Partition.blind (same intent \u2014 files not opened at partition time \u2014 honest representation). All other frozen-era tests unmodified; new suite tests/test_graphed_m10.py added (buffer-level projection, compiled-IR execution, write hardening).",
       "phase": "DONE",
       "reject_count": 0
+    },
+    "UPROOT-2": {
+      "dispute_count": 0,
+      "escalated": false,
+      "freeze_tag": "freeze-UPROOT-1",
+      "gates": {
+        "benchmark": null,
+        "coverage": true,
+        "determinism": true,
+        "frozen_tests": true,
+        "integrity_scan": true,
+        "lint": true,
+        "types": true
+      },
+      "incident": null,
+      "l0_count": 0,
+      "metrics_history": [
+        {
+          "benchmark_ok": null,
+          "coverage_ok": true,
+          "determinism_ok": true,
+          "diff_lines": 0,
+          "fail_set_hash": "e3b0c44298fc1c14",
+          "integrity_ok": true,
+          "iteration_index": 0,
+          "lint_ok": true,
+          "pass_count": 78,
+          "tokens_spent": 0,
+          "tree_hash": "local",
+          "types_ok": true,
+          "wall_clock_s": 0.0
+        }
+      ],
+      "note": "freeze-UPROOT-1 (2026-06-09, human-directed M10 remediation): test_blind_partitions_do_not_open_the_file amended from the negative-entry_stop sentinel pin to first-class graphed_core Partition.blind (same intent \u2014 files not opened at partition time \u2014 honest representation). All other frozen-era tests unmodified; new suite tests/test_graphed_m10.py added (buffer-level projection, compiled-IR execution, write hardening).",
+      "phase": "DONE",
+      "reject_count": 0
     }
   },
   "repo": "uproot5-graphed-mvp",
   "schema_version": 1,
-  "updated_at": "2026-06-09T22:35:30Z"
+  "updated_at": "2026-06-10T19:27:55Z"
 }
