@@ -57,3 +57,18 @@ No other frozen test was altered.
 - mark_output was removed from graphed-core's public API (outputs are per compile request). The
   frozen report helper (tests/graphed_uproot_report.py) respun to serialize(outputs=[...]) —
   bytes unchanged for its single-output graph. 78/78 green.
+
+## UPROOT-4 — NanoAOD witnesses (ADL-port P0.2) — 2026-06-11
+
+New frozen file tests/test_graphed_nanoaod.py (+tests/vector_backend_ref.py, the importable
+worker backend factory) over a synthetic NanoAOD-style TTree (shared-counter jagged collections
+written via mktree; note: this uproot defaults recreate-assignment to RNTuple — mktree forces
+the TTree convention). Witnesses (the porting idiom for the ADL queries — per-query gak.zip,
+no schema layer): counted-jagged zip + with_name + vector behaviors records with correct forms,
+evaluates exactly, and PROJECTS TRUTHFULLY (px reads only {Muon_pt, Muon_phi} though the zip
+names five branches); record+record `+` four-vector sums (.mass) over the reader;
+jagged-integer-array getitem (Q8's leptons[pair.l1]); the capstone TTree -> collection ->
+behavior property -> deferred hist.graphed fill through a SPAWNED process pool with the
+behavior forwarded by import ref (tests dir on sys.path via monkeypatch — importlib test mode
+keeps it off; spawn children inherit sys.path). 4/4 green; pre-freeze fix recorded (worker
+import path).
