@@ -130,16 +130,17 @@ def open(
         file_path = path
         object_path = None
 
-    file_path = uproot._util.regularize_path(file_path)
-
     # Support path objects that carry fsspec storage_options (e.g. UPath from
-    # universal-pathlib). Caller-provided kwargs take precedence over the
-    # path-embedded options so that one-off overrides still work.
+    # universal-pathlib). Extract before regularize_path so that if the object
+    # ever gains __fspath__ the options aren't lost when it is converted to str.
+    # Caller-provided kwargs take precedence over path-embedded options.
     if hasattr(file_path, "storage_options") and not isinstance(
         file_path, (str, bytes)
     ):
         options = {**file_path.storage_options, **options}
         file_path = str(file_path)
+
+    file_path = uproot._util.regularize_path(file_path)
 
     if not isinstance(file_path, str) and not (
         hasattr(file_path, "read") and hasattr(file_path, "seek")
