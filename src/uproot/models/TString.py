@@ -105,3 +105,5 @@ in file {self.file.file_path}"""
 
 
 uproot.classes["TString"] = Model_TString
+uproot.classes["ROOT::TString"] = Model_TString
+uproot.classes["ROOT::ROOT::TString"] = Model_TString
