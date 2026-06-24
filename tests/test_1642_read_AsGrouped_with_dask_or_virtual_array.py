@@ -21,7 +21,7 @@ def test_read_AsGrouped_with_dask_or_virtual_array():
         arr = f["tree"].arrays()
         virtual_arr = f["tree"].arrays(virtual=True)
 
-    assert awkward.array_equal(arr, awkward.materialize(virtual_arr))
+        assert awkward.array_equal(arr, awkward.materialize(virtual_arr))
 
     dask_arr = uproot.dask(path).compute()
     assert awkward.array_equal(arr, dask_arr)
