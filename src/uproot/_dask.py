@@ -1649,6 +1649,18 @@ def _get_dak_array(
             )
         )
 
+    # Filter out AsGrouped branches: they are grouping containers without their own
+    # data buffers. This matches tree.arrays(expressions=None) which also skips them.
+    if ttrees and not isinstance(ttrees[0], HasFields):
+        common_keys = [
+            k
+            for k in common_keys
+            if not isinstance(
+                ttrees[0][k].interpretation,
+                uproot.interpretation.grouped.AsGrouped,
+            )
+        ]
+
     step_sum = 0
     for ttree in ttrees:
         entry_start = 0
@@ -1785,6 +1797,17 @@ def _get_dak_array_delay_open(
             full_paths=full_paths,
             ignore_duplicates=True,
         )
+        # Filter out AsGrouped branches: they are grouping containers without their own
+        # data buffers. This matches tree.arrays(expressions=None) which also skips them.
+        if not isinstance(obj, HasFields):
+            common_keys = [
+                k
+                for k in common_keys
+                if not isinstance(
+                    obj[k].interpretation,
+                    uproot.interpretation.grouped.AsGrouped,
+                )
+            ]
         base_form = _get_ttree_form(
             awkward, obj, common_keys, interp_options.get("ak_add_doc")
         )

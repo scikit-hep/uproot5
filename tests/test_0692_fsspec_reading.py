@@ -313,6 +313,7 @@ def test_fsspec_zip(tmp_path):
 )
 def test_open_fsspec_xrootd_iterate_files(handler):
     pytest.importorskip("XRootD")
+    pytest.importorskip("fsspec_xrootd")
 
     iterator = uproot.iterate(
         files=[
@@ -347,6 +348,7 @@ def test_open_fsspec_xrootd_iterate_files(handler):
 )
 def test_open_fsspec_xrootd_iterate_tree(handler):
     pytest.importorskip("XRootD")
+    pytest.importorskip("fsspec_xrootd")
 
     with uproot.open(
         {
