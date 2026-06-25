@@ -97,19 +97,17 @@ public:
   size_t oldsize;
 };
 
+_Uproot_buffer_sizer* _uproot_sizer_ptr = nullptr;
+size_t _uproot_out_buffer_ptr = 0;
+
 char* _uproot_TMessage_reallocate(char* buffer, size_t newsize, size_t oldsize) {
-    std::any sizer_any;
-    TPython::Exec("_anyresult = __import__('uproot').pyroot.pyroot_to_buffer.sizer_asany", &sizer_any);
-    _Uproot_buffer_sizer& sizer = std::any_cast<_Uproot_buffer_sizer&>(sizer_any);
-    sizer.buffer = reinterpret_cast<size_t>(buffer);
-    sizer.newsize = newsize;
-    sizer.oldsize = oldsize;
+    _uproot_sizer_ptr->buffer = reinterpret_cast<size_t>(buffer);
+    _uproot_sizer_ptr->newsize = newsize;
+    _uproot_sizer_ptr->oldsize = oldsize;
 
     TPython::Exec("__import__('uproot').pyroot.pyroot_to_buffer.reallocate()");
 
-    std::any out_any;
-    TPython::Exec("_anyresult = __import__('uproot').pyroot.pyroot_to_buffer.buffer_ptr_asany", &out_any);
-    return reinterpret_cast<char*>(std::any_cast<size_t>(out_any));
+    return reinterpret_cast<char*>(_uproot_out_buffer_ptr);
 }
 
 void _uproot_TMessage_SetBuffer(TMessage& message, void* buffer, UInt_t newsize) {
@@ -121,22 +119,15 @@ void _uproot_TMessage_SetBuffer(TMessage& message, void* buffer, UInt_t newsize)
             newbuf = numpy.empty(pyroot_to_buffer.sizer.newsize, numpy.uint8)
             newbuf[: len(pyroot_to_buffer.buffer)] = pyroot_to_buffer.buffer
             pyroot_to_buffer.buffer = newbuf
-            pyroot_to_buffer.buffer_ptr_asany = ROOT.std.make_any["size_t&"](
-                pyroot_to_buffer.buffer.ctypes.data
-            )
+            ROOT._uproot_out_buffer_ptr = pyroot_to_buffer.buffer.ctypes.data
 
         pyroot_to_buffer.reallocate = reallocate
 
     # These need to be re-initialized on each call because ROOT seems to be reseting them
     # on its own accord.
-    pyroot_to_buffer.sizer_asany = ROOT.std.make_any["_Uproot_buffer_sizer"]()
-    pyroot_to_buffer.sizer = ROOT.std.any_cast["_Uproot_buffer_sizer&"](
-        pyroot_to_buffer.sizer_asany
-    )
+    pyroot_to_buffer.sizer = ROOT._Uproot_buffer_sizer()
+    ROOT._uproot_sizer_ptr = pyroot_to_buffer.sizer
     pyroot_to_buffer.buffer = numpy.empty(1024, numpy.uint8)
-    pyroot_to_buffer.buffer_ptr_asany = ROOT.std.make_any["size_t"](
-        pyroot_to_buffer.buffer.ctypes.data
-    )
 
     message = ROOT.TMessage(ROOT.kMESS_OBJECT)
     message.SetCompressionLevel(0)
@@ -148,10 +139,8 @@ void _uproot_TMessage_SetBuffer(TMessage& message, void* buffer, UInt_t newsize)
 
 
 pyroot_to_buffer.lock = threading.Lock()
-pyroot_to_buffer.sizer_asany = None
 pyroot_to_buffer.sizer = None
 pyroot_to_buffer.buffer = None
-pyroot_to_buffer.buffer_ptr_asany = None
 
 
 class _GetStreamersOnce:
