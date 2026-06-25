@@ -19,6 +19,7 @@ version.
 
 from __future__ import annotations
 
+import functools
 import re
 import sys
 import threading
@@ -171,6 +172,7 @@ def classname_regularize(classname):
     return classname
 
 
+@functools.lru_cache(maxsize=1024)
 def classname_decode(encoded_classname):
     """
     Converts a Python (encoded) classname, such as ``Model_Some_3a3a_Thing``
@@ -277,15 +279,16 @@ def class_named(classname, version=None, custom_classes=None):
     """
     if custom_classes is None:
         classes = uproot.classes
-        where = "the 'custom_classes' dict"
-    else:
         where = "uproot.classes"
+    else:
+        classes = custom_classes
+        where = "the 'custom_classes' dict"
 
     cls = classes.get(classname)
     if cls is None:
         raise ValueError(f"no class named {classname} in {where}")
 
-    if version is not None and isinstance(cls, DispatchByVersion):
+    if version is not None and issubclass(cls, DispatchByVersion):
         versioned_cls = cls.class_of_version(version)
         if versioned_cls is not None:
             return versioned_cls
@@ -307,7 +310,7 @@ def has_class_named(classname, version=None, custom_classes=None):
     if cls is None:
         return False
 
-    if version is not None and isinstance(cls, DispatchByVersion):
+    if version is not None and issubclass(cls, DispatchByVersion):
         return cls.has_version(version)
     else:
         return True
@@ -1008,7 +1011,7 @@ class Model:
             cls = type(self)
         else:
             unversioned = uproot.classes.get(self.classname)
-            if issubclass(unversioned, DispatchByVersion):
+            if unversioned is not None and issubclass(unversioned, DispatchByVersion):
                 for versioned_cls in unversioned.known_versions.values():
                     if versioned_cls.writable:
                         cls = versioned_cls
@@ -1342,21 +1345,10 @@ class DispatchByVersion:
             forth_obj.add_node(forth_stash)
             forth_obj.push_active_node(forth_stash)
 
-        if versioned_cls is not None:
-            pass
-
-        elif version is not None:
+        # numbytes_version always returns an integer version, so if there is no
+        # known versioned class for it, one is generated for that version.
+        if versioned_cls is None:
             versioned_cls = cls.new_class(file, version)
-
-        elif context.get("in_TBranch", False):
-            versioned_cls = cls.new_class(file, "max")
-
-        else:
-            raise ValueError(
-                f"""Unknown version {version} for class {classname_decode(cls.__name__)[0]} that cannot be skipped """
-                """because its number of bytes is unknown.
-"""
-            )
 
         # versioned_cls.read starts with numbytes_version again because move=False (above)
         temp_var = cls.postprocess(
