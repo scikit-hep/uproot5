@@ -71,12 +71,7 @@ def pyroot_to_buffer(obj):
     Args:
         obj (PyROOT object inheriting from TObject): PyROOT object to serialize.
 
-    Serializes a PyROOT object into a NumPy array that is owned by this function.
-
-    This function is not thread-safe and the output buffer gets overwritten by
-    the next call to this function. It is essential for callers to copy the data
-    out of the returned buffer, perhaps by calling :doc:`uproot._util.tobytes` on
-    it or by assigning it into another array.
+    Serializes a PyROOT object into a NumPy array.
 
     A lock is provided for safety: callers should always call this function within
     the lock's context:
@@ -88,65 +83,32 @@ def pyroot_to_buffer(obj):
     """
     import ROOT
 
-    if pyroot_to_buffer.sizer is None:
+    if pyroot_to_buffer._copy is None:
         ROOT.gInterpreter.Declare("""
-class _Uproot_buffer_sizer : public TObject {
-public:
-  size_t buffer;
-  size_t newsize;
-  size_t oldsize;
-};
-
-_Uproot_buffer_sizer* _uproot_sizer_ptr = nullptr;
-size_t _uproot_out_buffer_ptr = 0;
-
-char* _uproot_TMessage_reallocate(char* buffer, size_t newsize, size_t oldsize) {
-    _uproot_sizer_ptr->buffer = reinterpret_cast<size_t>(buffer);
-    _uproot_sizer_ptr->newsize = newsize;
-    _uproot_sizer_ptr->oldsize = oldsize;
-
-    TPython::Exec("__import__('uproot').pyroot.pyroot_to_buffer.reallocate()");
-
-    return reinterpret_cast<char*>(_uproot_out_buffer_ptr);
-}
-
-void _uproot_TMessage_SetBuffer(TMessage& message, void* buffer, UInt_t newsize) {
-    message.SetBuffer(buffer, newsize, false, _uproot_TMessage_reallocate);
+void _uproot_copy_tmessage(TMessage& message, size_t out_addr) {
+    memcpy((void*)out_addr, message.Buffer() + 8, message.Length() - 8);
 }
 """)
-
-        def reallocate():
-            newbuf = numpy.empty(pyroot_to_buffer.sizer.newsize, numpy.uint8)
-            newbuf[: len(pyroot_to_buffer.buffer)] = pyroot_to_buffer.buffer
-            pyroot_to_buffer.buffer = newbuf
-            ROOT._uproot_out_buffer_ptr = pyroot_to_buffer.buffer.ctypes.data
-
-        pyroot_to_buffer.reallocate = reallocate
-
-    # These need to be re-initialized on each call because ROOT seems to be reseting them
-    # on its own accord.
-    pyroot_to_buffer.sizer = ROOT._Uproot_buffer_sizer()
-    ROOT._uproot_sizer_ptr = pyroot_to_buffer.sizer
-    pyroot_to_buffer.buffer = numpy.empty(1024, numpy.uint8)
+        pyroot_to_buffer._copy = ROOT._uproot_copy_tmessage
 
     message = ROOT.TMessage(ROOT.kMESS_OBJECT)
     message.SetCompressionLevel(0)
-    ROOT._uproot_TMessage_SetBuffer(
-        message, pyroot_to_buffer.buffer, len(pyroot_to_buffer.buffer)
-    )
     message.WriteObject(obj)
-    return pyroot_to_buffer.buffer[: message.Length()]
+    length = message.Length() - 8
+    buffer = numpy.empty(length, numpy.uint8)
+    pyroot_to_buffer._copy(message, buffer.ctypes.data)
+    return buffer
 
 
 pyroot_to_buffer.lock = threading.Lock()
-pyroot_to_buffer.sizer = None
-pyroot_to_buffer.buffer = None
+pyroot_to_buffer._copy = None
 
 
 class _GetStreamersOnce:
     _custom_classes = {}
     _streamers = {}
     _streamer_dependencies = {}
+    _memfile_copy = None
 
     def __init__(self, obj):
         self._obj = obj
@@ -192,6 +154,14 @@ class _GetStreamersOnce:
         if self._streamers.get(obj_classname, {}).get(obj_version, None) is None:
             import ROOT
 
+            if _GetStreamersOnce._memfile_copy is None:
+                ROOT.gInterpreter.Declare("""
+Long64_t _uproot_memfile_copyto(TMemFile& mf, size_t out_addr, Long64_t maxsize) {
+    return mf.CopyTo((void*)out_addr, maxsize);
+}
+""")
+                _GetStreamersOnce._memfile_copy = ROOT._uproot_memfile_copyto
+
             memfile = ROOT.TMemFile("noname.root", "new")
             memfile.SetCompressionLevel(0)
             memfile.WriteObjectAny(self._obj, self._obj.IsA(), "noname")
@@ -199,7 +169,7 @@ class _GetStreamersOnce:
             memfile.Close()
 
             buffer = numpy.empty(memfile.GetEND(), numpy.uint8)
-            memfile.CopyTo(buffer, len(buffer))
+            _GetStreamersOnce._memfile_copy(memfile, buffer.ctypes.data, len(buffer))
 
             file = uproot.open(_GetStreamersOnce.ArrayFile(buffer))
 
