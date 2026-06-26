@@ -213,13 +213,13 @@ def iterate(
                         report=report,
                     ):
                         if report:
-                            arrays, report = item
+                            arrays, rep = item
                             arrays = library.global_index(arrays, global_offset)
-                            report = report.to_global(global_offset)
+                            rep = rep.to_global(global_offset)
                             popper = [arrays]
                             del arrays
                             del item
-                            yield popper.pop(), report
+                            yield popper.pop(), rep
 
                         else:
                             popper = [library.global_index(item, global_offset)]
@@ -1160,6 +1160,7 @@ class HasBranches(Mapping):
                 interpretation_executor=interpretation_executor,
                 array_cache=array_cache,
                 library=library,
+                ak_add_doc=ak_add_doc,
                 how=how,
             )
 
@@ -1381,6 +1382,7 @@ class HasBranches(Mapping):
                 decompression_executor=decompression_executor,
                 interpretation_executor=interpretation_executor,
                 library=library,
+                ak_add_doc=ak_add_doc,
                 how=how,
                 report=report,
             )
@@ -3610,29 +3612,3 @@ def _regularize_step_size(
     return _hasbranches_num_entries_for(
         hasbranches, target_num_bytes, entry_start, entry_stop, branchid_interpretation
     )
-
-
-class _WrapDict(MutableMapping):
-    def __init__(self, dict):
-        self.dict = dict
-
-    def __str__(self):
-        return str(self.dict)
-
-    def __repr__(self):
-        return repr(self.dict)
-
-    def __getitem__(self, where):
-        return self.dict[where]
-
-    def __setitem__(self, where, what):
-        self.dict[where] = what
-
-    def __delitem__(self, where):
-        del self.dict[where]
-
-    def __iter__(self):
-        yield from self.dict
-
-    def __len__(self):
-        return len(self.dict)
