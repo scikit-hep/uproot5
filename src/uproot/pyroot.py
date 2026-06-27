@@ -19,6 +19,7 @@ possible to
 This module also makes it possible for PyROOT objects to be added to ROOT files
 that Uproot is writing (regardless of whether Uproot could read such objects).
 """
+
 from __future__ import annotations
 
 import threading
@@ -43,14 +44,12 @@ def to_pyroot(obj, name=None):
     import ROOT
 
     if to_pyroot._Uproot_FromTMessage is None:
-        ROOT.gInterpreter.Declare(
-            """
+        ROOT.gInterpreter.Declare("""
 class _Uproot_FromTMessage : public TMessage {
 public:
     _Uproot_FromTMessage(void* buffer, Int_t size): TMessage(buffer, size) { }
 };
-"""
-        )
+""")
         to_pyroot._Uproot_FromTMessage = ROOT._Uproot_FromTMessage
 
     serialized = uproot.serialization.serialize_object_any(obj, name)
@@ -90,8 +89,7 @@ def pyroot_to_buffer(obj):
     import ROOT
 
     if pyroot_to_buffer.sizer is None:
-        ROOT.gInterpreter.Declare(
-            """
+        ROOT.gInterpreter.Declare("""
 class _Uproot_buffer_sizer : public TObject {
 public:
   size_t buffer;
@@ -100,33 +98,45 @@ public:
 };
 
 char* _uproot_TMessage_reallocate(char* buffer, size_t newsize, size_t oldsize) {
-    _Uproot_buffer_sizer* ptr = reinterpret_cast<_Uproot_buffer_sizer*>(
-        (void*)TPython::Eval("__import__('uproot').pyroot.pyroot_to_buffer.sizer")
-    );
-    ptr->buffer = reinterpret_cast<size_t>(buffer);
-    ptr->newsize = newsize;
-    ptr->oldsize = oldsize;
+    std::any sizer_any;
+    TPython::Exec("_anyresult = __import__('uproot').pyroot.pyroot_to_buffer.sizer_asany", &sizer_any);
+    _Uproot_buffer_sizer& sizer = std::any_cast<_Uproot_buffer_sizer&>(sizer_any);
+    sizer.buffer = reinterpret_cast<size_t>(buffer);
+    sizer.newsize = newsize;
+    sizer.oldsize = oldsize;
 
     TPython::Exec("__import__('uproot').pyroot.pyroot_to_buffer.reallocate()");
 
-    TPyReturn out = TPython::Eval("__import__('uproot').pyroot.pyroot_to_buffer.buffer.ctypes.data");
-    return reinterpret_cast<char*>((size_t)out);
+    std::any out_any;
+    TPython::Exec("_anyresult = __import__('uproot').pyroot.pyroot_to_buffer.buffer_ptr_asany", &out_any);
+    return reinterpret_cast<char*>(std::any_cast<size_t>(out_any));
 }
 
 void _uproot_TMessage_SetBuffer(TMessage& message, void* buffer, UInt_t newsize) {
     message.SetBuffer(buffer, newsize, false, _uproot_TMessage_reallocate);
 }
-"""
-        )
-        pyroot_to_buffer.sizer = ROOT._Uproot_buffer_sizer()
-        pyroot_to_buffer.buffer = numpy.empty(1024, numpy.uint8)
+""")
 
         def reallocate():
             newbuf = numpy.empty(pyroot_to_buffer.sizer.newsize, numpy.uint8)
             newbuf[: len(pyroot_to_buffer.buffer)] = pyroot_to_buffer.buffer
             pyroot_to_buffer.buffer = newbuf
+            pyroot_to_buffer.buffer_ptr_asany = ROOT.std.make_any["size_t&"](
+                pyroot_to_buffer.buffer.ctypes.data
+            )
 
         pyroot_to_buffer.reallocate = reallocate
+
+    # These need to be re-initialized on each call because ROOT seems to be reseting them
+    # on its own accord.
+    pyroot_to_buffer.sizer_asany = ROOT.std.make_any["_Uproot_buffer_sizer"]()
+    pyroot_to_buffer.sizer = ROOT.std.any_cast["_Uproot_buffer_sizer&"](
+        pyroot_to_buffer.sizer_asany
+    )
+    pyroot_to_buffer.buffer = numpy.empty(1024, numpy.uint8)
+    pyroot_to_buffer.buffer_ptr_asany = ROOT.std.make_any["size_t"](
+        pyroot_to_buffer.buffer.ctypes.data
+    )
 
     message = ROOT.TMessage(ROOT.kMESS_OBJECT)
     message.SetCompressionLevel(0)
@@ -138,8 +148,10 @@ void _uproot_TMessage_SetBuffer(TMessage& message, void* buffer, UInt_t newsize)
 
 
 pyroot_to_buffer.lock = threading.Lock()
+pyroot_to_buffer.sizer_asany = None
 pyroot_to_buffer.sizer = None
 pyroot_to_buffer.buffer = None
+pyroot_to_buffer.buffer_ptr_asany = None
 
 
 class _GetStreamersOnce:

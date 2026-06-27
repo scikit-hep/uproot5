@@ -7,6 +7,7 @@ and the classes that are too fundamental to be models:
 :doc:`uproot.reading.ReadOnlyDirectory` (``TDirectory`` or ``TDirectoryFile``),
 and :doc:`uproot.reading.ReadOnlyKey` (``TKey``).
 """
+
 from __future__ import annotations
 
 import re
@@ -83,6 +84,7 @@ def open(
     * handler (:doc:`uproot.source.chunk.Source` class; None)
     * timeout (float for HTTP, int for XRootD; 30)
     * max_num_elements (None or int; None)
+        The maximum number of elements to be requested in a single vector read, when using XRootD.
     * num_workers (int; 1)
     * use_threads (bool; False on the emscripten platform (i.e. in a web browser), else True)
     * num_fallback_workers (int; 10)
@@ -128,6 +130,16 @@ def open(
         file_path = path
         object_path = None
 
+    # Support path objects that carry fsspec storage_options (e.g. UPath from
+    # universal-pathlib). Extract before regularize_path so that if the object
+    # ever gains __fspath__ the options aren't lost when it is converted to str.
+    # Caller-provided kwargs take precedence over path-embedded options.
+    if hasattr(file_path, "storage_options") and not isinstance(
+        file_path, (str, bytes)
+    ):
+        options = {**file_path.storage_options, **options}
+        file_path = str(file_path)
+
     file_path = uproot._util.regularize_path(file_path)
 
     if not isinstance(file_path, str) and not (
@@ -157,7 +169,6 @@ def open(
 
 open.defaults = {
     "handler": None,
-    "timeout": 30,
     "max_num_elements": None,
     "num_workers": 1,
     "use_threads": sys.platform != "emscripten",
@@ -185,7 +196,7 @@ must_be_attached = [
     "TNtuple",
     "TNtupleD",
     "TTreeSQL",
-    "ROOT::Experimental::RNTuple",
+    "ROOT::RNTuple",
 ]
 
 
@@ -517,6 +528,7 @@ class ReadOnlyFile(CommonFileMethods):
     * handler (:doc:`uproot.source.chunk.Source` class; None)
     * timeout (float for HTTP, int for XRootD; 30)
     * max_num_elements (None or int; None)
+       The maximum number of elements to be requested in a single vector read, when using XRootD.
     * num_workers (int; 1)
     * use_threads (bool; False on the emscripten platform (i.e. in a web browser), else True)
     * num_fallback_workers (int; 10)
@@ -618,10 +630,8 @@ class ReadOnlyFile(CommonFileMethods):
         self.hook_after_interpret(magic=magic)
 
         if magic != b"root":
-            raise ValueError(
-                f"""not a ROOT file: first four bytes are {magic!r}
-in file {file_path}"""
-            )
+            raise ValueError(f"""not a ROOT file: first four bytes are {magic!r}
+in file {file_path}""")
 
     def __repr__(self):
         return f"<ReadOnlyFile {self._file_path!r} at 0x{id(self):012x}>"
@@ -646,11 +656,15 @@ in file {file_path}"""
         :ref:`uproot.reading.ReadOnlyFile.object_cache` would still be
         accessible.
         """
-        self._source.close()
+        if hasattr(self, "_source") and hasattr(self._source, "close"):
+            self._source.close()
         if hasattr(self._decompression_executor, "shutdown"):
-            getattr(self._decompression_executor, "shutdown", None)()
+            self._decompression_executor.shutdown()
         if hasattr(self._interpretation_executor, "shutdown"):
-            getattr(self._interpretation_executor, "shutdown", None)()
+            self._interpretation_executor.shutdown()
+
+    def __del__(self):
+        self.close()
 
     @property
     def closed(self):
@@ -674,11 +688,12 @@ in file {file_path}"""
         return self
 
     def __exit__(self, exception_type, exception_value, traceback):
-        self._source.__exit__(exception_type, exception_value, traceback)
+        if hasattr(self, "_source") and hasattr(self._source, "__exit__"):
+            self._source.__exit__(exception_type, exception_value, traceback)
         if hasattr(self._decompression_executor, "shutdown"):
-            getattr(self._decompression_executor, "shutdown", None)()
+            self._decompression_executor.shutdown()
         if hasattr(self._interpretation_executor, "shutdown"):
-            getattr(self._interpretation_executor, "shutdown", None)()
+            self._interpretation_executor.shutdown()
 
     @property
     def source(self):
@@ -1943,7 +1958,7 @@ class ReadOnlyDirectory(Mapping):
 
         Note that this does not read any data from the file.
         """
-        if recursive and "/" in where or ":" in where:
+        if (recursive and "/" in where) or ":" in where:
             step, last_item = self.descent_into_path(where)
             return step[last_item].title
         else:
@@ -1965,7 +1980,7 @@ class ReadOnlyDirectory(Mapping):
         Note that this does not read any data from the file.
         """
 
-        if recursive and "/" in where or ":" in where:
+        if (recursive and "/" in where) or ":" in where:
             step, last_item = self.descent_into_path(where)
             return step[last_item].classname
         else:
@@ -1987,7 +2002,7 @@ class ReadOnlyDirectory(Mapping):
 
         Note that this does not read any data from the file.
         """
-        if recursive and "/" in where or ":" in where:
+        if (recursive and "/" in where) or ":" in where:
             return self._file.class_named(
                 self.classname_of(where, version=version), version=version
             )
@@ -2009,7 +2024,7 @@ class ReadOnlyDirectory(Mapping):
 
         Note that this does not read any data from the file.
         """
-        if recursive and "/" in where or ":" in where:
+        if (recursive and "/" in where) or ":" in where:
             return self._file.streamer_named(
                 self.classname_of(where, version=version), version=version
             )
@@ -2083,12 +2098,12 @@ class ReadOnlyDirectory(Mapping):
                             last = step
                             step = step[head]
                             if isinstance(step, uproot.behaviors.TBranch.HasBranches):
-                                return step["/".join([tail] + items[i + 1 :])]
+                                return step["/".join([tail, *items[i + 1 :]])]
                             else:
                                 raise uproot.KeyInFileError(
                                     where,
                                     because=repr(head)
-                                    + " is not a TDirectory, TTree, or TBranch",
+                                    + " is not a TDirectory, TTree, TBranch, RNTuple, or RField",
                                     keys=[key.fName for key in last._keys],
                                     file_path=self._file.file_path,
                                 )
@@ -2098,14 +2113,20 @@ class ReadOnlyDirectory(Mapping):
                             last = step
                             step = step[item]
 
-                    elif isinstance(step, uproot.behaviors.TBranch.HasBranches):
+                    elif isinstance(
+                        step,
+                        (
+                            uproot.behaviors.TBranch.HasBranches,
+                            uproot.behaviors.RNTuple.HasFields,
+                        ),
+                    ):
                         return step["/".join(items[i:])]
 
                     else:
                         raise uproot.KeyInFileError(
                             where,
                             because="/".join(items[:i])
-                            + " is not a TDirectory, TTree, or TBranch",
+                            + " is not a TDirectory, TTree, TBranch, RNTuple, or RField",
                             keys=[key.fName for key in last._keys],
                             file_path=self._file.file_path,
                         )

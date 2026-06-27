@@ -11,7 +11,7 @@ def test(tmp_path):
     filename = os.path.join(tmp_path, "file.root")
 
     with uproot.recreate(filename) as file:
-        file["tree"] = {"branch": ak.Array([[1.1, 2.2, 3.3], [], [4.4, 5.5]])}
+        file.mktree("tree", {"branch": ak.Array([[1.1, 2.2, 3.3], [], [4.4, 5.5]])})
 
     with uproot.open(filename) as file:
         assert file["tree"]["branch"].title == "branch[nbranch]/D"

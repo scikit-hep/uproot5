@@ -18,6 +18,7 @@ as well, which might be in another TDirectory if it's a subdirectory, etc. If th
 updates were not organized, redundant overwrites or even infinite cycles could occur.
 Thus, the structure of the cascade tree must be carefully laid out.
 """
+
 from __future__ import annotations
 
 import datetime
@@ -452,6 +453,28 @@ _free_format_small = struct.Struct(">HII")
 _free_format_big = struct.Struct(">HQQ")
 
 
+def _slices_bytes(slices):
+    total = 0
+    for _, stop in slices:
+        if stop - 1 >= uproot.const.kStartBigFile:
+            total += _free_format_big.size
+        else:
+            total += _free_format_small.size
+    return total
+
+
+def _free_segments_num_bytes(slices, file_end, data_location=0):
+    total = _slices_bytes(slices)
+
+    if file_end is None:
+        file_end = (data_location or 0) + total + _free_format_small.size
+
+    if file_end >= uproot.const.kStartBigFile:
+        return total + _free_format_big.size
+    else:
+        return total + _free_format_small.size
+
+
 class FreeSegmentsData(CascadeLeaf):
     """
     A :doc:`uproot.writing._cascade.CascadeLeaf` for the FreeSegments record
@@ -475,6 +498,7 @@ class FreeSegmentsData(CascadeLeaf):
     def slices(self, value):
         if self._slices != value:
             self._file_dirty = True
+            self._allocation = None
             self._slices = value
 
     @property
@@ -485,6 +509,7 @@ class FreeSegmentsData(CascadeLeaf):
     def end(self, value):
         if self._end != value:
             self._file_dirty = True
+            self._allocation = None
             self._end = value
 
     @property
@@ -501,24 +526,12 @@ class FreeSegmentsData(CascadeLeaf):
 
     @property
     def num_bytes(self):
-        total = 0
-        for _, stop in self._slices:
-            if stop - 1 >= uproot.const.kStartBigFile:
-                total += _free_format_big.size
-            else:
-                total += _free_format_small.size
+        return _free_segments_num_bytes(self._slices, self._end, self._location)
 
-        if self._end is None:
-            if total + _free_format_small.size >= uproot.const.kStartBigFile:
-                total += _free_format_big.size
-            else:
-                total += _free_format_small.size
-        elif self._end >= uproot.const.kStartBigFile:
-            total += _free_format_big.size
-        else:
-            total += _free_format_small.size
-
-        return total
+    def required_end(self, data_location):
+        return data_location + _free_segments_num_bytes(
+            self._slices, None, data_location
+        )
 
     def serialize(self):
         pairs = []
@@ -1113,8 +1126,8 @@ class FreeSegments(CascadeNode):
             out = self._key.location
             if not dry_run:
                 self._key.location = self._key.location + num_bytes
-                self._data.end = (
-                    self._key.location + self._key.allocation + self._data.allocation
+                self._data.end = self._data.required_end(
+                    self._key.location + self._key.num_bytes
                 )
             return out
 
@@ -1138,9 +1151,7 @@ class FreeSegments(CascadeNode):
         for i in range(len(slices) - 1):
             if slices[i][1] == original_start and original_stop == slices[i + 1][0]:
                 # These two slices need to be merged, including the newly released interval.
-                return (
-                    slices[:i] + ((slices[i][0], slices[i + 1][1]),) + slices[i + 2 :]
-                )
+                return (*slices[:i], (slices[i][0], slices[i + 1][1]), *slices[i + 2 :])
 
         for i, (start, stop) in enumerate(slices):
             if original_start == stop:
@@ -1162,25 +1173,18 @@ class FreeSegments(CascadeNode):
 
     @staticmethod
     def _slices_bytes(slices):
-        total = 0
-        for _, stop in slices:
-            if stop - 1 >= uproot.const.kStartBigFile:
-                total += _free_format_big.size
-            else:
-                total += _free_format_small.size
-        return total
+        return _slices_bytes(slices)
 
     def release(self, start, stop):
         new_slices = self._another_slice(self._data.slices, start, stop)
 
         if self.at_end:
             self._data.slices = new_slices
-            self._data.allocation = None
+            self._data.end = self._data.required_end(
+                self._key.location + self._key.num_bytes
+            )
             self._key.uncompressed_bytes = self._data.allocation
             self._key.compressed_bytes = self._key.uncompressed_bytes
-            self._data.end = (
-                self._key.location + self._key.allocation + self._key.uncompressed_bytes
-            )
 
         elif self._slices_bytes(new_slices) <= self._slices_bytes(self._data.slices):
             # Wherever the FreeSegments record is, it's not getting bigger.
@@ -1199,12 +1203,12 @@ class FreeSegments(CascadeNode):
                 self._key.location,
                 self._key.location + self._key.allocation + self._data.allocation,
             )
-            self._data.allocation = None
+            self._key.location = self._data.end
+            self._data.end = self._data.required_end(
+                self._key.location + self._key.num_bytes
+            )
             self._key.uncompressed_bytes = self._data.allocation
             self._key.compressed_bytes = self._key.uncompressed_bytes
-            self._key.location = self._data.end
-            self._data.location = self._key.location + self._key.allocation
-            self._data.end = self._data.location + self._key.uncompressed_bytes
 
     def write(self, sink):
         self._key.uncompressed_bytes = self._data.allocation
@@ -1472,7 +1476,7 @@ class TListOfStreamers(CascadeNode):
 
         rawstreamers = []
 
-        for (start, stop), streamer in zip(tlist.byte_ranges, tlist):
+        for (start, stop), streamer in zip(tlist.byte_ranges, tlist, strict=True):
             if isinstance(streamer, uproot.streamers.Model_TStreamerInfo):
                 rawstreamers.append(
                     RawStreamerInfo(
@@ -2037,8 +2041,8 @@ class Directory(CascadeNode):
         if replaces is None:
             next_key = key.copy_to(self._data.next_location)
             if self._data.num_bytes + next_key.num_bytes > self._data.allocation:
-                requested_num_bytes = int(
-                    math.ceil(1.5 * (self._data.allocation + next_key.num_bytes + 8))
+                requested_num_bytes = math.ceil(
+                    1.5 * (self._data.allocation + next_key.num_bytes + 8)
                 )
                 self._reallocate_data(requested_num_bytes)
                 next_key = key.copy_to(self._data.next_location)
@@ -2053,8 +2057,8 @@ class Directory(CascadeNode):
                 self._data.num_bytes + new_key.num_bytes - original_key.num_bytes
                 > self._data.allocation
             ):
-                requested_num_bytes = int(
-                    math.ceil(1.5 * (self._data.allocation + new_key.num_bytes + 8))
+                requested_num_bytes = math.ceil(
+                    1.5 * (self._data.allocation + new_key.num_bytes + 8)
                 )
                 self._reallocate_data(requested_num_bytes)
                 original_key = self._data.get_key(replaces.name.string, replaces.cycle)
@@ -2141,7 +2145,7 @@ class Directory(CascadeNode):
         next_key = subdirectory_key.copy_to(self._data.next_location)
         if self._data.num_bytes + next_key.num_bytes > self._data.allocation:
             self._reallocate_data(
-                int(math.ceil(1.5 * (self._data.allocation + next_key.num_bytes + 8)))
+                math.ceil(1.5 * (self._data.allocation + next_key.num_bytes + 8))
             )
             next_key = subdirectory_key.copy_to(self._data.next_location)
         next_key._location = self._data.next_location
@@ -2183,6 +2187,7 @@ class Directory(CascadeNode):
         tree.write_anew(sink)
         return tree
 
+<<<<<<< HEAD
     def add_branches(
         self,
         sink,
@@ -2229,62 +2234,34 @@ class Directory(CascadeNode):
         return tree, updated_streamers
 
     def add_rntuple(self, sink, name, title, akform):
+=======
+    def add_rntuple(self, sink, name, description, akform):
+>>>>>>> main
         import uproot.writing._cascadentuple
 
         anchor = uproot.writing._cascadentuple.NTuple_Anchor(
-            None, 0, 0, 48, None, None, None, None, None, None, 0
+            None,
+            *uproot.const.rntuple_version_for_writing,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            0,  # TODO: Fix this
         )
 
-        header = uproot.writing._cascadentuple.NTuple_Header(None, name, "", akform)
-
-        footer = uproot.writing._cascadentuple.NTuple_Footer(
-            None, 0, header._crc32, akform
+        header = uproot.writing._cascadentuple.NTuple_Header(
+            None, name, description, akform
         )
 
-        # the empty page list is hard-coded bytes which represents:
-        # 0                   1                   2                   3
-        # 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
-        # +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-        # |        Envelope Version       |        Minimum Version        |
-        # +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-        # |                             Size                            |T|
-        # +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-        # |           Number of Items (for list frames)           |Reserv.|
-        # +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-        # |                         FRAME PAYLOAD                         |
-        # +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-        # |                             CRC32                             |
-        # +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-        #
-        # - Envelope Version = 1 (0x0100)
-        # - Minimum Version = 1  (0x0100)
-        # - Size = -8 (0xf8ffffff) [value is negative because this is a list]
-        # - Number of Items = 0 (0x00000000) [empty list]
-        # - FRAME PAYLOAD = empty [because number of items is 0]
-        # - CRC32 = 2678769841
-        # manually calculate CRC32:
-
-        # In [1]: zlib.crc32(b'\x01\x00\x01\x00\xf8\xff\xff\xff\00\00\00\00')
-        # Out[1]: 2678769841
-        # In [2]: np.array([177, 200, 170, 159], dtype=np.uint8).view("uint32")
-        # Out[2]: array([2678769841], dtype=uint32)
-
-        empty_page_list_bytes = numpy.array(
-            [1, 0, 1, 0, 248, 255, 255, 255, 0, 0, 0, 0, 177, 200, 170, 159],
-            dtype=numpy.uint8,
-        )
-        offset = self._freesegments.allocate(16)
-        footer.cluster_group_record_frames[0].page_list_envlink.locator = (
-            uproot.writing._cascadentuple.NTuple_Locator(16, offset)
-        )
+        footer = uproot.writing._cascadentuple.NTuple_Footer(None, header._checksum)
 
         ntuple = uproot.writing._cascadentuple.NTuple(
-            self, name, title, akform, self._freesegments, header, footer, [], anchor
+            self, akform, self._freesegments, header, footer, [], anchor
         )
 
-        sink.write(offset, empty_page_list_bytes)
         ntuple.write(sink)
-        sink.flush()
         return ntuple
 
 
@@ -2625,7 +2602,7 @@ class FileHeader(CascadeLeaf):
     @classmethod
     def deserialize(cls, raw_bytes, location):
         (
-            magic,
+            _magic,
             version,
             begin,
             end,
@@ -2644,7 +2621,7 @@ class FileHeader(CascadeLeaf):
         )
         if version >= 1000000:
             (
-                magic,
+                _magic,
                 version,
                 begin,
                 end,

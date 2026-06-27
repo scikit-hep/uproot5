@@ -4,6 +4,7 @@
 This module defines the behaviors of ``TH1`` and its subclasses (not including ``TH2``,
 ``TH3``, or ``TProfile``).
 """
+
 from __future__ import annotations
 
 import numpy
@@ -71,7 +72,7 @@ class Histogram:
         Two histograms are equal if their axes are equal, their values are equal,
         and their variances are equal.
         """
-        if type(self) != type(other):
+        if type(self) is not type(other):
             return False
         if self.axes != other.axes:
             return False
@@ -159,7 +160,7 @@ class Histogram:
 
         Setting ``flow=True`` increases the length of each dimension by two.
         """
-        values, variances = self._values_variances(flow)
+        _values, variances = self._values_variances(flow)
         return numpy.sqrt(variances)
 
     def variances(self, flow=False):
@@ -178,7 +179,7 @@ class Histogram:
 
         Setting ``flow=True`` increases the length of each dimension by two.
         """
-        values, variances = self._values_variances(flow)
+        _values, variances = self._values_variances(flow)
         return variances
 
     def counts(self, flow=False):

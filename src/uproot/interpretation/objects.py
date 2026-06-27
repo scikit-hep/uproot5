@@ -18,16 +18,19 @@ The :doc:`uproot.interpretation.objects.ObjectArray` and
 while an array is being built from ``TBaskets``. Its final form is determined
 by the :doc:`uproot.interpretation.library.Library`.
 """
+
 from __future__ import annotations
 
 import contextlib
 import json
 import threading
 
+import awkward
 import numpy
 
 import uproot
 import uproot._awkwardforth
+from uproot.interpretation.known_forth import known_forth_of
 
 
 class AsObjects(uproot.interpretation.Interpretation):
@@ -45,14 +48,22 @@ class AsObjects(uproot.interpretation.Interpretation):
     :ref:`uproot.interpretation.objects.AsObjects.simplify` attempts to
     replace this interpretation with a faster-to-read equivalent, but not all
     data types can be simplified.
+
+    :doc:`uproot.interpretation.known_forth` defines forth code and forms for
+    special cases that will be picked up here as well
     """
 
     def __init__(self, model, branch=None):
         self._model = model
         self._branch = branch
-        self._form = None
         self._forth = True
-        self._complete_forth_code = None
+        known_forth = known_forth_of(self._model)
+        if known_forth is not None:
+            self._complete_forth_code = known_forth.forth_code
+            self._form = known_forth.awkward_form
+        else:
+            self._complete_forth_code = None
+            self._form = None
         self._forth_lock = threading.Lock()
 
     @property
@@ -122,6 +133,9 @@ class AsObjects(uproot.interpretation.Interpretation):
         tobject_header=False,
         breadcrumbs=(),
     ):
+        if self._form is not None:
+            return awkward.forms.from_dict(self._form)
+
         context = self._make_context(
             context, index_format, header, tobject_header, breadcrumbs
         )
@@ -200,8 +214,7 @@ class AsObjects(uproot.interpretation.Interpretation):
         library,
         options,
     ):
-        awkward = uproot.extras.awkward()
-        import awkward.forth  # noqa: F811
+        import awkward.forth
 
         self.hook_before_basket_array(
             data=data,
@@ -372,8 +385,7 @@ class AsObjects(uproot.interpretation.Interpretation):
             },
         )
 
-        raise Exception(
-            f"""EXPECTED FORM:
+        raise Exception(f"""EXPECTED FORM:
 {expected_form}
 
 DISCOVERED FORM:
@@ -390,8 +402,7 @@ input stream
     stream seek
     {"".join(forth_obj.final_code)}
     loop
-    """
-        )
+    """)
 
     def _discover_forth(self, data, byte_offsets, branch, context, cursor_offset):
         output = numpy.empty(len(byte_offsets) - 1, dtype=numpy.dtype(object))
@@ -478,23 +489,20 @@ input stream
                 to_append = basket_arrays[basket_num]
 
             if to_append is not None and has_any_awkward_types:
-
                 if isinstance(library, uproot.interpretation.library.NumPy):
                     trimmed.append(to_append)
 
                 elif isinstance(library, uproot.interpretation.library.Awkward):
-
                     if isinstance(to_append, numpy.ndarray):
                         trimmed.append(
                             uproot.interpretation.library._object_to_awkward_array(
-                                uproot.extras.awkward(), self._form, to_append
+                                awkward, self._form, to_append
                             )
                         )
                     else:
                         trimmed.append(to_append)
 
                 elif isinstance(library, uproot.interpretation.library.Pandas):
-
                     if isinstance(to_append, numpy.ndarray):
                         trimmed.append(
                             uproot.interpretation.library._process_array_for_pandas(
@@ -512,6 +520,26 @@ input stream
 
             start = stop
 
+        # If *some* of the baskets are Awkward and *some* are not,
+        # convert the ones that are not, individually.
+        if any(
+            uproot._util.from_module(x, "awkward") for x in basket_arrays.values()
+        ) and isinstance(
+            library,
+            (
+                uproot.interpretation.library.Awkward,
+                uproot.interpretation.library.Pandas,
+            ),
+        ):
+            for k, v in basket_arrays.items():
+                if not uproot._util.from_module(v, "awkward"):
+                    form = json.loads(self.awkward_form(branch.file).to_json())
+                    basket_arrays[k] = (
+                        uproot.interpretation.library._object_to_awkward_array(
+                            awkward, form, v
+                        )
+                    )
+
         if len(basket_arrays) == 0:
             output = numpy.array([], dtype=self.numpy_dtype)
 
@@ -524,7 +552,6 @@ input stream
                 uproot.interpretation.library.Pandas,
             ),
         ):
-            awkward = uproot.extras.awkward()
             output = awkward.concatenate(trimmed, mergebool=False, highlevel=False)
         else:
             output = numpy.concatenate(trimmed)
@@ -721,10 +748,10 @@ class AsStridedObjects(uproot.interpretation.numerical.AsDtype):
                 break
 
         for i in range(first_value_loc, len(members)):
-            member, value = members[i]
+            member, _value = members[i]
             if member is not None and not all_headers_prepended:
                 all_headers_prepended = True
-            if member is None and all_headers_prepended or len(members) == 1:
+            if (member is None and all_headers_prepended) or len(members) == 1:
                 all_headers_prepended = False
                 del members[i]
 
@@ -790,7 +817,6 @@ class AsStridedObjects(uproot.interpretation.numerical.AsDtype):
         context = self._make_context(
             context, index_format, header, tobject_header, breadcrumbs
         )
-        awkward = uproot.extras.awkward()
         cname = uproot.model.classname_decode(self._model.__name__)[0]
         form = _strided_awkward_form(awkward, cname, self._members, file, context)
         for dim in reversed(self.inner_shape):

@@ -3,6 +3,7 @@
 """
 This module versioned model of ``TTime``.
 """
+
 from __future__ import annotations
 
 import struct

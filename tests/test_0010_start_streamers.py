@@ -11,8 +11,7 @@ import uproot
 
 from_ROOT = {}
 
-from_ROOT["TH1F"] = json.loads(
-    r"""{
+from_ROOT["TH1F"] = json.loads(r"""{
   "_typename" : "TStreamerInfo",
   "fUniqueID" : 0,
   "fBits" : 0,
@@ -51,11 +50,9 @@ from_ROOT["TH1F"] = json.loads(
       "fBaseVersion" : 1
     }]
   }
-}"""
-)
+}""")
 
-from_ROOT["TH1"] = json.loads(
-    r"""{
+from_ROOT["TH1"] = json.loads(r"""{
   "_typename" : "TStreamerInfo",
   "fUniqueID" : 0,
   "fBits" : 0,
@@ -375,11 +372,9 @@ from_ROOT["TH1"] = json.loads(
       "fTypeName" : "TH1::EBinErrorOpt"
     }]
   }
-}"""
-)
+}""")
 
-from_ROOT["TNamed"] = json.loads(
-    r"""{
+from_ROOT["TNamed"] = json.loads(r"""{
   "_typename" : "TStreamerInfo",
   "fUniqueID" : 0,
   "fBits" : 0,
@@ -429,11 +424,9 @@ from_ROOT["TNamed"] = json.loads(
       "fTypeName" : "TString"
     }]
   }
-}"""
-)
+}""")
 
-from_ROOT["TObject"] = json.loads(
-    r"""{
+from_ROOT["TObject"] = json.loads(r"""{
   "_typename" : "TStreamerInfo",
   "fUniqueID" : 0,
   "fBits" : 0,
@@ -470,11 +463,9 @@ from_ROOT["TObject"] = json.loads(
       "fTypeName" : "unsigned int"
     }]
   }
-}"""
-)
+}""")
 
-from_ROOT["TAttLine"] = json.loads(
-    r"""{
+from_ROOT["TAttLine"] = json.loads(r"""{
   "_typename" : "TStreamerInfo",
   "fUniqueID" : 0,
   "fBits" : 0,
@@ -523,11 +514,9 @@ from_ROOT["TAttLine"] = json.loads(
       "fTypeName" : "short"
     }]
   }
-}"""
-)
+}""")
 
-from_ROOT["TAttFill"] = json.loads(
-    r"""{
+from_ROOT["TAttFill"] = json.loads(r"""{
   "_typename" : "TStreamerInfo",
   "fUniqueID" : 0,
   "fBits" : 0,
@@ -564,11 +553,9 @@ from_ROOT["TAttFill"] = json.loads(
       "fTypeName" : "short"
     }]
   }
-}"""
-)
+}""")
 
-from_ROOT["TAttMarker"] = json.loads(
-    r"""{
+from_ROOT["TAttMarker"] = json.loads(r"""{
   "_typename" : "TStreamerInfo",
   "fUniqueID" : 0,
   "fBits" : 0,
@@ -617,11 +604,9 @@ from_ROOT["TAttMarker"] = json.loads(
       "fTypeName" : "float"
     }]
   }
-}"""
-)
+}""")
 
-from_ROOT["TAxis"] = json.loads(
-    r"""{
+from_ROOT["TAxis"] = json.loads(r"""{
   "_typename" : "TStreamerInfo",
   "fUniqueID" : 0,
   "fBits" : 0,
@@ -792,11 +777,9 @@ from_ROOT["TAxis"] = json.loads(
       "fTypeName" : "TList*"
     }]
   }
-}"""
-)
+}""")
 
-from_ROOT["TAttAxis"] = json.loads(
-    r"""{
+from_ROOT["TAttAxis"] = json.loads(r"""{
   "_typename" : "TStreamerInfo",
   "fUniqueID" : 0,
   "fBits" : 0,
@@ -941,11 +924,9 @@ from_ROOT["TAttAxis"] = json.loads(
       "fTypeName" : "short"
     }]
   }
-}"""
-)
+}""")
 
-from_ROOT["THashList"] = json.loads(
-    r"""{
+from_ROOT["THashList"] = json.loads(r"""{
   "_typename" : "TStreamerInfo",
   "fUniqueID" : 0,
   "fBits" : 0,
@@ -971,11 +952,9 @@ from_ROOT["THashList"] = json.loads(
       "fBaseVersion" : 5
     }]
   }
-}"""
-)
+}""")
 
-from_ROOT["TList"] = json.loads(
-    r"""{
+from_ROOT["TList"] = json.loads(r"""{
   "_typename" : "TStreamerInfo",
   "fUniqueID" : 0,
   "fBits" : 0,
@@ -1001,11 +980,9 @@ from_ROOT["TList"] = json.loads(
       "fBaseVersion" : 0
     }]
   }
-}"""
-)
+}""")
 
-from_ROOT["TSeqCollection"] = json.loads(
-    r"""{
+from_ROOT["TSeqCollection"] = json.loads(r"""{
   "_typename" : "TStreamerInfo",
   "fUniqueID" : 0,
   "fBits" : 0,
@@ -1031,11 +1008,9 @@ from_ROOT["TSeqCollection"] = json.loads(
       "fBaseVersion" : 3
     }]
   }
-}"""
-)
+}""")
 
-from_ROOT["TCollection"] = json.loads(
-    r"""{
+from_ROOT["TCollection"] = json.loads(r"""{
   "_typename" : "TStreamerInfo",
   "fUniqueID" : 0,
   "fBits" : 0,
@@ -1085,11 +1060,9 @@ from_ROOT["TCollection"] = json.loads(
       "fTypeName" : "int"
     }]
   }
-}"""
-)
+}""")
 
-from_ROOT["TString"] = json.loads(
-    r"""{
+from_ROOT["TString"] = json.loads(r"""{
   "_typename" : "TStreamerInfo",
   "fUniqueID" : 0,
   "fBits" : 0,
@@ -1102,8 +1075,7 @@ from_ROOT["TString"] = json.loads(
     "name" : "TObjArray",
     "arr" : []
   }
-}"""
-)
+}""")
 
 
 def drop_fbits(x):

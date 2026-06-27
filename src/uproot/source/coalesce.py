@@ -6,9 +6,9 @@ Inspired in part by https://github.com/cms-sw/cmssw/blob/master/IOPool/TFileAdap
 from __future__ import annotations
 
 import queue
+from collections.abc import Callable
 from concurrent.futures import Future
 from dataclasses import dataclass
-from typing import Callable
 
 import uproot.source.chunk
 
@@ -33,6 +33,9 @@ class SliceFuture:
         self._parent.add_done_callback(callback)
 
     def result(self, timeout=None):
+        if uproot._util.wasm:
+            # Pyodide futures don't support timeout
+            return self._parent.result()[self._s]
         return self._parent.result(timeout=timeout)[self._s]
 
 
@@ -46,6 +49,7 @@ class RangeRequest:
 @dataclass
 class Cluster:
     ranges: list[RangeRequest]
+    _stop: int | None = None
 
     @property
     def start(self):
@@ -54,7 +58,13 @@ class Cluster:
 
     @property
     def stop(self):
-        return max(range.stop for range in self.ranges)
+        # Note: in order for this to work one has to use `append` for adding new ranges
+        return self._stop
+
+    def append(self, range):
+        if self._stop is None or range.stop > self._stop:
+            self._stop = range.stop
+        self.ranges.append(range)
 
     def __len__(self):
         return self.stop - self.start
@@ -85,7 +95,7 @@ def _merge_adjacent(ranges: list[RangeRequest], config: CoalesceConfig):
         if cluster.ranges and current_range.start - cluster.stop > config.max_range_gap:
             yield cluster
             cluster = Cluster([])
-        cluster.ranges.append(current_range)
+        cluster.append(current_range)
     if cluster.ranges:
         yield cluster
 
@@ -126,7 +136,13 @@ def coalesce_requests(
 
     def chunkify(req: RangeRequest):
         chunk = uproot.source.chunk.Chunk(source, req.start, req.stop, req.future)
-        req.future.add_done_callback(uproot.source.chunk.notifier(chunk, notifications))
+        if uproot._util.wasm:
+            # Callbacks don't work in pyodide yet, so we call the notifier directly
+            uproot.source.chunk.notifier(chunk, notifications)()
+        else:
+            req.future.add_done_callback(
+                uproot.source.chunk.notifier(chunk, notifications)
+            )
         return chunk
 
     return list(map(chunkify, all_requests))

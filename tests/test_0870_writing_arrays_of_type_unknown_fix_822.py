@@ -15,4 +15,4 @@ def test_writing_ak_arrays_of_type_unknown(tmp_path):
     tree = {"branch": ak_array}
 
     with uproot.recreate(filename) as file:
-        file["test"] = tree
+        file.mktree("test", tree)

@@ -9,6 +9,7 @@ The :doc:`uproot.writing.writable` submodule defines the entry-points for user
 interaction: :doc:`uproot.writing.writable.create`, :doc:`uproot.writing.writable.recreate`,
 and :doc:`uproot.writing.writable.update`.
 """
+
 from __future__ import annotations
 
 from uproot.writing._dask_write import dask_write
@@ -35,6 +36,13 @@ from uproot.writing.writable import (
 )
 
 __all__ = [
+    "WritableBranch",
+    "WritableDirectory",
+    "WritableFile",
+    "WritableTree",
+    "create",
+    "dask_write",
+    "recreate",
     "to_TArray",
     "to_TH1x",
     "to_TH2x",
@@ -45,12 +53,5 @@ __all__ = [
     "to_TProfile2D",
     "to_TProfile3D",
     "to_writable",
-    "WritableDirectory",
-    "WritableFile",
-    "WritableTree",
-    "WritableBranch",
-    "create",
-    "recreate",
     "update",
-    "dask_write",
 ]

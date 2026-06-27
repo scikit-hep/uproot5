@@ -16,7 +16,7 @@ def test(tmp_path):
     filename = os.path.join(tmp_path, "whatever.root")
 
     with uproot.recreate(filename) as f:
-        f["t"] = {"b": np.array([1, 2, 3], np.int64)}
+        f.mktree("t", {"b": np.array([1, 2, 3], np.int64)})
 
     with uproot.open(filename) as f:
         output = io.StringIO()

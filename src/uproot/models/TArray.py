@@ -3,11 +3,13 @@
 """
 This module defines versionless models for ``TArray`` and its subclasses.
 """
+
 from __future__ import annotations
 
 import struct
 from collections.abc import Sequence
 
+import awkward
 import numpy
 
 import uproot
@@ -75,7 +77,6 @@ in file {self.file.file_path}"""
 
     @classmethod
     def awkward_form(cls, file, context):
-        awkward = uproot.extras.awkward()
         return awkward.forms.ListOffsetForm(
             context["index_format"],
             uproot._util.awkward_form(cls.dtype, file, context),

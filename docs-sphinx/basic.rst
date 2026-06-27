@@ -919,6 +919,76 @@ Like the caches, the default values for the last two are global ``uproot.decompr
 
 If, however, you're working in an environment that puts limits on parallel processing (e.g. the CMS LPC or informal university computers), you may want to modify the defaults, either locally through a ``decompression_executor`` or ``interpretation_executor`` function parameter, or globally by replacing the global object.
 
+Reading RNTuples
+----------------
+
+TTree has been the default format to store large datasets in ROOT files for decades. However, it has slowly become outdated and is not optimized for modern systems. This is where the RNTuple format comes in. It is a modern serialization format that is designed with modern systems in mind and is planned to replace TTree in the coming years. `Version 1.0.0.0 <https://cds.cern.ch/record/2923186>`__ is out and will be supported "forever".
+
+Starting in Uproot v5.7.0, RNTuple is the default format for writing. When you use the dict-like syntax to write data to a file, Uproot will create an RNTuple instead of a TTree.
+
+RNTuples are deliberately simpler than TTrees by design. For the first time, there’s an official specification, making it much easier for third-party I/O tools like Uproot to support it. Uproot already supports reading the full RNTuple specification, meaning that you can read any RNTuple you find in the wild. It also already supports writing a large part of the specification, and intends to support as much as it makes sense for data analysis.
+
+To ease the transition into RNTuples, we are designing the interface to closely match the existing TTree interface. Many of the functionality explained in the previous subsections works in the same way. However, there the terminology is slightly different (e.g. "branch" becomes "field") and arguments may vary slightly, accordingly.
+
+Let's look at a few examples that illustrate how the RNTuple interface works.
+
+When inspecting a file, will have a clear indication that it contains an RNTuple.
+
+.. code-block:: python
+
+    >>> file = uproot.open("https://raw.githubusercontent.com/scikit-hep/scikit-hep-testdata/refs/heads/main/src/skhep_testdata/data/ntpl001_staff_rntuple_v1-0-0-0.root")
+    >>> file.classnames()
+    {'Staff;1': 'ROOT::RNTuple'}
+
+Inspecting the contents of an RNTuple is done in the same way.
+
+.. code-block:: python
+
+    >>> rntuple = uproot.open("https://raw.githubusercontent.com/scikit-hep/scikit-hep-testdata/refs/heads/main/src/skhep_testdata/data/ntpl001_staff_rntuple_v1-0-0-0.root:Staff")
+    >>> rntuple.keys()
+    ['Category', 'Flag', 'Age', 'Service', 'Children', 'Grade', 'Step', 'Hrweek', 'Cost', 'Division', 'Nation']
+    >>> rntuple.typenames()
+    {'Category': 'std::int32_t', 'Flag': 'std::uint32_t', 'Age': 'std::int32_t', 'Service': 'std::int32_t', 'Children': 'std::int32_t', 'Grade': 'std::int32_t', 'Step': 'std::int32_t',
+     'Hrweek': 'std::int32_t', 'Cost': 'std::int32_t', 'Division': 'std::string', 'Nation': 'std::string'}
+
+Reading the content of a single or multiple fields into an array also works very similarly.
+
+.. code-block:: python
+
+    >>> rntuple = uproot.open("https://raw.githubusercontent.com/scikit-hep/scikit-hep-testdata/refs/heads/main/src/skhep_testdata/data/ntpl001_staff_rntuple_v1-0-0-0.root:Staff")
+    >>> rntuple["Age"].array()
+    <Array [58, 63, 56, 61, 52, 60, ..., 51, 25, 35, 28, 43] type='3354 * int32'>
+    >>> rntuple.arrays(["Age", "Cost", "Nation"])
+    <Array [{Age: 58, Cost: 11975, ...}, ...] type='3354 * {Age: int32, Cost: i...'>
+    >>> rntuple.arrays(filter_field=lambda f: f.field_id % 2 == 1)
+    <Array [{Flag: 15, Service: 28, ...}, ...] type='3354 * {Flag: uint32, Serv...'>
+
+Note that for the last input we used the ``filter_field`` argument instead of ``filter_branch`` since the latter terminology doesn't apply to RNTuples.
+
+There are still significant work required to achieve feature-parity with TTrees, but all the basic functionality is already implemented. We will continue to make the transition to RNTuples as seamless as possible.
+
+GPU reading with CUDA support
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Uproot supports GPU-based reading and processing of payload data on CUDA-capable GPUs for CUDA major versions 12 and 13. On systems that support GPU Direct Storage (GDS), raw payload data can be transferred directly from storage into GPU memory without a CPU bounce buffer. File metadata is still read by the CPU in both cases. GPU reading over HTTP is not supported.
+
+For GPU reading of RNTuple data, the values ``backend="cuda"`` and ``interpreter="gpu"`` must be passed to ``RNTuple.arrays()``.
+
+.. code-block:: python
+
+    >>> rntuple = uproot.open("ntpl001_staff_rntuple_v1-0-0-0.root:Staff")
+    >>> rntuple["Age"].array(backend="cuda", interpreter="gpu")
+    <Array [58, 63, 56, 61, 52, 60, ..., 51, 25, 35, 28, 43] type='3354 * int32'>
+    >>> rntuple.arrays(["Age", "Cost", "Nation"], backend="cuda", interpreter="gpu")
+    <Array [{Age: 58, Cost: 11975, ...}, ...] type='3354 * {Age: int32, Cost: i...'>
+
+Uproot uses the ``kvikio`` library to perform GPU-efficient I/O using CuFile and POSIX APIs. ``kvikio`` provides runtime settings that can be configured, documented `here <https://docs.rapids.ai/api/kvikio/stable/runtime_settings/#>`__.
+
+By default, ``KVIKIO_NTHREADS`` is 1. Increasing this value can improve I/O performance by allowing multiple threads to perform I/O concurrently (up to a system-dependent limit).
+
+.. code-block:: python
+
+    >>> kvikio.defaults.set({"num_threads": 5})
+
 Opening a file for writing
 --------------------------
 
@@ -1076,11 +1146,15 @@ Writing TTrees to a file
 
 TTrees are a special type of object, just as TDirectories are special: data can be cumulatively added to them.
 
-However, :doc:`uproot.writing.writable.WritableTree` objects can be created in the same way as static objects, by assigning TTree-like data to a name in a directory.
+:doc:`uproot.writing.writable.WritableTree` objects can be created using the :ref:`uproot.writing.writable.WritableDirectory.mktree` method that Uproot provides for TDirectories.
+
+.. note::
+
+    Starting in v5.7.0, Uproot uses RNTuples as the default format for writing data when using the dict-like assignment syntax (e.g., ``file["my_data"] = {"my_array": np.arange(1000)}``). If you specifically want to write a TTree, you should use the :ref:`uproot.writing.writable.WritableDirectory.mktree` method.
 
 .. code-block:: python
 
-    >>> file["tree1"] = {"branch1": np.arange(1000), "branch2": np.arange(1000)*1.1}
+    >>> file.mktree("tree1", {"branch1": np.arange(1000), "branch2": np.arange(1000)*1.1})
     >>> file["tree1"]
     <WritableTree '/tree1' at 0x7f2ede193e20>
     >>> file["tree1"].show()
@@ -1110,7 +1184,7 @@ Python dicts of equal-length NumPy arrays are TTree-like, as are Pandas DataFram
     999  999  1098.9
 
     [1000 rows x 2 columns]
-    >>> file["tree2"] = df
+    >>> file.mktree("tree2", df)
     >>> file["tree2"]
     <WritableTree '/tree2' at 0x7f2e7c516d90>
     >>> file["tree2"].show()
@@ -1125,7 +1199,7 @@ If the arrays are Awkward Arrays, they can contain a variable number of values p
 .. code-block:: python
 
     >>> import awkward as ak
-    >>> file["tree3"] = {"branch": ak.Array([[1.1, 2.2, 3.3], [], [4.4, 5.5]])}
+    >>> file.mktree("tree3", {"branch": ak.Array([[1.1, 2.2, 3.3], [], [4.4, 5.5]])})
     >>> file["tree3"]
     <WritableTree '/tree3' at 0x7f2e7c516dc0>
     >>> file["tree3"].show()
@@ -1138,7 +1212,7 @@ And Awkward record arrays, constructed with `ak.zip <https://awkward-array.readt
 
 .. code-block:: python
 
-    >>> file["tree4"] = {"Muon": ak.zip({"pt": muon_pt, "eta": muon_eta, "phi": muon_phi})}
+    >>> file.mktree("tree4", {"Muon": ak.zip({"pt": muon_pt, "eta": muon_eta, "phi": muon_phi})})
     >>> file["tree4"]
     <WritableTree '/tree4' at 0x7fee9e3ebc40>
     >>> file["tree4"].show()
@@ -1251,3 +1325,88 @@ In addition, each TBranch of the TTree can have a different compression setting:
     {'x': None, 'ny': None, 'y': ZLIB(4)}
 
 Changes to the compression setting only affect TBaskets written after the change (with :ref:`uproot.writing.writable.WritableTree.extend`; see above).
+
+Writing RNTuples
+----------------
+
+Just like with reading, writing RNTuples is similar to writing TTree objects. Since RNTuples are much simpler, we aim to be able to write almost any RNTuple that you might want.
+
+RNTuples are the default format for writing data starting in Uproot v5.7.0. You can write an RNTuple by using a dict-like syntax:
+
+.. code-block:: python
+
+    >>> file = uproot.recreate("example.root")
+    >>> data = {"my_int": [1,2], "my_vector": [[1,2], [3,4,5]]}
+    >>> file["my_rntuple"] = data
+    >>> file["my_rntuple"].extend(data) # Can be extended, just like TTrees
+
+You can also use the :ref:`uproot.writing.writable.WritableDirectory.mkrntuple` method for more explicit RNTuple creation, and to have the ability to initialize an empty RNTuple from a type specification dictionary or an Awkward form.
+
+.. code-block:: python
+
+    >>> file.mkrntuple("ntuple", {"x": "f4", "y": "var * int64"})
+    <WritableNTuple '/ntuple' at 0x000131ff30e0>
+
+Using your own interpretation
+--------------------------------
+
+Interpretations manages how data are read from files and converted into arrays. There are many built-in interpretations, but you can also write your own. This is useful if you want to read your custom classes that are not supported by Uproot.
+
+To write your own interpretation, you need to subclass :doc:`uproot.interpretation.custom.CustomInterpretation` and implement some methods:
+
+.. code-block:: python
+
+    import uproot
+    from uproot.interpretation.custom import CustomInterpretation
+
+    class MyCustomInterpretation(CustomInterpretation):
+        def __init__(
+            self,
+            branch: uproot.behaviors.TBranch.TBranch,
+            context: dict,
+            simplify: bool,
+        ):
+            super().__init__(branch, context, simplify)
+            # Initialize your interpretation here
+
+        @classmethod
+        def match_branch(
+            self,
+            branch: uproot.behaviors.TBranch.TBranch,
+            context: dict,
+            simplify: bool,
+        ) -> bool:
+            # Return True if this interpretation can handle the branch
+            # You can also declare this method as a class method
+
+        def basket_array(
+            self,
+            data,
+            byte_offsets,
+            basket,
+            branch,
+            context,
+            cursor_offset,
+            library,
+            interp_options,
+        ):
+            # Convert the data from the basket into an array
+            # `data` is the raw binary data from the basket as `np.ndarray[np.uint8]`,
+            # `byte_offsets` is a `uint32` numpy array with the byte offsets of each entry.
+
+The ``match_branch`` method tells Uproot whether this interpretation can handle a specific branch. It is called for each branch in the file, and if it returns ``True``, Uproot will instantiate this interpretation with the same arguments passed to ``match_branch``.
+
+The ``basket_array`` method is where you convert the raw binary data from the basket into an array. The ``data`` argument is a NumPy array of type ``np.uint8``, which contains the raw bytes of the basket. The ``byte_offsets`` argument is a NumPy array of type ``np.uint32``, which contains the byte offsets of each entry in ``data``. You should return the converted data in this method.
+
+.. note::
+
+    If ``basket_array`` does not return an ``awkward``, ``numpy`` array or ``pandas`` dataframe, you need to reimplement the ``final_array`` method to concatenate the results.
+
+To use your custom interpretation, register it with Uproot like:
+
+.. code-block:: python
+
+    import uproot
+    uproot.register_interpretation(MyCustomInterpretation)
+
+Then you can use it to read data as described in the previous sections.

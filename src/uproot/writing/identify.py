@@ -15,16 +15,21 @@ but not adding it to any :doc:`uproot.writing.writable.WritableDirectory`.
 The (many) other functions in this module construct writable :doc:`uproot.model.Model`
 objects from Python builtins and other writable models.
 """
+
 from __future__ import annotations
 
 from collections.abc import Mapping
 
+import awkward
 import numpy
 
 import uproot.compression
 import uproot.extras
 import uproot.pyroot
-import uproot.writing._cascadetree
+import uproot.writing
+import uproot.writing._cascade
+import uproot.writing._cascadentuple
+import uproot.writing.writable
 
 
 def add_to_directory(obj, name, directory, streamers):
@@ -48,109 +53,14 @@ def add_to_directory(obj, name, directory, streamers):
 
     Raises ``TypeError`` if ``obj`` is not recognized as writable data.
     """
-    is_ttree = False
-
-    if uproot._util.from_module(obj, "pandas"):
-        import pandas
-
-        if isinstance(
-            obj, pandas.DataFrame
-        ) and uproot._util.pandas_has_attr_is_numeric(pandas)(obj.index):
-            obj = uproot.writing._cascadetree.dataframe_to_dict(obj)
-
-    if uproot._util.from_module(obj, "awkward"):
-        import awkward
-
-        if isinstance(obj, awkward.Array):
-            obj = {"": obj}
-
-    if isinstance(obj, numpy.ndarray) and obj.dtype.fields is not None:
-        obj = uproot.writing._cascadetree.recarray_to_dict(obj)
+    obj = uproot.writing._cascadentuple._regularize_input_type_to_awkward(obj)
 
     if isinstance(obj, Mapping) and all(isinstance(x, str) for x in obj):
-        data = {}
-        metadata = {}
-
-        for branch_name, branch_array in obj.items():
-            if uproot._util.from_module(branch_array, "pandas"):
-                import pandas
-
-                if isinstance(branch_array, pandas.DataFrame):
-                    branch_array = uproot.writing._cascadetree.dataframe_to_dict(  # noqa: PLW2901 (overwriting branch_array)
-                        branch_array
-                    )
-
-            if (
-                isinstance(branch_array, numpy.ndarray)
-                and branch_array.dtype.fields is not None
-            ):
-                branch_array = uproot.writing._cascadetree.recarray_to_dict(  # noqa: PLW2901 (overwriting branch_array)
-                    branch_array
-                )
-
-            if isinstance(branch_array, Mapping) and all(
-                isinstance(x, str) for x in branch_array
-            ):
-                datum = {}
-                metadatum = {}
-                for kk, vv in branch_array.items():
-                    try:
-                        vv = (  # noqa: PLW2901 (overwriting vv)
-                            uproot._util.ensure_numpy(vv)
-                        )
-                    except TypeError:
-                        raise TypeError(
-                            f"unrecognizable array type {type(branch_array)} associated with {branch_name!r}"
-                        ) from None
-                    datum[kk] = vv
-                    branch_dtype = vv.dtype
-                    branch_shape = vv.shape[1:]
-                    if branch_shape != ():
-                        branch_dtype = numpy.dtype((branch_dtype, branch_shape))
-                    metadatum[kk] = branch_dtype
-
-                data[branch_name] = datum
-                metadata[branch_name] = metadatum
-
-            else:
-                if uproot._util.from_module(branch_array, "awkward"):
-                    data[branch_name] = branch_array
-                    metadata[branch_name] = branch_array.type
-
-                else:
-                    try:
-                        branch_array = uproot._util.ensure_numpy(  # noqa: PLW2901 (overwriting branch_array)
-                            branch_array
-                        )
-                    except TypeError:
-                        awkward = uproot.extras.awkward()
-                        try:
-                            branch_array = awkward.from_iter(  # noqa: PLW2901 (overwriting branch_array)
-                                branch_array
-                            )
-                        except Exception:
-                            raise TypeError(
-                                f"unrecognizable array type {type(branch_array)} associated with {branch_name!r}"
-                            ) from None
-                        else:
-                            data[branch_name] = branch_array
-                            metadata[branch_name] = awkward.type(branch_array)
-
-                    else:
-                        data[branch_name] = branch_array
-                        branch_dtype = branch_array.dtype
-                        branch_shape = branch_array.shape[1:]
-                        if branch_shape != ():
-                            branch_dtype = numpy.dtype((branch_dtype, branch_shape))
-                        metadata[branch_name] = branch_dtype
-
-        else:
-            is_ttree = True
-
-    if is_ttree:
-        tree = directory.mktree(name, metadata)
-        tree.extend(data)
-
+        metadata, data = uproot.writing.writable._unpack_metadata_and_arrays(obj)
+        rntuple = directory.mkrntuple(name, metadata)
+        rntuple.extend(data)
+    elif isinstance(obj, (awkward.Array, awkward.contents.Content, awkward.forms.Form)):
+        directory.mkrntuple(name, obj)
     else:
         writable = to_writable(obj)
 
@@ -270,7 +180,7 @@ def to_writable(obj):
 
             # and flow=True is different from flow=False (obj actually has flow bins)
             data_noflow = obj.values(flow=False)
-            for flow, noflow in zip(data.shape, data_noflow.shape):
+            for flow, noflow in zip(data.shape, data_noflow.shape, strict=True):
                 if flow != noflow + 2:
                     raise TypeError
 
@@ -338,31 +248,118 @@ def to_writable(obj):
                 fXbins=_fXbins_maybe_regular(axis, boost_histogram),
                 fLabels=_fLabels_maybe_categorical(axis, boost_histogram),
             )
-            for axis, default_name in zip(obj.axes, ["xaxis", "yaxis", "zaxis"])
+            for axis, default_name in zip(
+                obj.axes, ["xaxis", "yaxis", "zaxis"], strict=False
+            )
         ]
 
         # make TH1, TH2, TH3 types independently
         if len(axes) == 1:
             if obj.kind == "MEAN":
                 if hasattr(obj, "storage_type"):
-                    if "fSumw2" in obj.metadata.keys():
-                        fSumw2 = obj.metadata["fSumw2"]
+                    obj_sum = obj.sum()
+                    _view_flow = obj.view(flow=True)
+
+                    if obj.storage_type is boost_histogram.storage.WeightedMean:
+                        _sumw = numpy.asarray(
+                            _view_flow["sum_of_weights"], dtype=numpy.float64
+                        )
+                        _sumw2 = numpy.asarray(
+                            _view_flow["sum_of_weights_squared"], dtype=numpy.float64
+                        )
+                        _value = numpy.asarray(_view_flow["value"], dtype=numpy.float64)
+                        _sum_sq_dev = numpy.asarray(
+                            _view_flow["_sum_of_weighted_deltas_squared"],
+                            dtype=numpy.float64,
+                        )
+                        fTsumw = obj_sum["sum_of_weights"]
+                        fTsumw2 = obj_sum["sum_of_weights_squared"]
+                        fTsumwy = obj_sum["value"] * obj_sum["sum_of_weights"]
+                        fTsumwy2 = obj_sum["_sum_of_weighted_deltas_squared"] + (
+                            obj_sum["value"] ** 2 * obj_sum["sum_of_weights"]
+                            if obj_sum["sum_of_weights"] > 0
+                            else 0
+                        )
                     else:
-                        raise ValueError(f"fSumw2 has not been set for {obj}")
+                        _sumw = numpy.asarray(_view_flow["count"], dtype=numpy.float64)
+                        _sumw2 = _sumw  # unweighted: sum(w^2) = sum(1^2) = count
+                        _value = numpy.asarray(_view_flow["value"], dtype=numpy.float64)
+                        _sum_sq_dev = numpy.asarray(
+                            _view_flow["_sum_of_deltas_squared"], dtype=numpy.float64
+                        )
+                        fTsumw = obj_sum["count"]
+                        fTsumw2 = obj_sum["count"]
+                        fTsumwy = obj_sum["value"] * obj_sum["count"]
+                        fTsumwy2 = obj_sum["_sum_of_deltas_squared"] + (
+                            obj_sum["value"] ** 2 * obj_sum["count"]
+                            if obj_sum["count"] > 0
+                            else 0
+                        )
+
+                    # ROOT TProfile convention: fSumw2 = sum(w*y^2) = sum_sq_dev + sum(w)*mean^2
+                    fSumw2 = _sum_sq_dev + _sumw * _value**2
+
+                    fEntries = (
+                        obj.metadata.get("fEntries", fTsumw)
+                        if ("metadata" in obj.__dir__() and obj.metadata is not None)
+                        else fTsumw
+                    )
+
+                    _data = _sumw * _value
+                    _fBinEntries = _sumw
+                    _fBinSumw2 = _sumw2
+
+                    # Categorical axes in boost-histogram do not have underflow.
+                    # ROOT histograms always have underflow (bin 0) AND overflow.
+                    # boost-histogram category axis view already includes overflow if flow=True.
+                    # We prepend a zero to all arrays to align boost-histogram bin 0 with ROOT bin 1.
+                    # We also append a zero for the ROOT overflow bin if needed.
+                    if hasattr(obj.axes[0], "traits") and getattr(
+                        obj.axes[0].traits, "discrete", False
+                    ):
+                        # boost-histogram categorical axis with flow=True has nbins + 1 (data + overflow)
+                        # ROOT expects nbins + 2 (underflow + data + overflow)
+                        _data = numpy.insert(_data, 0, 0)
+                        _fBinEntries = numpy.insert(_fBinEntries, 0, 0)
+                        _fBinSumw2 = numpy.insert(_fBinSumw2, 0, 0)
+                        fSumw2 = numpy.insert(fSumw2, 0, 0)
+
+                        if len(_fBinEntries) == len(obj.axes[0]) + 1:
+                            _data = numpy.append(_data, 0)
+                            _fBinEntries = numpy.append(_fBinEntries, 0)
+                            _fBinSumw2 = numpy.append(_fBinSumw2, 0)
+                            fSumw2 = numpy.append(fSumw2, 0)
+
+                        # Now _fBinEntries is nbins + 2.
+                        # Edges should be nbins + 3 to have nbins + 2 centers.
+                        _edges = numpy.arange(
+                            -1, len(obj.axes[0]) + 2, dtype=numpy.float64
+                        )
+                    else:
+                        # Regular axis: prepend and append a bin width to edges for flow bins.
+                        _edges = obj.axes[0].edges
+                        width = _edges[1] - _edges[0]
+                        _edges = numpy.insert(_edges, 0, _edges[0] - width)
+                        _edges = numpy.append(_edges, _edges[-1] + width)
+
+                    _fTsumw, _fTsumw2, fTsumwx, fTsumwx2 = _root_stats_1d(
+                        _fBinEntries, _edges
+                    )
+
                     return to_TProfile(
                         fName=None,
                         fTitle=title,
-                        data=obj.values(flow=True),
-                        fEntries=obj.size + 1,
-                        fTsumw=obj.sum()["sum_of_weights"],
-                        fTsumw2=obj.sum()["sum_of_weights_squared"],
-                        fTsumwx=0,
-                        fTsumwx2=0,
-                        fTsumwy=0,
-                        fTsumwy2=0,
+                        data=_data,
+                        fEntries=fEntries,
+                        fTsumw=fTsumw,
+                        fTsumw2=fTsumw2,
+                        fTsumwx=fTsumwx,
+                        fTsumwx2=fTsumwx2,
+                        fTsumwy=fTsumwy,
+                        fTsumwy2=fTsumwy2,
                         fSumw2=fSumw2,
-                        fBinEntries=obj.counts(flow=True),
-                        fBinSumw2=numpy.asarray([], numpy.float64),
+                        fBinEntries=_fBinEntries,
+                        fBinSumw2=_fBinSumw2,
                         fXaxis=axes[0],
                     )
                 else:
@@ -493,7 +490,7 @@ def to_writable(obj):
             title = ""
 
         if len(obj) == 2:
-            (entries, edges) = obj
+            entries, edges = obj
 
             with_flow = numpy.empty(len(entries) + 2, dtype=">f8")
             with_flow[1:-1] = entries
@@ -533,7 +530,7 @@ def to_writable(obj):
             )
 
         elif len(obj) == 3:
-            (entries, xedges, yedges) = obj
+            entries, xedges, yedges = obj
 
             fEntries = entries.sum()
             (
@@ -602,7 +599,7 @@ def to_writable(obj):
             )
 
         elif len(obj) == 4:
-            (entries, xedges, yedges, zedges) = obj
+            entries, xedges, yedges, zedges = obj
 
             fEntries = entries.sum()
             (

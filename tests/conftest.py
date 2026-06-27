@@ -44,10 +44,18 @@ def serve_http():
             self._cache_file(self.path)
             return super().do_GET()
 
+    try:
+        # Older skhep_testdata (in Python 3.9 environments)
+        cache_path = skhep_testdata.local_files._cache_path()
+    except AttributeError:
+        # Newer skhep_testdata
+        cache_path = skhep_testdata.data.cache_path()
+
     server = HTTPServer(
         server_address=("localhost", 0),
         RequestHandlerClass=partial(
-            Handler, directory=skhep_testdata.local_files._cache_path()
+            Handler,
+            directory=cache_path,
         ),
     )
     server.server_activate()
@@ -88,6 +96,8 @@ def xrootd_server(tmpdir_factory):
     temp_path = os.path.join(server_dir, "Folder")
     os.mkdir(temp_path)
     xrootd = shutil.which("xrootd")
+    if xrootd is None:
+        pytest.skip("xrootd server executable is not available on PATH")
     proc = subprocess.Popen([xrootd, server_dir])
     time.sleep(2)  # give it some startup
     yield "root://localhost/" + str(temp_path), temp_path

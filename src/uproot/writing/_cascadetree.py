@@ -13,6 +13,7 @@ and sometimes freeing data.
 
 See :doc:`uproot.writing._cascade` for a general overview of the cascading writer concept.
 """
+
 from __future__ import annotations
 
 import datetime
@@ -21,6 +22,7 @@ import struct
 import warnings
 from collections.abc import Mapping
 
+import awkward
 import numpy
 
 import uproot.compression
@@ -128,12 +130,6 @@ class Tree:
                     branch_dtype = numpy.dtype(branch_type)
 
                 except (TypeError, ValueError) as err:
-                    try:
-                        awkward = uproot.extras.awkward()
-                    except ModuleNotFoundError as err:
-                        raise TypeError(
-                            f"not a NumPy dtype and 'awkward' cannot be imported: {branch_type!r}"
-                        ) from err
                     if isinstance(
                         branch_type,
                         (awkward.types.Type, awkward.types.ArrayType),
@@ -231,7 +227,7 @@ class Tree:
                                 {"kind": "record", "name": branch_name, "keys": keys}
                             )
 
-                            for key, cont in zip(keys, contents):
+                            for key, cont in zip(keys, contents, strict=True):
                                 subname = self._field_name(branch_name, key)
                                 dtype = self._branch_ak_to_np(cont)
                                 if dtype is None:
@@ -277,7 +273,7 @@ class Tree:
                             {"kind": "record", "name": branch_name, "keys": keys}
                         )
 
-                        for key, content in zip(keys, contents):
+                        for key, content in zip(keys, contents, strict=True):
                             subname = self._field_name(branch_name, key)
                             dtype = self._branch_ak_to_np(content)
                             if dtype is None:
@@ -463,10 +459,11 @@ class Tree:
         # that's because completely a full fBasketEntry has nowhere to put the
         # number of entries in the last basket (it's a fencepost principle thing),
         # forcing ROOT and Uproot to look it up from the basket header.
+
         if self._num_baskets >= self._basket_capacity - 1:
             self._basket_capacity = max(
                 self._basket_capacity + 1,
-                int(math.ceil(self._basket_capacity * self._resize_factor)),
+                math.ceil(self._basket_capacity * self._resize_factor),
             )
 
             for datum in self._branch_data:
@@ -512,25 +509,17 @@ class Tree:
             ) and uproot._util.pandas_has_attr_is_numeric(pandas)(data.index):
                 provided = dataframe_to_dict(data)
 
-        if uproot._util.from_module(data, "awkward"):
-            try:
-                awkward = uproot.extras.awkward()
-            except ModuleNotFoundError as err:
-                raise TypeError(
-                    f"an Awkward Array was provided, but 'awkward' cannot be imported: {data!r}"
-                ) from err
-
-            if isinstance(data, awkward.Array):
-                if data.ndim > 1 and not data.layout.purelist_isregular:
-                    provided = {
-                        self._counter_name(""): numpy.asarray(
-                            awkward.num(data, axis=1), dtype=">u4"
-                        )
-                    }
-                else:
-                    provided = {}
-                for k, v in zip(awkward.fields(data), awkward.unzip(data)):
-                    provided[k] = v
+        if isinstance(data, awkward.Array):
+            if data.ndim > 1 and not data.layout.purelist_isregular:
+                provided = {
+                    self._counter_name(""): numpy.asarray(
+                        awkward.num(data, axis=1), dtype=">u4"
+                    )
+                }
+            else:
+                provided = {}
+            for k, v in zip(awkward.fields(data), awkward.unzip(data), strict=True):
+                provided[k] = v
 
         if isinstance(data, numpy.ndarray) and data.dtype.fields is not None:
             provided = recarray_to_dict(data)
@@ -552,48 +541,39 @@ class Tree:
                         try:
                             with warnings.catch_warnings():
                                 warnings.simplefilter(
-                                    "error", category=numpy.VisibleDeprecationWarning
+                                    "error",
+                                    category=getattr(
+                                        numpy, "exceptions", numpy
+                                    ).VisibleDeprecationWarning,
                                 )
                                 v = numpy.array(v)  # noqa: PLW2901 (overwriting v)
                             if v.dtype == numpy.dtype("O"):
                                 raise Exception
-                        except (numpy.VisibleDeprecationWarning, Exception):
-                            try:
-                                awkward = uproot.extras.awkward()
-                            except ModuleNotFoundError as err:
-                                raise TypeError(
-                                    f"NumPy dtype would be dtype('O'), so we won't use NumPy, but 'awkward' cannot be imported: {k}: {type(v)}"
-                                ) from err
+                        except (
+                            getattr(
+                                numpy, "exceptions", numpy
+                            ).VisibleDeprecationWarning,
+                            Exception,
+                        ):
                             v = awkward.from_iter(v)  # noqa: PLW2901 (overwriting v)
 
                     if getattr(v, "dtype", None) == numpy.dtype("O"):
-                        try:
-                            awkward = uproot.extras.awkward()
-                        except ModuleNotFoundError as err:
-                            raise TypeError(
-                                f"NumPy dtype is dtype('O'), so we won't use NumPy, but 'awkward' cannot be imported: {k}: {type(v)}"
-                            ) from err
                         v = awkward.from_iter(v)  # noqa: PLW2901 (overwriting v)
 
-                if uproot._util.from_module(v, "awkward"):
-                    try:
-                        awkward = uproot.extras.awkward()
-                    except ModuleNotFoundError as err:
-                        raise TypeError(
-                            f"an Awkward Array was provided, but 'awkward' cannot be imported: {k}: {type(v)}"
-                        ) from err
-                    if (
-                        isinstance(v, awkward.Array)
-                        and v.ndim > 1
-                        and not v.layout.purelist_isregular
+                if (
+                    isinstance(v, awkward.Array)
+                    and v.ndim > 1
+                    and not v.layout.purelist_isregular
+                ):
+                    kk = self._counter_name(k)
+                    vv = numpy.asarray(awkward.num(v, axis=1), dtype=">u4")
+                    if kk in provided and not numpy.array_equal(
+                        vv, awkward.to_numpy(provided[kk])
                     ):
-                        kk = self._counter_name(k)
-                        vv = numpy.asarray(awkward.num(v, axis=1), dtype=">u4")
-                        if kk in provided and not numpy.array_equal(vv, provided[kk]):
-                            raise ValueError(
-                                f"branch {kk!r} provided both as an explicit array and generated as a counter, and they disagree"
-                            )
-                        provided[kk] = vv
+                        raise ValueError(
+                            f"branch {kk!r} provided both as an explicit array and generated as a counter, and they disagree"
+                        )
+                    provided[kk] = vv
 
                 if k in provided and not numpy.array_equal(v, provided[k]):
                     raise ValueError(
@@ -667,11 +647,18 @@ class Tree:
 
             if datum["counter"] is None:
                 if datum["dtype"] == ">U0":
-                    lengths = numpy.asarray(awkward.num(branch_array.layout))
+                    layout = awkward.to_layout(branch_array)
+                    if isinstance(
+                        layout,
+                        (awkward.contents.ListArray, awkward.contents.RegularArray),
+                    ):
+                        layout = layout.to_ListOffsetArray64()
+
+                    lengths = numpy.asarray(awkward.num(layout))
                     which_big = lengths >= 255
 
                     lengths_extension_offsets = numpy.empty(
-                        len(branch_array.layout) + 1, numpy.int64
+                        len(layout) + 1, numpy.int64
                     )
                     lengths_extension_offsets[0] = 0
                     numpy.cumsum(which_big * 4, out=lengths_extension_offsets[1:])
@@ -689,7 +676,7 @@ class Tree:
                         [
                             lengths.reshape(-1, 1).astype("u1"),
                             lengths_extension,
-                            awkward.without_parameters(branch_array.layout),
+                            awkward.without_parameters(layout),
                         ],
                         axis=1,
                     )
@@ -697,8 +684,8 @@ class Tree:
                     big_endian = numpy.asarray(awkward.flatten(leafc_data_awkward))
                     big_endian_offsets = (
                         lengths_extension_offsets
-                        + numpy.asarray(branch_array.layout.offsets)
-                        + numpy.arange(len(branch_array.layout.offsets))
+                        + numpy.asarray(layout.offsets)
+                        + numpy.arange(len(layout.offsets))
                     ).astype(">i4", copy=True)
                     tofill.append(
                         (
@@ -720,18 +707,12 @@ class Tree:
                             )
                         )
                     tofill.append((branch_name, datum["compression"], big_endian, None))
-                    if datum["kind"] == "counter":
+                    if datum["kind"] == "counter" and big_endian.size > 0:
                         datum["tleaf_maximum_value"] = max(
                             big_endian.max(), datum["tleaf_maximum_value"]
                         )
 
             else:
-                try:
-                    awkward = uproot.extras.awkward()
-                except ModuleNotFoundError as err:
-                    raise TypeError(
-                        f"a jagged array was provided (possibly as an iterable), but 'awkward' cannot be imported: {branch_name}: {branch_array!r}"
-                    ) from err
                 layout = branch_array.layout
                 while not isinstance(layout, awkward.contents.ListOffsetArray):
                     if isinstance(layout, awkward.contents.IndexedArray):
@@ -1082,22 +1063,20 @@ class Tree:
             out.append(uproot._util.tobytes(leaf_header))
             if len(leaf_name) < 255:
                 out.append(
-                    struct.pack(">B%ds" % len(leaf_name), len(leaf_name), leaf_name)
+                    struct.pack(f">B{len(leaf_name)}s", len(leaf_name), leaf_name)
                 )
             else:
                 out.append(
-                    struct.pack(
-                        ">BI%ds" % len(leaf_name), 255, len(leaf_name), leaf_name
-                    )
+                    struct.pack(f">BI{len(leaf_name)}s", 255, len(leaf_name), leaf_name)
                 )
             if len(leaf_title) < 255:
                 out.append(
-                    struct.pack(">B%ds" % len(leaf_title), len(leaf_title), leaf_title)
+                    struct.pack(f">B{len(leaf_title)}s", len(leaf_title), leaf_title)
                 )
             else:
                 out.append(
                     struct.pack(
-                        ">BI%ds" % len(leaf_title), 255, len(leaf_title), leaf_title
+                        f">BI{len(leaf_title)}s", 255, len(leaf_title), leaf_title
                     )
                 )
 
@@ -1170,7 +1149,8 @@ class Tree:
             out.append(b"\x00")
 
             out[tbranch_index] = uproot.serialization.numbytes_version(
-                sum(len(x) for x in out[tbranch_index + 1 :]), 13  # TBranch
+                sum(len(x) for x in out[tbranch_index + 1 :]),
+                13,  # TBranch
             )
 
             out[any_tbranch_index] = (
@@ -1181,7 +1161,8 @@ class Tree:
                 )
             )
         out[tobjarray_of_branches_index] = uproot.serialization.numbytes_version(
-            sum(len(x) for x in out[tobjarray_of_branches_index + 1 :]), 3  # TObjArray
+            sum(len(x) for x in out[tobjarray_of_branches_index + 1 :]),
+            3,  # TObjArray
         )
 
         # TObjArray of TLeaf references
@@ -1210,7 +1191,8 @@ class Tree:
         out.append(b"\x00" * 28)
 
         out[ttree_header_index] = uproot.serialization.numbytes_version(
-            sum(len(x) for x in out[ttree_header_index + 1 :]), 20  # TTree
+            sum(len(x) for x in out[ttree_header_index + 1 :]),
+            20,  # TTree
         )
 
         self._metadata_start = sum(len(x) for x in out[:metadata_out_index])
@@ -1380,6 +1362,13 @@ class Tree:
         fObjlen = len(uncompressed_data)
         fNbytes = fKeylen + len(compressed_data)
 
+        if max(fObjlen, fNbytes) > uproot.const.kMaxTBasketBytes:
+            raise ValueError(
+                f"Numpy array data of branch {branch_name} has an uncompressed size of {fObjlen} bytes "
+                f"and a compressed size of {fNbytes} bytes, which is too large to fit in a TBasket. "
+                "Neither of these sizes can exceed 2 GiB."
+            )
+
         parent_location = self._directory.key.location  # FIXME: is this correct?
 
         location = self._freesegments.allocate(fNbytes, dry_run=False)
@@ -1455,6 +1444,13 @@ class Tree:
         fObjlen = len(uncompressed_data)
         fNbytes = fKeylen + len(compressed_data)
 
+        if max(fObjlen, fNbytes) > uproot.const.kMaxTBasketBytes:
+            raise ValueError(
+                f"Jagged array data of branch {branch_name} has an uncompressed size of {fObjlen} bytes "
+                f"and a compressed size of {fNbytes} bytes, which is too large to fit in a TBasket. "
+                "Neither of these sizes can exceed 2 GiB."
+            )
+
         parent_location = self._directory.key.location  # FIXME: is this correct?
 
         location = self._freesegments.allocate(fNbytes, dry_run=False)
@@ -1511,12 +1507,6 @@ class Tree:
         itemsize = array.dtype.itemsize
         for item in array.shape[1:]:
             itemsize *= item
-        try:
-            uproot.extras.awkward()
-        except ModuleNotFoundError as err:
-            raise TypeError(
-                f"'awkward' cannot be imported: {self._branch_type!r}"
-            ) from err
 
         offsets *= itemsize
         offsets += fKeylen
@@ -1543,6 +1533,13 @@ class Tree:
 
         fObjlen = len(uncompressed_data)
         fNbytes = fKeylen + len(compressed_data)
+
+        if max(fObjlen, fNbytes) > uproot.const.kMaxTBasketBytes:
+            raise ValueError(
+                f"String data of branch {branch_name} has an uncompressed size of {fObjlen} bytes "
+                f"and a compressed size of {fNbytes} bytes, which is too large to fit in a TBasket. "
+                "Neither of these sizes can exceed 2 GiB."
+            )
 
         parent_location = self._directory.key.location  # FIXME: is this correct?
 

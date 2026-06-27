@@ -5,30 +5,74 @@ requires = [
   "hatch-vcs"
 ]
 
-[lint.mccabe]
-max-complexity = 100
+[dependency-groups]
+dev = [
+  {include-group = "extra"},
+  {include-group = "test"}
+]
+extra = [
+  "boost_histogram>=0.13",
+  "dask-awkward>=2025.5.0",
+  "dask[array,distributed]",
+  "hist>=1.2",
+  "pandas",
+  "awkward-pandas"
+]
+test = [
+  "aiohttp",
+  "deflate",
+  "isal",
+  "paramiko",
+  "pytest-rerunfailures",
+  "rangehttpserver",
+  "requests",
+  "s3fs",
+  {include-group = "test-core"}
+]
+test-core = [
+  "pytest-timeout",
+  "pytest>=6",
+  "scikit-hep-testdata"
+]
+test-gpu-cu12 = [
+  "kvikio-cu12",
+  "nvidia-nvcomp-cu12",
+  {include-group = "test-core"}
+]
+test-gpu-cu13 = [
+  "kvikio-cu13",
+  "nvidia-nvcomp-cu13",
+  {include-group = "test-core"}
+]
+test-pyodide = [
+  "pytest-pyodide; python_version >='3.11'",
+  {include-group = "test-core"}
+]
+test-xrootd = [
+  "fsspec-xrootd>=0.5.0",
+  {include-group = "test-core"}
+]
 
 [project]
 authors = [
-  {name = "Jim Pivarski", email = "pivarski@princeton.edu"}
+  {name = "Jim Pivarski", email = "jpivarski@gmail.com"}
 ]
 classifiers = [
   "Development Status :: 5 - Production/Stable",
   "Intended Audience :: Developers",
   "Intended Audience :: Information Technology",
   "Intended Audience :: Science/Research",
-  "License :: OSI Approved :: BSD License",
   "Operating System :: MacOS",
   "Operating System :: POSIX",
   "Operating System :: Unix",
   "Programming Language :: Python",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3 :: Only",
-  "Programming Language :: Python :: 3.8",
-  "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
   "Topic :: Scientific/Engineering",
   "Topic :: Scientific/Engineering :: Information Analysis",
   "Topic :: Scientific/Engineering :: Mathematics",
@@ -37,12 +81,13 @@ classifiers = [
   "Topic :: Utilities"
 ]
 dependencies = [
-  "awkward>=2.4.6",
+  "awkward>=2.8.2",
   "cramjam>=2.5.0",
+  "xxhash",
   "numpy",
-  "fsspec",
+  "fsspec!=2026.2.0",
   "packaging",
-  "typing_extensions>=4.1.0; python_version < \"3.11\""
+  "typing_extensions>=4.1.0; python_version < '3.11'"
 ]
 description = "ROOT I/O in pure Python and NumPy."
 dynamic = [
@@ -51,36 +96,20 @@ dynamic = [
 license = "BSD-3-Clause"
 name = "uproot"
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.10"
 
 [project.optional-dependencies]
-dev = [
-  "boost_histogram>=0.13",
-  "dask-awkward>=2023.12.1",
-  "dask[array,distributed]",
-  "hist>=1.2",
-  "pandas",
-  "awkward-pandas"
+gds-cu12 = [
+  "kvikio-cu12",
+  "nvidia-nvcomp-cu12"
+]
+gds-cu13 = [
+  "kvikio-cu13",
+  "nvidia-nvcomp-cu13"
 ]
 http = ["aiohttp"]
 s3 = ["s3fs"]
-test = [
-  "isal",
-  "deflate",
-  "xxhash",
-  "minio",
-  "aiohttp",
-  "fsspec-xrootd",
-  "s3fs",
-  "paramiko",
-  "pytest>=6",
-  "pytest-timeout",
-  "pytest-rerunfailures",
-  "requests",
-  "scikit-hep-testdata",
-  "rangehttpserver"
-]
-xrootd = ["fsspec-xrootd"]
+xrootd = ["fsspec-xrootd>=0.5.0"]
 
 [project.urls]
 Download = "https://github.com/scikit-hep/uproot5/releases"
@@ -90,11 +119,7 @@ Homepage = "https://github.com/scikit-hep/uproot5"
 version-file = "src/uproot/version.py"
 
 [tool.hatch.version]
-path = "src/uproot/__init__.py"
 source = "vcs"
-
-[tool.isort]
-profile = "black"
 
 [tool.pytest.ini_options]
 addopts = ["-ra", "--showlocals", "--strict-markers", "--strict-config"]
@@ -103,7 +128,7 @@ filterwarnings = [
   "default:module 'sre_.*' is deprecated:DeprecationWarning",
   "ignore:unclosed transport <asyncio.sslproto._SSLProtocolTransport"  # https://github.com/aio-libs/aiohttp/issues/1115
 ]
-log_cli_level = "info"
+log_level = "INFO"
 markers = [
   "slow",
   "network",
@@ -115,36 +140,22 @@ testpaths = ["tests"]
 timeout = 600
 xfail_strict = true
 
+[tool.repo-review]
+ignore = ["PY004"]
+
 [tool.ruff]
 exclude = [
   "tests/*.py",
+  "tests-cuda/*.py",
   "src/uproot/__init__.py",
   "docs-sphinx/*.py"
 ]
-src = ["src"]
 
 [tool.ruff.lint]
-ignore = [
-  "E501",
-  "E722",
-  "PLR",
-  "PLW0120",  # else on loop without break
-  "SIM118",  # key in dict, broken since uproot doesn't behave like a dict
-  "PGH003",  # too-broad type ignore
-  "SIM114",  # combine `if` branches using logical `or` operator
-  "S307",  # no eval allowed
-  "PLC1901",  # empty string is falsey (but I don't want to rely on such weak typing)
-  "RUF012",  # enforces type annotations on a codebase that lacks type annotations
-  "SIM103"  # interferes with my if-elif-elif-else blocks
-]
-select = [
-  "E",
-  "F",
-  "W",  # flake8
-  "B",
-  "B904",  # flake8-bugbear
+extend-select = [
+  "B",  # flake8-bugbear
   "I",  # isort
-  # "ARG",         # flake8-unused-arguments
+  # "ARG", # flake8-unused-arguments
   "C4",  # flake8-comprehensions
   "ISC",  # flake8-implicit-str-concat
   "PGH",  # pygrep-hooks
@@ -157,6 +168,19 @@ select = [
   "UP",  # pyupgrade
   "YTT"  # flake8-2020
 ]
+ignore = [
+  "PGH003",  # too-broad type ignore
+  "PLC0415",  # imports outside top level
+  "PLC1901",  # empty string is falsey (but I don't want to rely on such weak typing)
+  "PLR",
+  "PLW0120",  # else on loop without break
+  "PLW1641",  # __eq__ without __hash__
+  "RUF012",  # enforces type annotations on a codebase that lacks type annotations
+  "S307",  # no eval allowed
+  "SIM103",  # interferes with my if-elif-elif-else blocks
+  "SIM114",  # combine `if` branches using logical `or` operator
+  "SIM118"  # key in dict, broken since uproot doesn't behave like a dict
+]
 isort.required-imports = ["from __future__ import annotations"]
 
 [tool.ruff.lint.per-file-ignores]
@@ -165,3 +189,7 @@ isort.required-imports = ["from __future__ import annotations"]
 
 [tool.setuptools_scm]
 write_to = "src/uproot/_version.py"
+
+[tool.uv]
+exclude-newer = "7 days"
+exclude-newer-package = {awkward = false, awkward-cpp = false, scikit-hep-testdata = false}

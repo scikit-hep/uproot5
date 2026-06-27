@@ -12,7 +12,7 @@ def test_colon_in_path_and_name(tmp_path):
     with uproot.recreate(newfile) as f:
         f["one:two"] = "together"
         array = ak.Array(["one", "two", "three"])
-        f["one"] = {"two": array}
+        f.mktree("one", {"two": array})
 
     with uproot.open(newfile) as f:
         f["one:two"] == "together"

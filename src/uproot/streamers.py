@@ -4,6 +4,7 @@
 This module defines models for ``TStreamerInfo`` and its elements, as well as
 routines for generating Python code for new classes from streamer data.
 """
+
 from __future__ import annotations
 
 import re
@@ -62,6 +63,16 @@ def _canonical_typename(name):
     for pattern, replacement in _canonical_typename_patterns:
         name = pattern.sub(replacement, name)
     return name
+
+
+def _sanitize_string(s):
+    return (
+        s.encode("unicode_escape")
+        .decode("ascii")
+        .replace('"', '\\"')
+        .replace("{", "{{")
+        .replace("}", "}}")
+    )
 
 
 def _ftype_to_dtype(fType):
@@ -627,24 +638,22 @@ class Model_TStreamerArtificial(Model_TStreamerElement):
     ):
         read_member_n.append(f"        if member_index == {i}:")
 
+        message = f"not implemented: class members defined by {type(self).__name__} of type {self.typename} in member {self.name} of class {streamerinfo.name}"
+
         # untested as of PR #629
         read_members.extend(
             [
-                f"        raise DeserializationError('not implemented: class members defined by {type(self).__name__} of type {self.typename} in member {self.name} of class {streamerinfo.name}', chunk, cursor, context, file.file_path)",
+                f"        raise DeserializationError({message!r}, chunk, cursor, context, file.file_path)",
             ]
         )
 
         read_member_n.append(
-            f"            raise DeserializationError('not implemented: class members defined by {type(self).__name__} of type {self.typename} in member {self.name} of class {streamerinfo.name}', chunk, cursor, context, file.file_path)"
+            f"            raise DeserializationError({message!r}, chunk, cursor, context, file.file_path)"
         )
 
-        strided_interpretation.append(
-            f"        raise CannotBeStrided('not implemented: class members defined by {type(self).__name__} of type {self.typename} in member {self.name} of class {streamerinfo.name}')"
-        )
+        strided_interpretation.append(f"        raise CannotBeStrided({message!r})")
 
-        awkward_form.append(
-            f"        raise CannotBeAwkward('not implemented: class members defined by {type(self).__name__} of type {self.typename} in member {self.name} of class {streamerinfo.name}')"
-        )
+        awkward_form.append(f"        raise CannotBeAwkward({message!r})")
 
 
 _tstreamerbase_format1 = struct.Struct(">i")
@@ -830,6 +839,7 @@ class Model_TStreamerBasicPointer(Model_TStreamerElement):
             )
 
         else:
+            count_name = _sanitize_string(self.count_name)
             # AwkwardForth testing C: test_0637's 29,44,56
             read_members.extend(
                 [
@@ -844,7 +854,7 @@ class Model_TStreamerBasicPointer(Model_TStreamerElement):
                     f'            nested_forth_stash.header_code.append(f"output node{{key}}-data {{af.struct_to_dtype_name[af.dtype_to_struct[self._dtype{len(dtypes)}]]}}\\n")',
                     '            nested_forth_stash.header_code.append(f"output node{key2}-offsets int64\\n")',
                     '            nested_forth_stash.init_code.append(f"0 node{key2}-offsets <- stack\\n")',
-                    f'            nested_forth_stash.pre_code.append(f" var_{self.count_name} @ dup node{{key2}}-offsets +<- stack \\n stream #!{{af.dtype_to_struct[self._dtype{len(dtypes)}]}}-> node{{key}}-data\\n")',
+                    f'            nested_forth_stash.pre_code.append(f" var_{count_name} @ dup node{{key2}}-offsets +<- stack \\n stream #!{{af.dtype_to_struct[self._dtype{len(dtypes)}]}}-> node{{key}}-data\\n")',
                     "            forth_obj.add_node(nested_forth_stash)",
                 ]
             )
@@ -863,8 +873,9 @@ class Model_TStreamerBasicPointer(Model_TStreamerElement):
             f"            self._members[{self.name!r}] = cursor.array(chunk, self.member({self.count_name!r}), tmp, context);\n"
         )
 
+        strided_message = f"class members defined by {type(self).__name__} of type {self.typename} in member {self.name} of class {streamerinfo.name}"
         strided_interpretation.append(
-            f"        raise CannotBeStrided('class members defined by {type(self).__name__} of type {self.typename} in member {self.name} of class {streamerinfo.name}')"
+            f"        raise CannotBeStrided({strided_message!r})"
         )
 
         awkward_form.append(
@@ -984,8 +995,8 @@ class Model_TStreamerBasicType(Model_TStreamerElement):
                     if fields[-1][0] in COUNT_NAMES:
                         read_members.extend(
                             [
-                                f'            nested_forth_stash.init_code.append(f"variable var_{fields[-1][0]}\\n")',
-                                f'            nested_forth_stash.pre_code.append(f"stream !{formats[-1][0]}-> stack dup var_{fields[-1][0]} ! node{{key}}-data <- stack\\n")',
+                                f'            nested_forth_stash.init_code.append(f"variable var_{_sanitize_string(fields[-1][0])}\\n")',
+                                f'            nested_forth_stash.pre_code.append(f"stream !{formats[-1][0]}-> stack dup var_{_sanitize_string(fields[-1][0])} ! node{{key}}-data <- stack\\n")',
                             ]
                         )
                     else:
@@ -1053,8 +1064,9 @@ class Model_TStreamerBasicType(Model_TStreamerElement):
                 f"        members.append(({self.name!r}, {_ftype_to_dtype(self.fType)}))"
             )
         else:
+            strided_message = f"class members defined by {type(self).__name__} of type {self.typename} in member {self.name} of class {streamerinfo.name}"
             strided_interpretation.append(
-                f"        raise CannotBeStrided('class members defined by {type(self).__name__} of type {self.typename} in member {self.name} of class {streamerinfo.name}')"
+                f"        raise CannotBeStrided({strided_message!r})"
             )
 
         if self.array_length == 0:
@@ -1203,16 +1215,18 @@ class Model_TStreamerLoop(Model_TStreamerElement):
                 "        if forth_obj is not None:",
                 "            raise CannotBeForth()",
                 "        cursor.skip(6)",
+                f"        self._members[{self.name!r}] = numpy.empty(self.member({self.count_name!r}), dtype='O')",
                 f"        for tmp in range(self.member({self.count_name!r})):",
-                f"            self._members[{self.name!r}] = c({self.typename.rstrip('*')!r}).read(chunk, cursor, af.add_to_path(forth_obj, context, {self.name!r}), file, self._file, self.concrete)",
+                f"            self._members[{self.name!r}][tmp] = c({self.typename.rstrip('*')!r}).read(chunk, cursor, af.add_to_path(forth_obj, context, {self.name!r}), file, self._file, self.concrete)",
                 "            if forth_obj is not None:",
                 "                if len(forth_obj.active_node.children) != 0:",
                 f"                    forth_obj.active_node.children[-1].field_name = {self.name!r}",
             ]
         )
 
+        strided_message = f"class members defined by {type(self).__name__} of type {self.typename} in member {self.name} of class {streamerinfo.name}"
         strided_interpretation.append(
-            f"        raise CannotBeStrided('class members defined by {type(self).__name__} of type {self.typename} in member {self.name} of class {streamerinfo.name}')"
+            f"        raise CannotBeStrided({strided_message!r})"
         )
 
         awkward_form.extend(
@@ -1461,18 +1475,20 @@ class TStreamerPointerTypes:
             read_member_n.append(
                 f"            self._members[{self.name!r}] = read_object_any(chunk, cursor, context, file, self._file, self)"
             )
+            strided_message = f"class members defined by {type(self).__name__} of type {self.typename} in member {self.name} of class {streamerinfo.name}"
             strided_interpretation.append(
-                f"        raise CannotBeStrided('class members defined by {type(self).__name__} of type {self.typename} in member {self.name} of class {streamerinfo.name}')"
+                f"        raise CannotBeStrided({strided_message!r})"
             )
             class_flags["has_read_object_any"] = True
 
         else:
+            message = f"not implemented: class members defined by {type(self).__name__} with fType {self.fType}"
             # untested as of PR #629
             read_members.append(
-                f"        raise DeserializationError('not implemented: class members defined by {type(self).__name__} with fType {self.fType}', chunk, cursor, context, file.file_path)"
+                f"        raise DeserializationError({message!r}, chunk, cursor, context, file.file_path)"
             )
             read_member_n.append(
-                f"            raise DeserializationError('not implemented: class members defined by {type(self).__name__} with fType {self.fType}', chunk, cursor, context, file.file_path)"
+                f"            raise DeserializationError({message!r}, chunk, cursor, context, file.file_path)"
             )
 
         member_names.append(self.name)

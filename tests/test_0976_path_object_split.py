@@ -163,6 +163,13 @@ import pathlib
                 "Dir/Test",
             ),
         ),
+        (
+            "http://xcacheserver:8762//https://originserver:4212/path/file.root.1:CollectionTree",
+            (
+                "http://xcacheserver:8762//https://originserver:4212/path/file.root.1",
+                "CollectionTree",
+            ),
+        ),
     ],
 )
 def test_url_split(input_value, expected_output):
@@ -202,7 +209,6 @@ def test_url_no_split(input_value):
         "local/file.root.zip://Events",
         "local/file.roo://Events",
         "local/file://Events",
-        "http://xcacheserver:8762//https://originserver:4212/path/file.root.1:CollectionTree",
     ],
 )
 def test_url_split_invalid(input_value):

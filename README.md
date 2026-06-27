@@ -2,15 +2,18 @@
 
 [![PyPI version](https://badge.fury.io/py/uproot.svg)](https://pypi.org/project/uproot)
 [![Conda-Forge](https://img.shields.io/conda/vn/conda-forge/uproot)](https://github.com/conda-forge/uproot-feedstock)
-[![Python 3.7‒3.12](https://img.shields.io/badge/python-3.7%E2%80%923.12-blue)](https://www.python.org)
+[![Python 3.10‒3.14](https://img.shields.io/badge/python-3.10%E2%80%923.14-blue)](https://www.python.org)
 [![BSD-3 Clause License](https://img.shields.io/badge/license-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
 [![Continuous integration tests](https://github.com/scikit-hep/uproot5/actions/workflows/build-test.yml/badge.svg)](https://github.com/scikit-hep/uproot5/actions)
 
 [![Scikit-HEP](https://scikit-hep.org/assets/images/Scikit--HEP-Project-blue.svg)](https://scikit-hep.org/)
-[![NSF-1836650](https://img.shields.io/badge/NSF-1836650-blue.svg)](https://nsf.gov/awardsearch/showAward?AWD_ID=1836650)
 [![DOI 10.5281/zenodo.4340632](https://zenodo.org/badge/DOI/10.5281/zenodo.4340632.svg)](https://doi.org/10.5281/zenodo.4340632)
 [![Documentation](https://img.shields.io/badge/docs-online-success)](https://uproot.readthedocs.io/)
 [![Gitter](https://img.shields.io/badge/chat-online-success)](https://gitter.im/Scikit-HEP/uproot)
+
+[![NSF-1836650](https://img.shields.io/badge/NSF-1836650-blue.svg)](https://nsf.gov/awardsearch/showAward?AWD_ID=1836650)
+[![NSF-2121686](https://img.shields.io/badge/NSF-2121686-blue.svg)](https://nsf.gov/awardsearch/showAward?AWD_ID=2121686)
+[![NSF-2323298](https://img.shields.io/badge/NSF-2323298-blue.svg)](https://nsf.gov/awardsearch/showAward?AWD_ID=2323298)
 
 Uproot is a library for reading and writing [ROOT files](https://root.cern/) in pure Python and NumPy.
 
@@ -62,23 +65,13 @@ If you need to develop Awkward Array as well, see its [installation for develope
 
 # Dependencies
 
-**Uproot's only strict dependencies are NumPy and packaging.** Strict dependencies are automatically installed by pip (or conda).
-
-**[Awkward Array](https://anaconda.org/conda-forge/awkward) is highly recommended** and is automatically installed by pip (or conda), though it is _possible_ to use Uproot without it. If you need a minimal installation, pass `--no-deps` to pip and pass `library="np"` to every array-fetching function, or globally set `uproot.default_library` to get NumPy arrays instead of Awkward Arrays.
-
-   * `awkward`: Uproot 5.x requires Awkward 2.x.
+**Uproot's only strict dependencies are Awkward, Cramjam, xxhash, fsspec, NumPy, packaging.** Strict dependencies are automatically installed by pip (or conda).
 
 The following libraries are also useful in conjunction with Uproot, but are not necessary. If you call a function that needs one, you'll be prompted to install it. (Conda installs most of these automatically.)
 
-**For ROOT files, compressed different ways:**
-
-   * `lz4` and `xxhash`: if reading ROOT files that have been LZ4-compressed.
-   * `zstandard`: if reading ROOT files that have been ZSTD-compressed.
-   * ZLIB and LZMA are built in (Python standard library).
-
 **For accessing remote files:**
 
-   * `minio`: if reading files with `s3://` URIs.
+   * `s3fs`: if reading files with `s3://` URIs.
    * `xrootd`: if reading files with `root://` URIs.
    * HTTP/S access is built in (Python standard library).
 
@@ -188,6 +181,23 @@ Thanks especially to the gracious help of Uproot contributors (including the [or
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/milesgranger"><img src="https://avatars.githubusercontent.com/u/13764397?v=4?s=100" width="100px;" alt="Miles"/><br /><sub><b>Miles</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot5/commits?author=milesgranger" title="Code">💻</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/djw9497"><img src="https://avatars.githubusercontent.com/u/51672890?v=4?s=100" width="100px;" alt="djw9497"/><br /><sub><b>djw9497</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot5/commits?author=djw9497" title="Code">💻</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/Pepesob"><img src="https://avatars.githubusercontent.com/u/113636251?v=4?s=100" width="100px;" alt="Piotr Sobczyński"/><br /><sub><b>Piotr Sobczyński</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot5/commits?author=Pepesob" title="Code">💻</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/giedrius2020"><img src="https://avatars.githubusercontent.com/u/71819123?v=4?s=100" width="100px;" alt="Giedrius Juškevičius"/><br /><sub><b>Giedrius Juškevičius</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot5/commits?author=giedrius2020" title="Code">💻</a></td>
+    </tr>
+    <tr>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/MatousVozak"><img src="https://avatars.githubusercontent.com/u/33348191?v=4?s=100" width="100px;" alt="MatousVozak"/><br /><sub><b>MatousVozak</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot5/commits?author=MatousVozak" title="Code">💻</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/rossodisera"><img src="https://avatars.githubusercontent.com/u/46961664?v=4?s=100" width="100px;" alt="Andrea Serafini"/><br /><sub><b>Andrea Serafini</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot5/commits?author=rossodisera" title="Code">💻</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="http://www.ariostas.com"><img src="https://avatars.githubusercontent.com/u/7596837?v=4?s=100" width="100px;" alt="Andres Rios Tascon"/><br /><sub><b>Andres Rios Tascon</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot5/commits?author=ariostas" title="Code">💻</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/ikrommyd"><img src="https://avatars.githubusercontent.com/u/82155404?v=4?s=100" width="100px;" alt="Iason Krommydas"/><br /><sub><b>Iason Krommydas</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot5/commits?author=ikrommyd" title="Code">💻</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/fstrug"><img src="https://avatars.githubusercontent.com/u/84533949?v=4?s=100" width="100px;" alt="fstrug"/><br /><sub><b>fstrug</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot5/commits?author=fstrug" title="Code">💻</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/zlmarshall"><img src="https://avatars.githubusercontent.com/u/10702398?v=4?s=100" width="100px;" alt="Zach Marshall"/><br /><sub><b>Zach Marshall</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot5/commits?author=zlmarshall" title="Code">💻</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/mrzimu"><img src="https://avatars.githubusercontent.com/u/74824770?v=4?s=100" width="100px;" alt="Mingrun Li"/><br /><sub><b>Mingrun Li</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot5/commits?author=mrzimu" title="Code">💻</a></td>
+    </tr>
+    <tr>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/ianna"><img src="https://avatars.githubusercontent.com/u/1390682?v=4?s=100" width="100px;" alt="Ianna Osborne"/><br /><sub><b>Ianna Osborne</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot5/commits?author=ianna" title="Code">💻</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/Rachit931"><img src="https://avatars.githubusercontent.com/u/199397286?v=4?s=100" width="100px;" alt="Rachit931"/><br /><sub><b>Rachit931</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot5/commits?author=Rachit931" title="Documentation">📖</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/wdconinc"><img src="https://avatars.githubusercontent.com/u/4656391?v=4?s=100" width="100px;" alt="Wouter Deconinck"/><br /><sub><b>Wouter Deconinck</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot5/commits?author=wdconinc" title="Code">💻</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/KaranSinghDev"><img src="https://avatars.githubusercontent.com/u/102300776?v=4?s=100" width="100px;" alt="Karan Singh"/><br /><sub><b>Karan Singh</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot5/commits?author=KaranSinghDev" title="Code">💻</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/nickwp"><img src="https://avatars.githubusercontent.com/u/9571544?v=4?s=100" width="100px;" alt="Nick Prouse"/><br /><sub><b>Nick Prouse</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot5/commits?author=nickwp" title="Code">💻</a></td>
     </tr>
   </tbody>
 </table>

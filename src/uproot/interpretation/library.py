@@ -21,10 +21,12 @@ are not efficiently represented, but some jagged arrays are encoded as
 Lazy arrays (:doc:`uproot.behaviors.TBranch.lazy`) can only use the
 :doc:`uproot.interpretation.library.Awkward` library.
 """
+
 from __future__ import annotations
 
 import json
 
+import awkward
 import numpy
 
 import uproot
@@ -165,6 +167,9 @@ class Library:
         return repr(self.name)
 
     def __eq__(self, other):
+        if not isinstance(other, Library):
+            return NotImplemented
+
         return type(_libraries[self.name]) is type(_libraries[other.name])
 
 
@@ -294,7 +299,7 @@ def _object_to_awkward_json(form, obj):
 
     elif form["class"] == "RecordArray":
         out = {}
-        for name, subform in zip(form["fields"], form["contents"]):
+        for name, subform in zip(form["fields"], form["contents"], strict=True):
             if not name.startswith("@"):
                 if hasattr(obj, "has_member") and obj.has_member(name):
                     out[name] = _object_to_awkward_json(subform, obj.member(name))
@@ -374,7 +379,7 @@ def _awkward_json_to_array(awkward, form, array):
     elif form["class"] == "RecordArray":
         contents = []
         names = []
-        for name, subform in zip(form["fields"], form["contents"]):
+        for name, subform in zip(form["fields"], form["contents"], strict=True):
             if not name.startswith("@"):
                 if isinstance(array, awkward.contents.EmptyArray):
                     contents.append(_awkward_json_to_array(awkward, subform, array))
@@ -460,7 +465,7 @@ def _awkward_json_to_array(awkward, form, array):
 
 def _awkward_add_doc(awkward, array, branch, ak_add_doc):
     if ak_add_doc:
-        return awkward.with_parameter(array, "__doc__", branch.title)
+        return awkward.with_parameter(array, "__doc__", getattr(branch, "title", None))
     else:
         return array
 
@@ -504,7 +509,9 @@ class Awkward(Library):
 
     @property
     def imported(self):
-        return uproot.extras.awkward()
+        import awkward
+
+        return awkward
 
     def finalize(self, array, branch, interpretation, entry_start, entry_stop, options):
         awkward = self.imported
@@ -647,7 +654,7 @@ class Awkward(Library):
                         offsets.append(array_layout.offsets)
                         jaggeds.append([_rename(name, context)])
                     else:
-                        for o, j in zip(offsets, jaggeds):
+                        for o, j in zip(offsets, jaggeds, strict=True):
                             if numpy.array_equal(array_layout.offsets, o):
                                 j.append(_rename(name, context))
                                 break
@@ -807,7 +814,7 @@ def _process_array_for_pandas(
         if finalize:
             return array
         else:
-            return uproot.extras.awkward().Array(array)
+            return awkward.Array(array)
     else:
         try:
             interpretation.awkward_form(None)
@@ -819,13 +826,13 @@ def _process_array_for_pandas(
                     array, branch, interpretation, entry_start, entry_stop, options
                 )
                 if isinstance(
-                    array.type.content, uproot.extras.awkward().types.NumpyType
+                    array.type.content, awkward.types.NumpyType
                 ) and array.layout.minmax_depth == (1, 1):
                     array = array.to_numpy()
                 else:
                     array = uproot.extras.awkward_pandas().AwkwardExtensionArray(array)
             else:
-                array = _object_to_awkward_array(uproot.extras.awkward(), form, array)
+                array = _object_to_awkward_array(awkward, form, array)
             return array
 
 
@@ -919,7 +926,12 @@ class Pandas(Library):
             )
 
         else:
-            index = arrays.index.arrays
+            # arrays.index.values before Pandas 0.24 and again now;
+            # arrays.index.arrays from Pandas 0.24 through some time ago.
+            if hasattr(arrays.index, "values"):
+                index = arrays.index.values
+            else:
+                index = arrays.index.arrays
             numpy.add(index, global_offset, out=index)
 
         return arrays

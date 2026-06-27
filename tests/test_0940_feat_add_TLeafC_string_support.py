@@ -11,7 +11,7 @@ def test_write_tfleac_uproot_1(tmp_path):
 
     with uproot.recreate(filename) as f:
         array = ak.Array(["one", "two", "three"])
-        f["tree"] = {"branch": array}
+        f.mktree("tree", {"branch": array})
 
     rf = ROOT.TFile(filename)
     data = rf.Get("tree")
@@ -30,7 +30,7 @@ def test_write_tfleac_uproot_2(tmp_path):
         array = ak.Array(
             ["unu", "doi", "trei", "patru", "cinci", "sase", "sapte", "opt"]
         )
-        f["tree"] = {"branch": array}
+        f.mktree("tree", {"branch": array})
 
     rf = ROOT.TFile(filename)
     data = rf.Get("tree")
@@ -65,7 +65,7 @@ def test_write_tfleac_uproot_3(tmp_path):
 
     with uproot.recreate(filename) as f:
         array = ak.Array(["zero", "one" * 100, "two", "three" * 100, "four", "five"])
-        f["tree"] = {"branch": array}
+        f.mktree("tree", {"branch": array})
 
     rf = ROOT.TFile(filename)
     data = rf.Get("tree")
@@ -96,7 +96,7 @@ def test_empty_array(tmp_path):
 
     with uproot.recreate(filename) as outfile:
         array = ak.Array(["one", "two", "three"])[0:0]  # type=string but len=0
-        outfile["tree"] = {"branch": array}
+        outfile.mktree("tree", {"branch": array})
 
     root_infile = ROOT.TFile(filename)
     root_tree = root_infile.Get("tree")
@@ -115,7 +115,7 @@ def test_empty_array_2baskets(tmp_path):
 
     with uproot.recreate(filename) as outfile:
         array = ak.Array(["one", "two", "three"])[0:0]  # type=string but len=0
-        outfile["tree"] = {"branch": array}
+        outfile.mktree("tree", {"branch": array})
         outfile["tree"].extend({"branch": array})
 
     root_infile = ROOT.TFile(filename)
@@ -136,7 +136,7 @@ def test_mutating_fLen(tmp_path):
     with uproot.recreate(filename) as outfile:
         aslist = ["x" * 1]
         array = ak.Array(aslist)
-        outfile["tree"] = {"branch": array}
+        outfile.mktree("tree", {"branch": array})
         num_baskets = 1
 
         with uproot.open(filename) as infile:

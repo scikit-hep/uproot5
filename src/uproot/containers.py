@@ -6,12 +6,14 @@ This module interpretations and models for standard containers, such as
 
 See :doc:`uproot.interpretation` and :doc:`uproot.model`.
 """
+
 from __future__ import annotations
 
 import struct
 import types
 from collections.abc import KeysView, Mapping, Sequence, Set, ValuesView
 
+import awkward
 import numpy
 
 import uproot
@@ -326,7 +328,6 @@ class AsDynamic(AsContainer):
             return uproot.model.classname_decode(self._model.__name__)[0]
 
     def awkward_form(self, file, context):
-        uproot.extras.awkward()
         if self._model is None:
             raise uproot.interpretation.objects.CannotBeAwkward("dynamic type")
         else:
@@ -451,7 +452,6 @@ class AsString(AsContainer):
             return self._typename
 
     def awkward_form(self, file, context):
-        awkward = uproot.extras.awkward()
         return awkward.forms.ListOffsetForm(
             context["index_format"],
             awkward.forms.NumpyForm("uint8", parameters={"__array__": "char"}),
@@ -490,8 +490,8 @@ class AsString(AsContainer):
             start_cursor = cursor.copy()
             (
                 num_bytes,
-                instance_version,
-                is_memberwise,
+                _instance_version,
+                _is_memberwise,
             ) = uproot.deserialization.numbytes_version(chunk, cursor, context)
             if forth_obj is not None:
                 cursor_jump = cursor._index - start_cursor._index
@@ -675,7 +675,6 @@ class AsArray(AsContainer):
         return _content_typename(self._values) + "[]" + shape
 
     def awkward_form(self, file, context):
-        awkward = uproot.extras.awkward()
         values_form = uproot._util.awkward_form(self._values, file, context)
         for dim in reversed(self.inner_shape):
             values_form = awkward.forms.RegularForm(values_form, dim)
@@ -720,7 +719,7 @@ class AsArray(AsContainer):
             start_cursor = cursor.copy()
             (
                 num_bytes,
-                instance_version,
+                _instance_version,
                 is_memberwise,
             ) = uproot.deserialization.numbytes_version(chunk, cursor, context)
             if is_memberwise:
@@ -894,7 +893,6 @@ class AsVectorLike(AsContainer):
     _form_parameters = {}
 
     def awkward_form(self, file, context):
-        awkward = uproot.extras.awkward()
         return awkward.forms.ListOffsetForm(
             context["index_format"],
             uproot._util.awkward_form(self._items, file, context),
@@ -932,7 +930,7 @@ class AsVectorLike(AsContainer):
             start_cursor = cursor.copy()
             (
                 num_bytes,
-                instance_version,
+                _instance_version,
                 is_memberwise,
             ) = uproot.deserialization.numbytes_version(chunk, cursor, context)
             if forth_obj is not None:
@@ -1277,7 +1275,6 @@ class AsMap(AsContainer):
         return f"std::map<{_content_typename(self._keys)}, {_content_typename(self._values)}>"
 
     def awkward_form(self, file, context):
-        awkward = uproot.extras.awkward()
         return awkward.forms.ListOffsetForm(
             context["index_format"],
             awkward.forms.RecordForm(
@@ -1317,7 +1314,7 @@ class AsMap(AsContainer):
             start_cursor = cursor.copy()
             (
                 num_bytes,
-                instance_version,
+                _instance_version,
                 is_memberwise,
             ) = uproot.deserialization.numbytes_version(chunk, cursor, context)
         else:
@@ -1328,7 +1325,7 @@ class AsMap(AsContainer):
                 cursor.skip(6)
                 if forth_obj is not None:
                     forth_stash.pre_code.append(
-                        f"{cursor._index-start_cursor._index} stream skip\n"
+                        f"{cursor._index - start_cursor._index} stream skip\n"
                     )
 
             length = cursor.field(chunk, _stl_container_size, context)
@@ -1541,7 +1538,7 @@ class ROOTRVec(Container, Sequence):
             return False
 
     def __array__(self, *args, **kwargs):
-        return numpy.asarray(self._vector, *args, **kwargs)
+        return numpy.asarray(self._values, *args, **kwargs)
 
     def tolist(self):
         return [
@@ -1656,7 +1653,7 @@ class STLVector(Container, Sequence):
             return False
 
     def __array__(self, *args, **kwargs):
-        return numpy.asarray(self._vector, *args, **kwargs)
+        return numpy.asarray(self._values, *args, **kwargs)
 
     def tolist(self):
         return [

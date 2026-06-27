@@ -9,6 +9,7 @@ import os
 import pathlib
 import fsspec
 import numpy as np
+import awkward as ak
 
 is_windows = sys.platform.startswith("win")
 
@@ -18,7 +19,7 @@ def test_fsspec_writing_no_integration(tmp_path):
     with fsspec.open(uri, mode="wb") as file_obj:
         # write a simple root file
         with uproot.recreate(file_obj) as f:
-            f["tree"] = {"x": np.array([1, 2, 3])}
+            f.mktree("tree", {"x": np.array([1, 2, 3])})
 
     with uproot.open(uri) as f:
         assert f["tree"]["x"].array().tolist() == [1, 2, 3]
@@ -28,7 +29,7 @@ def test_fsspec_writing_no_integration(tmp_path):
 def test_fsspec_writing_local(tmp_path, scheme):
     uri = scheme + os.path.join(tmp_path, "some", "path", "file.root")
     with uproot.recreate(uri) as f:
-        f["tree"] = {"x": np.array([1, 2, 3])}
+        f.mktree("tree", {"x": np.array([1, 2, 3])})
 
     with uproot.open(uri) as f:
         assert f["tree"]["x"].array().tolist() == [1, 2, 3]
@@ -58,7 +59,7 @@ def test_fsspec_writing_local_uri(tmp_path, scheme, slash_prefix, filename, requ
         uri = scheme + slash_prefix + os.path.join(tmp_path, "some", "path", filename)
 
         with uproot.create(uri) as f:
-            f["tree"] = {"x": np.array([1, 2, 3])}
+            f.mktree("tree", {"x": np.array([1, 2, 3])})
         with uproot.open(uri) as f:
             assert f["tree"]["x"].array().tolist() == [1, 2, 3]
 
@@ -107,7 +108,7 @@ def test_fsspec_backslash_prefix(input_value):
 def test_fsspec_writing_create(tmp_path, scheme):
     uri = scheme + os.path.join(tmp_path, "some", "path", "file.root")
     with uproot.create(uri) as f:
-        f["tree"] = {"x": np.array([1, 2, 3])}
+        f.mktree("tree", {"x": np.array([1, 2, 3])})
 
     with pytest.raises(FileExistsError):
         with uproot.create(uri):
@@ -120,10 +121,10 @@ def test_issue_1029(tmp_path):
     urlpath = pathlib.Path(urlpath)
 
     with uproot.recreate(urlpath) as f:
-        f["tree_1"] = {"x": np.array([1, 2, 3])}
+        f.mktree("tree_1", {"x": np.array([1, 2, 3])})
 
     with uproot.update(urlpath) as f:
-        f["tree_2"] = {"y": np.array([4, 5, 6])}
+        f.mktree("tree_2", {"y": np.array([4, 5, 6])})
 
     with uproot.open(urlpath) as f:
         assert f["tree_1"]["x"].array().tolist() == [1, 2, 3]
@@ -138,7 +139,7 @@ def test_fsspec_writing_http(http_server):
     with pytest.raises(NotImplementedError):
         # TODO: review this when fsspec supports writing to http
         with uproot.recreate(uri) as f:
-            f["tree"] = {"x": np.array([1, 2, 3])}
+            f.mktree("tree", {"x": np.array([1, 2, 3])})
 
         with uproot.open(uri) as f:
             assert f["tree"]["x"].array().tolist() == [1, 2, 3]
@@ -155,10 +156,10 @@ def test_fsspec_writing_http(http_server):
 def test_fsspec_writing_local_update(tmp_path, scheme):
     uri = scheme + os.path.join(tmp_path, "some", "path", "file.root")
     with uproot.recreate(uri) as f:
-        f["tree1"] = {"x": np.array([1, 2, 3])}
+        f.mktree("tree1", {"x": np.array([1, 2, 3])})
 
     with uproot.update(uri) as f:
-        f["tree2"] = {"y": np.array([4, 5, 6])}
+        f.mktree("tree2", {"y": np.array([4, 5, 6])})
 
     # read data and compare
     with uproot.open(uri) as f:
@@ -197,7 +198,7 @@ def test_fsspec_writing_ssh(tmp_path, scheme):
     uri = f"{scheme}{user}@{host}:{port}{local_path}"
 
     with uproot.recreate(uri) as f:
-        f["tree"] = {"x": np.array([1, 2, 3])}
+        f.mktree("tree", {"x": np.array([1, 2, 3])})
 
     with uproot.open(uri) as f:
         assert f["tree"]["x"].array().tolist() == [1, 2, 3]
@@ -214,7 +215,26 @@ def test_fsspec_writing_memory(tmp_path, scheme):
     uri = f"{scheme}{tmp_path}/file.root"
 
     with uproot.recreate(uri) as f:
-        f["tree"] = {"x": np.array([1, 2, 3])}
+        f.mktree("tree", {"x": np.array([1, 2, 3])})
 
     with uproot.open(uri) as f:
         assert f["tree"]["x"].array().tolist() == [1, 2, 3]
+
+
+def test_write_append_fsspec_xrootd(xrootd_server):
+    remote_path, _ = xrootd_server
+    filename = "file.root"
+    remote_file_path = os.path.join(remote_path, filename)
+    array = ak.Array({"x": [1, 2, 3], "y": [4, 5, 6]})
+    file = uproot.recreate(remote_file_path)
+    file.mktree("tree", array)
+    file.close()
+    array2 = ak.Array({"x": [1, 2, 3, 4], "y": [4, 5, 6, 7]})
+    file = uproot.update(remote_file_path)
+    file.mktree("other_tree", array2)
+    file.close()
+    with uproot.open(remote_file_path) as f:
+        assert f["tree"]["x"].array().tolist() == [1, 2, 3]
+        assert f["tree"]["y"].array().tolist() == [4, 5, 6]
+        assert f["other_tree"]["x"].array().tolist() == [1, 2, 3, 4]
+        assert f["other_tree"]["y"].array().tolist() == [4, 5, 6, 7]

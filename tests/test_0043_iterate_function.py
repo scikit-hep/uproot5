@@ -9,27 +9,27 @@ import uproot
 
 def test_num_entries_for():
     with uproot.open(skhep_testdata.data_path("uproot-HZZ.root"))["events"] as events:
-        assert events.num_entries_for("1 kB") == 12
-        assert events.num_entries_for("10 kB") == 116
-        assert events.num_entries_for("0.1 MB") == 1157
+        assert events.num_entries_for("1 kB") == 4
+        assert events.num_entries_for("10 kB") == 37
+        assert events.num_entries_for("0.1 MB") == 372
         assert events.num_entries == 2421
 
 
 def test_num_entries_for_2():
     with uproot.open(skhep_testdata.data_path("uproot-Zmumu.root"))["events"] as events:
-        assert events.num_entries_for("1 kB") == 13
-        assert events.num_entries_for("10 kB") == 133
-        assert events.num_entries_for("0.1 MB") == 1333
+        assert events.num_entries_for("1 kB") == 7
+        assert events.num_entries_for("10 kB") == 70
+        assert events.num_entries_for("0.1 MB") == 696
         assert events.num_entries == 2304
 
 
 def test_iterate_1():
     with uproot.open(skhep_testdata.data_path("uproot-Zmumu.root"))["events"] as events:
         for i, arrays in enumerate(events.iterate(step_size="0.1 MB", library="np")):
-            if i == 0:
-                assert len(arrays["px1"]) == 1333
-            elif i == 1:
-                assert len(arrays["px1"]) == 971
+            if i in range(3):
+                assert len(arrays["px1"]) == 696
+            elif i == 3:
+                assert len(arrays["px1"]) == 216
             else:
                 assert False
 

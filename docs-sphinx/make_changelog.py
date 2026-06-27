@@ -203,8 +203,7 @@ with open("changelog.rst", "w") as outfile:
 
             first = False
 
-    outfile.write(
-        """
+    outfile.write("""
 Earlier releases
 ================
 
@@ -217,5 +216,4 @@ This was to allow users to transition from Awkward Array 0.x and Uproot 3.x, whi
 
 .. image:: https://raw.githubusercontent.com/scikit-hep/uproot5/main/docs-img/diagrams/uproot-awkward-timeline.png
   :width: 100%
-"""
-    )
+""")

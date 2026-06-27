@@ -14,7 +14,6 @@ import uproot
 import uproot.source.fsspec
 import uproot.source.file
 import uproot.source.xrootd
-import uproot.source.s3
 
 is_windows = sys.platform.startswith("win")
 
@@ -91,7 +90,6 @@ def test_open_fsspec_local():
     "handler",
     [
         uproot.source.fsspec.FSSpecSource,
-        uproot.source.s3.S3Source,
         None,
     ],
 )
@@ -315,6 +313,7 @@ def test_fsspec_zip(tmp_path):
 )
 def test_open_fsspec_xrootd_iterate_files(handler):
     pytest.importorskip("XRootD")
+    pytest.importorskip("fsspec_xrootd")
 
     iterator = uproot.iterate(
         files=[
@@ -349,6 +348,7 @@ def test_open_fsspec_xrootd_iterate_files(handler):
 )
 def test_open_fsspec_xrootd_iterate_tree(handler):
     pytest.importorskip("XRootD")
+    pytest.importorskip("fsspec_xrootd")
 
     with uproot.open(
         {

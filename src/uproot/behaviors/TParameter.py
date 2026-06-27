@@ -3,6 +3,7 @@
 """
 This module defines the behavior of ``TParameter<T>``.
 """
+
 from __future__ import annotations
 
 

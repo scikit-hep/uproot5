@@ -5,7 +5,10 @@ This module defines an :doc:`uproot.interpretation.Interpretation` and
 temporary array for grouped data; usually applied to a ``TBranch`` that does
 not contain data but has subbranches that do.
 """
+
 from __future__ import annotations
+
+import awkward
 
 import uproot
 
@@ -96,7 +99,6 @@ class AsGrouped(uproot.interpretation.Interpretation):
         context = self._make_context(
             context, index_format, header, tobject_header, breadcrumbs
         )
-        awkward = uproot.extras.awkward()
         names = []
         fields = []
         for x, y in self._subbranches.items():

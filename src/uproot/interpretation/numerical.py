@@ -15,8 +15,10 @@ several numerical types:
 * :doc:`uproot.interpretation.numerical.AsSTLBits`: an ``std::bitset<N>``
   for some ``N``.
 """
+
 from __future__ import annotations
 
+import awkward
 import numpy
 
 import uproot
@@ -269,7 +271,6 @@ class AsDtype(Numerical):
         context = self._make_context(
             context, index_format, header, tobject_header, breadcrumbs
         )
-        awkward = uproot.extras.awkward()
         d, s = _dtype_shape(self._to_dtype)
         out = uproot._util.awkward_form(d, file, context)
         for size in s[::-1]:
@@ -379,9 +380,9 @@ in file {branch.file.file_path}"""
         return output
 
     def reshape(self, shape):
-        d, s = _dtype_shape(self._from_dtype)
+        d, _s = _dtype_shape(self._from_dtype)
         self._from_dtype = numpy.dtype((d, shape))
-        d, s = _dtype_shape(self._to_dtype)
+        d, _s = _dtype_shape(self._to_dtype)
         self._to_dtype = numpy.dtype((d, shape))
 
     def inplace(self, array):
@@ -518,7 +519,7 @@ class TruncatedNumerical(Numerical):
 
     def __eq__(self, other):
         return (
-            type(self) == type(other)
+            type(self) is type(other)
             and self._low == other._low
             and self._high == other._high
             and self._num_bits == other._num_bits
@@ -656,7 +657,6 @@ class AsDouble32(TruncatedNumerical):
         context = self._make_context(
             context, index_format, header, tobject_header, breadcrumbs
         )
-        awkward = uproot.extras.awkward()
         out = awkward.forms.NumpyForm("float64")
         for size in self._to_dims[::-1]:
             out = awkward.forms.RegularForm(out, size)
@@ -714,7 +714,6 @@ class AsFloat16(TruncatedNumerical):
         context = self._make_context(
             context, index_format, header, tobject_header, breadcrumbs
         )
-        awkward = uproot.extras.awkward()
         out = awkward.forms.NumpyForm("float32")
         for size in self._to_dims[::-1]:
             out = awkward.forms.RegularForm(out, size)

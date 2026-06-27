@@ -12,7 +12,7 @@ def test_support_leafG(tmp_path):
     f = ROOT.TFile(filename, "recreate")
     t = ROOT.TTree("mytree", "example tree")
 
-    n = np.array(2, dtype=np.int32)
+    n = np.int32(2)
     t.Branch("mynum", n, "mynum/I")
     x = np.array([[1, 2, 3], [4, 5, 6]])
     t.Branch("myarrayG", x, "myarrayG[mynum][3]/G")

@@ -10,7 +10,7 @@ def test_expressions_in_pandas(tmp_path):
     filename = os.path.join(tmp_path, "uproot_test_pandas_expressions.root")
     # create tmp file
     with uproot.recreate(filename) as file:
-        file["tree"] = {"b1": [1, 5, 9], "b2": [3, 6, 11]}
+        file.mktree("tree", {"b1": [1, 5, 9], "b2": [3, 6, 11]})
 
     with uproot.open(filename) as file:
         tree = file["tree"]
