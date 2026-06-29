@@ -402,7 +402,7 @@ def test_streamers_diff_dtypes(tmp_path):
 
 def test_old_versions(tmp_path):
     with pytest.raises(TypeError):
-        with uproot.update(os.path.join(tmp_path, "uproot-HZZ.root")) as file:
+        with uproot.update(data_path("uproot-HZZ.root")) as file:
             file.add_branches("events", {"b2": [1, 2, 3]})
 
 
