@@ -248,10 +248,13 @@ def test_ak_arrays(tmp_path):
     data2 = np.array([3, 4, 5], dtype=np.int64)
 
     with uproot.recreate(os.path.join(tmp_path, "ak_test.root")) as file:
-        file.mktree("whatever", {
-            "b1": ak.Array([data, data1, data2]),
-            "b2": ak.Array([data1, data2, data]),
-        })
+        file.mktree(
+            "whatever",
+            {
+                "b1": ak.Array([data, data1, data2]),
+                "b2": ak.Array([data1, data2, data]),
+            },
+        )
 
     with uproot.update(os.path.join(tmp_path, "ak_test.root")) as write:
         write.add_branches(
