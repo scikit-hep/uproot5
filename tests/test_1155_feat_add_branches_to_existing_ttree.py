@@ -431,19 +431,20 @@ def test_TreeEventSimple0(tmp_path):
 
 
 def test_TreeEventSimple1(tmp_path):
-    with uproot.update(os.path.join(tmp_path, "cp/TreeEventTreeSimple1.root")) as file:
-        file.add_branches(
-            "TreeEventTreeSimple1",
-            {"new_v": np.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], np.float32)},
-        )
-    with uproot.open(
-        os.path.join(tmp_path, "TreeEventTreeSimple1.root")
-    ) as file:  # can't read with arrays()
-        with uproot.open(
-            os.path.join(tmp_path, "cp/TreeEventTreeSimple1.root")
-        ) as copy:
-            print(file["TreeEventTreeSimple1"])
-
+    with uproot.recreate(os.path.join(tmp_path, "TreeEventTreeSimple1.root")) as f:
+        f.mktree("TreeEventTreeSimple1", {"existing_branch": np.array([1,2,3,4,5,6,7,8,9,10], np.float32)})
+    
+    with uproot.update(os.path.join(tmp_path, "TreeEventTreeSimple1.root")) as file:
+        file.add_branches("TreeEventTreeSimple1", {"new_v": np.array([1,2,3,4,5,6,7,8,9,10], np.float32)})
+    
+    with uproot.open(os.path.join(tmp_path, "TreeEventTreeSimple1.root"), minimal_ttree_metadata=False) as new:
+        assert ak.all(new["TreeEventTreeSimple1"]["new_v"].array() == np.array([1,2,3,4,5,6,7,8,9,10], np.float32))
+    
+    inFile = ROOT.TFile.Open(os.path.join(tmp_path, "TreeEventTreeSimple1.root"), "READ")
+    tree = inFile.Get("TreeEventTreeSimple1;1")
+    for i, x in enumerate(tree):
+        assert getattr(x, "new_v") == np.float32(i + 1)
+    inFile.Close()
 
 def test_TreeEventSimple3(tmp_path):
     with uproot.update(
