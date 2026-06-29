@@ -348,7 +348,7 @@ def test_streamers_same_dtypes(tmp_path):
 def test_streamers_diff_dtypes(tmp_path):
     # Make an example file with ROOT
     inFile = ROOT.TFile(
-        "/Users/zobil/Desktop/directory/root_diff_dtypes.root", "RECREATE"
+        os.path.join(tmp_path, "root_diff_dtypes.root"), "RECREATE"
     )
     tree = ROOT.TTree("tree1", "tree")
     npa = np.zeros(4, dtype=float)
@@ -513,7 +513,7 @@ def test_TreeEventSimple2(tmp_path):
         #     print(getattr(x, "Event_branch"))
         #     indx += 1
 
-
+@pytest.mark.skip(reason="needs to be rewritten - original relied on local files with custom C++ class branches")
 def test_TreeClass0(tmp_path):
 
     with uproot.update(os.path.join(tmp_path, "cp/TreeClass0.root")) as file:
