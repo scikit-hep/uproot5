@@ -1548,6 +1548,7 @@ in file {self.file_path} in directory {self.path}"""
                         )
                     except TypeError:
                         import awkward
+
                         try:
                             branch_array = awkward.from_iter(  # noqa: PLW2901 (overwriting branch_array)
                                 branch_array
