@@ -893,6 +893,7 @@ class HasBranches(Mapping):
                 filter_name=filter_name,
                 filter_typename=filter_typename,
                 filter_branch=filter_branch,
+                full_paths=False,
                 entry_start=entry_start,
                 entry_stop=entry_stop,
                 decompression_executor=decompression_executor,
@@ -1025,6 +1026,17 @@ class HasBranches(Mapping):
             full_paths=full_paths,
             ignore_duplicates=ignore_duplicates,
         )
+
+        # Filter out AsGrouped branches: they are grouping containers with no data
+        # buffers of their own. Their children appear separately in `keys` already.
+        keys = [
+            k
+            for k in keys
+            if not isinstance(
+                self[k].interpretation,
+                uproot.interpretation.grouped.AsGrouped,
+            )
+        ]
 
         # we're dealing with a single branch here:
         if isinstance(self, TBranch) and len(keys) == 0:
@@ -3571,7 +3583,11 @@ def _fix_asgrouped(
             branch = context["branches"][-1]
             interpretation = branchid_interpretation[branch.cache_key]
             if isinstance(interpretation, uproot.interpretation.grouped.AsGrouped):
-                assert arrays[branch.cache_key] is None
+                if arrays[branch.cache_key] is not None:
+                    # Already assembled in a prior iteration (e.g., this branch
+                    # was recursively processed as a nested sub-branch of a parent
+                    # AsGrouped branch that also appears in expression_context).
+                    continue
 
                 limited_context = dict(expression_context[index_start:index_stop])
 
