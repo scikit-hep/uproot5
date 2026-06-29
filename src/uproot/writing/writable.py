@@ -1486,7 +1486,7 @@ in file {self.file_path} in directory {self.path}"""
         treename = old_ttree.name[at + 1 :]
         path = (*directory._path, treename)
 
-        awkward = uproot.extras.awkward()
+        import awkward
         import numpy
 
         if uproot._util.from_module(branches, "awkward"):
@@ -1547,7 +1547,7 @@ in file {self.file_path} in directory {self.path}"""
                             branch_array
                         )
                     except TypeError:
-                        awkward = uproot.extras.awkward()
+                        import awkward
                         try:
                             branch_array = awkward.from_iter(  # noqa: PLW2901 (overwriting branch_array)
                                 branch_array

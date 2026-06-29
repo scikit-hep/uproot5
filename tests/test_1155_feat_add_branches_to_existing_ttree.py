@@ -59,10 +59,10 @@ def simple_test(tmp_path):
     )
 
     with uproot.recreate(os.path.join(tmp_path, "arrays1.root")) as f:
-        f["whatever"] = {"b1": data, "b2": data1, "b3": data, "b4": data1}
+        f.mktree("whatever", {"b1": data, "b2": data1,  "b3": data, "b4": data1})
 
     with uproot.recreate(os.path.join(tmp_path, "arrays2.root")) as f:
-        f["whatever"] = {"b1": data, "b2": data1}
+        f.mktree("whatever", {"b1": data, "b2": data1})
 
     with uproot.update(os.path.join(tmp_path, "arrays2.root")) as f:
         f.add_branches("whatever", {"b3": data, "b4": data1})
@@ -105,8 +105,8 @@ def test_multiple_trees(tmp_path):
     )
 
     with uproot.recreate(os.path.join(tmp_path, "mult_trees.root")) as f:
-        f["whatever"] = {"b1": data, "b2": data1}
-        f["whatever1"] = {"b1": data, "b2": data1, "b3": data}
+        f.mktree("whatever", {"b1": data, "b2": data1})
+        f.mktree("whatever1", {"b1": data, "b2": data1, "b3": data})
 
     with uproot.update(os.path.join(tmp_path, "mult_trees.root")) as f:
         f.add_branches("whatever", {"b3": data, "b4": data1})
@@ -134,7 +134,7 @@ def test_different_fEntries(tmp_path):
 
     with uproot.recreate(os.path.join(tmp_path, "arrays2.root")) as f:
         with pytest.raises(ValueError):
-            f["whatever"] = {"b1": data, "b2": data1}
+            f.mktree("whatever", {"b1": data, "b2": data1})
             f.add_branches(
                 "whatever",
                 {
@@ -204,7 +204,7 @@ def test_dtypes(tmp_path):  # tleaf types?
     ]
 
     with uproot.recreate(os.path.join(tmp_path, "all_dtypes.root")) as f:
-        f["whatever"] = {
+        f.mktree("whatever", {
             "b1": data[0],
             "b2": data[1],
             "b3": data[2],
@@ -212,7 +212,7 @@ def test_dtypes(tmp_path):  # tleaf types?
             "b5": data[4],
             "b6": data[5],
             "b7": data[6],
-        }
+        })
 
     with uproot.update(os.path.join(tmp_path, "all_dtypes.root")) as write:
         write.add_branches(
