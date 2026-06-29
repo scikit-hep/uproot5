@@ -15,7 +15,8 @@ def test_reading_into_numpy():
         ak_arrays = obj.arrays(filter_name="n*")
         np_arrays = obj.arrays(library="np", filter_name="n*")
         assert isinstance(ak_arrays, ak.Array)
-        assert isinstance(np_arrays, np.ndarray)
+        assert isinstance(np_arrays, dict)
+        assert all(isinstance(arr, np.ndarray) for arr in np_arrays.values())
 
         nmuon_ak_array = obj["nMuon"].array()
         nmuon_np_array = obj["nMuon"].array(library="np")
