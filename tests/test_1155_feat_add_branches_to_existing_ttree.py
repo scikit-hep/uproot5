@@ -410,14 +410,29 @@ def test_old_versions(tmp_path):
 
 
 def test_TreeEventSimple0(tmp_path):
-    with uproot.update(os.path.join(tmp_path, "cp/TreeEventTreeSimple0.root")) as file:
-        file.add_branches(
-            "TreeEventTreeSimple0", {"b1": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]}
-        )
-    with uproot.open(
-        os.path.join(tmp_path, "cp/TreeEventTreeSimple0.root")
-    ) as new:  # Okay can't read with arrays()
-        print(new.file.chunk(0, 20000).raw_data.tobytes())
+    with uproot.recreate(os.path.join(tmp_path, "TreeEventTreeSimple0.root")) as file:
+        file.mktree("TreeEventTreeSimple0", {"b1": np.array([1,2,3,4,5,6,7,8,9,10], np.int64)})
+
+    with uproot.update(os.path.join(tmp_path, "TreeEventTreeSimple0.root")) as file:
+        file.add_branches("TreeEventTreeSimple0", {"b2": np.array([1,2,3,4,5,6,7,8,9,10], np.int64)})
+
+    with uproot.open(os.path.join(tmp_path, "TreeEventTreeSimple0.root"), minimal_ttree_metadata=False) as new:
+        assert ak.all(new["TreeEventTreeSimple0"]["b2"].array() == np.array([1,2,3,4,5,6,7,8,9,10], np.int64))
+
+    inFile = ROOT.TFile.Open(os.path.join(tmp_path, "TreeEventTreeSimple0.root"), "READ")
+    tree = inFile.Get("TreeEventTreeSimple0;1")
+    for i, x in enumerate(tree):
+        assert getattr(x, "b2") == np.int64(i + 1)
+    inFile.Close()
+
+    # with uproot.update(os.path.join(tmp_path, "cp/TreeEventTreeSimple0.root")) as file:
+    #     file.add_branches(
+    #         "TreeEventTreeSimple0", {"b1": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]}
+    #     )
+    # with uproot.open(
+    #     os.path.join(tmp_path, "cp/TreeEventTreeSimple0.root")
+    # ) as new:  # Okay can't read with arrays()
+    #     print(new.file.chunk(0, 20000).raw_data.tobytes())
         # print(new['TreeEventTreeSimple0']['b1'].array())
         # inFile = ROOT.TFile.Open(
         #     os.path.join(tmp_path, "TreeEventTreeSimple0.root"), "READ"
