@@ -72,35 +72,28 @@ def pyroot_to_buffer(obj):
         obj (PyROOT object inheriting from TObject): PyROOT object to serialize.
 
     Serializes a PyROOT object into a NumPy array.
-
-    A lock is provided for safety: callers should always call this function within
-    the lock's context:
-
-    .. code-block:: python
-
-        with pyroot_to_buffer.lock:
-            return uproot._util.tobytes(pyroot_to_buffer(obj))
     """
     import ROOT
 
-    if pyroot_to_buffer._copy is None:
-        ROOT.gInterpreter.Declare("""
+    with pyroot_to_buffer._lock:
+        if pyroot_to_buffer._copy is None:
+            ROOT.gInterpreter.Declare("""
 void _uproot_copy_tmessage(TMessage& message, size_t out_addr) {
     memcpy((void*)out_addr, message.Buffer() + 8, message.Length() - 8);
 }
 """)
-        pyroot_to_buffer._copy = ROOT._uproot_copy_tmessage
+            pyroot_to_buffer._copy = ROOT._uproot_copy_tmessage
 
-    message = ROOT.TMessage(ROOT.kMESS_OBJECT)
-    message.SetCompressionLevel(0)
-    message.WriteObject(obj)
-    length = message.Length() - 8
-    buffer = numpy.empty(length, numpy.uint8)
-    pyroot_to_buffer._copy(message, buffer.ctypes.data)
-    return buffer
+        message = ROOT.TMessage(ROOT.kMESS_OBJECT)
+        message.SetCompressionLevel(0)
+        message.WriteObject(obj)
+        length = message.Length() - 8
+        buffer = numpy.empty(length, numpy.uint8)
+        pyroot_to_buffer._copy(message, buffer.ctypes.data)
+        return buffer
 
 
-pyroot_to_buffer.lock = threading.Lock()
+pyroot_to_buffer._lock = threading.Lock()
 pyroot_to_buffer._copy = None
 
 
@@ -182,6 +175,8 @@ Long64_t _uproot_memfile_copyto(TMemFile& mf, size_t out_addr, Long64_t maxsize)
                     self._streamers[classname][version] = streamerinfo
                     dependencies.append(streamerinfo)
 
+            file.close()
+
         return self._streamers
 
 
@@ -225,15 +220,14 @@ def from_pyroot(obj):
     is necessary for conversion from PyROOT because the object is serialized through a
     ROOT TMessage.
     """
-    with pyroot_to_buffer.lock:
-        buffer = pyroot_to_buffer(obj)
-        chunk = uproot.source.chunk.Chunk.wrap(None, buffer)
-        cursor = uproot.source.cursor.Cursor(0)
-        maybestreamers = _GetStreamersOnce(obj)
-        detatched = _NoFile()
-        return uproot.deserialization.read_object_any(
-            chunk, cursor, {}, maybestreamers, detatched, None
-        )
+    buffer = pyroot_to_buffer(obj)
+    chunk = uproot.source.chunk.Chunk.wrap(None, buffer)
+    cursor = uproot.source.cursor.Cursor(0)
+    maybestreamers = _GetStreamersOnce(obj)
+    detatched = _NoFile()
+    return uproot.deserialization.read_object_any(
+        chunk, cursor, {}, maybestreamers, detatched, None
+    )
 
 
 class _PyROOTWritable:
@@ -261,7 +255,4 @@ class _PyROOTWritable:
         else:
             obj = self._obj.Clone(name)
 
-        with pyroot_to_buffer.lock:
-            return uproot._util.tobytes(
-                pyroot_to_buffer(obj)[len(self.classname) + 9 :]
-            )
+        return uproot._util.tobytes(pyroot_to_buffer(obj)[len(self.classname) + 9 :])
