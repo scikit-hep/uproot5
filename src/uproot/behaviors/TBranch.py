@@ -1027,14 +1027,22 @@ class HasBranches(Mapping):
             ignore_duplicates=ignore_duplicates,
         )
 
-        # Filter out AsGrouped branches: they are grouping containers with no data
-        # buffers of their own. Their children appear separately in `keys` already.
+        # Filter out AsGrouped branches whose children are already present separately in
+        # keys. Such branches are pure grouping containers with no data buffers of their
+        # own, and keeping them would produce a redundant layer in the output.
+        # AsGrouped branches whose children are NOT in keys are kept because they carry
+        # structural information (e.g. ElementLink records) that would otherwise be lost.
+        keys_set = set(keys)
         keys = [
             k
             for k in keys
             if not isinstance(
                 self[k].interpretation,
                 uproot.interpretation.grouped.AsGrouped,
+            )
+            or not any(
+                child in keys_set
+                for child in self[k].keys(recursive=True, full_paths=True)
             )
         ]
 
