@@ -935,7 +935,10 @@ class TrivialFormMappingInfo(ImplementsFormMappingInfo):
         interpretation_executor,
         options: Any,
     ) -> Mapping[str, AwkArray]:
-        # First, let's read the arrays as a tuple (to associate with each key)
+        # Read the arrays as a top-level awkward RecordArray. Omitting how= (the
+        # default) ensures that AsGrouped branches are returned as proper awkward
+        # RecordArrays rather than Python tuples of sub-arrays (which how=tuple
+        # would produce), allowing awkward.to_buffers() to work correctly below.
         arrays = tree.arrays(
             keys,
             entry_start=start,
@@ -943,7 +946,6 @@ class TrivialFormMappingInfo(ImplementsFormMappingInfo):
             ak_add_doc=options["ak_add_doc"],
             decompression_executor=decompression_executor,
             interpretation_executor=interpretation_executor,
-            how=tuple,
         )
 
         if isinstance(tree, HasFields):
@@ -959,9 +961,9 @@ class TrivialFormMappingInfo(ImplementsFormMappingInfo):
         # subform, as they're derived from `branch.interpretation.awkward_form`
         # Therefore, we can correlate the subform keys using `expected_from_buffers`
         container = {}
-        for key, array in zip(keys, arrays, strict=True):
+        for key in keys:
             # First, convert the sub-array into buffers
-            ttree_subform, _length, ttree_container = awkward.to_buffers(array)
+            ttree_subform, _length, ttree_container = awkward.to_buffers(arrays[key])
 
             # Load the associated projection subform
             projection_subform = self._form.content(key)

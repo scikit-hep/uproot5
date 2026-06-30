@@ -3281,6 +3281,8 @@ def _regularize_expressions(
     branchid_interpretation = {}
 
     if expressions is None:
+        included_cache_keys = set()
+        asgrouped_branches = []
         for branchname, branch in hasbranches.iteritems(
             filter_name=filter_name,
             filter_typename=filter_typename,
@@ -3288,13 +3290,17 @@ def _regularize_expressions(
             recursive=True,
             full_paths=False,
         ):
-            if not isinstance(
+            if isinstance(
                 branch.interpretation,
-                (
-                    uproot.interpretation.identify.UnknownInterpretation,
-                    uproot.interpretation.grouped.AsGrouped,
-                ),
+                uproot.interpretation.identify.UnknownInterpretation,
             ):
+                pass
+            elif isinstance(
+                branch.interpretation,
+                uproot.interpretation.grouped.AsGrouped,
+            ):
+                asgrouped_branches.append((branchname, branch))
+            else:
                 branchname_expression = (
                     branchname
                     if branchname.isidentifier() and not iskeyword(branchname)
@@ -3313,6 +3319,40 @@ def _regularize_expressions(
                     (),
                     False,
                     branchname,
+                )
+                included_cache_keys.add(branch.cache_key)
+
+        # For AsGrouped branches that matched the filter but none of their children
+        # were included separately, include them as primary expressions. This lets
+        # _regularize_branchname pull in the sub-branches and assemble the record,
+        # so e.g. tree.arrays(filter_name="btaggingLink") returns the full record
+        # rather than an empty result.
+        for branchname, branch in asgrouped_branches:
+            # Skip AsGrouped branches whose sub-interpretations include
+            # UnknownInterpretation: AsGrouped.cache_key would raise on them.
+            if any(
+                isinstance(
+                    interp,
+                    uproot.interpretation.identify.UnknownInterpretation,
+                )
+                for interp in branch.interpretation.subbranches.values()
+            ):
+                continue
+            if not any(
+                branch[subname].cache_key in included_cache_keys
+                for subname in branch.interpretation.subbranches
+            ):
+                _regularize_branchname(
+                    hasbranches,
+                    branchname,
+                    branch,
+                    branch.interpretation,
+                    get_from_cache,
+                    arrays,
+                    expression_context,
+                    branchid_interpretation,
+                    True,
+                    False,
                 )
 
     elif isinstance(expressions, str):
