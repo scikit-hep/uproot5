@@ -164,18 +164,17 @@ Long64_t _uproot_memfile_copyto(TMemFile& mf, size_t out_addr, Long64_t maxsize)
             buffer = numpy.empty(memfile.GetEND(), numpy.uint8)
             _GetStreamersOnce._memfile_copy(memfile, buffer.ctypes.data, len(buffer))
 
-            file = uproot.open(_GetStreamersOnce.ArrayFile(buffer))
+            with uproot.open(_GetStreamersOnce.ArrayFile(buffer)) as file:
+                dependencies = self._streamer_dependencies[
+                    obj_classname, obj_version
+                ] = []
 
-            dependencies = self._streamer_dependencies[obj_classname, obj_version] = []
-
-            for classname, versions in file.file.streamers.items():
-                if classname not in self._streamers:
-                    self._streamers[classname] = {}
-                for version, streamerinfo in versions.items():
-                    self._streamers[classname][version] = streamerinfo
-                    dependencies.append(streamerinfo)
-
-            file.close()
+                for classname, versions in file.file.streamers.items():
+                    if classname not in self._streamers:
+                        self._streamers[classname] = {}
+                    for version, streamerinfo in versions.items():
+                        self._streamers[classname][version] = streamerinfo
+                        dependencies.append(streamerinfo)
 
         return self._streamers
 
