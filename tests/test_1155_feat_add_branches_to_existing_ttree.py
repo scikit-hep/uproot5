@@ -429,24 +429,10 @@ def test_TreeEventSimple0(tmp_path):
         assert getattr(x, "b2") == np.int64(i + 1)
     inFile.Close()
 
-    # with uproot.update(os.path.join(tmp_path, "cp/TreeEventTreeSimple0.root")) as file:
-    #     file.add_branches(
-    #         "TreeEventTreeSimple0", {"b1": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]}
-    #     )
-    # with uproot.open(
-    #     os.path.join(tmp_path, "cp/TreeEventTreeSimple0.root")
-    # ) as new:  # Okay can't read with arrays()
-    #     print(new.file.chunk(0, 20000).raw_data.tobytes())
-    # print(new['TreeEventTreeSimple0']['b1'].array())
-    # inFile = ROOT.TFile.Open(
-    #     os.path.join(tmp_path, "TreeEventTreeSimple0.root"), "READ"
-    # )
-    # tree = inFile.Get("TreeEventTreeSimple0;1")
-    # indx = 0
-    # for x in tree:
-    #     assert getattr(x, "Event_branch")
-    #     print(getattr(x, "Event_branch"))
-    #     indx += 1
+    df = ROOT.RDataFrame("TreeEventTreeSimple0", os.path.join(tmp_path, "TreeEventTreeSimple0.root"))
+    npy = ak.from_rdataframe(df, columns=("b1", "b2"))
+    assert ak.all(npy["b1"] == np.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], np.int64))
+    assert ak.all(npy["b2"] == np.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], np.int64))
 
 
 def test_TreeEventSimple1(tmp_path):
@@ -479,55 +465,10 @@ def test_TreeEventSimple1(tmp_path):
         assert getattr(x, "new_v") == np.float32(i + 1)
     inFile.Close()
 
-
-@pytest.mark.skip(reason="test needs to be rewritten - original relied on local files")
-def test_TreeEventSimple3(tmp_path):
-    with uproot.update(
-        os.path.join(tmp_path, "TreeEventTreeSimple3.root")
-    ) as file:  # can't read with arrays()
-        file["tree"] = {"b1": [1, 2, 3, 4, 5], "b2": [3, 4, 5, 6, 7]}
-    with uproot.open(os.path.join(tmp_path, "TreeEventTreeSimple3.root")) as copy:
-        print(file["TreeEventTreeSimple1"].chunk.raw_data.tobytes())
-        # print(copy['TreeEventTreeSimple1'])
-        # inFile = ROOT.TFile.Open(os.path.join(tmp_path,"cp/TreeEventTreeSimple3.root"), "READ")
-        # tree = inFile.Get("TreeEventTreeSimple1")
-        # # for x in tree:
-        # #     getattr(x, "new_v")
-        # inFile.Close()
-        # df3 = ROOT.RDataFrame("whatever", os.path.join(tmp_path, "ak_test.root"))
-        # npy3 = ak.from_rdataframe(df3, columns=("b1", "b2", "b3"), keep_order=True)]
-
-    # for x in tree:
-    #     assert getattr(x, "Event_branch")
-    #     print(getattr(x, "Event_branch"))
-    #     print(getattr(x, "a"))
-    #     indx += 1
-    # file.Write()
-    # file.Close()
-
-
-@pytest.mark.skip(reason="test needs to be rewritten - original relied on local files")
-def test_TreeEventSimple2(tmp_path):
-    # with uproot.update(os.path.join(tmp_path, "cp/TreeEventTreeSimple2.root")) as file:
-    #         file.add_branches("TreeEventTreeSimple2", {"b1": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]})
-    with uproot.open(
-        os.path.join(tmp_path, "TreeEventTreeSimple2.root")
-    ) as file:  # Okay can't read with arrays()
-        print(file["TreeEventTreeSimple2"])
-        with uproot.open(
-            os.path.join(tmp_path, "cp/TreeEventTreeSimple2.root")
-        ) as new:  # Okay can't read with arrays()
-            print(new["TreeEventTreeSimple2"].asdfa)
-        # inFile = ROOT.TFile.Open(
-        #     os.path.join(tmp_path, "TreeEventTreeSimple0.root"), "READ"
-        # )
-        # tree = inFile.Get("TreeEventTreeSimple0;1")
-        # indx = 0
-        # for x in tree:
-        #     assert getattr(x, "Event_branch")
-        #     print(getattr(x, "Event_branch"))
-        #     indx += 1
-
+    df = ROOT.RDataFrame("TreeEventTreeSimple1", os.path.join(tmp_path, "TreeEventTreeSimple1.root"))
+    npy = ak.from_rdataframe(df, columns=("existing_branch", "new_v"))
+    assert ak.all(npy["existing_branch"] == np.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], np.float32))
+    assert ak.all(npy["new_v"] == np.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], np.float32))
 
 @pytest.mark.skip(
     reason="needs to be rewritten - original relied on local files with custom C++ class branches"
