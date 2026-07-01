@@ -12,11 +12,14 @@ from skhep_testdata import data_path
 
 def test_vector(tmp_path):
     import shutil
+
     data = [1, 2, 3, 4, 5]
-    
-    shutil.copy(data_path("uproot-vectorVectorDouble.root"), 
-                os.path.join(tmp_path, "cp-vectorVectorDouble.root"))
-    
+
+    shutil.copy(
+        data_path("uproot-vectorVectorDouble.root"),
+        os.path.join(tmp_path, "cp-vectorVectorDouble.root"),
+    )
+
     with uproot.open(
         data_path("uproot-vectorVectorDouble.root"),
         minimal_ttree_metadata=False,
@@ -347,9 +350,7 @@ def test_streamers_same_dtypes(tmp_path):
 
 def test_streamers_diff_dtypes(tmp_path):
     # Make an example file with ROOT
-    inFile = ROOT.TFile(
-        os.path.join(tmp_path, "root_diff_dtypes.root"), "RECREATE"
-    )
+    inFile = ROOT.TFile(os.path.join(tmp_path, "root_diff_dtypes.root"), "RECREATE")
     tree = ROOT.TTree("tree1", "tree")
     npa = np.zeros(4, dtype=float)
     tree.Branch("b1", npa, "b1F")
@@ -416,15 +417,29 @@ def test_old_versions(tmp_path):
 
 def test_TreeEventSimple0(tmp_path):
     with uproot.recreate(os.path.join(tmp_path, "TreeEventTreeSimple0.root")) as file:
-        file.mktree("TreeEventTreeSimple0", {"b1": np.array([1,2,3,4,5,6,7,8,9,10], np.int64)})
+        file.mktree(
+            "TreeEventTreeSimple0",
+            {"b1": np.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], np.int64)},
+        )
 
     with uproot.update(os.path.join(tmp_path, "TreeEventTreeSimple0.root")) as file:
-        file.add_branches("TreeEventTreeSimple0", {"b2": np.array([1,2,3,4,5,6,7,8,9,10], np.int64)})
+        file.add_branches(
+            "TreeEventTreeSimple0",
+            {"b2": np.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], np.int64)},
+        )
 
-    with uproot.open(os.path.join(tmp_path, "TreeEventTreeSimple0.root"), minimal_ttree_metadata=False) as new:
-        assert ak.all(new["TreeEventTreeSimple0"]["b2"].array() == np.array([1,2,3,4,5,6,7,8,9,10], np.int64))
+    with uproot.open(
+        os.path.join(tmp_path, "TreeEventTreeSimple0.root"),
+        minimal_ttree_metadata=False,
+    ) as new:
+        assert ak.all(
+            new["TreeEventTreeSimple0"]["b2"].array()
+            == np.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], np.int64)
+        )
 
-    inFile = ROOT.TFile.Open(os.path.join(tmp_path, "TreeEventTreeSimple0.root"), "READ")
+    inFile = ROOT.TFile.Open(
+        os.path.join(tmp_path, "TreeEventTreeSimple0.root"), "READ"
+    )
     tree = inFile.Get("TreeEventTreeSimple0;1")
     for i, x in enumerate(tree):
         assert getattr(x, "b2") == np.int64(i + 1)
@@ -438,33 +453,48 @@ def test_TreeEventSimple0(tmp_path):
     #     os.path.join(tmp_path, "cp/TreeEventTreeSimple0.root")
     # ) as new:  # Okay can't read with arrays()
     #     print(new.file.chunk(0, 20000).raw_data.tobytes())
-        # print(new['TreeEventTreeSimple0']['b1'].array())
-        # inFile = ROOT.TFile.Open(
-        #     os.path.join(tmp_path, "TreeEventTreeSimple0.root"), "READ"
-        # )
-        # tree = inFile.Get("TreeEventTreeSimple0;1")
-        # indx = 0
-        # for x in tree:
-        #     assert getattr(x, "Event_branch")
-        #     print(getattr(x, "Event_branch"))
-        #     indx += 1
+    # print(new['TreeEventTreeSimple0']['b1'].array())
+    # inFile = ROOT.TFile.Open(
+    #     os.path.join(tmp_path, "TreeEventTreeSimple0.root"), "READ"
+    # )
+    # tree = inFile.Get("TreeEventTreeSimple0;1")
+    # indx = 0
+    # for x in tree:
+    #     assert getattr(x, "Event_branch")
+    #     print(getattr(x, "Event_branch"))
+    #     indx += 1
 
 
 def test_TreeEventSimple1(tmp_path):
     with uproot.recreate(os.path.join(tmp_path, "TreeEventTreeSimple1.root")) as f:
-        f.mktree("TreeEventTreeSimple1", {"existing_branch": np.array([1,2,3,4,5,6,7,8,9,10], np.float32)})
-    
+        f.mktree(
+            "TreeEventTreeSimple1",
+            {"existing_branch": np.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], np.float32)},
+        )
+
     with uproot.update(os.path.join(tmp_path, "TreeEventTreeSimple1.root")) as file:
-        file.add_branches("TreeEventTreeSimple1", {"new_v": np.array([1,2,3,4,5,6,7,8,9,10], np.float32)})
-    
-    with uproot.open(os.path.join(tmp_path, "TreeEventTreeSimple1.root"), minimal_ttree_metadata=False) as new:
-        assert ak.all(new["TreeEventTreeSimple1"]["new_v"].array() == np.array([1,2,3,4,5,6,7,8,9,10], np.float32))
-    
-    inFile = ROOT.TFile.Open(os.path.join(tmp_path, "TreeEventTreeSimple1.root"), "READ")
+        file.add_branches(
+            "TreeEventTreeSimple1",
+            {"new_v": np.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], np.float32)},
+        )
+
+    with uproot.open(
+        os.path.join(tmp_path, "TreeEventTreeSimple1.root"),
+        minimal_ttree_metadata=False,
+    ) as new:
+        assert ak.all(
+            new["TreeEventTreeSimple1"]["new_v"].array()
+            == np.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], np.float32)
+        )
+
+    inFile = ROOT.TFile.Open(
+        os.path.join(tmp_path, "TreeEventTreeSimple1.root"), "READ"
+    )
     tree = inFile.Get("TreeEventTreeSimple1;1")
     for i, x in enumerate(tree):
         assert getattr(x, "new_v") == np.float32(i + 1)
     inFile.Close()
+
 
 @pytest.mark.skip(reason="test needs to be rewritten - original relied on local files")
 def test_TreeEventSimple3(tmp_path):
@@ -491,6 +521,7 @@ def test_TreeEventSimple3(tmp_path):
     # file.Write()
     # file.Close()
 
+
 @pytest.mark.skip(reason="test needs to be rewritten - original relied on local files")
 def test_TreeEventSimple2(tmp_path):
     # with uproot.update(os.path.join(tmp_path, "cp/TreeEventTreeSimple2.root")) as file:
@@ -513,7 +544,10 @@ def test_TreeEventSimple2(tmp_path):
         #     print(getattr(x, "Event_branch"))
         #     indx += 1
 
-@pytest.mark.skip(reason="needs to be rewritten - original relied on local files with custom C++ class branches")
+
+@pytest.mark.skip(
+    reason="needs to be rewritten - original relied on local files with custom C++ class branches"
+)
 def test_TreeClass0(tmp_path):
 
     with uproot.update(os.path.join(tmp_path, "cp/TreeClass0.root")) as file:
