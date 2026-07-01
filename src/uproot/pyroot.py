@@ -87,6 +87,9 @@ void _uproot_copy_tmessage(TMessage& message, size_t out_addr) {
         message = ROOT.TMessage(ROOT.kMESS_OBJECT)
         message.SetCompressionLevel(0)
         message.WriteObject(obj)
+        # TMessage prepends an 8-byte header (4-byte length + 4-byte kMESS_OBJECT
+        # type tag) before the serialized object data; skip it in both the copy
+        # offset and the output length.
         length = message.Length() - 8
         buffer = numpy.empty(length, numpy.uint8)
         pyroot_to_buffer._copy(message, buffer.ctypes.data)
