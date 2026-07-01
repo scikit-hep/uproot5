@@ -1229,9 +1229,15 @@ class HasBranches(Mapping):
         checked = set()
         for _, context in expression_context:
             for branch in context["branches"]:
-                if branch.cache_key not in checked and not isinstance(
-                    branchid_interpretation[branch.cache_key],
-                    uproot.interpretation.grouped.AsGrouped,
+                if (
+                    branch.cache_key not in checked
+                    # branches already satisfied from the array cache are present
+                    # in arrays; don't re-read and re-decompress their baskets
+                    and branch.cache_key not in arrays
+                    and not isinstance(
+                        branchid_interpretation[branch.cache_key],
+                        uproot.interpretation.grouped.AsGrouped,
+                    )
                 ):
                     checked.add(branch.cache_key)
                     for (
@@ -1274,8 +1280,7 @@ class HasBranches(Mapping):
                     if branch.cache_key not in checked:
                         checked.add(branch.cache_key)
                         interpretation = branchid_interpretation[branch.cache_key]
-                        if branch is not None:
-                            cache_key = f"{self.cache_key}:{expression}:{interpretation.cache_key}:{entry_start}-{entry_stop}:{library.name}"
+                        cache_key = f"{self.cache_key}:{expression}:{interpretation.cache_key}:{entry_start}-{entry_stop}:{library.name}"
                         array_cache[cache_key] = arrays[branch.cache_key]
 
         output = language.compute_expressions(
@@ -1964,10 +1969,11 @@ class HasBranches(Mapping):
         already-loaded ``TTree``; it only needs ``language`` to parse the
         expressions, not to evaluate them.
 
-        In addition, the estimate is based on compressed ``TBasket`` sizes
-        (the amount of data that would have to be read), not uncompressed
-        ``TBasket`` sizes (the amount of data that the final arrays would use
-        in memory, without considering ``cuts``).
+        In addition, the estimate is based on uncompressed ``TBasket`` sizes
+        (approximately the amount of data that the final arrays would use in
+        memory, without considering ``cuts``), not compressed ``TBasket`` sizes
+        (the amount of data that would have to be read). Only the ``TBasket``
+        ``TKeys`` are read to obtain these sizes, not the ``TBasket`` data.
 
         This is the algorithm that
         :ref:`uproot.behaviors.TBranch.HasBranches.iterate` uses to convert a
@@ -2747,10 +2753,19 @@ in file {self._file.file_path}"""
         ``TKey``, which are small, but may be slow for remote connections because
         of the latency of round-trip requests.
         """
-        if 0 <= basket_num < self.num_baskets:
+        if 0 <= basket_num < self._num_normal_baskets:
+            # Reading only the TKey (instead of the whole TBasket) is enough to
+            # determine the uncompressed size; add fKeylen to match the header-
+            # inclusive value reported by Model_TBasket.uncompressed_bytes.
+            key = self.basket_key(basket_num)
+            return key.data_uncompressed_bytes + key.fKeylen
+        elif 0 <= basket_num < self.num_baskets:
             return self.basket(basket_num).uncompressed_bytes
         else:
-            return self.basket_key(basket_num).data_uncompressed_bytes
+            raise IndexError(
+                f"""branch {self.name!r} has {self.num_baskets} baskets; cannot get basket {basket_num}
+in file {self._file.file_path}"""
+            )
 
     def basket_key(self, basket_num):
         """
