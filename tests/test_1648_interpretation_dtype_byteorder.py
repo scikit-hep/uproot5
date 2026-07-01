@@ -10,35 +10,29 @@ import uproot.interpretation.numerical as N
 EXPECTED = numpy.array([-41.1952876, 35.1180498, 35.1180498])
 
 
-def test_interpretation_string_spec_not_byteswapped():
-    with uproot.open(skhep_testdata.data_path("uproot-Zmumu.root")) as f:
-        array = f["events"]["px1"].array(interpretation="f8", library="np")
-    numpy.testing.assert_allclose(array[:3], EXPECTED)
-
-
-def test_interpretation_numpy_dtype_not_byteswapped():
-    with uproot.open(skhep_testdata.data_path("uproot-Zmumu.root")) as f:
-        array = f["events"]["px1"].array(interpretation=numpy.dtype("f8"), library="np")
-    numpy.testing.assert_allclose(array[:3], EXPECTED)
-
-
-def test_interpretation_bigendian_to_dtype_preserves_values():
-    with uproot.open(skhep_testdata.data_path("uproot-Zmumu.root")) as f:
-        array = f["events"]["px1"].array(
-            interpretation=N.AsDtype(">f8", ">f8"), library="np"
-        )
-    numpy.testing.assert_allclose(array[:3], EXPECTED)
-
-
-def test_interpretation_default_matches_explicit_spec():
+def test_interpretation_dtype_and_byteorder():
     with uproot.open(skhep_testdata.data_path("uproot-Zmumu.root")) as f:
         branch = f["events"]["px1"]
+
+        # String spec is not byteswapped.
+        array = branch.array(interpretation="f8", library="np")
+        numpy.testing.assert_allclose(array[:3], EXPECTED)
+
+        # numpy.dtype spec is not byteswapped.
+        array = branch.array(interpretation=numpy.dtype("f8"), library="np")
+        numpy.testing.assert_allclose(array[:3], EXPECTED)
+
+        # Big-endian AsDtype preserves values.
+        array = branch.array(interpretation=N.AsDtype(">f8", ">f8"), library="np")
+        numpy.testing.assert_allclose(array[:3], EXPECTED)
+
+        # Default interpretation matches explicit string spec.
         default = branch.array(library="np")
         explicit = branch.array(interpretation="f8", library="np")
-    numpy.testing.assert_array_equal(default, explicit)
+        numpy.testing.assert_array_equal(default, explicit)
 
 
-def test_interpretation_not_equal_does_not_raise():
+def test_interpretation_comparison():
     same_a = N.AsDtype("f8")
     same_b = N.AsDtype("f8")
     different = N.AsDtype("f4")
