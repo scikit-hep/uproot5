@@ -108,7 +108,9 @@ class Numerical(uproot.interpretation.Interpretation):
 
                 start = stop
 
-        output = output.view(output.dtype.newbyteorder("="))
+        native_dtype = output.dtype.newbyteorder("=")
+        if output.dtype != native_dtype:
+            output = output.astype(native_dtype)
         self.hook_before_library_finalize(
             basket_arrays=basket_arrays,
             entry_start=entry_start,
