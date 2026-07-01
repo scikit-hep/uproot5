@@ -1027,14 +1027,22 @@ class HasBranches(Mapping):
             ignore_duplicates=ignore_duplicates,
         )
 
-        # Filter out AsGrouped branches: they are grouping containers with no data
-        # buffers of their own. Their children appear separately in `keys` already.
+        # Filter out AsGrouped branches whose children are already present separately in
+        # keys. Such branches are pure grouping containers with no data buffers of their
+        # own, and keeping them would produce a redundant layer in the output.
+        # AsGrouped branches whose children are NOT in keys are kept because they carry
+        # structural information (e.g. ElementLink records) that would otherwise be lost.
+        keys_set = set(keys)
         keys = [
             k
             for k in keys
             if not isinstance(
                 self[k].interpretation,
                 uproot.interpretation.grouped.AsGrouped,
+            )
+            or not any(
+                child in keys_set
+                for child in self[k].keys(recursive=True, full_paths=True)
             )
         ]
 
@@ -3273,6 +3281,8 @@ def _regularize_expressions(
     branchid_interpretation = {}
 
     if expressions is None:
+        included_cache_keys = set()
+        asgrouped_branches = []
         for branchname, branch in hasbranches.iteritems(
             filter_name=filter_name,
             filter_typename=filter_typename,
@@ -3280,13 +3290,17 @@ def _regularize_expressions(
             recursive=True,
             full_paths=False,
         ):
-            if not isinstance(
+            if isinstance(
                 branch.interpretation,
-                (
-                    uproot.interpretation.identify.UnknownInterpretation,
-                    uproot.interpretation.grouped.AsGrouped,
-                ),
+                uproot.interpretation.identify.UnknownInterpretation,
             ):
+                pass
+            elif isinstance(
+                branch.interpretation,
+                uproot.interpretation.grouped.AsGrouped,
+            ):
+                asgrouped_branches.append((branchname, branch))
+            else:
                 branchname_expression = (
                     branchname
                     if branchname.isidentifier() and not iskeyword(branchname)
@@ -3305,6 +3319,40 @@ def _regularize_expressions(
                     (),
                     False,
                     branchname,
+                )
+                included_cache_keys.add(branch.cache_key)
+
+        # For AsGrouped branches that matched the filter but none of their children
+        # were included separately, include them as primary expressions. This lets
+        # _regularize_branchname pull in the sub-branches and assemble the record,
+        # so e.g. tree.arrays(filter_name="btaggingLink") returns the full record
+        # rather than an empty result.
+        for branchname, branch in asgrouped_branches:
+            # Skip AsGrouped branches whose sub-interpretations include
+            # UnknownInterpretation: AsGrouped.cache_key would raise on them.
+            if any(
+                isinstance(
+                    interp,
+                    uproot.interpretation.identify.UnknownInterpretation,
+                )
+                for interp in branch.interpretation.subbranches.values()
+            ):
+                continue
+            if not any(
+                branch[subname].cache_key in included_cache_keys
+                for subname in branch.interpretation.subbranches
+            ):
+                _regularize_branchname(
+                    hasbranches,
+                    branchname,
+                    branch,
+                    branch.interpretation,
+                    get_from_cache,
+                    arrays,
+                    expression_context,
+                    branchid_interpretation,
+                    True,
+                    False,
                 )
 
     elif isinstance(expressions, str):

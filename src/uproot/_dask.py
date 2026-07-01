@@ -935,7 +935,10 @@ class TrivialFormMappingInfo(ImplementsFormMappingInfo):
         interpretation_executor,
         options: Any,
     ) -> Mapping[str, AwkArray]:
-        # First, let's read the arrays as a tuple (to associate with each key)
+        # Read the arrays as a top-level awkward RecordArray. Omitting how= (the
+        # default) ensures that AsGrouped branches are returned as proper awkward
+        # RecordArrays rather than Python tuples of sub-arrays (which how=tuple
+        # would produce), allowing awkward.to_buffers() to work correctly below.
         arrays = tree.arrays(
             keys,
             entry_start=start,
@@ -943,7 +946,6 @@ class TrivialFormMappingInfo(ImplementsFormMappingInfo):
             ak_add_doc=options["ak_add_doc"],
             decompression_executor=decompression_executor,
             interpretation_executor=interpretation_executor,
-            how=tuple,
         )
 
         if isinstance(tree, HasFields):
@@ -959,9 +961,9 @@ class TrivialFormMappingInfo(ImplementsFormMappingInfo):
         # subform, as they're derived from `branch.interpretation.awkward_form`
         # Therefore, we can correlate the subform keys using `expected_from_buffers`
         container = {}
-        for key, array in zip(keys, arrays, strict=True):
+        for key in keys:
             # First, convert the sub-array into buffers
-            ttree_subform, _length, ttree_container = awkward.to_buffers(array)
+            ttree_subform, _length, ttree_container = awkward.to_buffers(arrays[key])
 
             # Load the associated projection subform
             projection_subform = self._form.content(key)
@@ -1649,15 +1651,23 @@ def _get_dak_array(
             )
         )
 
-    # Filter out AsGrouped branches: they are grouping containers without their own
-    # data buffers. This matches tree.arrays(expressions=None) which also skips them.
+    # Filter out AsGrouped branches whose children are already present separately in
+    # common_keys. Such branches are pure grouping containers with no data buffers of
+    # their own, and keeping them would produce a redundant layer in the form.
+    # AsGrouped branches whose children are NOT in common_keys are kept because they
+    # carry structural information (e.g. ElementLink records) that would otherwise be lost.
     if ttrees and not isinstance(ttrees[0], HasFields):
+        common_keys_set = set(common_keys)
         common_keys = [
             k
             for k in common_keys
             if not isinstance(
                 ttrees[0][k].interpretation,
                 uproot.interpretation.grouped.AsGrouped,
+            )
+            or not any(
+                child in common_keys_set
+                for child in ttrees[0][k].keys(recursive=True, full_paths=True)
             )
         ]
 
@@ -1799,15 +1809,23 @@ def _get_dak_array_delay_open(
             full_paths=full_paths,
             ignore_duplicates=True,
         )
-        # Filter out AsGrouped branches: they are grouping containers without their own
-        # data buffers. This matches tree.arrays(expressions=None) which also skips them.
+        # Filter out AsGrouped branches whose children are already present separately in
+        # common_keys. Such branches are pure grouping containers with no data buffers of
+        # their own, and keeping them would produce a redundant layer in the form.
+        # AsGrouped branches whose children are NOT in common_keys are kept because they
+        # carry structural information (e.g. ElementLink records) that would otherwise be lost.
         if not isinstance(obj, HasFields):
+            common_keys_set = set(common_keys)
             common_keys = [
                 k
                 for k in common_keys
                 if not isinstance(
                     obj[k].interpretation,
                     uproot.interpretation.grouped.AsGrouped,
+                )
+                or not any(
+                    child in common_keys_set
+                    for child in obj[k].keys(recursive=True, full_paths=True)
                 )
             ]
         base_form = _get_ttree_form(
