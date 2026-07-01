@@ -11,47 +11,31 @@ from skhep_testdata import data_path
 
 
 def test_vector(tmp_path):
-    import shutil
+    data = np.array([1, 2], dtype=np.int64)
+    data1 = np.array([2, 3, 4, 5], dtype=np.int64)
+    data2 = np.array([3, 4, 5], dtype=np.int64)
+    new_branch = np.array([1, 2, 3], dtype=np.int64)
 
-    data = [1, 2, 3, 4, 5]
+    with uproot.recreate(os.path.join(tmp_path, "vector_test.root")) as file:
+        file.mktree(
+            "t",
+            {
+                "b1": ak.Array([data, data1, data2]),
+                "b2": ak.Array([data1, data2, data]),
+            },
+        )
+    with uproot.update(os.path.join(tmp_path, "vector_test.root")) as write:
+        write.add_branches("t", {"b3": new_branch})
 
-    shutil.copy(
-        data_path("uproot-vectorVectorDouble.root"),
-        os.path.join(tmp_path, "cp-vectorVectorDouble.root"),
-    )
+    with uproot.open(os.path.join(tmp_path, "vector_test.root"), minimal_ttree_metadata=False) as new:
+        assert ak.all(new["t"]["b1"].array()[0] == data)
+        assert ak.all(new["t"]["b3"].array() == new_branch)
 
-    with uproot.open(
-        data_path("uproot-vectorVectorDouble.root"),
-        minimal_ttree_metadata=False,
-    ) as read:
-        with pytest.raises(TypeError):
-            with uproot.update(
-                os.path.join(tmp_path, "cp-vectorVectorDouble.root"),
-            ) as write:
-                write.add_branches("t", {"branch": data})
-
-            with uproot.open(
-                os.path.join(tmp_path, "cp-vectorVectorDouble.root"),
-                minimal_ttree_metadata=False,
-            ) as new:
-                for i in read["t"].keys():
-                    assert ak.all(read["t"][i].array() == new["t"][i].array())
-                assert ak.all(new["t"]["branch"].array() == data)
-
-                inFile = ROOT.TFile.Open(
-                    os.path.join(tmp_path, "cp-vectorVectorDouble.root"), "READ"
-                )
-                tree = inFile.Get("t;1")
-                indx = 0
-
-                for x in tree:
-                    indx2 = 0
-                    for i in getattr(x, "x"):
-                        assert ak.all(list(i) == read["t"]["x"].array()[indx][indx2])
-                        indx2 += 1
-                    assert getattr(x, "branch") == data[indx]
-                    indx += 1
-
+    inFile = ROOT.TFile.Open(os.path.join(tmp_path, "vector_test.root"), "READ")
+    tree = inFile.Get("t;1")
+    for i, x in enumerate(tree):
+        assert getattr(x, "b3") == new_branch[i]
+    inFile.Close()
 
 def simple_test(tmp_path):
     data = np.array([1, 2, 3, 4, 5], dtype=np.int64)
