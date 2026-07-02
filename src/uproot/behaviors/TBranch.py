@@ -3131,12 +3131,10 @@ def _regularize_aliases(hasbranches, aliases):
 def _regularize_interpretation(interpretation):
     if isinstance(interpretation, uproot.interpretation.Interpretation):
         return interpretation
-    elif isinstance(interpretation, numpy.dtype):
-        return uproot.interpretation.numerical.AsDtype(interpretation)
     else:
         dtype = numpy.dtype(interpretation)
         dtype = dtype.newbyteorder(">")
-        return uproot.interpretation.numerical.AsDtype(interpretation)
+        return uproot.interpretation.numerical.AsDtype(dtype)
 
 
 def _regularize_branchname(
