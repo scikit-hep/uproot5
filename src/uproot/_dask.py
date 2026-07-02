@@ -140,6 +140,24 @@ def dask(
     the function returns a Python dict of dask arrays. If ``library='ak'``, the
     function returns a single dask-awkward array.
 
+    .. note::
+
+        When any filter (``filter_name``, ``filter_typename``, or
+        ``filter_branch``) selects an *AsGrouped* branch (a pure-grouping
+        container with no data buffers of its own), the result depends on
+        which of its sub-branches are also selected:
+
+        * **Only the parent selected** — all sub-branches are returned grouped
+          as a single ``RecordArray``.
+        * **Only sub-branches selected (no parent)** — the selected sub-branches
+          are returned as separate flat fields.
+        * **Parent and all sub-branches selected** — the parent is dropped and
+          each sub-branch is returned as a separate flat field.
+        * **Parent and some sub-branches selected** — the complete grouped record
+          is returned for all sub-branches; the individually-selected
+          sub-branches are absorbed into the group and are not also returned
+          as flat fields.
+
     For example:
 
     .. code-block:: python
