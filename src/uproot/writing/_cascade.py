@@ -2186,8 +2186,7 @@ class Directory(CascadeNode):
         )
         tree.write_anew(sink)
         return tree
-
-<<<<<<< HEAD
+    
     def add_branches(
         self,
         sink,
@@ -2233,10 +2232,7 @@ class Directory(CascadeNode):
         # directory._file.sink.flush()
         return tree, updated_streamers
 
-    def add_rntuple(self, sink, name, title, akform):
-=======
     def add_rntuple(self, sink, name, description, akform):
->>>>>>> main
         import uproot.writing._cascadentuple
 
         anchor = uproot.writing._cascadentuple.NTuple_Anchor(
