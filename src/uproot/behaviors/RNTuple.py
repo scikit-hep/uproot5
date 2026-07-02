@@ -400,6 +400,7 @@ def concatenate(
                 arrays = library.global_index(arrays, global_start)
             except uproot.exceptions.KeyInFileError:
                 if allow_missing:
+                    global_start = global_stop
                     continue
                 else:
                     raise
@@ -1030,7 +1031,7 @@ class HasFields(Mapping):
                 filter_typename=filter_typename,
                 filter_field=filter_field,
                 entry_start=start,
-                entry_stop=start + step_size,
+                entry_stop=min(start + step_size, entry_stop),
                 library=library,
                 backend=backend,
                 interpreter=interpreter,
