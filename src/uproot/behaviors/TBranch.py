@@ -1027,23 +1027,31 @@ class HasBranches(Mapping):
             ignore_duplicates=ignore_duplicates,
         )
 
-        # Filter out AsGrouped branches whose children are already present separately in
-        # keys. Such branches are pure grouping containers with no data buffers of their
-        # own, and keeping them would produce a redundant layer in the output.
-        # AsGrouped branches whose children are NOT in keys are kept because they carry
-        # structural information (e.g. ElementLink records) that would otherwise be lost.
+        # Normalise AsGrouped branches in keys according to which of their children
+        # also appear in keys (same case logic as _regularize_expressions):
+        # - Case 1 (Parent matched, no leaves matched):    include parent grouped
+        # - Case 2 (Parent not matched, some leaves matched):   skip parent, keep matched leaves individual
+        # - Case 3 (arent matched, all leaves matched):   skip parent, keep leaves individual
+        # - Case 4 (Parent matched, some leaves matched):  include parent grouped, suppress matched leaves
         keys_set = set(keys)
-        keys = [
-            k
-            for k in keys
+        parent_keys_to_remove = set()
+        child_keys_to_suppress = set()
+        for k in keys:
             if not isinstance(
                 self[k].interpretation,
                 uproot.interpretation.grouped.AsGrouped,
-            )
-            or not any(
-                child in keys_set
-                for child in self[k].keys(recursive=True, full_paths=True)
-            )
+            ):
+                continue
+            all_child_keys = self[k].keys(recursive=True, full_paths=False)
+            matched_children = [c for c in all_child_keys if c in keys_set]
+            if len(all_child_keys) > 0 and len(matched_children) == len(all_child_keys):
+                parent_keys_to_remove.add(k)
+            elif matched_children:
+                child_keys_to_suppress.update(matched_children)
+        keys = [
+            k
+            for k in keys
+            if k not in parent_keys_to_remove and k not in child_keys_to_suppress
         ]
 
         # we're dealing with a single branch here:
@@ -3264,6 +3272,30 @@ in file {} at {}""".format(
         expression_context.append((expression, c))
 
 
+def _collect_leaf_cache_keys(branch, result=None):
+    """Recursively collect TBranch cache keys of all non-AsGrouped descendants.
+
+    Used to classify how an AsGrouped branch should be handled when building
+    expression_context: whether ALL its leaves were matched (case 3 → skip) or
+    only some / none (case 1/4 → include grouped).  UnknownInterpretation leaves
+    are silently skipped because they cannot be read anyway.
+    """
+    if result is None:
+        result = set()
+    for subname in branch.interpretation.subbranches:
+        subbranch = branch[subname]
+        if isinstance(
+            subbranch.interpretation, uproot.interpretation.grouped.AsGrouped
+        ):
+            _collect_leaf_cache_keys(subbranch, result)
+        elif not isinstance(
+            subbranch.interpretation,
+            uproot.interpretation.identify.UnknownInterpretation,
+        ):
+            result.add(subbranch.cache_key)
+    return result
+
+
 def _regularize_expressions(
     hasbranches,
     expressions,
@@ -3281,8 +3313,10 @@ def _regularize_expressions(
     branchid_interpretation = {}
 
     if expressions is None:
-        included_cache_keys = set()
-        asgrouped_branches = []
+        # Collect all matched branches without adding to expression_context yet;
+        # we need to see all matches before deciding how to handle each AsGrouped.
+        matched_regular = []  # (branchname, branch) for non-AsGrouped, non-Unknown
+        asgrouped_branches = []  # (branchname, branch)
         for branchname, branch in hasbranches.iteritems(
             filter_name=filter_name,
             filter_typename=filter_typename,
@@ -3301,34 +3335,20 @@ def _regularize_expressions(
             ):
                 asgrouped_branches.append((branchname, branch))
             else:
-                branchname_expression = (
-                    branchname
-                    if branchname.isidentifier() and not iskeyword(branchname)
-                    else language.getter_of(branchname)
-                )
-                _regularize_expression(
-                    hasbranches,
-                    branchname_expression,
-                    keys,
-                    aliases,
-                    language,
-                    get_from_cache,
-                    arrays,
-                    expression_context,
-                    branchid_interpretation,
-                    (),
-                    False,
-                    branchname,
-                )
-                included_cache_keys.add(branch.cache_key)
+                matched_regular.append((branchname, branch))
 
-        # For AsGrouped branches that matched the filter but none of their children
-        # were included separately, include them as primary expressions. This lets
-        # _regularize_branchname pull in the sub-branches and assemble the record,
-        # so e.g. tree.arrays(filter_name="btaggingLink") returns the full record
-        # rather than an empty result.
+        # Classify each AsGrouped branch using its RECURSIVE leaf cache keys so
+        # that nested AsGrouped structures are handled correctly:
+        # - Case 1 (Parent matched, no leaves matched):    include parent grouped
+        # - Case 2 (Parent not matched, some leaves matched):   skip parent, keep matched leaves individual
+        # - Case 3 (arent matched, all leaves matched):   skip parent, keep leaves individual
+        # - Case 4 (Parent matched, some leaves matched):  include parent grouped, suppress matched leaves
+        all_regular_cache_keys = {b.cache_key for _, b in matched_regular}
+        children_to_suppress = set()  # leaf cache keys not to add individually
+        asgrouped_to_add = []  # (branchname, branch) AsGrouped parents to add grouped
+
         for branchname, branch in asgrouped_branches:
-            # Skip AsGrouped branches whose sub-interpretations include
+            # Skip AsGrouped branches whose direct sub-interpretations include
             # UnknownInterpretation: AsGrouped.cache_key would raise on them.
             if any(
                 isinstance(
@@ -3338,22 +3358,69 @@ def _regularize_expressions(
                 for interp in branch.interpretation.subbranches.values()
             ):
                 continue
+            leaf_cache_keys = _collect_leaf_cache_keys(branch)
+            matched_leaves = leaf_cache_keys & all_regular_cache_keys
+            if len(leaf_cache_keys) > 0 and len(matched_leaves) == len(leaf_cache_keys):
+                # Case 3: every leaf was matched individually → skip parent
+                pass
+            else:
+                # Case 1 (no leaves) or Case 4 (some leaves):
+                # include the parent grouped and suppress matched leaves to prevent
+                # them from also being added individually (would create duplicates).
+                children_to_suppress |= matched_leaves
+                asgrouped_to_add.append((branchname, branch))
+
+        # If a nested AsGrouped is also in asgrouped_to_add, its ancestor will
+        # handle it via _regularize_branchname.  Remove descendants to avoid
+        # processing them twice.
+        asgrouped_to_add_names = {name for name, _ in asgrouped_to_add}
+        asgrouped_to_add = [
+            (branchname, branch)
+            for branchname, branch in asgrouped_to_add
             if not any(
-                branch[subname].cache_key in included_cache_keys
-                for subname in branch.interpretation.subbranches
-            ):
-                _regularize_branchname(
-                    hasbranches,
-                    branchname,
-                    branch,
-                    branch.interpretation,
-                    get_from_cache,
-                    arrays,
-                    expression_context,
-                    branchid_interpretation,
-                    True,
-                    False,
-                )
+                branchname.startswith(parent_name + "/")
+                for parent_name in asgrouped_to_add_names
+            )
+        ]
+
+        # Add regular (non-AsGrouped) branches, skipping leaves subsumed by a parent.
+        for branchname, branch in matched_regular:
+            if branch.cache_key in children_to_suppress:
+                continue
+            branchname_expression = (
+                branchname
+                if branchname.isidentifier() and not iskeyword(branchname)
+                else language.getter_of(branchname)
+            )
+            _regularize_expression(
+                hasbranches,
+                branchname_expression,
+                keys,
+                aliases,
+                language,
+                get_from_cache,
+                arrays,
+                expression_context,
+                branchid_interpretation,
+                (),
+                False,
+                branchname,
+            )
+
+        # Add grouped AsGrouped parents (cases 1 and 4).
+        for branchname, branch in asgrouped_to_add:
+            _regularize_branchname(
+                hasbranches,
+                branchname,
+                branch,
+                branch.interpretation,
+                get_from_cache,
+                arrays,
+                expression_context,
+                branchid_interpretation,
+                True,
+                False,
+            )
 
     elif isinstance(expressions, str):
         _regularize_expression(

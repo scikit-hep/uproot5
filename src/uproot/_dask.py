@@ -1651,24 +1651,34 @@ def _get_dak_array(
             )
         )
 
-    # Filter out AsGrouped branches whose children are already present separately in
-    # common_keys. Such branches are pure grouping containers with no data buffers of
-    # their own, and keeping them would produce a redundant layer in the form.
-    # AsGrouped branches whose children are NOT in common_keys are kept because they
-    # carry structural information (e.g. ElementLink records) that would otherwise be lost.
+    # Normalise AsGrouped branches in common_keys according to which of their
+    # children also appear in common_keys:
+    # - Case 1 (Parent matched, no leaves matched):    include parent grouped
+    # - Case 2 (Parent not matched, some leaves matched):   skip parent, keep matched leaves individual
+    # - Case 3 (arent matched, all leaves matched):   skip parent, keep leaves individual
+    # - Case 4 (Parent matched, some leaves matched):  include parent grouped, suppress matched leaves
     if ttrees and not isinstance(ttrees[0], HasFields):
         common_keys_set = set(common_keys)
-        common_keys = [
-            k
-            for k in common_keys
+        parent_keys_to_remove = set()
+        child_keys_to_suppress = set()
+        for k in common_keys:
             if not isinstance(
                 ttrees[0][k].interpretation,
                 uproot.interpretation.grouped.AsGrouped,
-            )
-            or not any(
-                child in common_keys_set
-                for child in ttrees[0][k].keys(recursive=True, full_paths=True)
-            )
+            ):
+                continue
+            all_child_keys = ttrees[0][k].keys(recursive=True, full_paths=False)
+            matched_children = [c for c in all_child_keys if c in common_keys_set]
+            if len(all_child_keys) > 0 and len(matched_children) == len(all_child_keys):
+                # Case 3: drop parent, keep individual children
+                parent_keys_to_remove.add(k)
+            elif matched_children:
+                # Case 4: keep parent, suppress the individually-matched children
+                child_keys_to_suppress.update(matched_children)
+        common_keys = [
+            k
+            for k in common_keys
+            if k not in parent_keys_to_remove and k not in child_keys_to_suppress
         ]
 
     step_sum = 0
@@ -1809,24 +1819,34 @@ def _get_dak_array_delay_open(
             full_paths=full_paths,
             ignore_duplicates=True,
         )
-        # Filter out AsGrouped branches whose children are already present separately in
-        # common_keys. Such branches are pure grouping containers with no data buffers of
-        # their own, and keeping them would produce a redundant layer in the form.
-        # AsGrouped branches whose children are NOT in common_keys are kept because they
-        # carry structural information (e.g. ElementLink records) that would otherwise be lost.
+        # Normalise AsGrouped branches in common_keys according to which of their
+        # children also appear in common_keys (same logic as _get_dak_array):
+        # - Case 1 (Parent matched, no leaves matched):    include parent grouped
+        # - Case 2 (Parent not matched, some leaves matched):   skip parent, keep matched leaves individual
+        # - Case 3 (arent matched, all leaves matched):   skip parent, keep leaves individual
+        # - Case 4 (Parent matched, some leaves matched):  include parent grouped, suppress matched leaves
         if not isinstance(obj, HasFields):
             common_keys_set = set(common_keys)
-            common_keys = [
-                k
-                for k in common_keys
+            parent_keys_to_remove = set()
+            child_keys_to_suppress = set()
+            for k in common_keys:
                 if not isinstance(
                     obj[k].interpretation,
                     uproot.interpretation.grouped.AsGrouped,
-                )
-                or not any(
-                    child in common_keys_set
-                    for child in obj[k].keys(recursive=True, full_paths=True)
-                )
+                ):
+                    continue
+                all_child_keys = obj[k].keys(recursive=True, full_paths=True)
+                matched_children = [c for c in all_child_keys if c in common_keys_set]
+                if len(all_child_keys) > 0 and len(matched_children) == len(
+                    all_child_keys
+                ):
+                    parent_keys_to_remove.add(k)
+                elif matched_children:
+                    child_keys_to_suppress.update(matched_children)
+            common_keys = [
+                k
+                for k in common_keys
+                if k not in parent_keys_to_remove and k not in child_keys_to_suppress
             ]
         base_form = _get_ttree_form(
             awkward, obj, common_keys, interp_options.get("ak_add_doc")
