@@ -27,7 +27,9 @@ def test_vector(tmp_path):
     with uproot.update(os.path.join(tmp_path, "vector_test.root")) as write:
         write.add_branches("t", {"b3": new_branch})
 
-    with uproot.open(os.path.join(tmp_path, "vector_test.root"), minimal_ttree_metadata=False) as new:
+    with uproot.open(
+        os.path.join(tmp_path, "vector_test.root"), minimal_ttree_metadata=False
+    ) as new:
         assert ak.all(new["t"]["b1"].array()[0] == data)
         assert ak.all(new["t"]["b3"].array() == new_branch)
 
@@ -36,6 +38,7 @@ def test_vector(tmp_path):
     for i, x in enumerate(tree):
         assert getattr(x, "b3") == new_branch[i]
     inFile.Close()
+
 
 def simple_test(tmp_path):
     data = np.array([1, 2, 3, 4, 5], dtype=np.int64)
@@ -429,7 +432,9 @@ def test_TreeEventSimple0(tmp_path):
         assert getattr(x, "b2") == np.int64(i + 1)
     inFile.Close()
 
-    df = ROOT.RDataFrame("TreeEventTreeSimple0", os.path.join(tmp_path, "TreeEventTreeSimple0.root"))
+    df = ROOT.RDataFrame(
+        "TreeEventTreeSimple0", os.path.join(tmp_path, "TreeEventTreeSimple0.root")
+    )
     npy = ak.from_rdataframe(df, columns=("b1", "b2"))
     assert ak.all(npy["b1"] == np.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], np.int64))
     assert ak.all(npy["b2"] == np.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], np.int64))
@@ -465,10 +470,15 @@ def test_TreeEventSimple1(tmp_path):
         assert getattr(x, "new_v") == np.float32(i + 1)
     inFile.Close()
 
-    df = ROOT.RDataFrame("TreeEventTreeSimple1", os.path.join(tmp_path, "TreeEventTreeSimple1.root"))
+    df = ROOT.RDataFrame(
+        "TreeEventTreeSimple1", os.path.join(tmp_path, "TreeEventTreeSimple1.root")
+    )
     npy = ak.from_rdataframe(df, columns=("existing_branch", "new_v"))
-    assert ak.all(npy["existing_branch"] == np.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], np.float32))
+    assert ak.all(
+        npy["existing_branch"] == np.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], np.float32)
+    )
     assert ak.all(npy["new_v"] == np.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], np.float32))
+
 
 @pytest.mark.skip(
     reason="needs to be rewritten - original relied on local files with custom C++ class branches"
