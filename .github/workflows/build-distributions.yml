@@ -9,6 +9,9 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-build-distributions
+  cancel-in-progress: true
 jobs:
   dist:
     name: Build distribution artifacts
