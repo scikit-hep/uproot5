@@ -1049,7 +1049,7 @@ class HasBranches(Mapping):
         # also appear in keys (same case logic as _regularize_expressions):
         # - Case 1 (Parent matched, no leaves matched):    include parent grouped
         # - Case 2 (Parent not matched, some leaves matched):   skip parent, keep matched leaves individual
-        # - Case 3 (arent matched, all leaves matched):   skip parent, keep leaves individual
+        # - Case 3 (Parent matched, all leaves matched):   skip parent, keep leaves individual
         # - Case 4 (Parent matched, some leaves matched):  include parent grouped, suppress matched leaves
         keys_set = set(keys)
         parent_keys_to_remove = set()
@@ -1060,7 +1060,12 @@ class HasBranches(Mapping):
                 uproot.interpretation.grouped.AsGrouped,
             ):
                 continue
-            all_child_keys = self[k].keys(recursive=True, full_paths=False)
+            if full_paths:
+                all_child_keys = [
+                    f"{k}/{ck}" for ck in self[k].keys(recursive=True, full_paths=True)
+                ]
+            else:
+                all_child_keys = self[k].keys(recursive=True, full_paths=False)
             matched_children = [c for c in all_child_keys if c in keys_set]
             if len(all_child_keys) > 0 and len(matched_children) == len(all_child_keys):
                 parent_keys_to_remove.add(k)
@@ -3312,6 +3317,18 @@ def _collect_leaf_cache_keys(branch, result=None):
     return result
 
 
+def _iter_branch_ancestors(branch):
+    """Yield each TBranch ancestor of *branch*, from parent up to the tree root.
+
+    Used by the nested-AsGrouped de-duplication step in ``_regularize_expressions``
+    to detect whether a branch's ancestor is already being added grouped.
+    """
+    p = getattr(branch, "parent", None)
+    while isinstance(p, TBranch):
+        yield p
+        p = getattr(p, "parent", None)
+
+
 def _regularize_expressions(
     hasbranches,
     expressions,
@@ -3357,7 +3374,7 @@ def _regularize_expressions(
         # that nested AsGrouped structures are handled correctly:
         # - Case 1 (Parent matched, no leaves matched):    include parent grouped
         # - Case 2 (Parent not matched, some leaves matched):   skip parent, keep matched leaves individual
-        # - Case 3 (arent matched, all leaves matched):   skip parent, keep leaves individual
+        # - Case 3 (Parent matched, all leaves matched):   skip parent, keep leaves individual
         # - Case 4 (Parent matched, some leaves matched):  include parent grouped, suppress matched leaves
         all_regular_cache_keys = {b.cache_key for _, b in matched_regular}
         children_to_suppress = set()  # leaf cache keys not to add individually
@@ -3388,14 +3405,15 @@ def _regularize_expressions(
 
         # If a nested AsGrouped is also in asgrouped_to_add, its ancestor will
         # handle it via _regularize_branchname.  Remove descendants to avoid
-        # processing them twice.
-        asgrouped_to_add_names = {name for name, _ in asgrouped_to_add}
+        # processing them twice.  We use object identity (not names from
+        # full_paths=False iteration, which carry no hierarchy info) to detect
+        # the ancestor relationship.
+        asgrouped_to_add_ids = {id(b) for _, b in asgrouped_to_add}
         asgrouped_to_add = [
             (branchname, branch)
             for branchname, branch in asgrouped_to_add
             if not any(
-                branchname.startswith(parent_name + "/")
-                for parent_name in asgrouped_to_add_names
+                id(p) in asgrouped_to_add_ids for p in _iter_branch_ancestors(branch)
             )
         ]
 

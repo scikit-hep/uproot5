@@ -1673,7 +1673,7 @@ def _get_dak_array(
     # children also appear in common_keys:
     # - Case 1 (Parent matched, no leaves matched):    include parent grouped
     # - Case 2 (Parent not matched, some leaves matched):   skip parent, keep matched leaves individual
-    # - Case 3 (arent matched, all leaves matched):   skip parent, keep leaves individual
+    # - Case 3 (Parent matched, all leaves matched):   skip parent, keep leaves individual
     # - Case 4 (Parent matched, some leaves matched):  include parent grouped, suppress matched leaves
     if ttrees and not isinstance(ttrees[0], HasFields):
         common_keys_set = set(common_keys)
@@ -1685,7 +1685,13 @@ def _get_dak_array(
                 uproot.interpretation.grouped.AsGrouped,
             ):
                 continue
-            all_child_keys = ttrees[0][k].keys(recursive=True, full_paths=False)
+            if full_paths:
+                all_child_keys = [
+                    f"{k}/{ck}"
+                    for ck in ttrees[0][k].keys(recursive=True, full_paths=True)
+                ]
+            else:
+                all_child_keys = ttrees[0][k].keys(recursive=True, full_paths=False)
             matched_children = [c for c in all_child_keys if c in common_keys_set]
             if len(all_child_keys) > 0 and len(matched_children) == len(all_child_keys):
                 # Case 3: drop parent, keep individual children
@@ -1841,7 +1847,7 @@ def _get_dak_array_delay_open(
         # children also appear in common_keys (same logic as _get_dak_array):
         # - Case 1 (Parent matched, no leaves matched):    include parent grouped
         # - Case 2 (Parent not matched, some leaves matched):   skip parent, keep matched leaves individual
-        # - Case 3 (arent matched, all leaves matched):   skip parent, keep leaves individual
+        # - Case 3 (Parent matched, all leaves matched):   skip parent, keep leaves individual
         # - Case 4 (Parent matched, some leaves matched):  include parent grouped, suppress matched leaves
         if not isinstance(obj, HasFields):
             common_keys_set = set(common_keys)
@@ -1853,7 +1859,13 @@ def _get_dak_array_delay_open(
                     uproot.interpretation.grouped.AsGrouped,
                 ):
                     continue
-                all_child_keys = obj[k].keys(recursive=True, full_paths=True)
+                if full_paths:
+                    all_child_keys = [
+                        f"{k}/{ck}"
+                        for ck in obj[k].keys(recursive=True, full_paths=True)
+                    ]
+                else:
+                    all_child_keys = obj[k].keys(recursive=True, full_paths=False)
                 matched_children = [c for c in all_child_keys if c in common_keys_set]
                 if len(all_child_keys) > 0 and len(matched_children) == len(
                     all_child_keys
