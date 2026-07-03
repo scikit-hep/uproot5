@@ -12,9 +12,8 @@ da = pytest.importorskip("dask.array")
 
 def test_read_AsGrouped_with_dask_or_virtual_array():
     """
-    ``RNTuple.iterate(report=True)`` must yield ``(arrays, Report)`` pairs,
-    matching the contract documented in its docstring and already provided
-    by ``TTree.iterate``.
+    Reading a TTree that contains an AsGrouped branch without any filter must
+    return consistent results across eager, virtual, and dask modes.
     """
     path = skhep_testdata.data_path("uproot-issue-1502.root")
     with uproot.open(path) as f:
