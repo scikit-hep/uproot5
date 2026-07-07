@@ -15,12 +15,20 @@ permissions:
 
 jobs:
   build:
-    name: Test on ${{ matrix.platform }} with Python ${{ matrix.python-version }}
+    name: Test on ${{ matrix.platform }} with Python ${{ matrix.python-version }}${{ matrix.root-version != '' && format(' and ROOT {0}', matrix.root-version) || '' }}
     strategy:
       fail-fast: false
       matrix:
         platform: [windows-latest, macos-latest, ubuntu-latest]
         python-version: ['3.10', '3.14', 3.14 python-freethreading]
+        root-version: ['']
+        include:
+          - platform: ubuntu-latest
+            python-version: '3.10'
+            root-version: latest
+          - platform: ubuntu-latest
+            python-version: '3.10'
+            root-version: '6.32'
 
     runs-on: ${{ matrix.platform }}
     timeout-minutes: 30
@@ -44,6 +52,7 @@ jobs:
             --strict-channel-priority
             conda-forge/label/python_rc::_python_rc
             python=${{ matrix.python-version }}
+            ${{ matrix.root-version == 'latest' && 'root' || matrix.root-version == '6.32' && 'root=6.32.*' || '' }}
           micromamba-version: 2.6.0-0   # unpin when there is a release newer than 2.6.1-0
 
       - name: Set PYTHON_GIL=0 for free-threaded builds
@@ -56,13 +65,6 @@ jobs:
         env:
           EXPECTED_PYTHON_VERSION: ${{ matrix.python-version }}
         run: python -c "import os, sys; actual = '.'.join(str(s) for s in sys.version_info[:2]); expected = os.environ['EXPECTED_PYTHON_VERSION'].split()[0]; assert actual == expected, f'{actual} incorrect!'"
-
-      - name: Install ROOT
-        if: matrix.python-version == 3.10  &&  runner.os == 'Linux'
-        run: |
-          micromamba env list
-          micromamba install root
-          micromamba list
 
       - name: Install sshd for fsspec ssh tests
         if: runner.os == 'Linux'
