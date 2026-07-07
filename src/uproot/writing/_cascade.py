@@ -2186,7 +2186,7 @@ class Directory(CascadeNode):
         )
         tree.write_anew(sink)
         return tree
-    
+
     def add_branches(
         self,
         sink,
