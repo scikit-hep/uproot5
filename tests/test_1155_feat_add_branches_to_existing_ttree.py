@@ -479,31 +479,22 @@ def test_TreeEventSimple1(tmp_path):
     )
     assert ak.all(npy["new_v"] == np.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], np.float32))
 
-
-@pytest.mark.skip(
-    reason="needs to be rewritten - original relied on local files with custom C++ class branches"
-)
+@pytest.mark.xfail(reason="add_branches corrupts files with complex C++ class branches - known bug")
 def test_TreeClass0(tmp_path):
+    import shutil
+    shutil.copy(data_path("uproot-HZZ-objects.root"), os.path.join(tmp_path, "HZZ-objects.root"))
+    
+    with uproot.update(os.path.join(tmp_path, "HZZ-objects.root")) as f:
+        f.add_branches("events", {"new_branch": np.ones(2421, dtype=np.float32)})
+    
+    with uproot.open(os.path.join(tmp_path, "HZZ-objects.root"), minimal_ttree_metadata=False) as f:
+        assert ak.all(f["events"]["new_branch"].array() == np.ones(2421, dtype=np.float32))
 
-    with uproot.update(os.path.join(tmp_path, "cp/TreeClass0.root")) as file:
-        file.add_branches(
-            "TreeClass0",
-            {"b1": np.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], dtype=np.float64)},
-        )
-    with uproot.open(
-        os.path.join(tmp_path, "cp/TreeClass0.root")
-    ) as file:  # Okay can't read with arrays()
-        print(file["TreeClass0"]["ClassC_branch"])
-        # with uproot.open(os.path.join(tmp_path,"cp/TreeClass0.root")) as new: # Okay can't read with arrays()
-        #     print(new['TreeEventTreeSimple2'].asdfa)
-        inFile = ROOT.TFile.Open(os.path.join(tmp_path, "cp/TreeClass0.root"), "READ")
-        tree = inFile.Get("TreeClass0;1")
-        indx = 0
-        for x in tree:
-            assert getattr(x, "ClassC_branch")
-            print(getattr(x, "ClassC_branch"))
-            indx += 1
-
+    inFile = ROOT.TFile.Open(os.path.join(tmp_path, "HZZ-objects.root"), "READ")
+    tree = inFile.Get("events;1")
+    for i, x in enumerate(tree):
+        assert getattr(x, "new_branch") == np.float32(1.0)
+    inFile.Close()
 
 def look():
     with uproot.open(
