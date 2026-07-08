@@ -637,6 +637,7 @@ class OldBranches(CascadeLeaf):
         return total
 
     def serialize(self, out, branch):
+        print(f"DEBUG OldBranches.serialize called for {branch.name}")
         self.read_members(branch)
         any_tbranch_index = len(out)
         out.append(None)
@@ -935,11 +936,13 @@ class OldBranches(CascadeLeaf):
                 sum(len(x) for x in out[subtobjarray_of_leaves_index + 1 :]),
                 3,  # TObjArray
             )
-
+        # empty TObjArray of fBaskets (embedded)
+        print(f"DEBUG fBaskets value: {datum['fBaskets']}")
         # empty TObjArray of fBaskets (embedded)
         if len(datum["fBaskets"]) >= 1:
-            msg = f"NotImplementedError, cannot yet write TObjArray of fBaskets. Branch {datum['fName']} has {len(datum['fBaskets'])} fBaskets."
-            raise NotImplementedError(msg)
+            if any(b is not None for b in datum["fBaskets"]):
+                msg = f"NotImplementedError, cannot yet write TObjArray of fBaskets. Branch {datum['fName']} has {len(datum['fBaskets'])} fBaskets."
+                raise NotImplementedError(msg)
 
         out.append(
             b"@\x00\x00\x15\x00\x03\x00\x01\x00\x00\x00\x00\x03\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
@@ -1011,6 +1014,8 @@ class OldBranches(CascadeLeaf):
         return out, datum["tleaf_reference_number"]
 
     def read_members(self, branch):
+        print(f"DEBUG read_members branch type: {type(branch)}")
+        print(f"DEBUG branch has fBaskets: {branch.has_member('fBaskets')}")
         name = branch.member("fName")
         self._branch_data[name] = {}
         self._branch_data[name]["fTitle"] = branch.member("fTitle")
@@ -1037,12 +1042,21 @@ class OldBranches(CascadeLeaf):
         self._branch_data[name]["fTotBytes"] = branch.member("fTotBytes")
         self._branch_data[name]["fZipBytes"] = branch.member("fZipBytes")
         self._branch_data[name]["fLeaves"] = branch.member("fLeaves")
-        self._branch_data[name]["fBaskets"] = branch.member("fBaskets")
+        try:
+            result = branch.member("fBaskets")
+            print(f"DEBUG: fBaskets returned: {result}, len: {len(result)}")
+            self._branch_data[name]["fBaskets"] = result
+        except Exception as e:
+            print(f"DEBUG: fBaskets exception: {type(e).__name__}: {e}")
+            self._branch_data[name]["fBaskets"] = []
         self._branch_data[name]["fBranches"] = branch.member("fBranches")
         self._branch_data[name]["fBasketBytes"] = branch.member("fBasketBytes")
         self._branch_data[name]["fBasketEntry"] = branch.member("fBasketEntry")
         self._branch_data[name]["fBasketSeek"] = branch.member("fBasketSeek")
-        self._branch_data[name]["fFileName"] = branch.member("fFileName")
+        try:
+            self._branch_data[name]["fFileName"] = branch.member("fFileName")
+        except Exception:
+            self._branch_data[name]["fFileName"] = ""
 
     def serialize_leaf_elements(self, out, special_struct):
         # specialized TLeaf* members (fMinimum, fMaximum)

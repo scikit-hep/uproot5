@@ -1686,48 +1686,37 @@ class Tree:
                     )
                     + 2
                 )
-
-                if len(branch.branches) == 0:
-                    # No subbranches
-                    # Write remainder of branch
-                    out.append(
-                        self._existing_ttree.chunk.raw_data.tobytes()[
-                            first_indx - branch_start : f_indx + 25
-                        ]
-                    )
-                    absolute_location = key_num_bytes + sum(
-                        len(x) for x in out if x is not None
-                    )
-
-                    absolute_location += 8 + 6 * (
-                        sum(1 if x is None else 0 for x in out) - 1
-                    )
-
-                    tleaf_reference_numbers.append(absolute_location)
-                    out.append(
-                        self._existing_ttree.chunk.raw_data.tobytes()[
-                            f_indx + 25 : second_indx
-                        ]
-                    )
+                if "TBranchElement" in branch.encoded_classname:
+                    old_branch = uproot.writing._cascade.OldBranches([branch])
+                    _, tleaf_ref = old_branch.serialize(out, branch)
+                    tleaf_reference_numbers.append(tleaf_ref)
+                
                 else:
-                    # With subbranches
-                    subbranch = branch.branches[0]
-                    cursor = subbranch.cursor.copy()
-                    # cursor before TObjArray of TBranches
-                    first_indx1 = cursor.index
-                    cursor.skip_after(subbranch)
-                    second_indx1 = cursor.index
+                    if len(branch.branches) == 0:
+                        # No subbranches
+                        # Write remainder of branch
+                        out.append(
+                            self._existing_ttree.chunk.raw_data.tobytes()[
+                                first_indx - branch_start : f_indx + 25
+                            ]
+                        )
+                        absolute_location = key_num_bytes + sum(
+                            len(x) for x in out if x is not None
+                        )
 
-                    f_indx1 = subbranch.member("fLeaves").cursor.index
+                        absolute_location += 8 + 6 * (
+                            sum(1 if x is None else 0 for x in out) - 1
+                        )
 
-                    out.append(
-                        self._existing_ttree.chunk.raw_data.tobytes()[
-                            first_indx - branch_start : first_indx1 - 8
-                        ]
-                    )
-                    for (
-                        subbranch
-                    ) in branch.branches:  # how to get it to not copy all subbranches?
+                        tleaf_reference_numbers.append(absolute_location)
+                        out.append(
+                            self._existing_ttree.chunk.raw_data.tobytes()[
+                                f_indx + 25 : second_indx
+                            ]
+                        )
+                    else:
+                        # With subbranches
+                        subbranch = branch.branches[0]
                         cursor = subbranch.cursor.copy()
                         # cursor before TObjArray of TBranches
                         first_indx1 = cursor.index
@@ -1736,19 +1725,51 @@ class Tree:
 
                         f_indx1 = subbranch.member("fLeaves").cursor.index
 
-                        branch_start = (
-                            len(
-                                uproot.writing.identify.to_TString(
-                                    subbranch.classname
-                                ).serialize()
-                            )
-                            + 2
-                        )
                         out.append(
                             self._existing_ttree.chunk.raw_data.tobytes()[
-                                first_indx1 - 8 : f_indx1 + 25
+                                first_indx - branch_start : first_indx1 - 8
                             ]
                         )
+                        for (
+                            subbranch
+                        ) in branch.branches:  # how to get it to not copy all subbranches?
+                            cursor = subbranch.cursor.copy()
+                            # cursor before TObjArray of TBranches
+                            first_indx1 = cursor.index
+                            cursor.skip_after(subbranch)
+                            second_indx1 = cursor.index
+
+                            f_indx1 = subbranch.member("fLeaves").cursor.index
+
+                            branch_start = (
+                                len(
+                                    uproot.writing.identify.to_TString(
+                                        subbranch.classname
+                                    ).serialize()
+                                )
+                                + 2
+                            )
+                            out.append(
+                                self._existing_ttree.chunk.raw_data.tobytes()[
+                                    first_indx1 - 8 : f_indx1 + 25
+                                ]
+                            )
+                            # Write TLeaf Reference
+                            absolute_location = key_num_bytes + sum(
+                                len(x) for x in out if x is not None
+                            )
+                            absolute_location += 8 + 6 * (
+                                sum(1 if x is None else 0 for x in out) - 1
+                            )
+
+                            tleaf_reference_numbers.append(absolute_location)
+
+                            # Write remainder of branch
+                            out.append(
+                                self._existing_ttree.chunk.raw_data.tobytes()[
+                                    f_indx1 + 25 : second_indx1
+                                ]
+                            )
                         # Write TLeaf Reference
                         absolute_location = key_num_bytes + sum(
                             len(x) for x in out if x is not None
@@ -1758,27 +1779,11 @@ class Tree:
                         )
 
                         tleaf_reference_numbers.append(absolute_location)
-
-                        # Write remainder of branch
                         out.append(
                             self._existing_ttree.chunk.raw_data.tobytes()[
-                                f_indx1 + 25 : second_indx1
+                                second_indx1:second_indx
                             ]
                         )
-                    # Write TLeaf Reference
-                    absolute_location = key_num_bytes + sum(
-                        len(x) for x in out if x is not None
-                    )
-                    absolute_location += 8 + 6 * (
-                        sum(1 if x is None else 0 for x in out) - 1
-                    )
-
-                    tleaf_reference_numbers.append(absolute_location)
-                    out.append(
-                        self._existing_ttree.chunk.raw_data.tobytes()[
-                            second_indx1:second_indx
-                        ]
-                    )
         for datum in self._branch_data:
             if datum["kind"] == "record":
                 continue
