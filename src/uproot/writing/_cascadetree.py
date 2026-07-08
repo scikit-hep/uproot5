@@ -1687,9 +1687,13 @@ class Tree:
                     + 2
                 )
                 if "TBranchElement" in branch.encoded_classname:
+                    branch_out = []
                     old_branch = uproot.writing._cascade.OldBranches([branch])
-                    _, tleaf_ref = old_branch.serialize(out, branch)
+                    _, tleaf_ref = old_branch.serialize(branch_out, branch)
                     tleaf_reference_numbers.append(tleaf_ref)
+                    for item in branch_out:
+                        if item is not None:
+                            out.append(item)
                 
                 else:
                     if len(branch.branches) == 0:

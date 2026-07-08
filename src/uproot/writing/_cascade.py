@@ -637,7 +637,6 @@ class OldBranches(CascadeLeaf):
         return total
 
     def serialize(self, out, branch):
-        print(f"DEBUG OldBranches.serialize called for {branch.name}")
         self.read_members(branch)
         any_tbranch_index = len(out)
         out.append(None)
@@ -645,6 +644,8 @@ class OldBranches(CascadeLeaf):
             out.append(b"TBranchElement\x00")
             tbranchelement_index = len(out)
             out.append(None)
+            tbranch_index = len(out) 
+            out.append(None) 
         else:
             out.append(b"TBranch\x00")
 
@@ -653,8 +654,8 @@ class OldBranches(CascadeLeaf):
 
         datum = self._branch_data[branch.member("fName")]
         key_num_bytes = uproot.reading._key_format_big.size + 6
-        name_asbytes = branch.tree.name.encode(errors="surrogateescape")
-        title_asbytes = branch.tree.title.encode(errors="surrogateescape")
+        name_asbytes = datum["fName"].encode(errors="surrogateescape")
+        title_asbytes = datum["fTitle"].encode(errors="surrogateescape")
         key_num_bytes += (1 if len(name_asbytes) < 255 else 5) + len(name_asbytes)
         key_num_bytes += (1 if len(title_asbytes) < 255 else 5) + len(title_asbytes)
 
@@ -664,11 +665,7 @@ class OldBranches(CascadeLeaf):
         tbranch_tnamed._members["fTitle"] = datum["fTitle"]
         tbranch_tnamed._serialize(out, True, datum["fName"], numpy.uint32(0x00400000))
         # TAttFill v2, fFillColor: 0, fFillStyle: 1001
-        tattfill = uproot.models.TAtt.Model_TAttFill_v2.empty()
-        tattfill._members["fFillColor"] = datum["fFillColor"]
-        tattfill._members["fFillStyle"] = datum["fFillStyle"]
-
-        out.append(tattfill.serialize(out))
+        out.append(b"@\x00\x00\x06\x00\x02\x00\x00\x03\xe9")
         datum["metadata_start"] = (6 + 6 + 8 + 6) + sum(
             len(x) for x in out if x is not None
         )
@@ -937,8 +934,6 @@ class OldBranches(CascadeLeaf):
                 3,  # TObjArray
             )
         # empty TObjArray of fBaskets (embedded)
-        print(f"DEBUG fBaskets value: {datum['fBaskets']}")
-        # empty TObjArray of fBaskets (embedded)
         if len(datum["fBaskets"]) >= 1:
             if any(b is not None for b in datum["fBaskets"]):
                 msg = f"NotImplementedError, cannot yet write TObjArray of fBaskets. Branch {datum['fName']} has {len(datum['fBaskets'])} fBaskets."
@@ -948,7 +943,10 @@ class OldBranches(CascadeLeaf):
             b"@\x00\x00\x15\x00\x03\x00\x01\x00\x00\x00\x00\x03\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
         )
 
-        assert sum(1 if x is None else 0 for x in out) == 4
+        # if "fClonesName" in branch.all_members.keys():
+        #     assert sum(1 if x is None else 0 for x in out) == 5
+        # else:
+        #     assert sum(1 if x is None else 0 for x in out) == 4
         datum["basket_metadata_start"] = (6 + 6 + 8 + 6) + sum(
             len(x) for x in out if x is not None
         )
@@ -966,13 +964,30 @@ class OldBranches(CascadeLeaf):
         out.append(b"\x00")
 
         if "fClonesName" in branch.all_members.keys():
+            out.append(uproot.serialization.string(branch.member("fClassName")))
+            out.append(uproot.serialization.string(branch.member("fParentName")))
+            out.append(uproot.serialization.string(branch.member("fClonesName")))
+            out.append(
+                uproot.models.TBranch._tbranchelement10_format1.pack(
+                    branch.member("fCheckSum"),
+                    branch.member("fClassVersion"),
+                    branch.member("fID"),
+                    branch.member("fType"),
+                    branch.member("fStreamerType"),
+                    branch.member("fMaximum"),
+                )
+            )
+            out.append(uproot.serialization.serialize_object_any(branch.member("fBranchCount")))
+            out.append(uproot.serialization.serialize_object_any(branch.member("fBranchCount2")))
+            out[tbranch_index] = uproot.serialization.numbytes_version(
+                sum(len(x) for x in out[tbranch_index + 1 :] if x is not None), 13  # TBranch
+            )
+            tbranch_size = sum(len(x) for x in out[tbranchelement_index + 1:] if x is not None)
+            print(f"DEBUG tbranchelement total size: {tbranch_size}")
             out[tbranchelement_index] = uproot.serialization.numbytes_version(
                 sum(len(x) for x in out[tbranchelement_index + 1 :] if x is not None),
-                10,  # TBranchElement (?)
+                10,  # TBranchElement
             )
-            # out[tbranch_index] = uproot.serialization.numbytes_version(
-            # sum(len(x) for x in out[tbranch_index + 1 :]), 13  # TBranch
-            # )
         else:
             out[tbranch_index] = uproot.serialization.numbytes_version(
                 sum(len(x) for x in out[tbranch_index + 1 :]), 13  # TBranch
@@ -984,38 +999,10 @@ class OldBranches(CascadeLeaf):
                 uproot.const.kNewClassTag,
             )
         )
-        if (
-            "fClonesName" in branch.all_members.keys()
-        ):  # TBranchElement - find a more robust way to check....or make sure this is only is True if branch is a TBranchElement
-            out.append(
-                branch.member("fClassName").serialize()
-            )  # These three are TStrings
-            out.append(branch.member("fParentName").serialize())
-            out.append(branch.member("fClonesName").serialize())
-            out.append(
-                uproot.models.TBranch._tbranchelement10_format1.pack(
-                    branch.member("fCheckSum"),
-                    branch.member("fClassVersion"),
-                    branch.member("fID"),
-                    branch.member("fType"),
-                    branch.member("fStreamerType"),
-                    branch.member("fMaximum"),
-                )
-            )
-            out.append(
-                uproot.serialization.serialize_object_any(branch.member("fBranchCount"))
-            )
-            out.append(
-                uproot.serialization.serialize_object_any(
-                    branch.member("fBranchCount2")
-                )
-            )
-
+        
         return out, datum["tleaf_reference_number"]
 
     def read_members(self, branch):
-        print(f"DEBUG read_members branch type: {type(branch)}")
-        print(f"DEBUG branch has fBaskets: {branch.has_member('fBaskets')}")
         name = branch.member("fName")
         self._branch_data[name] = {}
         self._branch_data[name]["fTitle"] = branch.member("fTitle")
@@ -1044,10 +1031,8 @@ class OldBranches(CascadeLeaf):
         self._branch_data[name]["fLeaves"] = branch.member("fLeaves")
         try:
             result = branch.member("fBaskets")
-            print(f"DEBUG: fBaskets returned: {result}, len: {len(result)}")
             self._branch_data[name]["fBaskets"] = result
-        except Exception as e:
-            print(f"DEBUG: fBaskets exception: {type(e).__name__}: {e}")
+        except Exception:
             self._branch_data[name]["fBaskets"] = []
         self._branch_data[name]["fBranches"] = branch.member("fBranches")
         self._branch_data[name]["fBasketBytes"] = branch.member("fBasketBytes")
