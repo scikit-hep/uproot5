@@ -1690,7 +1690,7 @@ class Tree:
                     old_branch = uproot.writing._cascade.OldBranches([branch])
                     _, tleaf_ref = old_branch.serialize(out, branch)
                     tleaf_reference_numbers.append(tleaf_ref)
-                
+
                 else:
                     if len(branch.branches) == 0:
                         # No subbranches
@@ -1732,7 +1732,9 @@ class Tree:
                         )
                         for (
                             subbranch
-                        ) in branch.branches:  # how to get it to not copy all subbranches?
+                        ) in (
+                            branch.branches
+                        ):  # how to get it to not copy all subbranches?
                             cursor = subbranch.cursor.copy()
                             # cursor before TObjArray of TBranches
                             first_indx1 = cursor.index
