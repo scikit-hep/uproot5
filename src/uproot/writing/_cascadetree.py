@@ -1695,7 +1695,7 @@ class Tree:
                     for item in branch_out:
                         if item is not None:
                             out.append(item)
-                
+
 =======
 
 >>>>>>> f2fcb7bf02043f75f04b998406e807cc21574b71

@@ -644,8 +644,8 @@ class OldBranches(CascadeLeaf):
             out.append(b"TBranchElement\x00")
             tbranchelement_index = len(out)
             out.append(None)
-            tbranch_index = len(out) 
-            out.append(None) 
+            tbranch_index = len(out)
+            out.append(None)
         else:
             out.append(b"TBranch\x00")
 
@@ -977,12 +977,21 @@ class OldBranches(CascadeLeaf):
                     branch.member("fMaximum"),
                 )
             )
-            out.append(uproot.serialization.serialize_object_any(branch.member("fBranchCount")))
-            out.append(uproot.serialization.serialize_object_any(branch.member("fBranchCount2")))
-            out[tbranch_index] = uproot.serialization.numbytes_version(
-                sum(len(x) for x in out[tbranch_index + 1 :] if x is not None), 13  # TBranch
+            out.append(
+                uproot.serialization.serialize_object_any(branch.member("fBranchCount"))
             )
-            tbranch_size = sum(len(x) for x in out[tbranchelement_index + 1:] if x is not None)
+            out.append(
+                uproot.serialization.serialize_object_any(
+                    branch.member("fBranchCount2")
+                )
+            )
+            out[tbranch_index] = uproot.serialization.numbytes_version(
+                sum(len(x) for x in out[tbranch_index + 1 :] if x is not None),
+                13,  # TBranch
+            )
+            tbranch_size = sum(
+                len(x) for x in out[tbranchelement_index + 1 :] if x is not None
+            )
             print(f"DEBUG tbranchelement total size: {tbranch_size}")
             out[tbranchelement_index] = uproot.serialization.numbytes_version(
                 sum(len(x) for x in out[tbranchelement_index + 1 :] if x is not None),
@@ -999,7 +1008,7 @@ class OldBranches(CascadeLeaf):
                 uproot.const.kNewClassTag,
             )
         )
-        
+
         return out, datum["tleaf_reference_number"]
 
     def read_members(self, branch):
