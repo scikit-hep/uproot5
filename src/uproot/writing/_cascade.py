@@ -636,7 +636,7 @@ class OldBranches(CascadeLeaf):
 
         return total
 
-    def serialize(self, out, branch):
+    def serialize(self, out, branch, offset = 0):
         self.read_members(branch)
         any_tbranch_index = len(out)
         out.append(None)
@@ -758,7 +758,7 @@ class OldBranches(CascadeLeaf):
             b"\x00\x01\x00\x00\x00\x00\x03\x00\x00\x00\x00\x00\x00\x00\x01\x00\x00\x00\x00"
         )
 
-        absolute_location = key_num_bytes + sum(len(x) for x in out if x is not None)
+        absolute_location = key_num_bytes + offset + sum(len(x) for x in out if x is not None)
         absolute_location += 8 + 6 * (sum(1 if x is None else 0 for x in out) - 1)
         datum["tleaf_reference_number"] = absolute_location + 2
         subany_tleaf_index = len(out)
@@ -963,6 +963,10 @@ class OldBranches(CascadeLeaf):
         # out.append(datum["fFileName"].serialize())  # name = None?
         out.append(b"\x00")
 
+        out[tbranch_index] = uproot.serialization.numbytes_version(
+            sum(len(x) for x in out[tbranch_index + 1:] if x is not None), 13
+        )
+
         if "fClonesName" in branch.all_members.keys():
             out.append(uproot.serialization.string(branch.member("fClassName")))
             out.append(uproot.serialization.string(branch.member("fParentName")))
@@ -979,11 +983,7 @@ class OldBranches(CascadeLeaf):
             )
             out.append(uproot.serialization.serialize_object_any(branch.member("fBranchCount")))
             out.append(uproot.serialization.serialize_object_any(branch.member("fBranchCount2")))
-            out[tbranch_index] = uproot.serialization.numbytes_version(
-                sum(len(x) for x in out[tbranch_index + 1 :] if x is not None), 13  # TBranch
-            )
-            tbranch_size = sum(len(x) for x in out[tbranchelement_index + 1:] if x is not None)
-            print(f"DEBUG tbranchelement total size: {tbranch_size}")
+            
             out[tbranchelement_index] = uproot.serialization.numbytes_version(
                 sum(len(x) for x in out[tbranchelement_index + 1 :] if x is not None),
                 10,  # TBranchElement
