@@ -1698,7 +1698,6 @@ class Tree:
                     for item in branch_out:
                         if item is not None:
                             out.append(item)
-                
                 else:
                     if len(branch.branches) == 0:
                         # No subbranches
