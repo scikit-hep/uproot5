@@ -983,9 +983,9 @@ class OldBranches(CascadeLeaf):
                     branch.member("fMaximum"),
                 )
             )
-            out.append(b"\x00\x00\x00\x00")  # fBranchCount (null)  
+            out.append(b"\x00\x00\x00\x00")  # fBranchCount (null)
             out.append(b"\x00\x00\x00\x00")  # fBranchCount2 (null)
-  
+
             out[tbranchelement_index] = uproot.serialization.numbytes_version(
                 sum(len(x) for x in out[tbranchelement_index + 1 :] if x is not None),
                 10,  # TBranchElement
