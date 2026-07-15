@@ -1671,8 +1671,7 @@ class Tree:
         # Write old branches
         class_map = {}
         has_tbranchelement = any(
-            "TBranchElement" in b.encoded_classname
-            for b in self._existing_branches
+            "TBranchElement" in b.encoded_classname for b in self._existing_branches
         )
 
         if self._existing_branches:
@@ -1683,9 +1682,11 @@ class Tree:
                     offset += 8 + 6 * (sum(1 if x is None else 0 for x in out) - 1)
                     old_branch = uproot.writing._cascade.OldBranches([branch])
                     _, tleaf_ref = old_branch.serialize(
-                        branch_out, branch, offset=offset,
+                        branch_out,
+                        branch,
+                        offset=offset,
                         tree_key_num_bytes=key_num_bytes,
-                        class_map=class_map
+                        class_map=class_map,
                     )
                     tleaf_reference_numbers.append(tleaf_ref)
                     for item in branch_out:
@@ -1698,7 +1699,11 @@ class Tree:
                     second_indx = cursor.index
                     f_indx = branch.member("fLeaves").cursor.index
                     branch_start = (
-                        len(uproot.writing.identify.to_TString(branch.classname).serialize())
+                        len(
+                            uproot.writing.identify.to_TString(
+                                branch.classname
+                            ).serialize()
+                        )
                         + 2
                     )
                     if len(branch.branches) == 0:
@@ -1707,8 +1712,12 @@ class Tree:
                                 first_indx - branch_start : f_indx + 25
                             ]
                         )
-                        absolute_location = key_num_bytes + sum(len(x) for x in out if x is not None)
-                        absolute_location += 8 + 6 * (sum(1 if x is None else 0 for x in out) - 1)
+                        absolute_location = key_num_bytes + sum(
+                            len(x) for x in out if x is not None
+                        )
+                        absolute_location += 8 + 6 * (
+                            sum(1 if x is None else 0 for x in out) - 1
+                        )
                         tleaf_reference_numbers.append(absolute_location)
                         out.append(
                             self._existing_ttree.chunk.raw_data.tobytes()[
