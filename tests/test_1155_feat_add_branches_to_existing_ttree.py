@@ -481,7 +481,7 @@ def test_TreeEventSimple1(tmp_path):
 
 
 @pytest.mark.xfail(
-    reason="add_branches corrupts files with complex C++ class branches - known bug"
+    reason="ROOT cannot read files with TBranchElement branches modified by uproot - class tag back-references not yet implemented"
 )
 def test_TreeClass0(tmp_path):
     import shutil
