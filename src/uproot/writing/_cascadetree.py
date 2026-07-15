@@ -1691,7 +1691,7 @@ class Tree:
                     offset = sum(len(x) for x in out if x is not None)
                     offset += 8 + 6 * (sum(1 if x is None else 0 for x in out) - 1)
                     old_branch = uproot.writing._cascade.OldBranches([branch])
-                    _, tleaf_ref = old_branch.serialize(branch_out, branch, offset = offset)
+                    _, tleaf_ref = old_branch.serialize(branch_out, branch, offset=offset)
                     tleaf_reference_numbers.append(tleaf_ref)
                     branch_bytes = sum(len(x) for x in branch_out if x is not None)
                     print(f"DEBUG branch {branch.name} serialized to {branch_bytes} bytes")

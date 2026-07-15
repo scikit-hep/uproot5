@@ -636,7 +636,7 @@ class OldBranches(CascadeLeaf):
 
         return total
 
-    def serialize(self, out, branch, offset = 0):
+    def serialize(self, out, branch, offset=0):
         self.read_members(branch)
         any_tbranch_index = len(out)
         out.append(None)
@@ -651,7 +651,6 @@ class OldBranches(CascadeLeaf):
 
             tbranch_index = len(out)
             out.append(None)
-
         datum = self._branch_data[branch.member("fName")]
         key_num_bytes = uproot.reading._key_format_big.size + 6
         name_asbytes = datum["fName"].encode(errors="surrogateescape")
@@ -758,7 +757,9 @@ class OldBranches(CascadeLeaf):
             b"\x00\x01\x00\x00\x00\x00\x03\x00\x00\x00\x00\x00\x00\x00\x01\x00\x00\x00\x00"
         )
 
-        absolute_location = key_num_bytes + offset + sum(len(x) for x in out if x is not None)
+        absolute_location = (
+            key_num_bytes + offset + sum(len(x) for x in out if x is not None)
+        )
         absolute_location += 8 + 6 * (sum(1 if x is None else 0 for x in out) - 1)
         datum["tleaf_reference_number"] = absolute_location + 2
         subany_tleaf_index = len(out)
@@ -981,6 +982,9 @@ class OldBranches(CascadeLeaf):
                     branch.member("fMaximum"),
                 )
             )
+            out.append(b"\x00\x00\x00\x00")  # fBranchCount (null)  
+            out.append(b"\x00\x00\x00\x00")  # fBranchCount2 (null)
+  
             out[tbranchelement_index] = uproot.serialization.numbytes_version(
                 sum(len(x) for x in out[tbranchelement_index + 1 :] if x is not None),
                 10,  # TBranchElement
@@ -996,7 +1000,6 @@ class OldBranches(CascadeLeaf):
                 uproot.const.kNewClassTag,
             )
         )
-
         return out, datum["tleaf_reference_number"]
 
     def read_members(self, branch):
