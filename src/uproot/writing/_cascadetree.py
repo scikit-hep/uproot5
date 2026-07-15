@@ -1669,57 +1669,46 @@ class Tree:
             )
         )
         # Write old branches
+        class_map = {}
+        has_tbranchelement = any(
+            "TBranchElement" in b.encoded_classname
+            for b in self._existing_branches
+        )
+
         if self._existing_branches:
             for branch in self._existing_branches:
-                cursor = branch.cursor.copy()
-
-                # cursor before TObjArray of TBranches
-                first_indx = cursor.index
-                cursor.skip_after(branch)
-                second_indx = cursor.index
-
-                f_indx = branch.member("fLeaves").cursor.index
-
-                branch_start = (
-                    len(
-                        uproot.writing.identify.to_TString(branch.classname).serialize()
-                    )
-                    + 2
-                )
-                if "TBranchElement" in branch.encoded_classname:
+                if "TBranchElement" in branch.encoded_classname or has_tbranchelement:
                     branch_out = []
                     offset = sum(len(x) for x in out if x is not None)
                     offset += 8 + 6 * (sum(1 if x is None else 0 for x in out) - 1)
                     old_branch = uproot.writing._cascade.OldBranches([branch])
-
                     _, tleaf_ref = old_branch.serialize(
-                        branch_out, branch, offset=offset
+                        branch_out, branch, offset=offset,
+                        tree_key_num_bytes=key_num_bytes,
+                        class_map=class_map
                     )
                     tleaf_reference_numbers.append(tleaf_ref)
-                    branch_bytes = sum(len(x) for x in branch_out if x is not None)
-                    print(
-                        f"DEBUG branch {branch.name} serialized to {branch_bytes} bytes"
-                    )
                     for item in branch_out:
                         if item is not None:
                             out.append(item)
                 else:
+                    cursor = branch.cursor.copy()
+                    first_indx = cursor.index
+                    cursor.skip_after(branch)
+                    second_indx = cursor.index
+                    f_indx = branch.member("fLeaves").cursor.index
+                    branch_start = (
+                        len(uproot.writing.identify.to_TString(branch.classname).serialize())
+                        + 2
+                    )
                     if len(branch.branches) == 0:
-                        # No subbranches
-                        # Write remainder of branch
                         out.append(
                             self._existing_ttree.chunk.raw_data.tobytes()[
                                 first_indx - branch_start : f_indx + 25
                             ]
                         )
-                        absolute_location = key_num_bytes + sum(
-                            len(x) for x in out if x is not None
-                        )
-
-                        absolute_location += 8 + 6 * (
-                            sum(1 if x is None else 0 for x in out) - 1
-                        )
-
+                        absolute_location = key_num_bytes + sum(len(x) for x in out if x is not None)
+                        absolute_location += 8 + 6 * (sum(1 if x is None else 0 for x in out) - 1)
                         tleaf_reference_numbers.append(absolute_location)
                         out.append(
                             self._existing_ttree.chunk.raw_data.tobytes()[

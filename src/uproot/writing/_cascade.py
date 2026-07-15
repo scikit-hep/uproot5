@@ -636,7 +636,7 @@ class OldBranches(CascadeLeaf):
 
         return total
 
-    def serialize(self, out, branch, offset=0):
+    def serialize(self, out, branch, offset=0, class_map=None, tree_key_num_bytes=0):
         self.read_members(branch)
         any_tbranch_index = len(out)
         out.append(None)
@@ -794,13 +794,14 @@ class OldBranches(CascadeLeaf):
             # else: # This will never be reached? What to do about G
             #     letter_upper = "G"
             #     special_struct = uproot.models.TLeaf._tleafl1_format0
-            if isinstance(
-                leaf, uproot.models.TLeaf.Model_TLeafElement_v1
-            ):  # TLeafElement...
+            if isinstance(leaf, uproot.models.TLeaf.Model_TLeafElement_v1):
                 special_struct = uproot.models.TLeaf._tleafelement1_format1
-                out.append((b"TLeafElement") + b"\x00")
+                tleaf_classname = b"TLeafElement\x00"
             else:
-                out.append(("TLeaf" + letter_upper).encode() + b"\x00")
+                tleaf_classname = ("TLeaf" + letter_upper + "\x00").encode()
+
+            if class_map is None or tleaf_classname not in class_map:
+                out.append(tleaf_classname)
             # single TLeaf
             leaf_name = datum["fName"].encode(errors="surrogateescape")
             leaf_title = (
@@ -922,14 +923,14 @@ class OldBranches(CascadeLeaf):
                         leaf.member("fType"),
                     )
                 )
+            
             out[subany_tleaf_index] = (
                 uproot.serialization._serialize_object_any_format1.pack(
-                    numpy.uint32(sum(len(x) for x in out[subany_tleaf_index + 1 :]) + 4)
+                    numpy.uint32(sum(len(x) for x in out[subany_tleaf_index + 1:]) + 4)
                     | uproot.const.kByteCountMask,
                     uproot.const.kNewClassTag,
                 )
             )
-
             out[subtobjarray_of_leaves_index] = uproot.serialization.numbytes_version(
                 sum(len(x) for x in out[subtobjarray_of_leaves_index + 1 :]),
                 3,  # TObjArray
