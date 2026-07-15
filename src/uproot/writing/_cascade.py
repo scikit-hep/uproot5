@@ -965,7 +965,7 @@ class OldBranches(CascadeLeaf):
         out.append(b"\x00")
 
         out[tbranch_index] = uproot.serialization.numbytes_version(
-            sum(len(x) for x in out[tbranch_index + 1:] if x is not None), 13
+            sum(len(x) for x in out[tbranch_index + 1 :] if x is not None), 13
         )
 
         if "fClonesName" in branch.all_members.keys():
