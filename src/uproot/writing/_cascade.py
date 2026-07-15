@@ -923,10 +923,10 @@ class OldBranches(CascadeLeaf):
                         leaf.member("fType"),
                     )
                 )
-            
+
             out[subany_tleaf_index] = (
                 uproot.serialization._serialize_object_any_format1.pack(
-                    numpy.uint32(sum(len(x) for x in out[subany_tleaf_index + 1:]) + 4)
+                    numpy.uint32(sum(len(x) for x in out[subany_tleaf_index + 1 :]) + 4)
                     | uproot.const.kByteCountMask,
                     uproot.const.kNewClassTag,
                 )
