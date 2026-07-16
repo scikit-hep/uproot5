@@ -59,7 +59,7 @@ jobs:
         if: contains(matrix.python-version, 'python-freethreading')
         run: echo "PYTHON_GIL=0" >> $GITHUB_ENV
 
-      - uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
+      - uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
 
       - name: Check active Python version
         env:
@@ -110,7 +110,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
           allow-prereleases: true
 
-      - uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
+      - uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
 
       - name: Pip install the package
         run: uv pip install --system -e. --group=dev
@@ -139,7 +139,7 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
+      - uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
 
       - name: Pip install the package
         run: |
@@ -170,7 +170,7 @@ jobs:
         with:
           python-version: '3.13'
 
-      - uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
+      - uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
 
       - name: Install pyodide-build
         run: python3 -m pip install pyodide-build==$PYODIDE_BUILD_VERSION
