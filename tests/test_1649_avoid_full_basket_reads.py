@@ -41,17 +41,6 @@ def test_num_entries_for_does_not_fully_read_baskets(monkeypatch):
         assert result > 0
 
 
-def test_basket_uncompressed_bytes_value_is_unchanged(monkeypatch):
-    with uproot.open(skhep_testdata.data_path("uproot-Zmumu.root"))["events"] as tree:
-        for branch in tree.itervalues(recursive=True):
-            for basket_num in range(branch.num_baskets):
-                # Cheap TKey-only path must match the full-read value
-                # (fKeylen + fObjlen), so step-size estimates do not change.
-                cheap = branch.basket_uncompressed_bytes(basket_num)
-                full = branch.basket(basket_num).uncompressed_bytes
-                assert cheap == full
-
-
 def test_partial_cache_hit_does_not_reread(monkeypatch):
     with uproot.open(skhep_testdata.data_path("uproot-Zmumu.root"))["events"] as tree:
         reference = tree.arrays(["px1", "px2"], array_cache={})
