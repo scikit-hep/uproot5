@@ -5,7 +5,8 @@ import skhep_testdata
 
 import uproot
 
-pytest.importorskip("pandas")
+pytest.importorskip("dask")
+pytest.importorskip("dask_awkward")
 
 
 def test_dask_duplicated_keys():

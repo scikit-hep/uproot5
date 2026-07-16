@@ -15,12 +15,20 @@ permissions:
 
 jobs:
   build:
-    name: Test on ${{ matrix.platform }} with Python ${{ matrix.python-version }}
+    name: Test on ${{ matrix.platform }} with Python ${{ matrix.python-version }}${{ matrix.root-version != '' && format(' and ROOT {0}', matrix.root-version) || '' }}
     strategy:
       fail-fast: false
       matrix:
         platform: [windows-latest, macos-latest, ubuntu-latest]
         python-version: ['3.10', '3.14', 3.14 python-freethreading]
+        root-version: ['']
+        include:
+          - platform: ubuntu-latest
+            python-version: '3.10'
+            root-version: latest
+          - platform: ubuntu-latest
+            python-version: '3.10'
+            root-version: '6.32'
 
     runs-on: ${{ matrix.platform }}
     timeout-minutes: 30
@@ -31,7 +39,7 @@ jobs:
         shell: bash -l {0}
 
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           persist-credentials: false
 
@@ -44,6 +52,7 @@ jobs:
             --strict-channel-priority
             conda-forge/label/python_rc::_python_rc
             python=${{ matrix.python-version }}
+            ${{ matrix.root-version == 'latest' && 'root' || matrix.root-version == '6.32' && 'root=6.32.*' || '' }}
           micromamba-version: 2.6.0-0   # unpin when there is a release newer than 2.6.1-0
 
       - name: Set PYTHON_GIL=0 for free-threaded builds
@@ -56,13 +65,6 @@ jobs:
         env:
           EXPECTED_PYTHON_VERSION: ${{ matrix.python-version }}
         run: python -c "import os, sys; actual = '.'.join(str(s) for s in sys.version_info[:2]); expected = os.environ['EXPECTED_PYTHON_VERSION'].split()[0]; assert actual == expected, f'{actual} incorrect!'"
-
-      - name: Install ROOT
-        if: matrix.python-version == 3.10  &&  runner.os == 'Linux'
-        run: |
-          micromamba env list
-          micromamba install root
-          micromamba list
 
       - name: Install sshd for fsspec ssh tests
         if: runner.os == 'Linux'
@@ -99,11 +101,11 @@ jobs:
     timeout-minutes: 30
 
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           persist-credentials: false
 
-      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
           python-version: ${{ matrix.python-version }}
           allow-prereleases: true
@@ -129,11 +131,11 @@ jobs:
     timeout-minutes: 30
 
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           persist-credentials: false
 
-      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
           python-version: ${{ matrix.python-version }}
 
@@ -159,12 +161,12 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           persist-credentials: false
 
       - name: Setup Python
-        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
           python-version: '3.13'
 
@@ -241,7 +243,7 @@ jobs:
           rm -rf * .[!.]* || echo "Nothing to clean"
           rm -rf ~/micromamba* || echo "Nothing to clean"
 
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           persist-credentials: false
 
