@@ -352,10 +352,6 @@ def file_path_to_source_class(
         )
 
 
-# Backward-compatible alias; FileNotFoundError is a builtin since Python 3.3.
-_FileNotFoundError = FileNotFoundError
-
-
 def _file_not_found(files, message=None):
     message = "" if message is None else " (" + message + ")"
 
