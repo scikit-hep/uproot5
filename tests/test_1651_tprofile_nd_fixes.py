@@ -32,35 +32,14 @@ def h3():
 # ---------------------------------------------------------------------------
 
 
-def test_tprofile2d_weighted_no_raise(h2):
-    """weighted must not raise TypeError (fNcells is int, not iterable)."""
-    _ = h2.weighted  # previously raised "object of type 'int' has no len()"
-
-
 def test_tprofile2d_weighted_value(h2):
     """Histogram was not filled with weights, so weighted should be False."""
     assert h2.weighted is False
 
 
-def test_tprofile2d_counts_flow_true_shape(h2):
-    """counts(flow=True) must have the same shape as values(flow=True)."""
+def test_tprofile2d_counts_flow_shape(h2):
     assert h2.counts(flow=True).shape == h2.values(flow=True).shape
-
-
-def test_tprofile2d_counts_flow_false_shape(h2):
-    """counts(flow=False) must have the same shape as values(flow=False)."""
     assert h2.counts(flow=False).shape == h2.values(flow=False).shape
-
-
-def test_tprofile2d_counts_flow_false_no_index_error(h2):
-    """counts() with default flow=False previously raised IndexError."""
-    c = h2.counts()  # flow=False by default
-    assert c.shape == (2, 3)
-
-
-def test_tprofile2d_counts_flow_true_shape_value(h2):
-    """counts(flow=True) shape should be (nx+2, ny+2)."""
-    assert h2.counts(flow=True).shape == (4, 5)
 
 
 def test_tprofile2d_counts_is_subset_of_flow(h2):
@@ -80,35 +59,14 @@ def test_tprofile2d_counts_dtype(h2):
 # ---------------------------------------------------------------------------
 
 
-def test_tprofile3d_weighted_no_raise(h3):
-    """weighted must not raise TypeError (fNcells is int, not iterable)."""
-    _ = h3.weighted  # previously raised "object of type 'int' has no len()"
-
-
 def test_tprofile3d_weighted_value(h3):
     """Histogram was not filled with weights, so weighted should be False."""
     assert h3.weighted is False
 
 
-def test_tprofile3d_counts_flow_true_shape(h3):
-    """counts(flow=True) must have the same shape as values(flow=True)."""
+def test_tprofile3d_counts_flow_shape(h3):
     assert h3.counts(flow=True).shape == h3.values(flow=True).shape
-
-
-def test_tprofile3d_counts_flow_false_shape(h3):
-    """counts(flow=False) must have the same shape as values(flow=False)."""
     assert h3.counts(flow=False).shape == h3.values(flow=False).shape
-
-
-def test_tprofile3d_counts_flow_false_no_index_error(h3):
-    """counts() with default flow=False previously raised IndexError."""
-    c = h3.counts()  # flow=False by default
-    assert c.shape == (2, 3, 4)
-
-
-def test_tprofile3d_counts_flow_true_shape_value(h3):
-    """counts(flow=True) shape should be (nx+2, ny+2, nz+2)."""
-    assert h3.counts(flow=True).shape == (4, 5, 6)
 
 
 def test_tprofile3d_counts_is_subset_of_flow(h3):
