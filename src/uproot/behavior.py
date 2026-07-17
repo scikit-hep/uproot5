@@ -8,6 +8,7 @@ that get auto-detected by :doc:`uproot.behavior.behavior_of`.
 
 from __future__ import annotations
 
+import importlib
 import pkgutil
 
 import uproot.behaviors
@@ -45,11 +46,7 @@ def behavior_of(classname):
             break
 
     if name not in globals() and name in behavior_of._module_names:
-        exec(
-            compile(f"import uproot.behaviors.{name}", "<dynamic>", "exec"),
-            globals(),
-        )
-        module = eval(f"uproot.behaviors.{name}")
+        module = importlib.import_module(f"uproot.behaviors.{name}")
         behavior_cls = getattr(module, name, None)
         if behavior_cls is not None:
             globals()[name] = behavior_cls
