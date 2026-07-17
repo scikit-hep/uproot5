@@ -27,7 +27,7 @@ import uproot
 import uproot.interpretation.grouped
 import uproot.language.python
 import uproot.source.chunk
-from uproot._util import get_ttree_form, no_filter
+from uproot._util import get_ttree_form, no_filter, unset
 
 np_uint8 = numpy.dtype("u1")
 
@@ -57,6 +57,7 @@ def iterate(
     filter_name=no_filter,
     filter_typename=no_filter,
     filter_branch=no_filter,
+    filter_field=no_filter,
     aliases=None,
     language=uproot.language.python.python_language,
     step_size="100 MB",
@@ -90,7 +91,12 @@ def iterate(
             returns True, it is included with its standard
             :ref:`uproot.behaviors.TBranch.TBranch.interpretation`; if an
             :doc:`uproot.interpretation.Interpretation`, this interpretation
-            overrules the standard one.
+            overrules the standard one. Only used for TTrees.
+        filter_field (None or function of :doc:`uproot.models.RNTuple.RField` \u2192 bool, or None): A
+            filter to select ``RFields`` using the full
+            :doc:`uproot.models.RNTuple.RField` object. If the function
+            returns False or None, the ``RField`` is excluded; if the function
+            returns True, it is included. Only used for RNTuples.
         aliases (None or dict of str \u2192 str): Mathematical expressions that
             can be used in ``expressions`` or other aliases (without cycles).
             Uses the ``language`` engine to evaluate. If None, only the
@@ -201,7 +207,17 @@ def iterate(
                         cut=cut,
                         filter_name=filter_name,
                         filter_typename=filter_typename,
-                        filter_branch=filter_branch,
+                        filter_branch=(
+                            filter_branch
+                            if isinstance(hasbranches, HasBranches)
+                            or filter_branch is not no_filter
+                            else unset
+                        ),
+                        **(
+                            {}
+                            if isinstance(hasbranches, HasBranches)
+                            else {"filter_field": filter_field}
+                        ),
                         aliases=aliases,
                         language=language,
                         step_size=step_size,
@@ -243,6 +259,7 @@ def concatenate(
     filter_name=no_filter,
     filter_typename=no_filter,
     filter_branch=no_filter,
+    filter_field=no_filter,
     aliases=None,
     language=uproot.language.python.python_language,
     entry_start=None,
@@ -276,7 +293,12 @@ def concatenate(
             returns True, it is included with its standard
             :ref:`uproot.behaviors.TBranch.TBranch.interpretation`; if an
             :doc:`uproot.interpretation.Interpretation`, this interpretation
-            overrules the standard one.
+            overrules the standard one. Only used for TTrees.
+        filter_field (None or function of :doc:`uproot.models.RNTuple.RField` \u2192 bool, or None): A
+            filter to select ``RFields`` using the full
+            :doc:`uproot.models.RNTuple.RField` object. If the function
+            returns False or None, the ``RField`` is excluded; if the function
+            returns True, it is included. Only used for RNTuples.
         aliases (None or dict of str \u2192 str): Mathematical expressions that
             can be used in ``expressions`` or other aliases (without cycles).
             Uses the ``language`` engine to evaluate. If None, only the
@@ -415,7 +437,17 @@ def concatenate(
                     cut=cut,
                     filter_name=filter_name,
                     filter_typename=filter_typename,
-                    filter_branch=filter_branch,
+                    filter_branch=(
+                        filter_branch
+                        if isinstance(hasbranches, HasBranches)
+                        or filter_branch is not no_filter
+                        else unset
+                    ),
+                    **(
+                        {}
+                        if isinstance(hasbranches, HasBranches)
+                        else {"filter_field": filter_field}
+                    ),
                     aliases=aliases,
                     language=language,
                     entry_start=local_entry_start,
@@ -816,6 +848,24 @@ class HasBranches(Mapping):
 
         Returns a group of arrays from the ``TTree``.
 
+        .. note::
+
+            When any filter (``filter_name``, ``filter_typename``, or
+            ``filter_branch``) selects an *AsGrouped* branch (a pure-grouping
+            container with no data buffers of its own), the result depends on
+            which of its sub-branches are also selected:
+
+            * **Only the parent selected** — all sub-branches are returned grouped
+              as a single ``RecordArray``.
+            * **Only sub-branches selected (no parent)** — the selected sub-branches
+              are returned as separate flat fields.
+            * **Parent and all sub-branches selected** — the parent is dropped and
+              each sub-branch is returned as a separate flat field.
+            * **Parent and some sub-branches selected** — the complete grouped record
+              is returned for all sub-branches; the individually-selected
+              sub-branches are absorbed into the group and are not also returned
+              as flat fields.
+
         For example:
 
         .. code-block:: python
@@ -861,6 +911,7 @@ class HasBranches(Mapping):
                 filter_name=filter_name,
                 filter_typename=filter_typename,
                 filter_branch=filter_branch,
+                full_paths=False,
                 entry_start=entry_start,
                 entry_stop=entry_stop,
                 decompression_executor=decompression_executor,
@@ -993,6 +1044,38 @@ class HasBranches(Mapping):
             full_paths=full_paths,
             ignore_duplicates=ignore_duplicates,
         )
+
+        # Normalise AsGrouped branches in keys according to which of their children
+        # also appear in keys (same case logic as _regularize_expressions):
+        # - Case 1 (Parent matched, no leaves matched):    include parent grouped
+        # - Case 2 (Parent not matched, some leaves matched):   skip parent, keep matched leaves individual
+        # - Case 3 (Parent matched, all leaves matched):   skip parent, keep leaves individual
+        # - Case 4 (Parent matched, some leaves matched):  include parent grouped, suppress matched leaves
+        keys_set = set(keys)
+        parent_keys_to_remove = set()
+        child_keys_to_suppress = set()
+        for k in keys:
+            if not isinstance(
+                self[k].interpretation,
+                uproot.interpretation.grouped.AsGrouped,
+            ):
+                continue
+            if full_paths:
+                all_child_keys = [
+                    f"{k}/{ck}" for ck in self[k].keys(recursive=True, full_paths=True)
+                ]
+            else:
+                all_child_keys = self[k].keys(recursive=True, full_paths=False)
+            matched_children = [c for c in all_child_keys if c in keys_set]
+            if len(all_child_keys) > 0 and len(matched_children) == len(all_child_keys):
+                parent_keys_to_remove.add(k)
+            elif matched_children:
+                child_keys_to_suppress.update(matched_children)
+        keys = [
+            k
+            for k in keys
+            if k not in parent_keys_to_remove and k not in child_keys_to_suppress
+        ]
 
         # we're dealing with a single branch here:
         if isinstance(self, TBranch) and len(keys) == 0:
@@ -1185,9 +1268,15 @@ class HasBranches(Mapping):
         checked = set()
         for _, context in expression_context:
             for branch in context["branches"]:
-                if branch.cache_key not in checked and not isinstance(
-                    branchid_interpretation[branch.cache_key],
-                    uproot.interpretation.grouped.AsGrouped,
+                if (
+                    branch.cache_key not in checked
+                    # branches already satisfied from the array cache are present
+                    # in arrays; don't re-read and re-decompress their baskets
+                    and branch.cache_key not in arrays
+                    and not isinstance(
+                        branchid_interpretation[branch.cache_key],
+                        uproot.interpretation.grouped.AsGrouped,
+                    )
                 ):
                     checked.add(branch.cache_key)
                     for (
@@ -1230,8 +1319,7 @@ class HasBranches(Mapping):
                     if branch.cache_key not in checked:
                         checked.add(branch.cache_key)
                         interpretation = branchid_interpretation[branch.cache_key]
-                        if branch is not None:
-                            cache_key = f"{self.cache_key}:{expression}:{interpretation.cache_key}:{entry_start}-{entry_stop}:{library.name}"
+                        cache_key = f"{self.cache_key}:{expression}:{interpretation.cache_key}:{entry_start}-{entry_stop}:{library.name}"
                         array_cache[cache_key] = arrays[branch.cache_key]
 
         output = language.compute_expressions(
@@ -1920,10 +2008,11 @@ class HasBranches(Mapping):
         already-loaded ``TTree``; it only needs ``language`` to parse the
         expressions, not to evaluate them.
 
-        In addition, the estimate is based on compressed ``TBasket`` sizes
-        (the amount of data that would have to be read), not uncompressed
-        ``TBasket`` sizes (the amount of data that the final arrays would use
-        in memory, without considering ``cuts``).
+        In addition, the estimate is based on uncompressed ``TBasket`` sizes
+        (approximately the amount of data that the final arrays would use in
+        memory, without considering ``cuts``), not compressed ``TBasket`` sizes
+        (the amount of data that would have to be read). Only the ``TBasket``
+        ``TKeys`` are read to obtain these sizes, not the ``TBasket`` data.
 
         This is the algorithm that
         :ref:`uproot.behaviors.TBranch.HasBranches.iterate` uses to convert a
@@ -2703,10 +2792,19 @@ in file {self._file.file_path}"""
         ``TKey``, which are small, but may be slow for remote connections because
         of the latency of round-trip requests.
         """
-        if 0 <= basket_num < self.num_baskets:
+        if 0 <= basket_num < self._num_normal_baskets:
+            # Reading only the TKey (instead of the whole TBasket) is enough to
+            # determine the uncompressed size; add fKeylen to match the header-
+            # inclusive value reported by Model_TBasket.uncompressed_bytes.
+            key = self.basket_key(basket_num)
+            return key.data_uncompressed_bytes + key.fKeylen
+        elif 0 <= basket_num < self.num_baskets:
             return self.basket(basket_num).uncompressed_bytes
         else:
-            return self.basket_key(basket_num).data_uncompressed_bytes
+            raise IndexError(
+                f"""branch {self.name!r} has {self.num_baskets} baskets; cannot get basket {basket_num}
+in file {self._file.file_path}"""
+            )
 
     def basket_key(self, basket_num):
         """
@@ -3053,12 +3151,10 @@ def _regularize_aliases(hasbranches, aliases):
 def _regularize_interpretation(interpretation):
     if isinstance(interpretation, uproot.interpretation.Interpretation):
         return interpretation
-    elif isinstance(interpretation, numpy.dtype):
-        return uproot.interpretation.numerical.AsDtype(interpretation)
     else:
         dtype = numpy.dtype(interpretation)
         dtype = dtype.newbyteorder(">")
-        return uproot.interpretation.numerical.AsDtype(interpretation)
+        return uproot.interpretation.numerical.AsDtype(dtype)
 
 
 def _regularize_branchname(
@@ -3212,6 +3308,42 @@ in file {} at {}""".format(
         expression_context.append((expression, c))
 
 
+def _collect_leaf_cache_keys(branch, result=None):
+    """Recursively collect TBranch cache keys of all non-AsGrouped descendants.
+
+    Used to classify how an AsGrouped branch should be handled when building
+    expression_context: whether ALL its leaves were matched (case 3 → skip) or
+    only some / none (case 1/4 → include grouped).  UnknownInterpretation leaves
+    are silently skipped because they cannot be read anyway.
+    """
+    if result is None:
+        result = set()
+    for subname in branch.interpretation.subbranches:
+        subbranch = branch[subname]
+        if isinstance(
+            subbranch.interpretation, uproot.interpretation.grouped.AsGrouped
+        ):
+            _collect_leaf_cache_keys(subbranch, result)
+        elif not isinstance(
+            subbranch.interpretation,
+            uproot.interpretation.identify.UnknownInterpretation,
+        ):
+            result.add(subbranch.cache_key)
+    return result
+
+
+def _iter_branch_ancestors(branch):
+    """Yield each TBranch ancestor of *branch*, from parent up to the tree root.
+
+    Used by the nested-AsGrouped de-duplication step in ``_regularize_expressions``
+    to detect whether a branch's ancestor is already being added grouped.
+    """
+    p = getattr(branch, "parent", None)
+    while isinstance(p, TBranch):
+        yield p
+        p = getattr(p, "parent", None)
+
+
 def _regularize_expressions(
     hasbranches,
     expressions,
@@ -3229,6 +3361,10 @@ def _regularize_expressions(
     branchid_interpretation = {}
 
     if expressions is None:
+        # Collect all matched branches without adding to expression_context yet;
+        # we need to see all matches before deciding how to handle each AsGrouped.
+        matched_regular = []  # (branchname, branch) for non-AsGrouped, non-Unknown
+        asgrouped_branches = []  # (branchname, branch)
         for branchname, branch in hasbranches.iteritems(
             filter_name=filter_name,
             filter_typename=filter_typename,
@@ -3236,32 +3372,104 @@ def _regularize_expressions(
             recursive=True,
             full_paths=False,
         ):
-            if not isinstance(
+            if isinstance(
                 branch.interpretation,
-                (
-                    uproot.interpretation.identify.UnknownInterpretation,
-                    uproot.interpretation.grouped.AsGrouped,
-                ),
+                uproot.interpretation.identify.UnknownInterpretation,
             ):
-                branchname_expression = (
-                    branchname
-                    if branchname.isidentifier() and not iskeyword(branchname)
-                    else language.getter_of(branchname)
+                pass
+            elif isinstance(
+                branch.interpretation,
+                uproot.interpretation.grouped.AsGrouped,
+            ):
+                asgrouped_branches.append((branchname, branch))
+            else:
+                matched_regular.append((branchname, branch))
+
+        # Classify each AsGrouped branch using its RECURSIVE leaf cache keys so
+        # that nested AsGrouped structures are handled correctly:
+        # - Case 1 (Parent matched, no leaves matched):    include parent grouped
+        # - Case 2 (Parent not matched, some leaves matched):   skip parent, keep matched leaves individual
+        # - Case 3 (Parent matched, all leaves matched):   skip parent, keep leaves individual
+        # - Case 4 (Parent matched, some leaves matched):  include parent grouped, suppress matched leaves
+        all_regular_cache_keys = {b.cache_key for _, b in matched_regular}
+        children_to_suppress = set()  # leaf cache keys not to add individually
+        asgrouped_to_add = []  # (branchname, branch) AsGrouped parents to add grouped
+
+        for branchname, branch in asgrouped_branches:
+            # Skip AsGrouped branches whose direct sub-interpretations include
+            # UnknownInterpretation: AsGrouped.cache_key would raise on them.
+            if any(
+                isinstance(
+                    interp,
+                    uproot.interpretation.identify.UnknownInterpretation,
                 )
-                _regularize_expression(
-                    hasbranches,
-                    branchname_expression,
-                    keys,
-                    aliases,
-                    language,
-                    get_from_cache,
-                    arrays,
-                    expression_context,
-                    branchid_interpretation,
-                    (),
-                    False,
-                    branchname,
-                )
+                for interp in branch.interpretation.subbranches.values()
+            ):
+                continue
+            leaf_cache_keys = _collect_leaf_cache_keys(branch)
+            matched_leaves = leaf_cache_keys & all_regular_cache_keys
+            if len(leaf_cache_keys) > 0 and len(matched_leaves) == len(leaf_cache_keys):
+                # Case 3: every leaf was matched individually → skip parent
+                pass
+            else:
+                # Case 1 (no leaves) or Case 4 (some leaves):
+                # include the parent grouped and suppress matched leaves to prevent
+                # them from also being added individually (would create duplicates).
+                children_to_suppress |= matched_leaves
+                asgrouped_to_add.append((branchname, branch))
+
+        # If a nested AsGrouped is also in asgrouped_to_add, its ancestor will
+        # handle it via _regularize_branchname.  Remove descendants to avoid
+        # processing them twice.  We use object identity (not names from
+        # full_paths=False iteration, which carry no hierarchy info) to detect
+        # the ancestor relationship.
+        asgrouped_to_add_ids = {id(b) for _, b in asgrouped_to_add}
+        asgrouped_to_add = [
+            (branchname, branch)
+            for branchname, branch in asgrouped_to_add
+            if not any(
+                id(p) in asgrouped_to_add_ids for p in _iter_branch_ancestors(branch)
+            )
+        ]
+
+        # Add regular (non-AsGrouped) branches, skipping leaves subsumed by a parent.
+        for branchname, branch in matched_regular:
+            if branch.cache_key in children_to_suppress:
+                continue
+            branchname_expression = (
+                branchname
+                if branchname.isidentifier() and not iskeyword(branchname)
+                else language.getter_of(branchname)
+            )
+            _regularize_expression(
+                hasbranches,
+                branchname_expression,
+                keys,
+                aliases,
+                language,
+                get_from_cache,
+                arrays,
+                expression_context,
+                branchid_interpretation,
+                (),
+                False,
+                branchname,
+            )
+
+        # Add grouped AsGrouped parents (cases 1 and 4).
+        for branchname, branch in asgrouped_to_add:
+            _regularize_branchname(
+                hasbranches,
+                branchname,
+                branch,
+                branch.interpretation,
+                get_from_cache,
+                arrays,
+                expression_context,
+                branchid_interpretation,
+                True,
+                False,
+            )
 
     elif isinstance(expressions, str):
         _regularize_expression(
@@ -3539,7 +3747,11 @@ def _fix_asgrouped(
             branch = context["branches"][-1]
             interpretation = branchid_interpretation[branch.cache_key]
             if isinstance(interpretation, uproot.interpretation.grouped.AsGrouped):
-                assert arrays[branch.cache_key] is None
+                if arrays[branch.cache_key] is not None:
+                    # Already assembled in a prior iteration (e.g., this branch
+                    # was recursively processed as a nested sub-branch of a parent
+                    # AsGrouped branch that also appears in expression_context).
+                    continue
 
                 limited_context = dict(expression_context[index_start:index_stop])
 
