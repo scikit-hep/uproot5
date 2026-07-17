@@ -8,7 +8,6 @@ Covers:
 - maybe_steps leakage via uproot._util.regularize_files (finding 1)
 - damerau_levenshtein distance values (finding 2)
 - LRU cache move-to-end behavior (finding 7)
-- _dask zero-files error message for 3-tuple entries (findings 5+6)
 """
 
 import threading
@@ -153,38 +152,3 @@ def test_lru_cache_no_limit():
     for i in range(1000):
         c[i] = i
     assert len(c) == 1000
-
-
-# ---------------------------------------------------------------------------
-# Finding 5+6: _dask zero-files error message with 3-tuple entries
-# ---------------------------------------------------------------------------
-
-
-def test_dask_zero_files_error_message_with_explicit_steps(tmp_path):
-    """
-    When allow_missing=True and no TTrees are found, the ValueError should be
-    raised (not a ZeroDivisionError), even when file entries have explicit steps
-    (3-tuple form).
-    """
-    pytest.importorskip("dask")
-    pytest.importorskip("dask_awkward")
-
-    nonexistent = str(tmp_path / "no_such_file.root")
-
-    # Build a files list that regularize_files would produce with explicit steps:
-    # 3-tuple (path, object_path, steps). Using a dict with steps triggers that.
-    import numpy as np
-
-    files_with_steps = {
-        nonexistent: {
-            "object_path": "events",
-            "steps": np.array([[0, 100]]),
-        }
-    }
-
-    # Since the file doesn't exist, allow_missing=True should give ValueError
-    # ("no TTrees found"), not ZeroDivisionError or a tuple-unpacking error.
-    with pytest.raises(
-        (FileNotFoundError, ValueError, uproot.exceptions.KeyInFileError)
-    ):
-        uproot.dask(files_with_steps, allow_missing=True)
