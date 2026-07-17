@@ -561,9 +561,9 @@ in file {self.file.file_path}"""
         Args:
             this_id (int): The field id.
             keys (list): The list of keys to search for.
-            ak_add_doc (bool | dict ): If True and ``library="ak"``, add the RField ``description``
+            ak_add_doc (bool | dict ): If True, add the RField ``description``
                 to the Awkward ``__doc__`` parameter of the array.
-                if dict = {key:value} and ``library="ak"``, add the RField ``value`` to the
+                if dict = {key:value}, add the RField ``value`` to the
                 Awkward ``key`` parameter of the array.
 
         Returns an Awkward Form describing the field.
@@ -2037,12 +2037,26 @@ class RField(uproot.behaviors.RNTuple.HasFields):
                     "The array was not constructed correctly. Please report this issue."
                 )
         library = uproot.interpretation.library._regularize_library(library)
+
         # TODO: The conversion would be ideally be fully handled by Awkward.
-        # However, jagged arrays fail to be converted.
-        # We still need to match the TTree behavior for jagged arrays, and implement
-        # the conversion to Pandas.
-        if library.name == "np":
-            return arrays.to_numpy()
+        if library.name in ("np", "pd"):
+            try:
+                numpy_data = arrays.to_numpy()
+            except (ValueError, TypeError):
+                try:
+                    numpy_data = uproot.behaviors.RNTuple._awkward_to_numpy(arrays)
+                except Exception:
+                    msg = f"Field {self.name} cannot be converted to NumPy/Pandas"
+                    raise ValueError(msg) from None
+            if library.name == "pd":
+                pd = uproot.extras.pandas()
+                index_start = 0 if entry_start is None else entry_start
+                pandas_index = pd.RangeIndex(
+                    start=index_start, stop=index_start + len(arrays)
+                )
+                pandas_data = pd.Series(numpy_data, index=pandas_index)
+                return pandas_data
+            return numpy_data
 
         return arrays
 
