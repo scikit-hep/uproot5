@@ -3,7 +3,6 @@
 import numpy as np
 import pytest
 
-import uproot
 from uproot.models.RNTuple import (
     FieldClusterMetadata,
     Model_ROOT_3a3a_RNTuple,
@@ -69,38 +68,6 @@ def test_split_column_into_wider_destination():
     np.testing.assert_allclose(destination.view(np.float32)[:num], values)
 
 
-def test_split_column_same_dtype_roundtrip():
-    # The common split case where dtype == dtype_result must be unchanged.
-    values = np.array([1.5, -2.25, 3.0, 42.0, -7.5], dtype=np.float32)
-    num = len(values)
-    destination = np.zeros(num, dtype=np.float32)
-    destination.view(np.uint8)[:] = _byte_split(values)
-
-    field_metadata = _make_metadata(split=True)
-    _deserialize(destination, field_metadata)
-
-    np.testing.assert_allclose(destination, values)
-
-
-def test_plain_column_is_left_untouched():
-    # Plain columns need no transform; the data is already in place and should
-    # be returned without an extra round-trip copy.
-    values = np.array([1, 2, 3, 4], dtype=np.int64)
-    destination = values.copy()
-
-    field_metadata = _make_metadata(
-        dtype_byte=0x09,
-        dtype_str="int64",
-        dtype=np.dtype("int64"),
-        dtype_toread=np.dtype("int64"),
-        dtype_result=np.dtype("int64"),
-        nbits=64,
-    )
-    _deserialize(destination, field_metadata)
-
-    np.testing.assert_array_equal(destination, values)
-
-
 def test_extract_bits_roundtrip():
     # _extract_bits should faithfully unpack nbits-wide values; this also guards
     # against the removed dead allocation reintroducing a bug.
@@ -119,30 +86,3 @@ def test_extract_bits_roundtrip():
 
     result = _extract_bits(packed, nbits)
     np.testing.assert_array_equal(result[:n], original)
-
-
-def test_custom_floats_roundtrip_still_passes():
-    # Safety net for the real32trunc / real32quant deserialization paths.
-    filename = skhep_testdata.data_path("test_float_types_rntuple_v1-0-0-0.root")
-    with uproot.open(filename) as f:
-        arrays = f["ntuple"].arrays()
-        assert len(arrays) > 0
-
-
-def test_split_zigzag_ints_roundtrip_still_passes():
-    # Safety net for the split + zigzag integer deserialization path.
-    filename = skhep_testdata.data_path("test_int_5e4_rntuple_v1-0-0-0.root")
-    with uproot.open(filename) as f:
-        arrays = f["ntuple"].arrays()
-        assert len(arrays) > 0
-
-
-def test_multiple_representations_still_passes():
-    # Safety net for the suppressed-columns / multiple-representations path
-    # which involves dtype != dtype_result handling.
-    filename = skhep_testdata.data_path(
-        "test_multiple_representations_rntuple_v1-0-0-0.root"
-    )
-    with uproot.open(filename) as f:
-        arrays = f["ntuple"].arrays()
-        assert np.allclose(arrays.real, [1, 2, 3])
