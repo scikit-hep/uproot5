@@ -191,3 +191,4 @@ write_to = "src/uproot/_version.py"
 
 [tool.uv]
 exclude-newer = "7 days"
+exclude-newer-package = {awkward = false, awkward-cpp = false, scikit-hep-testdata = false}

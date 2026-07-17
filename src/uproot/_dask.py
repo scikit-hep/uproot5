@@ -132,6 +132,24 @@ def dask(
     the function returns a Python dict of dask arrays. If ``library='ak'``, the
     function returns a single dask-awkward array.
 
+    .. note::
+
+        When any filter (``filter_name``, ``filter_typename``, or
+        ``filter_branch``) selects an *AsGrouped* branch (a pure-grouping
+        container with no data buffers of its own), the result depends on
+        which of its sub-branches are also selected:
+
+        * **Only the parent selected** — all sub-branches are returned grouped
+          as a single ``RecordArray``.
+        * **Only sub-branches selected (no parent)** — the selected sub-branches
+          are returned as separate flat fields.
+        * **Parent and all sub-branches selected** — the parent is dropped and
+          each sub-branch is returned as a separate flat field.
+        * **Parent and some sub-branches selected** — the complete grouped record
+          is returned for all sub-branches; the individually-selected
+          sub-branches are absorbed into the group and are not also returned
+          as flat fields.
+
     For example:
 
     .. code-block:: python
@@ -927,7 +945,10 @@ class TrivialFormMappingInfo(ImplementsFormMappingInfo):
         interpretation_executor,
         options: Any,
     ) -> Mapping[str, AwkArray]:
-        # First, let's read the arrays as a tuple (to associate with each key)
+        # Read the arrays as a top-level awkward RecordArray. Omitting how= (the
+        # default) ensures that AsGrouped branches are returned as proper awkward
+        # RecordArrays rather than Python tuples of sub-arrays (which how=tuple
+        # would produce), allowing awkward.to_buffers() to work correctly below.
         arrays = tree.arrays(
             keys,
             entry_start=start,
@@ -935,7 +956,6 @@ class TrivialFormMappingInfo(ImplementsFormMappingInfo):
             ak_add_doc=options["ak_add_doc"],
             decompression_executor=decompression_executor,
             interpretation_executor=interpretation_executor,
-            how=tuple,
         )
 
         if isinstance(tree, HasFields):
@@ -951,9 +971,9 @@ class TrivialFormMappingInfo(ImplementsFormMappingInfo):
         # subform, as they're derived from `branch.interpretation.awkward_form`
         # Therefore, we can correlate the subform keys using `expected_from_buffers`
         container = {}
-        for key, array in zip(keys, arrays, strict=True):
+        for key in keys:
             # First, convert the sub-array into buffers
-            ttree_subform, _length, ttree_container = awkward.to_buffers(array)
+            ttree_subform, _length, ttree_container = awkward.to_buffers(arrays[key])
 
             # Load the associated projection subform
             projection_subform = self._form.content(key)
@@ -1641,6 +1661,42 @@ def _get_dak_array(
             )
         )
 
+    # Normalise AsGrouped branches in common_keys according to which of their
+    # children also appear in common_keys:
+    # - Case 1 (Parent matched, no leaves matched):    include parent grouped
+    # - Case 2 (Parent not matched, some leaves matched):   skip parent, keep matched leaves individual
+    # - Case 3 (Parent matched, all leaves matched):   skip parent, keep leaves individual
+    # - Case 4 (Parent matched, some leaves matched):  include parent grouped, suppress matched leaves
+    if ttrees and not isinstance(ttrees[0], HasFields):
+        common_keys_set = set(common_keys)
+        parent_keys_to_remove = set()
+        child_keys_to_suppress = set()
+        for k in common_keys:
+            if not isinstance(
+                ttrees[0][k].interpretation,
+                uproot.interpretation.grouped.AsGrouped,
+            ):
+                continue
+            if full_paths:
+                all_child_keys = [
+                    f"{k}/{ck}"
+                    for ck in ttrees[0][k].keys(recursive=True, full_paths=True)
+                ]
+            else:
+                all_child_keys = ttrees[0][k].keys(recursive=True, full_paths=False)
+            matched_children = [c for c in all_child_keys if c in common_keys_set]
+            if len(all_child_keys) > 0 and len(matched_children) == len(all_child_keys):
+                # Case 3: drop parent, keep individual children
+                parent_keys_to_remove.add(k)
+            elif matched_children:
+                # Case 4: keep parent, suppress the individually-matched children
+                child_keys_to_suppress.update(matched_children)
+        common_keys = [
+            k
+            for k in common_keys
+            if k not in parent_keys_to_remove and k not in child_keys_to_suppress
+        ]
+
     step_sum = 0
     for ttree in ttrees:
         entry_start = 0
@@ -1702,6 +1758,8 @@ which has {entry_stop} entries"""
         base_form = _get_ttree_form(
             awkward, ttrees[0], common_keys, interp_options.get("ak_add_doc")
         )
+        if form_mapping is not None:
+            base_form.parameters["typenames"] = ttrees[0].typenames()
 
     if len(partition_args) == 0:
         divisions.append(0)
@@ -1777,9 +1835,46 @@ def _get_dak_array_delay_open(
             full_paths=full_paths,
             ignore_duplicates=True,
         )
+        # Normalise AsGrouped branches in common_keys according to which of their
+        # children also appear in common_keys (same logic as _get_dak_array):
+        # - Case 1 (Parent matched, no leaves matched):    include parent grouped
+        # - Case 2 (Parent not matched, some leaves matched):   skip parent, keep matched leaves individual
+        # - Case 3 (Parent matched, all leaves matched):   skip parent, keep leaves individual
+        # - Case 4 (Parent matched, some leaves matched):  include parent grouped, suppress matched leaves
+        if not isinstance(obj, HasFields):
+            common_keys_set = set(common_keys)
+            parent_keys_to_remove = set()
+            child_keys_to_suppress = set()
+            for k in common_keys:
+                if not isinstance(
+                    obj[k].interpretation,
+                    uproot.interpretation.grouped.AsGrouped,
+                ):
+                    continue
+                if full_paths:
+                    all_child_keys = [
+                        f"{k}/{ck}"
+                        for ck in obj[k].keys(recursive=True, full_paths=True)
+                    ]
+                else:
+                    all_child_keys = obj[k].keys(recursive=True, full_paths=False)
+                matched_children = [c for c in all_child_keys if c in common_keys_set]
+                if len(all_child_keys) > 0 and len(matched_children) == len(
+                    all_child_keys
+                ):
+                    parent_keys_to_remove.add(k)
+                elif matched_children:
+                    child_keys_to_suppress.update(matched_children)
+            common_keys = [
+                k
+                for k in common_keys
+                if k not in parent_keys_to_remove and k not in child_keys_to_suppress
+            ]
         base_form = _get_ttree_form(
             awkward, obj, common_keys, interp_options.get("ak_add_doc")
         )
+        if form_mapping is not None:
+            base_form.parameters["typenames"] = obj.typenames()
 
     divisions = [0]
     partition_args = []

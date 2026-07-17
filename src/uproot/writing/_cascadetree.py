@@ -415,10 +415,6 @@ class Tree:
         return self._key.title
 
     @property
-    def branch_types(self):
-        return self._branch_types
-
-    @property
     def freesegments(self):
         return self._freesegments
 
