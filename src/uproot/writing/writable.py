@@ -1602,6 +1602,75 @@ in file {self.file_path} in directory {self.path}"""
             streamers,
         )
         return tree
+    
+    def extend_ntuple(self, source, data):
+        """
+        Args:
+            source (str): Name of existing RNTuple to extend.
+            data (dict of str -> arrays): New data to append to the RNTuple.
+
+        Extends an existing RNTuple with new rows/events.
+        """
+        import numpy
+        import uproot.writing._cascadentuple as cnt
+        import uproot.writing._cascade as casc
+
+        if self._file.sink.closed:
+            raise ValueError("cannot modify a RNTuple in a closed file")
+
+        existing_file = uproot.open(self.file_path, minimal_ttree_metadata=False)
+        try:
+            existing = existing_file[source]
+        except Exception:
+            raise ValueError(f"RNTuple {source!r} not found in file") from None
+
+        _ = existing.keys()  # trigger header/footer loading
+        akform, _ = existing.to_akform()
+        am = existing._ntuple.all_members
+        existing_key = existing_file.key(source + ";1")
+        anchor_location = existing_key.fSeekKey + existing_key.fKeylen
+        num_entries = existing.num_entries
+        existing_file.close()
+
+        header = cnt.NTuple_Header(None, existing.name, existing._header.ntuple_description, akform)
+        footer = cnt.NTuple_Footer(None, header._checksum)
+
+        # copy existing cluster groups into footer
+        for cg in existing._footer.cluster_group_records:
+            locator = cnt.NTuple_Locator(cg.page_list_link.locator.num_bytes, cg.page_list_link.locator.offset)
+            envlink = cnt.NTuple_EnvLink(cg.page_list_link.env_uncomp_size, locator)
+            footer.cluster_group_record_frames.append(
+                cnt.NTuple_ClusterGroupRecord(cg.min_entry_num, cg.entry_span, cg.num_clusters, envlink)
+            )
+
+        anchor = cnt.NTuple_Anchor(
+            anchor_location,
+            am["fVersionEpoch"], am["fVersionMajor"], am["fVersionMinor"], am["fVersionPatch"],
+            am["fSeekHeader"], am["fNBytesHeader"], am["fLenHeader"],
+            am["fSeekFooter"], am["fNBytesFooter"], am["fLenFooter"],
+            am["fMaxKeySize"],
+        )
+
+        ntuple = cnt.NTuple(
+            self._cascading, akform, self._cascading._freesegments,
+            header, footer, [], anchor
+        )
+        ntuple._header_key = casc.Key(
+            am["fSeekHeader"] - 56, am["fLenHeader"], am["fNBytesHeader"],
+            casc.String(None, "RBlob"), casc.String(None, ""), casc.String(None, ""),
+            1, 100, am["fSeekHeader"],
+        )
+        ntuple._footer_key = casc.Key(
+            am["fSeekFooter"] - 56, am["fLenFooter"], am["fNBytesFooter"],
+            casc.String(None, "RBlob"), casc.String(None, ""), casc.String(None, ""),
+            1, 100, am["fSeekFooter"],
+        )
+        ntuple._num_entries = num_entries
+        ntuple._column_counts = numpy.array(
+            [num_entries] * len(header._column_keys), dtype=int
+        )
+
+        ntuple.extend(self._file, self._file.sink, data)
 
     def mkrntuple(
         self,
@@ -2137,6 +2206,38 @@ class WritableTree:
             **As a word of warning,** be sure that each call to :ref:`uproot.writing.writable.WritableTree.extend` includes at least 100 kB per branch/array. (NumPy and Awkward Arrays have an `nbytes <https://numpy.org/doc/stable/reference/generated/numpy.ndarray.nbytes.html>`__ property; you want at least ``100000`` per array.) If you ask Uproot to write very small TBaskets, it will spend more time working on TBasket overhead than actually writing data. The absolute worst case is one-entry-per-:ref:`uproot.writing.writable.WritableTree.extend`. See `#428 (comment) <https://github.com/scikit-hep/uproot5/pull/428#issuecomment-908703486>`__.
         """
         self._cascading.extend(self._file, self._file.sink, data)
+
+    # def add_branches(
+    #     self,
+    #     branches,
+    #     *,
+    #     counter_name=lambda counted: "n" + counted,
+    #     field_name=lambda outer, inner: inner if outer == "" else outer + "_" + inner,
+    #     initial_basket_capacity=10,
+    #     resize_factor=10.0,
+    # ):
+    #     """
+    #     Args:
+    #         branches (dict of pairs of str → NumPy dtype/Awkward type): Names and data
+    #             of branches to be added to the TTree.
+
+    #     Adds new branches to this TTree. This is equivalent to calling
+    #     ``file.add_branches("tree_name", branches)`` on the parent directory.
+
+    #     .. code-block:: python
+
+    #         with uproot.update("file.root") as f:
+    #             f["mytree"].add_branches({"branch1": np.array(...), "branch2": ak.Array(...)})
+    #     """
+    #     tree_name = self._path[-1]
+    #     return self._file.root_directory.add_branches(
+    #         tree_name,
+    #         branches,
+    #         counter_name=counter_name,
+    #         field_name=field_name,
+    #         initial_basket_capacity=initial_basket_capacity,
+    #         resize_factor=resize_factor,
+    #     )
 
     def show(
         self,
