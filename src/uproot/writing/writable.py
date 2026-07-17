@@ -1574,7 +1574,7 @@ in file {source.file_path} in directory {source.path}"""
             chunk = notifications.get()
             assert isinstance(chunk, uproot.source.chunk.Chunk)
 
-            raw_data = uproot._util.tobytes(chunk.raw_data)
+            raw_data = chunk.raw_data.tobytes()
 
             new_name, old_key = ranges[chunk.start, chunk.stop]
             path = new_name.strip("/").split("/")

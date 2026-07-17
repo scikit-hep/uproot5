@@ -75,7 +75,7 @@ def pyroot_to_buffer(obj):
 
     This function is not thread-safe and the output buffer gets overwritten by
     the next call to this function. It is essential for callers to copy the data
-    out of the returned buffer, perhaps by calling :doc:`uproot._util.tobytes` on
+    out of the returned buffer, perhaps by calling ``.tobytes()`` on
     it or by assigning it into another array.
 
     A lock is provided for safety: callers should always call this function within
@@ -84,7 +84,7 @@ def pyroot_to_buffer(obj):
     .. code-block:: python
 
         with pyroot_to_buffer.lock:
-            return uproot._util.tobytes(pyroot_to_buffer(obj))
+            return pyroot_to_buffer(obj).tobytes()
     """
     import ROOT
 
@@ -303,6 +303,4 @@ class _PyROOTWritable:
             obj = self._obj.Clone(name)
 
         with pyroot_to_buffer.lock:
-            return uproot._util.tobytes(
-                pyroot_to_buffer(obj)[len(self.classname) + 9 :]
-            )
+            return pyroot_to_buffer(obj)[len(self.classname) + 9 :].tobytes()

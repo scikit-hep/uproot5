@@ -32,13 +32,6 @@ import uproot.source.object
 wasm = sys.platform in ("emscripten", "wasi")
 
 
-def tobytes(array):
-    """
-    Calls ``array.tobytes()``.
-    """
-    return array.tobytes()
-
-
 def isint(x) -> bool:
     """
     Returns True if and only if ``x`` is an integer (including NumPy, not
