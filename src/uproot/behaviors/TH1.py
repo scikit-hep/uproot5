@@ -82,12 +82,6 @@ class Histogram:
         variances_equal = numpy.array_equal(self_variances, other_variances)
         return values_equal and variances_equal
 
-    def __ne__(self, other):
-        """
-        Some versions of Python don't automatically negate __eq__.
-        """
-        return not self.__eq__(other)
-
     @property
     def axes(self):
         """
