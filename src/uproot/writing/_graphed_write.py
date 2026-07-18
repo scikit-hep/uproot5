@@ -11,10 +11,10 @@ plan's deterministic combine tree (the base's contract — previously the tasks 
 a step that resolves EMPTY (a file with fewer entries than ``steps_per_file``) is skipped, so no
 empty part files are written (part numbering may then have gaps in that corner case). With
 ``compute=False`` the Plan (the write task graph) is returned without running; with
-``compute=True`` (the default) it is executed through a ``graphed-exec-local`` executor — the
+``compute=True`` (the default) it is executed through a ``graphed-executors`` executor — the
 ``ProcessPoolExecutor`` by default (``executor="thread"`` for the thread pool).
 
-``graphed`` / ``graphed.core`` / ``graphed_exec_local`` are imported lazily, so importing ``uproot``
+``graphed`` / ``graphed.core`` / ``graphed_executors.local`` are imported lazily, so importing ``uproot``
 does not require them.
 """
 from __future__ import annotations
@@ -66,7 +66,7 @@ def _write_partition(
 
 
 def _select_executor(executor):
-    from graphed_exec_local import ProcessPoolExecutor, ThreadExecutor
+    from graphed_executors.local import ProcessPoolExecutor, ThreadExecutor
 
     if isinstance(executor, str):
         return {"process": ProcessPoolExecutor, "thread": ThreadExecutor}[executor]
@@ -97,7 +97,7 @@ def graphed_write(
             ``f"{prefix or 'part'}-{N:05d}.root"``.
         tree_name (str): Name of the ``TTree`` written into each part file. Default ``"tree"``.
         compute (bool): If ``True`` (default), execute the write task graph now via a
-            ``graphed-exec-local`` executor and return the written paths (REPORTED BY THE WORKERS,
+            ``graphed-executors`` executor and return the written paths (REPORTED BY THE WORKERS,
             in deterministic key order). If ``False``, return the ``graphed.core.Plan`` (the write
             task graph) **without writing** — run it later with an executor.
         executor (str or executor): ``"process"`` (default, ``ProcessPoolExecutor``) or ``"thread"``

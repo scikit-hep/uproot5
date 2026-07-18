@@ -3,7 +3,7 @@
 
 ``compute=False`` returns the write **task graph** (a ``graphed.core.Plan`` of write tasks, each
 REPORTING its part path — the ``graphed.write`` base's contract) without writing; ``compute=True``
-runs it through a ``graphed-exec-local`` executor (``ProcessPoolExecutor`` by default).
+runs it through a ``graphed-executors`` executor (``ProcessPoolExecutor`` by default).
 
 [freeze-UPROOT-2, user-authorized amendments 2026-06-10: part names follow the base's
 ``part_path`` (``part-00000.root``); write tasks report their paths instead of returning None.]
@@ -18,11 +18,11 @@ import skhep_testdata
 
 import uproot
 
-pytest.importorskip("graphed_exec_local")
+pytest.importorskip("graphed_executors.local")
 graphed_awkward = pytest.importorskip("graphed.awkward")
 
 from graphed.core import Plan
-from graphed_exec_local import ProcessPoolExecutor
+from graphed_executors.local import ProcessPoolExecutor
 
 
 def _make_root(path, n=20):

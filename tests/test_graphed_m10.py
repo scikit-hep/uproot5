@@ -21,7 +21,7 @@ import skhep_testdata
 
 import uproot
 
-pytest.importorskip("graphed_exec_local")
+pytest.importorskip("graphed_executors.local")
 graphed_awkward = pytest.importorskip("graphed.awkward")
 
 sys.path.insert(0, os.path.dirname(__file__))
@@ -29,7 +29,7 @@ import graphed_uproot_analysis as gu  # noqa: E402
 from graphed import BufferNeed, evaluate_ir  # noqa: E402
 from graphed.awkward import AwkwardBackend, gak  # noqa: E402
 from graphed.core import Plan  # noqa: E402
-from graphed_exec_local import ProcessPoolExecutor  # noqa: E402
+from graphed_executors.local import ProcessPoolExecutor  # noqa: E402
 
 
 # ---- buffer-level projection (A.3) ---------------------------------------------------------------

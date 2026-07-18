@@ -17,13 +17,13 @@ import skhep_testdata
 
 import uproot
 
-pytest.importorskip("graphed_exec_local")
+pytest.importorskip("graphed_executors.local")
 pytest.importorskip("graphed.awkward")
 
 sys.path.insert(0, os.path.dirname(__file__))
 import graphed_uproot_analysis as gu
 from graphed.core import Plan
-from graphed_exec_local import ProcessPoolExecutor
+from graphed_executors.local import ProcessPoolExecutor
 
 
 def _run(tasks):

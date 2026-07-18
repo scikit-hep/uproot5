@@ -19,7 +19,7 @@ import skhep_testdata
 import uproot
 
 pytest.importorskip("pyarrow")
-pytest.importorskip("graphed_exec_local")
+pytest.importorskip("graphed_executors.local")
 pytest.importorskip("graphed.awkward")
 
 import graphed.awkward.io as gio  # noqa: E402
@@ -57,7 +57,7 @@ def test_roundtrip_matches_single_pass_without_materializing(tmp_path):
 
 def test_partitions_are_blind_and_disabled_plan_equals_enabled_run(tmp_path):
     from graphed.core.execution import Plan
-    from graphed_exec_local import ProcessPoolExecutor
+    from graphed_executors.local import ProcessPoolExecutor
 
     g = uproot.graphed(_zmumu(), library="ak", filter_name=["px1"])
     expr = g.px1 * 2.0
@@ -91,7 +91,7 @@ def test_structure_only_needs_read_their_carrier_branch(tmp_path):
 
 
 def test_custom_column_name_and_explicit_executor(tmp_path):
-    from graphed_exec_local import ThreadExecutor
+    from graphed_executors.local import ThreadExecutor
 
     g = uproot.graphed(_zmumu(), library="ak", filter_name=["px1"])
     paths = gio.to_parquet(

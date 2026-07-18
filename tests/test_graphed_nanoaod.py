@@ -116,9 +116,9 @@ def test_jagged_integer_array_getitem_over_the_reader(nanoaod_file):
 
 def test_capstone_ttree_to_histogram_through_a_process_pool(nanoaod_file, tmp_path, monkeypatch):
     gh = pytest.importorskip("graphed_histogram")
-    pytest.importorskip("graphed_exec_local")
+    pytest.importorskip("graphed_executors.local")
     import boost_histogram as bh
-    from graphed_exec_local import ProcessPoolExecutor
+    from graphed_executors.local import ProcessPoolExecutor
 
     # spawned workers resolve the backend by IMPORT REF: the ref module lives beside this test,
     # so put the tests dir on sys.path (spawn children inherit it via the preparation data)
