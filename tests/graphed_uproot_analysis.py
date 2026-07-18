@@ -1,5 +1,5 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot5/blob/main/LICENSE
-"""Picklable glue to run a uproot-read ``graphed`` analysis through the ``graphed-exec-local``
+"""Picklable glue to run a uproot-read ``graphed`` analysis through the ``graphed-executors``
 executors (the M7 ``adl.py`` pattern, but reading from a real ROOT file).
 
 A ``Partition`` is a ``(file, tree, entry_start, entry_stop)`` chunk. ``process`` opens the file

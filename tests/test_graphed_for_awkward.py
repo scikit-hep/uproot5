@@ -2,7 +2,7 @@
 """Construction-time behaviour of ``uproot.graphed`` (metadata only).
 
 Actually *running* a graphed analysis is covered in ``test_graphed_executor.py`` — through the real
-``graphed-exec-local`` executors, not a ``materialize`` shortcut.
+``graphed-executors`` executors, not a ``materialize`` shortcut.
 """
 
 import awkward as ak

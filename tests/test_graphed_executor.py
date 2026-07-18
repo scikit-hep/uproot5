@@ -1,5 +1,5 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot5/blob/main/LICENSE
-"""Run a uproot-read ``graphed`` analysis through the ``graphed-exec-local`` executors.
+"""Run a uproot-read ``graphed`` analysis through the ``graphed-executors`` executors.
 
 The recorded graph is executed per ``Partition`` and tree-reduced across worker processes — the real
 process/thread-executor path that a deferred-array ``.compute()`` hides — and the result must match
@@ -15,7 +15,7 @@ import skhep_testdata
 
 import uproot  # noqa: F401  (registers uproot.graphed_partitions used by the helper)
 
-pytest.importorskip("graphed_exec_local")
+pytest.importorskip("graphed_executors.local")
 pytest.importorskip("graphed.awkward")
 
 # make the picklable helper importable both here and in spawned ProcessPoolExecutor workers
@@ -23,7 +23,7 @@ pytest.importorskip("graphed.awkward")
 sys.path.insert(0, os.path.dirname(__file__))
 import graphed_uproot_analysis as gu
 from graphed.core import Plan
-from graphed_exec_local import ProcessPoolExecutor, ThreadExecutor
+from graphed_executors.local import ProcessPoolExecutor, ThreadExecutor
 
 ZMUMU = "uproot-Zmumu.root:events"
 

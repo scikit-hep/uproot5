@@ -91,9 +91,9 @@ def test_unknown_attributes_fail_at_record_time(kinematics_file):
 
 def test_behavior_flows_through_the_generic_to_parquet(kinematics_file, tmp_path):
     pytest.importorskip("pyarrow")
-    pytest.importorskip("graphed_exec_local")
+    pytest.importorskip("graphed_executors.local")
     import graphed.awkward.io as gio
-    from graphed_exec_local import ProcessPoolExecutor
+    from graphed_executors.local import ProcessPoolExecutor
 
     where, cols = kinematics_file
     g = uproot.graphed(where, library="ak", behavior=BEHAVIOR)
