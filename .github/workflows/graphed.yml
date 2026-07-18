@@ -19,7 +19,7 @@ env:
   # is a base dep now; the [preserve] extra pulls awkward + correctionlib + onnx for the bundle tests.
   GRAPHED: "graphed[awkward,preserve] @ git+https://github.com/graphed-org/graphed@main"
   # graphed-executors stays a separate package (it depends on the consolidated graphed)
-  EXEC: "graphed-executors @ git+https://github.com/graphed-org/graphed-executors@main"
+  EXEC: "graphed-executors"
 
 jobs:
   tests:
