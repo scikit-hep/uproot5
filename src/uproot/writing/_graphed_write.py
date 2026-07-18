@@ -14,7 +14,7 @@ empty part files are written (part numbering may then have gaps in that corner c
 ``compute=True`` (the default) it is executed through a ``graphed-exec-local`` executor — the
 ``ProcessExecutor`` by default (``executor="thread"`` for the thread pool).
 
-``graphed`` / ``graphed_core`` / ``graphed_exec_local`` are imported lazily, so importing ``uproot``
+``graphed`` / ``graphed.core`` / ``graphed_exec_local`` are imported lazily, so importing ``uproot``
 does not require them.
 """
 from __future__ import annotations
@@ -98,7 +98,7 @@ def graphed_write(
         tree_name (str): Name of the ``TTree`` written into each part file. Default ``"tree"``.
         compute (bool): If ``True`` (default), execute the write task graph now via a
             ``graphed-exec-local`` executor and return the written paths (REPORTED BY THE WORKERS,
-            in deterministic key order). If ``False``, return the ``graphed_core.Plan`` (the write
+            in deterministic key order). If ``False``, return the ``graphed.core.Plan`` (the write
             task graph) **without writing** — run it later with an executor.
         executor (str or executor): ``"process"`` (default, ``ProcessExecutor``) or ``"thread"``
             (``ThreadExecutor``); an executor class/instance may also be passed.

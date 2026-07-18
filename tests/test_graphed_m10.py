@@ -22,13 +22,13 @@ import skhep_testdata
 import uproot
 
 pytest.importorskip("graphed_exec_local")
-graphed_awkward = pytest.importorskip("graphed_awkward")
+graphed_awkward = pytest.importorskip("graphed.awkward")
 
 sys.path.insert(0, os.path.dirname(__file__))
 import graphed_uproot_analysis as gu  # noqa: E402
 from graphed import BufferNeed, evaluate_ir  # noqa: E402
-from graphed_awkward import AwkwardBackend, gak  # noqa: E402
-from graphed_core import Plan  # noqa: E402
+from graphed.awkward import AwkwardBackend, gak  # noqa: E402
+from graphed.core import Plan  # noqa: E402
 from graphed_exec_local import ProcessExecutor  # noqa: E402
 
 
@@ -117,7 +117,7 @@ def test_blind_partitions_are_first_class_and_resolve_exactly_once():
 
 def test_legacy_sentinel_partitions_still_read_correctly():
     # pre-M10 serialized plans carry the negative-entry_stop encoding; the reader honors them
-    from graphed_core import Partition
+    from graphed.core import Partition
 
     path = skhep_testdata.data_path("uproot-Zmumu.root")
     legacy = Partition(path, "events", 1, -4)  # step 1 of 4, old sentinel
@@ -132,7 +132,7 @@ def test_write_rejects_multi_source_arrays_loudly(tmp_path):
     # an array recorded over TWO uproot sources cannot be written partition-by-partition from one
     # of them; the guard must say so instead of silently picking the first source
     import graphed
-    from graphed_awkward import AwkwardBackend, AwkwardForm
+    from graphed.awkward import AwkwardBackend, AwkwardForm
     from uproot._graphed import _GraphedTTreeSource
 
     path = skhep_testdata.data_path("uproot-Zmumu.root")

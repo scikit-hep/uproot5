@@ -15,14 +15,14 @@ import skhep_testdata
 
 import uproot
 
-pytest.importorskip("graphed_checkpoint")
-pytest.importorskip("graphed_awkward")
+pytest.importorskip("graphed.checkpoint")
+pytest.importorskip("graphed.awkward")
 
 sys.path.insert(0, os.path.dirname(__file__))
 import graphed_uproot_report as gr
-from graphed_checkpoint import Store, run_resumable
-from graphed_checkpoint.runner import _SimulatedInterrupt
-from graphed_core import Partition
+from graphed.checkpoint import Store, run_resumable
+from graphed.checkpoint.runner import _SimulatedInterrupt
+from graphed.core import Partition
 
 
 def _whole_file(path_with_tree):

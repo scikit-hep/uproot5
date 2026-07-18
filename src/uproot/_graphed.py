@@ -9,7 +9,7 @@ This module defines :doc:`uproot._graphed.graphed`, which reads ``TTrees`` into 
 not impersonate a deferred-array ``.compute()`` — instead, a recorded analysis is executed the way one
 actually runs a task graph: per partition through the ``graphed-exec-local`` executors
 (``ProcessExecutor`` / ``ThreadExecutor``) and tree-reduced. :doc:`uproot._graphed.graphed_partitions`
-builds the ``graphed_core.Task`` chunks; :doc:`uproot._graphed.necessary_columns` reports the column
+builds the ``graphed.core.Task`` chunks; :doc:`uproot._graphed.necessary_columns` reports the column
 projection (so each chunk reads only the ``TBranches`` the analysis touches — the dask-awkward
 necessary-columns optimization, expressed through ``graphed``).
 
@@ -58,7 +58,7 @@ class _GraphedTTreeSource:
     # ---- graphed.write.PartitionedSource (P3.6 revision): partition-wise reading -------------
     def partitions(self, steps_per_file=1):
         """BLIND partitions, one per (file x step): planning opens no files (R7.9)."""
-        from graphed_core import Partition
+        from graphed.core import Partition
 
         return tuple(
             Partition.blind(file_path, object_path, s, steps_per_file)
@@ -118,7 +118,7 @@ def graphed(
 
     import awkward
     from graphed import Session
-    from graphed_awkward import AwkwardBackend, AwkwardForm
+    from graphed.awkward import AwkwardBackend, AwkwardForm
 
     real_options = options.copy()
     real_options.setdefault("num_workers", 1)
@@ -178,7 +178,7 @@ def graphed(
 def necessary_columns(array, *, on_fail="raise"):
     """The ``TBranches`` each source must read for ``array`` — ``graphed``'s necessary-buffer
     projection (metadata-only). Returns ``{source_name: frozenset(branch_names)}``."""
-    from graphed_awkward.projection import project
+    from graphed.awkward.projection import project
 
     return dict(project(array, on_fail=on_fail).read_columns)
 
@@ -190,7 +190,7 @@ def necessary_buffers(array, *, on_fail="raise"):
     count-only analysis truthfully reports ``{collection: OFFSETS}`` where the column view reports
     the empty set — feed it to :doc:`resolve_read_branches` to serve the count from the jagged
     branch's COUNTER branch without reading the payload baskets."""
-    from graphed_awkward.projection import project_buffers
+    from graphed.awkward.projection import project_buffers
 
     return {
         name: dict(needs)
@@ -234,7 +234,7 @@ def graphed_partitions(
     allow_missing=False,
     **options,
 ):
-    """Partition a uproot dataset into ``graphed_core.Task`` chunks for the ``graphed-exec-local``
+    """Partition a uproot dataset into ``graphed.core.Task`` chunks for the ``graphed-exec-local``
     executors. Every chunk is a ``Task(key, Partition(file_path, tree, entry_start, entry_stop))``.
 
     Mirrors :doc:`uproot._dask.dask`'s chunking knobs:
@@ -248,10 +248,10 @@ def graphed_partitions(
       ``entry_stop=-n_steps``) and the real entry range is resolved against the file's own count when
       the chunk is read (:doc:`uproot._graphed.read_graphed_partition`).
 
-    The chunks feed a ``graphed_core.Plan`` run by ``graphed_exec_local.ProcessExecutor`` /
+    The chunks feed a ``graphed.core.Plan`` run by ``graphed_exec_local.ProcessExecutor`` /
     ``ThreadExecutor`` — the per-partition, tree-reduced execution that a deferred-array ``.compute()``
     hides."""
-    from graphed_core import Partition, Task
+    from graphed.core import Partition, Task
 
     have_step_size = not isinstance(step_size, uproot._util._Unset)
     have_steps_per_file = not isinstance(steps_per_file, uproot._util._Unset)
@@ -270,7 +270,7 @@ def graphed_partitions(
     for ftuple in resolved:
         file_path, object_path = ftuple[0], ftuple[1]
         if not open_files:
-            # BLIND: do not open the file; emit first-class blind chunks (graphed_core M10:
+            # BLIND: do not open the file; emit first-class blind chunks (graphed.core M10:
             # ``Partition.blind`` records (step, n_steps) explicitly — the old negative-entry_stop
             # sentinel is retired) resolved against the file's actual entry count at read time
             for step in range(n_steps):
@@ -297,7 +297,7 @@ def graphed_partitions(
 
 
 def read_graphed_partition(partition, columns, *, tree=None, library="ak", **open_options):
-    """Read a ``graphed_core.Partition``'s chunk of ``columns`` from its ROOT file.
+    """Read a ``graphed.core.Partition``'s chunk of ``columns`` from its ROOT file.
 
     Resolves **blind** partitions (``entry_stop < 0`` encodes ``step_index`` / ``n_steps`` from
     ``graphed_partitions(..., open_files=False)``) against the file's *actual* entry count here, so a
@@ -356,7 +356,7 @@ def graphed_head(array, n=5):
     The ``graphed`` analogue of a dask collection's ``head``.
     """
     from graphed import compile_ir, evaluate_ir
-    from graphed_core import Partition
+    from graphed.core import Partition
 
     session = array.session
     uproot_sources = [

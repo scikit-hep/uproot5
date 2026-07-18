@@ -11,7 +11,7 @@ import skhep_testdata
 
 import uproot
 
-graphed_awkward = pytest.importorskip("graphed_awkward")
+graphed_awkward = pytest.importorskip("graphed.awkward")
 
 
 def test_metadata_only_construction():

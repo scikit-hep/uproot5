@@ -1,7 +1,7 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot5/blob/main/LICENSE
 """ROOT -> parquet through the GENERIC writer (P3.6 revision; supersedes uproot.graphed_to_parquet).
 
-``graphed_awkward.io.to_parquet(uproot.graphed(...), ...)`` writes a recorded analysis over each
+``graphed.awkward.io.to_parquet(uproot.graphed(...), ...)`` writes a recorded analysis over each
 blind ROOT partition through the compiled IR: the uproot source implements
 ``graphed.write.PartitionedSource``, so the ONE generic entry point covers parquet datasets and
 ROOT trees alike. Efficiency is witnessed, not assumed: the source's whole-dataset loader is
@@ -20,10 +20,10 @@ import uproot
 
 pytest.importorskip("pyarrow")
 pytest.importorskip("graphed_exec_local")
-pytest.importorskip("graphed_awkward")
+pytest.importorskip("graphed.awkward")
 
-import graphed_awkward.io as gio  # noqa: E402
-from graphed_awkward import gak  # noqa: E402
+import graphed.awkward.io as gio  # noqa: E402
+from graphed.awkward import gak  # noqa: E402
 
 
 def _zmumu():
@@ -56,7 +56,7 @@ def test_roundtrip_matches_single_pass_without_materializing(tmp_path):
 
 
 def test_partitions_are_blind_and_disabled_plan_equals_enabled_run(tmp_path):
-    from graphed_core.execution import Plan
+    from graphed.core.execution import Plan
     from graphed_exec_local import ProcessExecutor
 
     g = uproot.graphed(_zmumu(), library="ak", filter_name=["px1"])
@@ -108,7 +108,7 @@ def test_custom_column_name_and_explicit_executor(tmp_path):
 def test_multi_source_arrays_are_rejected(tmp_path):
     # two uproot sources in ONE session (the construction test_graphed_m10 pins for graphed_write)
     import graphed
-    from graphed_awkward import AwkwardBackend, AwkwardForm
+    from graphed.awkward import AwkwardBackend, AwkwardForm
     from uproot._graphed import _GraphedTTreeSource
 
     path = skhep_testdata.data_path("uproot-Zmumu.root")

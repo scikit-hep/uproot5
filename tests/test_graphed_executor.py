@@ -16,13 +16,13 @@ import skhep_testdata
 import uproot  # noqa: F401  (registers uproot.graphed_partitions used by the helper)
 
 pytest.importorskip("graphed_exec_local")
-pytest.importorskip("graphed_awkward")
+pytest.importorskip("graphed.awkward")
 
 # make the picklable helper importable both here and in spawned ProcessExecutor workers
 # (multiprocessing 'spawn' inherits this sys.path)
 sys.path.insert(0, os.path.dirname(__file__))
 import graphed_uproot_analysis as gu
-from graphed_core import Plan
+from graphed.core import Plan
 from graphed_exec_local import ProcessExecutor, ThreadExecutor
 
 ZMUMU = "uproot-Zmumu.root:events"

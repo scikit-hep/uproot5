@@ -21,8 +21,8 @@ import awkward as ak
 import numpy as np
 import uproot
 from graphed import Session
-from graphed_awkward import AwkwardBackend, from_awkward
-from graphed_core import Partition, Task
+from graphed.awkward import AwkwardBackend, from_awkward
+from graphed.core import Partition, Task
 
 # The recorded analysis touches exactly these TBranches; the executor reads only them.
 COLUMNS = ("px1", "py1")

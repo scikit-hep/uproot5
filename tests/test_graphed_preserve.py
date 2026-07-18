@@ -21,14 +21,14 @@ import skhep_testdata
 
 import uproot
 
-pytest.importorskip("graphed_preserve")
-pytest.importorskip("graphed_awkward")
+pytest.importorskip("graphed.preserve")
+pytest.importorskip("graphed.awkward")
 
 sys.path.insert(0, os.path.dirname(__file__))
 from graphed import Session
-from graphed_awkward import AwkwardBackend, from_awkward
-from graphed_checkpoint import Store, run_resumable
-from graphed_preserve import Bundle, UnresolvedPayload, build_bundle, inspect, reproduce
+from graphed.awkward import AwkwardBackend, from_awkward
+from graphed.checkpoint import Store, run_resumable
+from graphed.preserve import Bundle, UnresolvedPayload, build_bundle, inspect, reproduce
 
 HIST = {"name": "sum_pxpy", "bins": 50, "lo": -200.0, "hi": 200.0}
 COLUMNS = ["px1", "py1"]

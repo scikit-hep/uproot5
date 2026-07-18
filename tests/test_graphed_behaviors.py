@@ -17,11 +17,11 @@ import skhep_testdata
 
 import uproot
 
-pytest.importorskip("graphed_awkward")
+pytest.importorskip("graphed.awkward")
 vector = pytest.importorskip("vector")
 vector.register_awkward()
 
-from graphed_awkward import gak  # noqa: E402
+from graphed.awkward import gak  # noqa: E402
 
 BEHAVIOR = vector.backends.awkward.behavior
 
@@ -92,7 +92,7 @@ def test_unknown_attributes_fail_at_record_time(kinematics_file):
 def test_behavior_flows_through_the_generic_to_parquet(kinematics_file, tmp_path):
     pytest.importorskip("pyarrow")
     pytest.importorskip("graphed_exec_local")
-    import graphed_awkward.io as gio
+    import graphed.awkward.io as gio
     from graphed_exec_local import ProcessExecutor
 
     where, cols = kinematics_file
