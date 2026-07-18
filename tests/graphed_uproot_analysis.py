@@ -12,8 +12,8 @@ tree-reduces the per-chunk histograms across worker processes into one histogram
 the single-pass plain-uproot result bit-for-bit.
 
 This is the real thread/process-executor path that a deferred-array ``.compute()`` hides — so the
-uproot ``graphed`` tests exercise ``ProcessExecutor`` instead of a thin ``materialize`` wrapper. Every
-callable here is module-level so a spawned ``ProcessExecutor`` worker can import it by reference.
+uproot ``graphed`` tests exercise ``ProcessPoolExecutor`` instead of a thin ``materialize`` wrapper. Every
+callable here is module-level so a spawned ``ProcessPoolExecutor`` worker can import it by reference.
 """
 from __future__ import annotations
 
