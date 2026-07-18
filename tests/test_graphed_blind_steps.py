@@ -18,11 +18,11 @@ import skhep_testdata
 import uproot
 
 pytest.importorskip("graphed_exec_local")
-pytest.importorskip("graphed_awkward")
+pytest.importorskip("graphed.awkward")
 
 sys.path.insert(0, os.path.dirname(__file__))
 import graphed_uproot_analysis as gu
-from graphed_core import Plan
+from graphed.core import Plan
 from graphed_exec_local import ProcessExecutor
 
 
@@ -59,7 +59,7 @@ def test_graphed_blind_steps(step_size, steps_per_file, open_files):
 
 def test_blind_partitions_do_not_open_the_file():
     # open_files=False must build partitions without reading entry counts: blind chunks are
-    # FIRST-CLASS graphed_core blind partitions carrying (step, n_steps) explicitly, resolved only
+    # FIRST-CLASS graphed.core blind partitions carrying (step, n_steps) explicitly, resolved only
     # at read time. (freeze-UPROOT-1 amendment: this previously pinned the negative-entry_stop
     # sentinel encoding, which graphed-core M10 retired — same intent, honest representation.)
     test_path = skhep_testdata.data_path("uproot-Zmumu.root") + ":events"

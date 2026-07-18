@@ -8,7 +8,7 @@ from typing import Any
 
 def make_backend() -> Any:
     import vector
-    from graphed_awkward import AwkwardBackend
+    from graphed.awkward import AwkwardBackend
 
     vector.register_awkward()
     return AwkwardBackend(behavior=vector.backends.awkward.behavior)

@@ -12,7 +12,7 @@ import skhep_testdata
 
 import uproot
 
-graphed_awkward = pytest.importorskip("graphed_awkward")
+graphed_awkward = pytest.importorskip("graphed.awkward")
 
 sys.path.insert(0, os.path.dirname(__file__))
 

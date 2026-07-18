@@ -19,9 +19,9 @@ import skhep_testdata
 
 import uproot
 
-pytest.importorskip("graphed_awkward")
+pytest.importorskip("graphed.awkward")
 
-from graphed_awkward import gak  # noqa: E402
+from graphed.awkward import gak  # noqa: E402
 
 
 def _zmumu():
@@ -79,21 +79,21 @@ def test_head_reads_only_projected_branches(tmp_path):
 
 # ---- the M16 fusion witness (P2.4) ---------------------------------------------------------------
 def test_per_event_reductions_fuse_into_one_stage():
-    import graphed_core
+    import graphed.core
     from graphed import compile_ir
 
     g = uproot.graphed(_hzz(), library="ak", filter_name=["Muon_Px"])
     # pre-M16 each axis=1 reduction was a stage BOUNDARY; now they live INSIDE stages
     expr = gak.sum(g.Muon_Px + 1.0, axis=1) * 2.0 + gak.num(g.Muon_Px, axis=1)
     compiled = compile_ir(g.session, expr)
-    nodes = graphed_core.GraphStore.deserialize(compiled.ir).nodes()
+    nodes = graphed.core.GraphStore.deserialize(compiled.ir).nodes()
     kinds = sorted(n["kind"] for n in nodes)
     assert "reduction" not in kinds, f"a per-event reduction leaked out as a boundary: {kinds}"
     # default SingleUse fusion keeps the fanned-out field op as its own stage (the frozen M4
     # diamond pin): source + 2 stages; under maximal fusion the chain is source + ONE stage
     assert kinds == ["source", "stage", "stage"]
     maximal = compile_ir(g.session, expr, maximal_fusion=True)
-    nodes_max = graphed_core.GraphStore.deserialize(maximal.ir).nodes()
+    nodes_max = graphed.core.GraphStore.deserialize(maximal.ir).nodes()
     assert sorted(n["kind"] for n in nodes_max) == ["source", "stage"]
 
 

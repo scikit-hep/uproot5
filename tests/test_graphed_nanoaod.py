@@ -21,11 +21,11 @@ import pytest
 
 import uproot
 
-pytest.importorskip("graphed_awkward")
+pytest.importorskip("graphed.awkward")
 vector = pytest.importorskip("vector")
 vector.register_awkward()
 
-from graphed_awkward import gak  # noqa: E402
+from graphed.awkward import gak  # noqa: E402
 
 BEHAVIOR = vector.backends.awkward.behavior
 N = 300

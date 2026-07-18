@@ -1,7 +1,7 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot5/blob/main/LICENSE
 """``uproot.graphed_write`` — one output ROOT file per partition, mirroring ``dask_write``.
 
-``compute=False`` returns the write **task graph** (a ``graphed_core.Plan`` of write tasks, each
+``compute=False`` returns the write **task graph** (a ``graphed.core.Plan`` of write tasks, each
 REPORTING its part path — the ``graphed.write`` base's contract) without writing; ``compute=True``
 runs it through a ``graphed-exec-local`` executor (``ProcessExecutor`` by default).
 
@@ -19,9 +19,9 @@ import skhep_testdata
 import uproot
 
 pytest.importorskip("graphed_exec_local")
-graphed_awkward = pytest.importorskip("graphed_awkward")
+graphed_awkward = pytest.importorskip("graphed.awkward")
 
-from graphed_core import Plan
+from graphed.core import Plan
 from graphed_exec_local import ProcessExecutor
 
 

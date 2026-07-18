@@ -17,8 +17,8 @@ import awkward as ak
 import numpy as np
 import uproot
 from graphed import Session
-from graphed_awkward import AwkwardBackend, from_awkward
-from graphed_core import DurablePlan, GraphStore, OpSpec
+from graphed.awkward import AwkwardBackend, from_awkward
+from graphed.core import DurablePlan, GraphStore, OpSpec
 
 COLUMN = "px1"
 BINS, LO, HI = 50, -150.0, 150.0
