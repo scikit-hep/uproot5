@@ -8,7 +8,7 @@ This module defines :doc:`uproot._graphed.graphed`, which reads ``TTrees`` into 
 ``graphed-awkward`` backend); construction reads only metadata (the ``TTree`` form). ``graphed`` does
 not impersonate a deferred-array ``.compute()`` — instead, a recorded analysis is executed the way one
 actually runs a task graph: per partition through the ``graphed-exec-local`` executors
-(``ProcessExecutor`` / ``ThreadExecutor``) and tree-reduced. :doc:`uproot._graphed.graphed_partitions`
+(``ProcessPoolExecutor`` / ``ThreadExecutor``) and tree-reduced. :doc:`uproot._graphed.graphed_partitions`
 builds the ``graphed.core.Task`` chunks; :doc:`uproot._graphed.necessary_columns` reports the column
 projection (so each chunk reads only the ``TBranches`` the analysis touches — the dask-awkward
 necessary-columns optimization, expressed through ``graphed``).
@@ -248,7 +248,7 @@ def graphed_partitions(
       ``entry_stop=-n_steps``) and the real entry range is resolved against the file's own count when
       the chunk is read (:doc:`uproot._graphed.read_graphed_partition`).
 
-    The chunks feed a ``graphed.core.Plan`` run by ``graphed_exec_local.ProcessExecutor`` /
+    The chunks feed a ``graphed.core.Plan`` run by ``graphed_exec_local.ProcessPoolExecutor`` /
     ``ThreadExecutor`` — the per-partition, tree-reduced execution that a deferred-array ``.compute()``
     hides."""
     from graphed.core import Partition, Task

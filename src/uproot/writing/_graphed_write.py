@@ -12,7 +12,7 @@ a step that resolves EMPTY (a file with fewer entries than ``steps_per_file``) i
 empty part files are written (part numbering may then have gaps in that corner case). With
 ``compute=False`` the Plan (the write task graph) is returned without running; with
 ``compute=True`` (the default) it is executed through a ``graphed-exec-local`` executor — the
-``ProcessExecutor`` by default (``executor="thread"`` for the thread pool).
+``ProcessPoolExecutor`` by default (``executor="thread"`` for the thread pool).
 
 ``graphed`` / ``graphed.core`` / ``graphed_exec_local`` are imported lazily, so importing ``uproot``
 does not require them.
@@ -41,7 +41,7 @@ def _recreate_kwargs(compression, compression_level):
     return {"compression": resolved}
 
 
-# ---- module-level so a spawned ProcessExecutor worker can pickle/import it ----------------------
+# ---- module-level so a spawned ProcessPoolExecutor worker can pickle/import it ----------------------
 def _write_partition(
     partition, resources, *, destination, prefix, columns, tree_name, compression,
     compression_level, bases,
@@ -66,10 +66,10 @@ def _write_partition(
 
 
 def _select_executor(executor):
-    from graphed_exec_local import ProcessExecutor, ThreadExecutor
+    from graphed_exec_local import ProcessPoolExecutor, ThreadExecutor
 
     if isinstance(executor, str):
-        return {"process": ProcessExecutor, "thread": ThreadExecutor}[executor]
+        return {"process": ProcessPoolExecutor, "thread": ThreadExecutor}[executor]
     return executor  # an executor class/instance passed directly
 
 
@@ -100,7 +100,7 @@ def graphed_write(
             ``graphed-exec-local`` executor and return the written paths (REPORTED BY THE WORKERS,
             in deterministic key order). If ``False``, return the ``graphed.core.Plan`` (the write
             task graph) **without writing** — run it later with an executor.
-        executor (str or executor): ``"process"`` (default, ``ProcessExecutor``) or ``"thread"``
+        executor (str or executor): ``"process"`` (default, ``ProcessPoolExecutor``) or ``"thread"``
             (``ThreadExecutor``); an executor class/instance may also be passed.
         max_workers (int or None): Worker count for the executor.
         compression, compression_level: ROOT compression for the part files (as in ``dask_write``).

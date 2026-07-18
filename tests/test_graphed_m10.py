@@ -29,7 +29,7 @@ import graphed_uproot_analysis as gu  # noqa: E402
 from graphed import BufferNeed, evaluate_ir  # noqa: E402
 from graphed.awkward import AwkwardBackend, gak  # noqa: E402
 from graphed.core import Plan  # noqa: E402
-from graphed_exec_local import ProcessExecutor  # noqa: E402
+from graphed_exec_local import ProcessPoolExecutor  # noqa: E402
 
 
 # ---- buffer-level projection (A.3) ---------------------------------------------------------------
@@ -80,7 +80,7 @@ def test_executor_path_evaluates_the_compiled_ir_bit_for_bit():
     test_path = skhep_testdata.data_path("uproot-Zmumu.root") + ":events"
     tasks = uproot.graphed_partitions(test_path, steps_per_file=6)
     plan = Plan(process=gu.process, combine=gu.combine, empty=gu.empty, tasks=tasks)
-    result = ProcessExecutor(max_workers=3).run(plan).value
+    result = ProcessPoolExecutor(max_workers=3).run(plan).value
     assert np.array_equal(result, gu.single_pass(test_path))
 
 

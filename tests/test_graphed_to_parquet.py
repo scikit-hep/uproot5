@@ -57,7 +57,7 @@ def test_roundtrip_matches_single_pass_without_materializing(tmp_path):
 
 def test_partitions_are_blind_and_disabled_plan_equals_enabled_run(tmp_path):
     from graphed.core.execution import Plan
-    from graphed_exec_local import ProcessExecutor
+    from graphed_exec_local import ProcessPoolExecutor
 
     g = uproot.graphed(_zmumu(), library="ak", filter_name=["px1"])
     expr = g.px1 * 2.0
@@ -68,7 +68,7 @@ def test_partitions_are_blind_and_disabled_plan_equals_enabled_run(tmp_path):
     assert isinstance(plan, Plan)
     assert all(t.partition.is_blind for t in plan.tasks)  # planning opened no files (R7.9)
     assert not os.path.exists(os.path.join(tmp_path, "dis"))  # nothing written yet
-    later = ProcessExecutor(max_workers=2).run(plan).value  # any R7 executor runs the same plan
+    later = ProcessPoolExecutor(max_workers=2).run(plan).value  # any R7 executor runs the same plan
 
     assert [os.path.basename(p) for p in later] == [os.path.basename(p) for p in enabled]
     for a, b in zip(enabled, later):

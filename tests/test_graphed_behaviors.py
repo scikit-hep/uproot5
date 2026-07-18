@@ -93,7 +93,7 @@ def test_behavior_flows_through_the_generic_to_parquet(kinematics_file, tmp_path
     pytest.importorskip("pyarrow")
     pytest.importorskip("graphed_exec_local")
     import graphed.awkward.io as gio
-    from graphed_exec_local import ProcessExecutor
+    from graphed_exec_local import ProcessPoolExecutor
 
     where, cols = kinematics_file
     g = uproot.graphed(where, library="ak", behavior=BEHAVIOR)
@@ -103,7 +103,7 @@ def test_behavior_flows_through_the_generic_to_parquet(kinematics_file, tmp_path
     paths = gio.to_parquet(
         pt, os.path.join(tmp_path, "pt"), steps_per_file=2,
         behavior="vector.backends.awkward:behavior",
-        executor=ProcessExecutor(max_workers=2),
+        executor=ProcessPoolExecutor(max_workers=2),
     )
     back = ak.concatenate([ak.from_parquet(p) for p in paths])
     assert ak.array_equal(back["data"], _reference(cols).pt)

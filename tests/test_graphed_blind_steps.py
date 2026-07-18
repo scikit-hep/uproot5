@@ -23,12 +23,12 @@ pytest.importorskip("graphed.awkward")
 sys.path.insert(0, os.path.dirname(__file__))
 import graphed_uproot_analysis as gu
 from graphed.core import Plan
-from graphed_exec_local import ProcessExecutor
+from graphed_exec_local import ProcessPoolExecutor
 
 
 def _run(tasks):
     plan = Plan(process=gu.process, combine=gu.combine, empty=gu.empty, tasks=tasks)
-    return ProcessExecutor(max_workers=4).run(plan).value
+    return ProcessPoolExecutor(max_workers=4).run(plan).value
 
 
 @pytest.mark.parametrize("step_size", ["50 kB", uproot._util.unset])

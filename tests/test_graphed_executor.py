@@ -18,12 +18,12 @@ import uproot  # noqa: F401  (registers uproot.graphed_partitions used by the he
 pytest.importorskip("graphed_exec_local")
 pytest.importorskip("graphed.awkward")
 
-# make the picklable helper importable both here and in spawned ProcessExecutor workers
+# make the picklable helper importable both here and in spawned ProcessPoolExecutor workers
 # (multiprocessing 'spawn' inherits this sys.path)
 sys.path.insert(0, os.path.dirname(__file__))
 import graphed_uproot_analysis as gu
 from graphed.core import Plan
-from graphed_exec_local import ProcessExecutor, ThreadExecutor
+from graphed_exec_local import ProcessPoolExecutor, ThreadExecutor
 
 ZMUMU = "uproot-Zmumu.root:events"
 
@@ -37,7 +37,7 @@ def _plan(path_with_tree: str, n_chunks: int) -> Plan:
     )
 
 
-@pytest.mark.parametrize("Executor", [ThreadExecutor, ProcessExecutor])
+@pytest.mark.parametrize("Executor", [ThreadExecutor, ProcessPoolExecutor])
 def test_uproot_graphed_via_executor_matches_single_pass(Executor):
     path = skhep_testdata.data_path("uproot-Zmumu.root") + ":events"
     full = gu.single_pass(path)
@@ -52,7 +52,7 @@ def test_process_executor_result_is_invariant_to_partition_count():
     path = skhep_testdata.data_path("uproot-Zmumu.root") + ":events"
     full = gu.single_pass(path)
     for n_chunks in (1, 4, 13):
-        result = ProcessExecutor(max_workers=4).run(_plan(path, n_chunks))
+        result = ProcessPoolExecutor(max_workers=4).run(_plan(path, n_chunks))
         assert np.array_equal(result.value, full), f"{n_chunks} chunks changed the histogram"
 
 

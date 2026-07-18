@@ -3,7 +3,7 @@
 
 ``compute=False`` returns the write **task graph** (a ``graphed.core.Plan`` of write tasks, each
 REPORTING its part path — the ``graphed.write`` base's contract) without writing; ``compute=True``
-runs it through a ``graphed-exec-local`` executor (``ProcessExecutor`` by default).
+runs it through a ``graphed-exec-local`` executor (``ProcessPoolExecutor`` by default).
 
 [freeze-UPROOT-2, user-authorized amendments 2026-06-10: part names follow the base's
 ``part_path`` (``part-00000.root``); write tasks report their paths instead of returning None.]
@@ -22,7 +22,7 @@ pytest.importorskip("graphed_exec_local")
 graphed_awkward = pytest.importorskip("graphed.awkward")
 
 from graphed.core import Plan
-from graphed_exec_local import ProcessExecutor
+from graphed_exec_local import ProcessPoolExecutor
 
 
 def _make_root(path, n=20):
@@ -73,7 +73,7 @@ def test_compute_false_returns_task_graph_and_writes_nothing(tmp_path):
 
     # running the task graph writes the part files; each task REPORTS its part path up the
     # deterministic combine tree (the graphed.write base's contract)
-    result = ProcessExecutor(max_workers=2).run(plan)
+    result = ProcessPoolExecutor(max_workers=2).run(plan)
     assert [os.path.basename(p) for p in result.value] == [
         "part-00000.root", "part-00001.root", "part-00002.root"
     ]
