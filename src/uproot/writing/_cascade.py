@@ -865,22 +865,22 @@ class OldBranches(CascadeLeaf):
 
             if len(leaf_name) < 255:
                 out.append(
-                    struct.pack(">B%ds" % len(leaf_name), len(leaf_name), leaf_name)
+                    struct.pack(f">B{len(leaf_name)}s", len(leaf_name), leaf_name)
                 )
             else:
                 out.append(
                     struct.pack(
-                        ">BI%ds" % len(leaf_name), 255, len(leaf_name), leaf_name
+                        f">BI{len(leaf_name)}s", 255, len(leaf_name), leaf_name
                     )
                 )
             if len(leaf_title) < 255:
                 out.append(
-                    struct.pack(">B%ds" % len(leaf_title), len(leaf_title), leaf_title)
+                    struct.pack(f">B{len(leaf_title)}s", len(leaf_title), leaf_title)
                 )
             else:
                 out.append(
                     struct.pack(
-                        ">BI%ds" % len(leaf_title), 255, len(leaf_title), leaf_title
+                        f">BI{len(leaf_title)}s", 255, len(leaf_title), leaf_title
                     )
                 )
 
@@ -936,10 +936,9 @@ class OldBranches(CascadeLeaf):
                 3,  # TObjArray
             )
         # empty TObjArray of fBaskets (embedded)
-        if len(datum["fBaskets"]) >= 1:
-            if any(b is not None for b in datum["fBaskets"]):
-                msg = f"NotImplementedError, cannot yet write TObjArray of fBaskets. Branch {datum['fName']} has {len(datum['fBaskets'])} fBaskets."
-                raise NotImplementedError(msg)
+        if len(datum["fBaskets"]) >= 1 and any(b is not None for b in datum["fBaskets"]):
+            msg = f"NotImplementedError, cannot yet write TObjArray of fBaskets. Branch {datum['fName']} has {len(datum['fBaskets'])} fBaskets."
+            raise NotImplementedError(msg)
 
         out.append(
             b"@\x00\x00\x15\x00\x03\x00\x01\x00\x00\x00\x00\x03\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
