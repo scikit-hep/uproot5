@@ -1836,6 +1836,11 @@ in file {self.file_path} in directory {self.path}"""
         existing_page_list_envelopes = existing.page_list_envelopes
         existing_field_records = existing._header.field_records
         existing_file.close()
+        
+        existing_field_names = {fr.field_name for fr in existing_field_records}
+        for field_name in new_fields:
+            if field_name in existing_field_names:
+                raise ValueError(f"Field {field_name!r} already exists in this RNTuple")
 
         header = cnt.NTuple_Header(
             None, existing.name, existing._header.ntuple_description, akform
@@ -2866,6 +2871,12 @@ class WritableNTuple:
 
         next_field_id = len(existing_field_records)
         new_pages = {}
+
+        existing_field_names = {fr.field_name for fr in existing_field_records}
+        for field_name in new_fields:
+            if field_name in existing_field_names:
+                raise ValueError(f"Field {field_name!r} already exists in this RNTuple")
+
         for field_name, field_dtype_raw in new_fields.items():
             field_dtype = numpy.dtype(field_dtype_raw)
             ak_primitive = {

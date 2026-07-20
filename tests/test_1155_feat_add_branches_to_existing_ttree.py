@@ -550,3 +550,11 @@ def test_add_field_ntuple(tmp_path):
 
     reader = ROOT.RNTupleReader.Open("mytuple", os.path.join(tmp_path, "test.root"))
     assert reader.GetNEntries() == 5
+
+def test_add_field_ntuple_duplicate(tmp_path):
+    with uproot.recreate(os.path.join(tmp_path, "test.root")) as f:
+        f["mytuple"] = {"x": np.array([1,2,3], dtype=np.float32)}
+    
+    with uproot.update(os.path.join(tmp_path, "test.root")) as f:
+        with pytest.raises(ValueError, match="already exists"):
+            f["mytuple"].add_fields({"x": np.int32})
