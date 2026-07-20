@@ -1610,7 +1610,7 @@ in file {self.file_path} in directory {self.path}"""
             streamers,
         )
         return tree
-    
+
     def extend_ntuple(self, source, data):
         """
         Args:
@@ -1620,8 +1620,9 @@ in file {self.file_path} in directory {self.path}"""
         Extends an existing RNTuple with new rows/events.
         """
         import numpy
-        import uproot.writing._cascadentuple as cnt
+
         import uproot.writing._cascade as casc
+        import uproot.writing._cascadentuple as cnt
 
         if self._file.sink.closed:
             raise ValueError("cannot modify a RNTuple in a closed file")
@@ -1640,38 +1641,68 @@ in file {self.file_path} in directory {self.path}"""
         num_entries = existing.num_entries
         existing_file.close()
 
-        header = cnt.NTuple_Header(None, existing.name, existing._header.ntuple_description, akform)
+        header = cnt.NTuple_Header(
+            None, existing.name, existing._header.ntuple_description, akform
+        )
         footer = cnt.NTuple_Footer(None, header._checksum)
 
         # copy existing cluster groups into footer
         for cg in existing._footer.cluster_group_records:
-            locator = cnt.NTuple_Locator(cg.page_list_link.locator.num_bytes, cg.page_list_link.locator.offset)
+            locator = cnt.NTuple_Locator(
+                cg.page_list_link.locator.num_bytes, cg.page_list_link.locator.offset
+            )
             envlink = cnt.NTuple_EnvLink(cg.page_list_link.env_uncomp_size, locator)
             footer.cluster_group_record_frames.append(
-                cnt.NTuple_ClusterGroupRecord(cg.min_entry_num, cg.entry_span, cg.num_clusters, envlink)
+                cnt.NTuple_ClusterGroupRecord(
+                    cg.min_entry_num, cg.entry_span, cg.num_clusters, envlink
+                )
             )
 
         anchor = cnt.NTuple_Anchor(
             anchor_location,
-            am["fVersionEpoch"], am["fVersionMajor"], am["fVersionMinor"], am["fVersionPatch"],
-            am["fSeekHeader"], am["fNBytesHeader"], am["fLenHeader"],
-            am["fSeekFooter"], am["fNBytesFooter"], am["fLenFooter"],
+            am["fVersionEpoch"],
+            am["fVersionMajor"],
+            am["fVersionMinor"],
+            am["fVersionPatch"],
+            am["fSeekHeader"],
+            am["fNBytesHeader"],
+            am["fLenHeader"],
+            am["fSeekFooter"],
+            am["fNBytesFooter"],
+            am["fLenFooter"],
             am["fMaxKeySize"],
         )
 
         ntuple = cnt.NTuple(
-            self._cascading, akform, self._cascading._freesegments,
-            header, footer, [], anchor
+            self._cascading,
+            akform,
+            self._cascading._freesegments,
+            header,
+            footer,
+            [],
+            anchor,
         )
         ntuple._header_key = casc.Key(
-            am["fSeekHeader"] - 56, am["fLenHeader"], am["fNBytesHeader"],
-            casc.String(None, "RBlob"), casc.String(None, ""), casc.String(None, ""),
-            1, 100, am["fSeekHeader"],
+            am["fSeekHeader"] - 56,
+            am["fLenHeader"],
+            am["fNBytesHeader"],
+            casc.String(None, "RBlob"),
+            casc.String(None, ""),
+            casc.String(None, ""),
+            1,
+            100,
+            am["fSeekHeader"],
         )
         ntuple._footer_key = casc.Key(
-            am["fSeekFooter"] - 56, am["fLenFooter"], am["fNBytesFooter"],
-            casc.String(None, "RBlob"), casc.String(None, ""), casc.String(None, ""),
-            1, 100, am["fSeekFooter"],
+            am["fSeekFooter"] - 56,
+            am["fLenFooter"],
+            am["fNBytesFooter"],
+            casc.String(None, "RBlob"),
+            casc.String(None, ""),
+            casc.String(None, ""),
+            1,
+            100,
+            am["fSeekFooter"],
         )
         ntuple._num_entries = num_entries
         ntuple._column_counts = numpy.array(

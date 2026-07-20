@@ -506,14 +506,22 @@ def test_TreeClass0(tmp_path):
         assert getattr(x, "new_branch") == np.float32(1.0)
     inFile.Close()
 
+
 def test_extend_existing_ntuple(tmp_path):
     with uproot.recreate(os.path.join(tmp_path, "test.root")) as f:
-        f["mytuple"] = {"x": np.array([1,2,3,4,5], dtype=np.float32),
-                        "y": np.array([10,20,30,40,50], dtype=np.int32)}
-    
+        f["mytuple"] = {
+            "x": np.array([1, 2, 3, 4, 5], dtype=np.float32),
+            "y": np.array([10, 20, 30, 40, 50], dtype=np.int32),
+        }
+
     with uproot.update(os.path.join(tmp_path, "test.root")) as f:
-        f.extend_ntuple("mytuple", {"x": np.array([6,7,8], dtype=np.float32),
-                                     "y": np.array([60,70,80], dtype=np.int32)})
+        f.extend_ntuple(
+            "mytuple",
+            {
+                "x": np.array([6, 7, 8], dtype=np.float32),
+                "y": np.array([60, 70, 80], dtype=np.int32),
+            },
+        )
     
     with uproot.open(os.path.join(tmp_path, "test.root")) as f:
         nt = f["mytuple"]
@@ -531,3 +539,4 @@ def test_add_field_ntuple(tmp_path):
         nt = f["mytuple"]
         assert ak.all(nt["x"].array() == np.array([1,2,3,4,5], dtype=np.float32))
         assert ak.all(nt["z"].array() == np.zeros(5, dtype=np.int32))
+
