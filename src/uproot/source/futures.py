@@ -28,13 +28,6 @@ import threading
 from abc import ABC, abstractmethod
 
 
-def delayed_raise(exception_class, exception_value, traceback):
-    """
-    Raise an exception from a background thread on the main thread.
-    """
-    raise exception_value.with_traceback(traceback)
-
-
 class Executor(ABC):
     def __repr__(self):
         return f"<{self.__class__.__name__} at 0x{id(self):012x}>"
