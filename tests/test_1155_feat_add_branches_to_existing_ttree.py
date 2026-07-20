@@ -776,3 +776,22 @@ def test_ntuple_multiple_add_fields_then_extend(tmp_path):
 
     reader = ROOT.RNTupleReader.Open("mytuple", os.path.join(tmp_path, "test.root"))
     assert reader.GetNEntries() == 6
+
+def test_ntuple_add_field_and_extend_same_session(tmp_path):
+    with uproot.recreate(os.path.join(tmp_path, "test.root")) as f:
+        f["mytuple"] = {"x": np.array([1, 2, 3], dtype=np.float32)}
+
+    with uproot.update(os.path.join(tmp_path, "test.root")) as f:
+        f["mytuple"].add_fields({"y": np.int32})
+        f["mytuple"].extend({
+            "x": np.array([4, 5], dtype=np.float32),
+            "y": np.array([40, 50], dtype=np.int32),
+        })
+
+    with uproot.open(os.path.join(tmp_path, "test.root")) as f:
+        nt = f["mytuple"]
+        assert ak.all(nt["x"].array() == np.array([1, 2, 3, 4, 5], dtype=np.float32))
+        assert ak.all(nt["y"].array() == np.array([0, 0, 0, 40, 50], dtype=np.int32))
+
+    reader = ROOT.RNTupleReader.Open("mytuple", os.path.join(tmp_path, "test.root"))
+    assert reader.GetNEntries() == 5
