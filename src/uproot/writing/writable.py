@@ -1720,9 +1720,10 @@ in file {self.file_path} in directory {self.path}"""
         Adds new fields to an existing RNTuple, back-filled with zeros.
         """
         import numpy
+
         import uproot.compression
-        import uproot.writing._cascadentuple as cnt
         import uproot.writing._cascade as casc
+        import uproot.writing._cascadentuple as cnt
 
         if self._file.sink.closed:
             raise ValueError("cannot modify a RNTuple in a closed file")
@@ -1744,30 +1745,57 @@ in file {self.file_path} in directory {self.path}"""
         existing_field_records = existing._header.field_records
         existing_file.close()
 
-        header = cnt.NTuple_Header(None, existing.name, existing._header.ntuple_description, akform)
+        header = cnt.NTuple_Header(
+            None, existing.name, existing._header.ntuple_description, akform
+        )
         footer = cnt.NTuple_Footer(None, header._checksum)
 
         compression = self._cascading._freesegments.fileheader.compression
 
         anchor = cnt.NTuple_Anchor(
             anchor_location,
-            am["fVersionEpoch"], am["fVersionMajor"], am["fVersionMinor"], am["fVersionPatch"],
-            am["fSeekHeader"], am["fNBytesHeader"], am["fLenHeader"],
-            am["fSeekFooter"], am["fNBytesFooter"], am["fLenFooter"],
+            am["fVersionEpoch"],
+            am["fVersionMajor"],
+            am["fVersionMinor"],
+            am["fVersionPatch"],
+            am["fSeekHeader"],
+            am["fNBytesHeader"],
+            am["fLenHeader"],
+            am["fSeekFooter"],
+            am["fNBytesFooter"],
+            am["fLenFooter"],
             am["fMaxKeySize"],
         )
         ntuple = cnt.NTuple(
-            self._cascading, akform, self._cascading._freesegments, header, footer, [], anchor
+            self._cascading,
+            akform,
+            self._cascading._freesegments,
+            header,
+            footer,
+            [],
+            anchor,
         )
         ntuple._header_key = casc.Key(
-            am["fSeekHeader"] - 56, am["fLenHeader"], am["fNBytesHeader"],
-            casc.String(None, "RBlob"), casc.String(None, ""), casc.String(None, ""),
-            1, 100, am["fSeekHeader"],
+            am["fSeekHeader"] - 56,
+            am["fLenHeader"],
+            am["fNBytesHeader"],
+            casc.String(None, "RBlob"),
+            casc.String(None, ""),
+            casc.String(None, ""),
+            1,
+            100,
+            am["fSeekHeader"],
         )
         ntuple._footer_key = casc.Key(
-            am["fSeekFooter"] - 56, am["fLenFooter"], am["fNBytesFooter"],
-            casc.String(None, "RBlob"), casc.String(None, ""), casc.String(None, ""),
-            1, 100, am["fSeekFooter"],
+            am["fSeekFooter"] - 56,
+            am["fLenFooter"],
+            am["fNBytesFooter"],
+            casc.String(None, "RBlob"),
+            casc.String(None, ""),
+            casc.String(None, ""),
+            1,
+            100,
+            am["fSeekFooter"],
         )
 
         # add extension fields and columns
@@ -1788,10 +1816,15 @@ in file {self.file_path} in directory {self.path}"""
             type_size = uproot.const.rntuple_col_num_to_size_dict[type_num]
 
             new_field = cnt.NTuple_Field_Description(
-                next_field_id, uproot.const.RNTupleFieldRole.LEAF, field_name, type_name,
+                next_field_id,
+                uproot.const.RNTupleFieldRole.LEAF,
+                field_name,
+                type_name,
             )
             footer.extension_field_record_frames.append(new_field)
-            new_col = cnt.NTuple_Column_Description(type_num, type_size, next_field_id, 0, 0)
+            new_col = cnt.NTuple_Column_Description(
+                type_num, type_size, next_field_id, 0, 0
+            )
             footer.extension_column_record_frames.append(new_col)
 
             # write zero-filled page for existing entries
@@ -1799,8 +1832,12 @@ in file {self.file_path} in directory {self.path}"""
             raw_data = new_data.view("uint8")
             compressed_data = uproot.compression.compress(raw_data, compression)
             page_key = ntuple.add_rblob(self._file.sink, compressed_data, len(raw_data))
-            page_locator = cnt.NTuple_Locator(len(compressed_data), page_key.location + page_key.allocation)
-            new_pages[field_name] = cnt.NTuple_PageDescription(num_entries, page_locator)
+            page_locator = cnt.NTuple_Locator(
+                len(compressed_data), page_key.location + page_key.allocation
+            )
+            new_pages[field_name] = cnt.NTuple_PageDescription(
+                num_entries, page_locator
+            )
             next_field_id += 1
 
         # rebuild each cluster group's page list with new columns
@@ -1810,16 +1847,23 @@ in file {self.file_path} in directory {self.path}"""
             new_cluster_page_data = []
             for col_pages in ple.pagelinklist[0]:
                 existing_pages = [
-                    cnt.NTuple_PageDescription(p.num_elements, cnt.NTuple_Locator(p.locator.num_bytes, p.locator.offset))
+                    cnt.NTuple_PageDescription(
+                        p.num_elements,
+                        cnt.NTuple_Locator(p.locator.num_bytes, p.locator.offset),
+                    )
                     for p in col_pages.pages
                 ]
                 new_cluster_page_data.append(
-                    cnt.NTuple_ColumnPageListDescription(existing_pages, col_pages.element_offset, compression.code)
+                    cnt.NTuple_ColumnPageListDescription(
+                        existing_pages, col_pages.element_offset, compression.code
+                    )
                 )
 
             for field_name in new_fields:
                 new_cluster_page_data.append(
-                    cnt.NTuple_ColumnPageListDescription([new_pages[field_name]], 0, compression.code)
+                    cnt.NTuple_ColumnPageListDescription(
+                        [new_pages[field_name]], 0, compression.code
+                    )
                 )
 
             cluster_summaries = [
@@ -1827,14 +1871,28 @@ in file {self.file_path} in directory {self.path}"""
                 for s in ple.cluster_summaries
             ]
 
-            pagelistenv = cnt.NTuple_PageListEnvelope(header._checksum, cluster_summaries, [new_cluster_page_data])
+            pagelistenv = cnt.NTuple_PageListEnvelope(
+                header._checksum, cluster_summaries, [new_cluster_page_data]
+            )
             pagelistenv_raw = pagelistenv.serialize()
-            pagelistenv_key = ntuple.add_rblob(self._file.sink, pagelistenv_raw, len(pagelistenv_raw))
-            pagelistenv_locator = cnt.NTuple_Locator(len(pagelistenv_raw), pagelistenv_key.location + pagelistenv_key.allocation)
-            pagelistenv_envlink = cnt.NTuple_EnvLink(len(pagelistenv_raw), pagelistenv_locator)
+            pagelistenv_key = ntuple.add_rblob(
+                self._file.sink, pagelistenv_raw, len(pagelistenv_raw)
+            )
+            pagelistenv_locator = cnt.NTuple_Locator(
+                len(pagelistenv_raw),
+                pagelistenv_key.location + pagelistenv_key.allocation,
+            )
+            pagelistenv_envlink = cnt.NTuple_EnvLink(
+                len(pagelistenv_raw), pagelistenv_locator
+            )
 
             footer.cluster_group_record_frames.append(
-                cnt.NTuple_ClusterGroupRecord(cg.min_entry_num, cg.entry_span, cg.num_clusters, pagelistenv_envlink)
+                cnt.NTuple_ClusterGroupRecord(
+                    cg.min_entry_num,
+                    cg.entry_span,
+                    cg.num_clusters,
+                    pagelistenv_envlink,
+                )
             )
 
         # write new footer and update anchor
