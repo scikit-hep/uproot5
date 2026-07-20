@@ -1893,8 +1893,8 @@ in file {self.file_path} in directory {self.path}"""
         # add extension fields and columns
         new_pages = {}
         next_field_id = len(existing_field_records)
-        for field_name, field_dtype in new_fields.items():
-            field_dtype = numpy.dtype(field_dtype)
+        for field_name, field_dtype_raw in new_fields.items():
+            field_dtype = numpy.dtype(field_dtype_raw)
             ak_primitive = {
                 numpy.dtype("float32"): "float32",
                 numpy.dtype("float64"): "float64",
@@ -2866,8 +2866,8 @@ class WritableNTuple:
 
         next_field_id = len(existing_field_records)
         new_pages = {}
-        for field_name, field_dtype in new_fields.items():
-            field_dtype = numpy.dtype(field_dtype)
+        for field_name, field_dtype_raw in new_fields.items():
+            field_dtype = numpy.dtype(field_dtype_raw)
             ak_primitive = {
                 numpy.dtype("float32"): "float32",
                 numpy.dtype("float64"): "float64",
