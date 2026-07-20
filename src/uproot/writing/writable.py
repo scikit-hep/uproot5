@@ -1083,7 +1083,14 @@ class WritableDirectory(MutableMapping):
                     cg.min_entry_num, cg.entry_span, cg.num_clusters, envlink
                 )
             )
-
+        for cg in existing_footer.cluster_group_records:
+            loc = cg.page_list_link.locator
+            start = loc.offset - 56
+            end = loc.offset + loc.num_bytes
+            self._cascading._freesegments._data.slices = [
+                s for s in self._cascading._freesegments._data.slices
+                if not (s[0] < end and start < s[1])
+            ]
         anchor = cnt.NTuple_Anchor(
             anchor_location,
             am["fVersionEpoch"],

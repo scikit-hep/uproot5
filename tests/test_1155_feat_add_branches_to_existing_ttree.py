@@ -558,3 +558,43 @@ def test_add_field_ntuple_duplicate(tmp_path):
     with uproot.update(os.path.join(tmp_path, "test.root")) as f:
         with pytest.raises(ValueError, match="already exists"):
             f["mytuple"].add_fields({"x": np.int32})
+
+def test_extend_ntuple_multiple_times(tmp_path):
+    with uproot.recreate(os.path.join(tmp_path, "test.root")) as f:
+        f["mytuple"] = {"x": np.array([1,2,3], dtype=np.float32)}
+    
+    with uproot.update(os.path.join(tmp_path, "test.root")) as f:
+        f["mytuple"].extend({"x": np.array([4,5,6], dtype=np.float32)})
+    
+    with uproot.update(os.path.join(tmp_path, "test.root")) as f:
+        f["mytuple"].extend({"x": np.array([7,8,9], dtype=np.float32)})
+    
+    with uproot.open(os.path.join(tmp_path, "test.root")) as f:
+        assert ak.all(f["mytuple"]["x"].array() == np.array([1,2,3,4,5,6,7,8,9], dtype=np.float32))
+    
+    reader = ROOT.RNTupleReader.Open("mytuple", os.path.join(tmp_path, "test.root"))
+    assert reader.GetNEntries() == 9
+
+def test_add_multiple_fields_ntuple(tmp_path):
+    with uproot.recreate(os.path.join(tmp_path, "test.root")) as f:
+        f["mytuple"] = {"x": np.array([1,2,3], dtype=np.float32)}
+    
+    with uproot.update(os.path.join(tmp_path, "test.root")) as f:
+        f["mytuple"].add_fields({"y": np.int32, "z": np.float64})
+    
+    with uproot.open(os.path.join(tmp_path, "test.root")) as f:
+        assert ak.all(f["mytuple"]["x"].array() == np.array([1,2,3], dtype=np.float32))
+        assert ak.all(f["mytuple"]["y"].array() == np.zeros(3, dtype=np.int32))
+        assert ak.all(f["mytuple"]["z"].array() == np.zeros(3, dtype=np.float64))
+    
+    reader = ROOT.RNTupleReader.Open("mytuple", os.path.join(tmp_path, "test.root"))
+    assert reader.GetNEntries() == 3
+
+def test_extend_ntuple_wrong_fields(tmp_path):
+    with uproot.recreate(os.path.join(tmp_path, "test.root")) as f:
+        f["mytuple"] = {"x": np.array([1,2,3], dtype=np.float32),
+                        "y": np.array([4,5,6], dtype=np.int32)}
+    
+    with uproot.update(os.path.join(tmp_path, "test.root")) as f:
+        with pytest.raises(Exception):
+            f["mytuple"].extend({"x": np.array([7,8,9], dtype=np.float32)})  # missing y
