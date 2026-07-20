@@ -1050,8 +1050,9 @@ class WritableDirectory(MutableMapping):
 
     def _load_existing_ntuple(self, key):
         import numpy
-        import uproot.writing._cascadentuple as cnt
+
         import uproot.writing._cascade as casc
+        import uproot.writing._cascadentuple as cnt
 
         name = key.name.string
         existing_file = uproot.open(self.file_path, minimal_ttree_metadata=False)
@@ -1067,35 +1068,66 @@ class WritableDirectory(MutableMapping):
         existing_field_records = existing._header.field_records
         existing_file.close()
 
-        header = cnt.NTuple_Header(None, existing.name, existing._header.ntuple_description, akform)
+        header = cnt.NTuple_Header(
+            None, existing.name, existing._header.ntuple_description, akform
+        )
         footer = cnt.NTuple_Footer(None, header._checksum)
 
         for cg in existing_footer.cluster_group_records:
-            locator = cnt.NTuple_Locator(cg.page_list_link.locator.num_bytes, cg.page_list_link.locator.offset)
+            locator = cnt.NTuple_Locator(
+                cg.page_list_link.locator.num_bytes, cg.page_list_link.locator.offset
+            )
             envlink = cnt.NTuple_EnvLink(cg.page_list_link.env_uncomp_size, locator)
             footer.cluster_group_record_frames.append(
-                cnt.NTuple_ClusterGroupRecord(cg.min_entry_num, cg.entry_span, cg.num_clusters, envlink)
+                cnt.NTuple_ClusterGroupRecord(
+                    cg.min_entry_num, cg.entry_span, cg.num_clusters, envlink
+                )
             )
 
         anchor = cnt.NTuple_Anchor(
             anchor_location,
-            am["fVersionEpoch"], am["fVersionMajor"], am["fVersionMinor"], am["fVersionPatch"],
-            am["fSeekHeader"], am["fNBytesHeader"], am["fLenHeader"],
-            am["fSeekFooter"], am["fNBytesFooter"], am["fLenFooter"],
+            am["fVersionEpoch"],
+            am["fVersionMajor"],
+            am["fVersionMinor"],
+            am["fVersionPatch"],
+            am["fSeekHeader"],
+            am["fNBytesHeader"],
+            am["fLenHeader"],
+            am["fSeekFooter"],
+            am["fNBytesFooter"],
+            am["fLenFooter"],
             am["fMaxKeySize"],
         )
         ntuple_cascading = cnt.NTuple(
-            self._cascading, akform, self._cascading._freesegments, header, footer, [], anchor
+            self._cascading,
+            akform,
+            self._cascading._freesegments,
+            header,
+            footer,
+            [],
+            anchor,
         )
         ntuple_cascading._header_key = casc.Key(
-            am["fSeekHeader"] - 56, am["fLenHeader"], am["fNBytesHeader"],
-            casc.String(None, "RBlob"), casc.String(None, ""), casc.String(None, ""),
-            1, 100, am["fSeekHeader"],
+            am["fSeekHeader"] - 56,
+            am["fLenHeader"],
+            am["fNBytesHeader"],
+            casc.String(None, "RBlob"),
+            casc.String(None, ""),
+            casc.String(None, ""),
+            1,
+            100,
+            am["fSeekHeader"],
         )
         ntuple_cascading._footer_key = casc.Key(
-            am["fSeekFooter"] - 56, am["fLenFooter"], am["fNBytesFooter"],
-            casc.String(None, "RBlob"), casc.String(None, ""), casc.String(None, ""),
-            1, 100, am["fSeekFooter"],
+            am["fSeekFooter"] - 56,
+            am["fLenFooter"],
+            am["fNBytesFooter"],
+            casc.String(None, "RBlob"),
+            casc.String(None, ""),
+            casc.String(None, ""),
+            1,
+            100,
+            am["fSeekFooter"],
         )
         ntuple_cascading._num_entries = num_entries
         ntuple_cascading._column_counts = numpy.array(
@@ -2820,6 +2852,7 @@ class WritableNTuple:
                 f["mytuple"].add_fields({"z": np.int32})
         """
         import numpy
+
         import uproot.compression
         import uproot.writing._cascadentuple as cnt
 
@@ -2848,18 +2881,29 @@ class WritableNTuple:
             type_size = uproot.const.rntuple_col_num_to_size_dict[type_num]
 
             new_field = cnt.NTuple_Field_Description(
-                next_field_id, uproot.const.RNTupleFieldRole.LEAF, field_name, type_name,
+                next_field_id,
+                uproot.const.RNTupleFieldRole.LEAF,
+                field_name,
+                type_name,
             )
             footer.extension_field_record_frames.append(new_field)
-            new_col = cnt.NTuple_Column_Description(type_num, type_size, next_field_id, 0, 0)
+            new_col = cnt.NTuple_Column_Description(
+                type_num, type_size, next_field_id, 0, 0
+            )
             footer.extension_column_record_frames.append(new_col)
 
             new_data = numpy.zeros(num_entries, dtype=field_dtype)
             raw_data = new_data.view("uint8")
             compressed_data = uproot.compression.compress(raw_data, compression)
-            page_key = self._cascading.add_rblob(self._file.sink, compressed_data, len(raw_data))
-            page_locator = cnt.NTuple_Locator(len(compressed_data), page_key.location + page_key.allocation)
-            new_pages[field_name] = cnt.NTuple_PageDescription(num_entries, page_locator)
+            page_key = self._cascading.add_rblob(
+                self._file.sink, compressed_data, len(raw_data)
+            )
+            page_locator = cnt.NTuple_Locator(
+                len(compressed_data), page_key.location + page_key.allocation
+            )
+            new_pages[field_name] = cnt.NTuple_PageDescription(
+                num_entries, page_locator
+            )
             next_field_id += 1
 
         for cg_idx, cg in enumerate(existing_footer.cluster_group_records):
@@ -2867,37 +2911,63 @@ class WritableNTuple:
             new_cluster_page_data = []
             for col_pages in ple.pagelinklist[0]:
                 existing_pages = [
-                    cnt.NTuple_PageDescription(p.num_elements, cnt.NTuple_Locator(p.locator.num_bytes, p.locator.offset))
+                    cnt.NTuple_PageDescription(
+                        p.num_elements,
+                        cnt.NTuple_Locator(p.locator.num_bytes, p.locator.offset),
+                    )
                     for p in col_pages.pages
                 ]
                 new_cluster_page_data.append(
-                    cnt.NTuple_ColumnPageListDescription(existing_pages, col_pages.element_offset, compression.code)
+                    cnt.NTuple_ColumnPageListDescription(
+                        existing_pages, col_pages.element_offset, compression.code
+                    )
                 )
             for field_name in new_fields:
                 new_cluster_page_data.append(
-                    cnt.NTuple_ColumnPageListDescription([new_pages[field_name]], 0, compression.code)
+                    cnt.NTuple_ColumnPageListDescription(
+                        [new_pages[field_name]], 0, compression.code
+                    )
                 )
             cluster_summaries = [
                 cnt.NTuple_ClusterSummary(s.num_first_entry, s.num_entries)
                 for s in ple.cluster_summaries
             ]
-            pagelistenv = cnt.NTuple_PageListEnvelope(header._checksum, cluster_summaries, [new_cluster_page_data])
+            pagelistenv = cnt.NTuple_PageListEnvelope(
+                header._checksum, cluster_summaries, [new_cluster_page_data]
+            )
             pagelistenv_raw = pagelistenv.serialize()
-            pagelistenv_key = self._cascading.add_rblob(self._file.sink, pagelistenv_raw, len(pagelistenv_raw))
-            pagelistenv_locator = cnt.NTuple_Locator(len(pagelistenv_raw), pagelistenv_key.location + pagelistenv_key.allocation)
-            pagelistenv_envlink = cnt.NTuple_EnvLink(len(pagelistenv_raw), pagelistenv_locator)
+            pagelistenv_key = self._cascading.add_rblob(
+                self._file.sink, pagelistenv_raw, len(pagelistenv_raw)
+            )
+            pagelistenv_locator = cnt.NTuple_Locator(
+                len(pagelistenv_raw),
+                pagelistenv_key.location + pagelistenv_key.allocation,
+            )
+            pagelistenv_envlink = cnt.NTuple_EnvLink(
+                len(pagelistenv_raw), pagelistenv_locator
+            )
             footer.cluster_group_record_frames.append(
-                cnt.NTuple_ClusterGroupRecord(cg.min_entry_num, cg.entry_span, cg.num_clusters, pagelistenv_envlink)
+                cnt.NTuple_ClusterGroupRecord(
+                    cg.min_entry_num,
+                    cg.entry_span,
+                    cg.num_clusters,
+                    pagelistenv_envlink,
+                )
             )
 
         footer_raw = footer.serialize()
-        new_footer_key = self._cascading.add_rblob(self._file.sink, footer_raw, len(footer_raw))
-        self._cascading._anchor.seek_footer = new_footer_key.location + new_footer_key.allocation
+        new_footer_key = self._cascading.add_rblob(
+            self._file.sink, footer_raw, len(footer_raw)
+        )
+        self._cascading._anchor.seek_footer = (
+            new_footer_key.location + new_footer_key.allocation
+        )
         self._cascading._anchor.nbytes_footer = len(footer_raw)
         self._cascading._anchor.len_footer = len(footer_raw)
         anchor_raw = self._cascading._anchor.serialize()
         self._file.sink.write(self._cascading._anchor._location, anchor_raw)
         self._file.sink.flush()
+
 
 def _is_type_specification(obj):
     to_check = [obj]
