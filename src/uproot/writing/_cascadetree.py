@@ -1966,7 +1966,7 @@ class Tree:
                 | uproot.const.kByteCountMask
             )
 
-            out.append(uproot._util.tobytes(leaf_header))
+            out.append(leaf_header.tobytes())
             if len(leaf_name) < 255:
                 out.append(
                     struct.pack(">B%ds" % len(leaf_name), len(leaf_name), leaf_name)
@@ -2041,13 +2041,13 @@ class Tree:
 
             # speedbump and fBasketBytes
             out.append(b"\x01")
-            out.append(uproot._util.tobytes(datum["fBasketBytes"]))
+            out.append(datum["fBasketBytes"].tobytes())
             # speedbump and fBasketEntry
             out.append(b"\x01")
-            out.append(uproot._util.tobytes(datum["fBasketEntry"]))
+            out.append(datum["fBasketEntry"].tobytes())
             # speedbump and fBasketSeek
             out.append(b"\x01")
-            out.append(uproot._util.tobytes(datum["fBasketSeek"]))
+            out.append(datum["fBasketSeek"].tobytes())
             # empty fFileName
             out.append(b"\x00")
 
@@ -2069,9 +2069,7 @@ class Tree:
         # TODO find tleaf reference numbers and append them ?? or update and then append
 
         # TObjArray of TLeaf references
-        tleaf_reference_bytes = uproot._util.tobytes(
-            numpy.array(tleaf_reference_numbers, ">u4")
-        )
+        tleaf_reference_bytes = numpy.array(tleaf_reference_numbers, ">u4").tobytes()
 
         out.append(  # This is still fine
             struct.pack(

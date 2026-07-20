@@ -861,7 +861,7 @@ class OldBranches(CascadeLeaf):
                 | uproot.const.kByteCountMask
             )
 
-            out.append(uproot._util.tobytes(leaf_header))
+            out.append(leaf_header.tobytes())
 
             if len(leaf_name) < 255:
                 out.append(
@@ -955,13 +955,13 @@ class OldBranches(CascadeLeaf):
 
         # speedbump and fBasketBytes
         out.append(b"\x01")
-        out.append(uproot._util.tobytes(datum["fBasketBytes"]))
+        out.append(datum["fBasketBytes"].tobytes())
         # speedbump and fBasketEntry
         out.append(b"\x01")
-        out.append(uproot._util.tobytes(datum["fBasketEntry"]))
+        out.append(datum["fBasketEntry"].tobytes())
         # speedbump and fBasketSeek
         out.append(b"\x01")
-        out.append(uproot._util.tobytes(datum["fBasketSeek"]))
+        out.append(datum["fBasketSeek"].tobytes())
         # out.append(datum["fFileName"].serialize())  # name = None?
         out.append(b"\x00")
 
