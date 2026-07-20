@@ -86,8 +86,7 @@ dependencies = [
   "xxhash",
   "numpy",
   "fsspec!=2026.2.0",
-  "packaging",
-  "typing_extensions>=4.1.0; python_version < '3.11'"
+  "packaging"
 ]
 description = "ROOT I/O in pure Python and NumPy."
 dynamic = [

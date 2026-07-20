@@ -36,7 +36,7 @@ class FileResource(uproot.source.chunk.Resource):
         self._file_path = file_path
         try:
             self._file = open(self._file_path, "rb")
-        except uproot._util._FileNotFoundError as err:
+        except FileNotFoundError as err:
             raise uproot._util._file_not_found(file_path) from err
 
     @property

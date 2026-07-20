@@ -1481,7 +1481,7 @@ class TListOfStreamers(CascadeNode):
                 rawstreamers.append(
                     RawStreamerInfo(
                         location + start,
-                        uproot._util.tobytes(uncompressed.raw_data[start:stop]),
+                        uncompressed.raw_data[start:stop].tobytes(),
                         streamer.name,
                         streamer.class_version,
                     )
@@ -1491,7 +1491,7 @@ class TListOfStreamers(CascadeNode):
                 rawstreamers.append(
                     RawTListOfStrings(
                         location + start,
-                        uproot._util.tobytes(uncompressed.raw_data[start:stop]),
+                        uncompressed.raw_data[start:stop].tobytes(),
                     )
                 )
 

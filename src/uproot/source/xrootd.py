@@ -440,6 +440,10 @@ class XRootDSource(uproot.source.chunk.Source):
         return self
 
     def __exit__(self, exception_type, exception_value, traceback):
+        # Use shutdown() rather than __exit__() because the executor's resource
+        # is trivial_resource(), a contextmanager generator that is never
+        # __enter__'d. Calling __exit__() on an un-entered generator advances it
+        # to the yield instead of past it, causing "generator didn't stop".
         self._executor.shutdown()
         self._resource.__exit__(exception_type, exception_value, traceback)
 
