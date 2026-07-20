@@ -1973,9 +1973,7 @@ class Tree:
                 )
             else:
                 out.append(
-                    struct.pack(
-                        f">BI{len(leaf_name)}s", 255, len(leaf_name), leaf_name
-                    )
+                    struct.pack(f">BI{len(leaf_name)}s", 255, len(leaf_name), leaf_name)
                 )
             if len(leaf_title) < 255:
                 out.append(

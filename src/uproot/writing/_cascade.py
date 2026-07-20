@@ -869,9 +869,7 @@ class OldBranches(CascadeLeaf):
                 )
             else:
                 out.append(
-                    struct.pack(
-                        f">BI{len(leaf_name)}s", 255, len(leaf_name), leaf_name
-                    )
+                    struct.pack(f">BI{len(leaf_name)}s", 255, len(leaf_name), leaf_name)
                 )
             if len(leaf_title) < 255:
                 out.append(
@@ -936,7 +934,9 @@ class OldBranches(CascadeLeaf):
                 3,  # TObjArray
             )
         # empty TObjArray of fBaskets (embedded)
-        if len(datum["fBaskets"]) >= 1 and any(b is not None for b in datum["fBaskets"]):
+        if len(datum["fBaskets"]) >= 1 and any(
+            b is not None for b in datum["fBaskets"]
+        ):
             msg = f"NotImplementedError, cannot yet write TObjArray of fBaskets. Branch {datum['fName']} has {len(datum['fBaskets'])} fBaskets."
             raise NotImplementedError(msg)
 
