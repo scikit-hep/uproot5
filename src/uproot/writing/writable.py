@@ -1063,15 +1063,18 @@ class WritableDirectory(MutableMapping):
         full_akform, _ = existing.to_akform()
         # filter to only original fields
         import awkward
-        if hasattr(full_akform, 'fields') and len(full_akform.fields) > len(original_field_names):
+
+        if hasattr(full_akform, "fields") and len(full_akform.fields) > len(
+            original_field_names
+        ):
             indices = [full_akform.fields.index(name) for name in original_field_names]
             akform = awkward.forms.RecordForm(
                 [full_akform.content(i) for i in indices],
                 original_field_names,
-                form_key=full_akform.form_key
+                form_key=full_akform.form_key,
             )
         else:
-            akform = full_akform        
+            akform = full_akform
         am = existing._ntuple.all_members
         existing_key = existing_file.key(name + ";1")
         anchor_location = existing_key.fSeekKey + existing_key.fKeylen
@@ -1117,7 +1120,8 @@ class WritableDirectory(MutableMapping):
             start = loc.offset - 56
             end = loc.offset + loc.num_bytes
             self._cascading._freesegments._data.slices = [
-                s for s in self._cascading._freesegments._data.slices
+                s
+                for s in self._cascading._freesegments._data.slices
                 if not (s[0] < end and start < s[1])
             ]
         anchor = cnt.NTuple_Anchor(
@@ -1166,7 +1170,9 @@ class WritableDirectory(MutableMapping):
             am["fSeekFooter"],
         )
         ntuple_cascading._num_entries = num_entries
-        full_header = cnt.NTuple_Header(None, existing.name, existing._header.ntuple_description, full_akform)
+        full_header = cnt.NTuple_Header(
+            None, existing.name, existing._header.ntuple_description, full_akform
+        )
         ntuple_cascading._column_counts = numpy.array(
             [num_entries] * len(full_header._column_keys), dtype=int
         )
@@ -1873,7 +1879,7 @@ in file {self.file_path} in directory {self.path}"""
         existing_page_list_envelopes = existing.page_list_envelopes
         existing_field_records = existing._header.field_records
         existing_file.close()
-        
+
         existing_field_names = {fr.field_name for fr in existing_field_records}
         for field_name in new_fields:
             if field_name in existing_field_names:
@@ -2955,7 +2961,7 @@ class WritableNTuple:
             )
             next_field_id += 1
 
-        footer.cluster_group_record_frames = []  
+        footer.cluster_group_record_frames = []
         for cg_idx, cg in enumerate(existing_footer.cluster_group_records):
             ple = existing_page_list_envelopes[cg_idx]
             new_cluster_page_data = []
