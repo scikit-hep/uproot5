@@ -551,78 +551,95 @@ def test_add_field_ntuple(tmp_path):
     reader = ROOT.RNTupleReader.Open("mytuple", os.path.join(tmp_path, "test.root"))
     assert reader.GetNEntries() == 5
 
+
 def test_add_field_ntuple_duplicate(tmp_path):
     with uproot.recreate(os.path.join(tmp_path, "test.root")) as f:
-        f["mytuple"] = {"x": np.array([1,2,3], dtype=np.float32)}
-    
+        f["mytuple"] = {"x": np.array([1, 2, 3], dtype=np.float32)}
+
     with uproot.update(os.path.join(tmp_path, "test.root")) as f:
         with pytest.raises(ValueError, match="already exists"):
             f["mytuple"].add_fields({"x": np.int32})
 
+
 def test_extend_ntuple_multiple_times(tmp_path):
     with uproot.recreate(os.path.join(tmp_path, "test.root")) as f:
-        f["mytuple"] = {"x": np.array([1,2,3], dtype=np.float32)}
-    
+        f["mytuple"] = {"x": np.array([1, 2, 3], dtype=np.float32)}
+
     with uproot.update(os.path.join(tmp_path, "test.root")) as f:
-        f["mytuple"].extend({"x": np.array([4,5,6], dtype=np.float32)})
-    
+        f["mytuple"].extend({"x": np.array([4, 5, 6], dtype=np.float32)})
+
     with uproot.update(os.path.join(tmp_path, "test.root")) as f:
-        f["mytuple"].extend({"x": np.array([7,8,9], dtype=np.float32)})
-    
+        f["mytuple"].extend({"x": np.array([7, 8, 9], dtype=np.float32)})
+
     with uproot.open(os.path.join(tmp_path, "test.root")) as f:
-        assert ak.all(f["mytuple"]["x"].array() == np.array([1,2,3,4,5,6,7,8,9], dtype=np.float32))
-    
+        assert ak.all(
+            f["mytuple"]["x"].array()
+            == np.array([1, 2, 3, 4, 5, 6, 7, 8, 9], dtype=np.float32)
+        )
+
     reader = ROOT.RNTupleReader.Open("mytuple", os.path.join(tmp_path, "test.root"))
     assert reader.GetNEntries() == 9
 
+
 def test_add_multiple_fields_ntuple(tmp_path):
     with uproot.recreate(os.path.join(tmp_path, "test.root")) as f:
-        f["mytuple"] = {"x": np.array([1,2,3], dtype=np.float32)}
-    
+        f["mytuple"] = {"x": np.array([1, 2, 3], dtype=np.float32)}
+
     with uproot.update(os.path.join(tmp_path, "test.root")) as f:
         f["mytuple"].add_fields({"y": np.int32, "z": np.float64})
-    
+
     with uproot.open(os.path.join(tmp_path, "test.root")) as f:
-        assert ak.all(f["mytuple"]["x"].array() == np.array([1,2,3], dtype=np.float32))
+        assert ak.all(
+            f["mytuple"]["x"].array() == np.array([1, 2, 3], dtype=np.float32)
+        )
         assert ak.all(f["mytuple"]["y"].array() == np.zeros(3, dtype=np.int32))
         assert ak.all(f["mytuple"]["z"].array() == np.zeros(3, dtype=np.float64))
-    
+
     reader = ROOT.RNTupleReader.Open("mytuple", os.path.join(tmp_path, "test.root"))
     assert reader.GetNEntries() == 3
 
+
 def test_extend_ntuple_wrong_fields(tmp_path):
     with uproot.recreate(os.path.join(tmp_path, "test.root")) as f:
-        f["mytuple"] = {"x": np.array([1,2,3], dtype=np.float32),
-                        "y": np.array([4,5,6], dtype=np.int32)}
-    
+        f["mytuple"] = {
+            "x": np.array([1, 2, 3], dtype=np.float32),
+            "y": np.array([4, 5, 6], dtype=np.int32),
+        }
+
     with uproot.update(os.path.join(tmp_path, "test.root")) as f:
         with pytest.raises(Exception):
-            f["mytuple"].extend({"x": np.array([7,8,9], dtype=np.float32)})  # missing y
+            f["mytuple"].extend(
+                {"x": np.array([7, 8, 9], dtype=np.float32)}
+            )  # missing y
+
 
 def test_ntuple_dtypes(tmp_path):
     with uproot.recreate(os.path.join(tmp_path, "test.root")) as f:
         f["mytuple"] = {
-            "x_f32": np.array([1,2,3], dtype=np.float32),
-            "x_f64": np.array([1,2,3], dtype=np.float64),
-            "x_i32": np.array([1,2,3], dtype=np.int32),
-            "x_i64": np.array([1,2,3], dtype=np.int64),
+            "x_f32": np.array([1, 2, 3], dtype=np.float32),
+            "x_f64": np.array([1, 2, 3], dtype=np.float64),
+            "x_i32": np.array([1, 2, 3], dtype=np.int32),
+            "x_i64": np.array([1, 2, 3], dtype=np.int64),
         }
-    
+
     with uproot.update(os.path.join(tmp_path, "test.root")) as f:
-        f["mytuple"].add_fields({
-            "z_f32": np.float32,
-            "z_f64": np.float64,
-            "z_i32": np.int32,
-            "z_i64": np.int64,
-        })
-    
+        f["mytuple"].add_fields(
+            {
+                "z_f32": np.float32,
+                "z_f64": np.float64,
+                "z_i32": np.int32,
+                "z_i64": np.int64,
+            }
+        )
+
     with uproot.open(os.path.join(tmp_path, "test.root")) as f:
         nt = f["mytuple"]
-        assert ak.all(nt["x_f32"].array() == np.array([1,2,3], dtype=np.float32))
+        assert ak.all(nt["x_f32"].array() == np.array([1, 2, 3], dtype=np.float32))
         assert ak.all(nt["z_i64"].array() == np.zeros(3, dtype=np.int64))
-    
+
     reader = ROOT.RNTupleReader.Open("mytuple", os.path.join(tmp_path, "test.root"))
     assert reader.GetNEntries() == 3
+
 
 def test_ntuple_variable_length(tmp_path):
     with uproot.recreate(os.path.join(tmp_path, "test.root")) as f:
@@ -642,6 +659,7 @@ def test_ntuple_variable_length(tmp_path):
     reader = ROOT.RNTupleReader.Open("mytuple", os.path.join(tmp_path, "test.root"))
     assert reader.GetNEntries() == 5
 
+
 def test_ntuple_mixed_types_extend(tmp_path):
     with uproot.recreate(os.path.join(tmp_path, "test.root")) as f:
         f["mytuple"] = {
@@ -650,10 +668,12 @@ def test_ntuple_mixed_types_extend(tmp_path):
         }
 
     with uproot.update(os.path.join(tmp_path, "test.root")) as f:
-        f["mytuple"].extend({
-            "pt": np.array([40.0, 50.0], dtype=np.float32),
-            "jets": ak.Array([[7.0, 8.0, 9.0], [10.0]]),
-        })
+        f["mytuple"].extend(
+            {
+                "pt": np.array([40.0, 50.0], dtype=np.float32),
+                "jets": ak.Array([[7.0, 8.0, 9.0], [10.0]]),
+            }
+        )
 
     with uproot.open(os.path.join(tmp_path, "test.root")) as f:
         nt = f["mytuple"]
@@ -667,25 +687,30 @@ def test_ntuple_mixed_types_extend(tmp_path):
     reader = ROOT.RNTupleReader.Open("mytuple", os.path.join(tmp_path, "test.root"))
     assert reader.GetNEntries() == 5
 
+
 def test_ntuple_add_field_then_extend(tmp_path):
     with uproot.recreate(os.path.join(tmp_path, "test.root")) as f:
-        f["mytuple"] = {"x": np.array([1,2,3], dtype=np.float32)}
-    
+        f["mytuple"] = {"x": np.array([1, 2, 3], dtype=np.float32)}
+
     # add new field (backfilled with zeros)
     with uproot.update(os.path.join(tmp_path, "test.root")) as f:
         f["mytuple"].add_fields({"z": np.int32})
-    
+
     # now extend with both fields
     with uproot.update(os.path.join(tmp_path, "test.root")) as f:
-        f["mytuple"].extend({
-            "x": np.array([4,5,6], dtype=np.float32),
-            "z": np.array([40,50,60], dtype=np.int32),
-        })
-    
+        f["mytuple"].extend(
+            {
+                "x": np.array([4, 5, 6], dtype=np.float32),
+                "z": np.array([40, 50, 60], dtype=np.int32),
+            }
+        )
+
     with uproot.open(os.path.join(tmp_path, "test.root")) as f:
         nt = f["mytuple"]
-        assert ak.all(nt["x"].array() == np.array([1,2,3,4,5,6], dtype=np.float32))
-        assert ak.all(nt["z"].array() == np.array([0,0,0,40,50,60], dtype=np.int32))
-    
+        assert ak.all(nt["x"].array() == np.array([1, 2, 3, 4, 5, 6], dtype=np.float32))
+        assert ak.all(
+            nt["z"].array() == np.array([0, 0, 0, 40, 50, 60], dtype=np.int32)
+        )
+
     reader = ROOT.RNTupleReader.Open("mytuple", os.path.join(tmp_path, "test.root"))
     assert reader.GetNEntries() == 6
