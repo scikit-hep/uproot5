@@ -1058,7 +1058,20 @@ class WritableDirectory(MutableMapping):
         existing_file = uproot.open(self.file_path, minimal_ttree_metadata=False)
         existing = existing_file[name]
         _ = existing.keys()
-        akform, _ = existing.to_akform()
+        # get akform for original fields only (not extension fields)
+        original_field_names = [fr.field_name for fr in existing._header.field_records]
+        full_akform, _ = existing.to_akform()
+        # filter to only original fields
+        import awkward
+        if hasattr(full_akform, 'fields') and len(full_akform.fields) > len(original_field_names):
+            indices = [full_akform.fields.index(name) for name in original_field_names]
+            akform = awkward.forms.RecordForm(
+                [full_akform.content(i) for i in indices],
+                original_field_names,
+                form_key=full_akform.form_key
+            )
+        else:
+            akform = full_akform        
         am = existing._ntuple.all_members
         existing_key = existing_file.key(name + ";1")
         anchor_location = existing_key.fSeekKey + existing_key.fKeylen
@@ -1069,8 +1082,9 @@ class WritableDirectory(MutableMapping):
         existing_file.close()
 
         header = cnt.NTuple_Header(
-            None, existing.name, existing._header.ntuple_description, akform
+            None, existing.name, existing._header.ntuple_description, full_akform
         )
+        header._checksum = existing._header.checksum
         footer = cnt.NTuple_Footer(None, header._checksum)
 
         for cg in existing_footer.cluster_group_records:
@@ -1083,6 +1097,21 @@ class WritableDirectory(MutableMapping):
                     cg.min_entry_num, cg.entry_span, cg.num_clusters, envlink
                 )
             )
+        # copy extension field and column records from existing footer
+        for fr in existing_footer.extension_links.field_records:
+            new_field = cnt.NTuple_Field_Description(
+                fr.parent_field_id,
+                fr.struct_role,
+                fr.field_name,
+                fr.type_name,
+                field_description=fr.field_desc,
+            )
+            footer.extension_field_record_frames.append(new_field)
+        for cr in existing_footer.extension_links.column_records:
+            new_col = cnt.NTuple_Column_Description(
+                cr.type, cr.nbits, cr.field_id, cr.flags, cr.repr_idx
+            )
+            footer.extension_column_record_frames.append(new_col)
         for cg in existing_footer.cluster_group_records:
             loc = cg.page_list_link.locator
             start = loc.offset - 56
@@ -1107,7 +1136,7 @@ class WritableDirectory(MutableMapping):
         )
         ntuple_cascading = cnt.NTuple(
             self._cascading,
-            akform,
+            full_akform,
             self._cascading._freesegments,
             header,
             footer,
@@ -1137,8 +1166,9 @@ class WritableDirectory(MutableMapping):
             am["fSeekFooter"],
         )
         ntuple_cascading._num_entries = num_entries
+        full_header = cnt.NTuple_Header(None, existing.name, existing._header.ntuple_description, full_akform)
         ntuple_cascading._column_counts = numpy.array(
-            [num_entries] * len(header._column_keys), dtype=int
+            [num_entries] * len(full_header._column_keys), dtype=int
         )
         ntuple_cascading._existing_footer = existing_footer
         ntuple_cascading._existing_page_list_envelopes = existing_page_list_envelopes
@@ -2008,6 +2038,7 @@ in file {self.file_path} in directory {self.path}"""
 
         anchor_raw = anchor.serialize()
         self._file.sink.write(anchor_location, anchor_raw)
+        self._cascading._freesegments.write(self._file.sink)
         self._file.sink.flush()
 
     def mkrntuple(
@@ -2924,6 +2955,7 @@ class WritableNTuple:
             )
             next_field_id += 1
 
+        footer.cluster_group_record_frames = []  
         for cg_idx, cg in enumerate(existing_footer.cluster_group_records):
             ple = existing_page_list_envelopes[cg_idx]
             new_cluster_page_data = []
@@ -2984,6 +3016,7 @@ class WritableNTuple:
         self._cascading._anchor.len_footer = len(footer_raw)
         anchor_raw = self._cascading._anchor.serialize()
         self._file.sink.write(self._cascading._anchor._location, anchor_raw)
+        self._cascading._freesegments.write(self._file.sink)
         self._file.sink.flush()
 
 
