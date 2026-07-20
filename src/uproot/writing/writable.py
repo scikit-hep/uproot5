@@ -1940,7 +1940,9 @@ in file {self.file_path} in directory {self.path}"""
 
         # add extension fields and columns
         new_pages = {}
-        next_field_id = len(existing_field_records) + len(existing_footer.extension_links.field_records)
+        next_field_id = len(existing_field_records) + len(
+            existing_footer.extension_links.field_records
+        )
         for field_name, field_dtype_raw in new_fields.items():
             field_dtype = numpy.dtype(field_dtype_raw)
             ak_primitive = {
@@ -2913,7 +2915,9 @@ class WritableNTuple:
         existing_page_list_envelopes = self._cascading._existing_page_list_envelopes
         existing_field_records = self._cascading._existing_field_records
 
-        next_field_id = len(existing_field_records) + len(existing_footer.extension_links.field_records)
+        next_field_id = len(existing_field_records) + len(
+            existing_footer.extension_links.field_records
+        )
         new_pages = {}
 
         existing_field_names = {fr.field_name for fr in existing_field_records}
