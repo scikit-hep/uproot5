@@ -229,13 +229,13 @@ def iterate(
                         report=report,
                     ):
                         if report:
-                            arrays, report = item
+                            arrays, rep = item
                             arrays = library.global_index(arrays, global_offset)
-                            report = report.to_global(global_offset)
+                            rep = rep.to_global(global_offset)
                             popper = [arrays]
                             del arrays
                             del item
-                            yield popper.pop(), report
+                            yield popper.pop(), rep
 
                         else:
                             popper = [library.global_index(item, global_offset)]
@@ -1231,6 +1231,7 @@ class HasBranches(Mapping):
                 interpretation_executor=interpretation_executor,
                 array_cache=array_cache,
                 library=library,
+                ak_add_doc=ak_add_doc,
                 how=how,
             )
 
@@ -1268,9 +1269,15 @@ class HasBranches(Mapping):
         checked = set()
         for _, context in expression_context:
             for branch in context["branches"]:
-                if branch.cache_key not in checked and not isinstance(
-                    branchid_interpretation[branch.cache_key],
-                    uproot.interpretation.grouped.AsGrouped,
+                if (
+                    branch.cache_key not in checked
+                    # branches already satisfied from the array cache are present
+                    # in arrays; don't re-read and re-decompress their baskets
+                    and branch.cache_key not in arrays
+                    and not isinstance(
+                        branchid_interpretation[branch.cache_key],
+                        uproot.interpretation.grouped.AsGrouped,
+                    )
                 ):
                     checked.add(branch.cache_key)
                     for (
@@ -1313,8 +1320,7 @@ class HasBranches(Mapping):
                     if branch.cache_key not in checked:
                         checked.add(branch.cache_key)
                         interpretation = branchid_interpretation[branch.cache_key]
-                        if branch is not None:
-                            cache_key = f"{self.cache_key}:{expression}:{interpretation.cache_key}:{entry_start}-{entry_stop}:{library.name}"
+                        cache_key = f"{self.cache_key}:{expression}:{interpretation.cache_key}:{entry_start}-{entry_stop}:{library.name}"
                         array_cache[cache_key] = arrays[branch.cache_key]
 
         output = language.compute_expressions(
@@ -1452,6 +1458,7 @@ class HasBranches(Mapping):
                 decompression_executor=decompression_executor,
                 interpretation_executor=interpretation_executor,
                 library=library,
+                ak_add_doc=ak_add_doc,
                 how=how,
                 report=report,
             )
@@ -2003,10 +2010,11 @@ class HasBranches(Mapping):
         already-loaded ``TTree``; it only needs ``language`` to parse the
         expressions, not to evaluate them.
 
-        In addition, the estimate is based on compressed ``TBasket`` sizes
-        (the amount of data that would have to be read), not uncompressed
-        ``TBasket`` sizes (the amount of data that the final arrays would use
-        in memory, without considering ``cuts``).
+        In addition, the estimate is based on uncompressed ``TBasket`` sizes
+        (approximately the amount of data that the final arrays would use in
+        memory, without considering ``cuts``), not compressed ``TBasket`` sizes
+        (the amount of data that would have to be read). Only the ``TBasket``
+        ``TKeys`` are read to obtain these sizes, not the ``TBasket`` data.
 
         This is the algorithm that
         :ref:`uproot.behaviors.TBranch.HasBranches.iterate` uses to convert a
@@ -2786,10 +2794,19 @@ in file {self._file.file_path}"""
         ``TKey``, which are small, but may be slow for remote connections because
         of the latency of round-trip requests.
         """
-        if 0 <= basket_num < self.num_baskets:
+        if 0 <= basket_num < self._num_normal_baskets:
+            # Reading only the TKey (instead of the whole TBasket) is enough to
+            # determine the uncompressed size; add fKeylen to match the header-
+            # inclusive value reported by Model_TBasket.uncompressed_bytes.
+            key = self.basket_key(basket_num)
+            return key.data_uncompressed_bytes + key.fKeylen
+        elif 0 <= basket_num < self.num_baskets:
             return self.basket(basket_num).uncompressed_bytes
         else:
-            return self.basket_key(basket_num).data_uncompressed_bytes
+            raise IndexError(
+                f"""branch {self.name!r} has {self.num_baskets} baskets; cannot get basket {basket_num}
+in file {self._file.file_path}"""
+            )
 
     def basket_key(self, basket_num):
         """
@@ -3791,29 +3808,3 @@ def _regularize_step_size(
     return _hasbranches_num_entries_for(
         hasbranches, target_num_bytes, entry_start, entry_stop, branchid_interpretation
     )
-
-
-class _WrapDict(MutableMapping):
-    def __init__(self, dict):
-        self.dict = dict
-
-    def __str__(self):
-        return str(self.dict)
-
-    def __repr__(self):
-        return repr(self.dict)
-
-    def __getitem__(self, where):
-        return self.dict[where]
-
-    def __setitem__(self, where, what):
-        self.dict[where] = what
-
-    def __delitem__(self, where):
-        del self.dict[where]
-
-    def __iter__(self):
-        yield from self.dict
-
-    def __len__(self):
-        return len(self.dict)

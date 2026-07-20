@@ -12,7 +12,7 @@ import struct
 import sys
 from collections import Counter, defaultdict
 from itertools import groupby
-from typing import NamedTuple
+from typing import Any, NamedTuple
 
 import awkward as ak
 import numpy
@@ -139,6 +139,7 @@ in file {self.file.file_path}"""
         self._alias_column_records = None
         self._related_ids_ = None
         self._column_records_dict_ = None
+        self._field_metadata_cache = {}
         self._num_entries = None
         self._length = None
 
@@ -648,8 +649,7 @@ in file {self.file.file_path}"""
             col_id = self._column_records_dict[cfid][0].idx
             keyname = f"column-{col_id}"
             #  this only has one child
-            if this_id in self._related_ids:
-                child_id = self._related_ids[this_id][0]
+            child_id = self._related_ids[this_id][0]
             inner = self.field_form(child_id, keys, ak_add_doc=ak_add_doc)
             idx_type = (
                 "i32" if self._column_records_dict[cfid][0].nbits == 32 else "i64"
@@ -860,7 +860,13 @@ in file {self.file.file_path}"""
         # because for offsets there is an extra zero added at the start.
         res[: starts[0]] = 0
 
-        for i, cluster_idx in enumerate(range(cluster_start, cluster_stop)):
+        # ``starts`` only contains entries for non-negative cluster indices
+        # (see _expected_array_length_starts_dtype), so skip negative ones here
+        # to keep the pairing between ``starts[i]`` and the cluster index aligned.
+        i = 0
+        for cluster_idx in range(cluster_start, cluster_stop):
+            if cluster_idx < 0:
+                continue
             stop = starts[i + 1] if i + 1 < len(starts) else None
             self.read_cluster_pages(
                 cluster_idx,
@@ -869,6 +875,7 @@ in file {self.file.file_path}"""
                 destination=res[starts[i] : stop],
                 array_cache=array_cache,
             )
+            i += 1
 
         self.combine_cluster_arrays(res, starts, field_metadata)
 
@@ -1067,13 +1074,11 @@ in file {self.file.file_path}"""
             # If compressed, skip 9 byte header
             if page_is_compressed:
                 # If LZ4, page contains additional 8-byte checksum
-                offset = (
-                    int(loc.offset + 9)
-                    if algorithm_str != "LZ4"
-                    else int(loc.offset + 9 + 8)
-                )
-                comp_buff = cupy.empty(n_bytes - 9, dtype="b")
-                filehandle.pread(comp_buff, size=int(n_bytes - 9), file_offset=offset)
+                header_size = 9 if algorithm_str != "LZ4" else 9 + 8
+                offset = int(loc.offset + header_size)
+                read_size = int(n_bytes - header_size)
+                comp_buff = cupy.empty(read_size, dtype="b")
+                filehandle.pread(comp_buff, size=read_size, file_offset=offset)
 
             # If uncompressed, read directly into out_buff
             else:
@@ -1127,7 +1132,14 @@ in file {self.file.file_path}"""
             res[: starts[0]] = 0
             # Get uncompressed array for key for all clusters
             col_decompressed_buffers = clusters_datas._grab_field_output(ncol)
-            for i, cluster_i in enumerate(cluster_range):
+            # ``starts`` only contains entries for non-negative cluster indices
+            # (see _expected_array_length_starts_dtype), so skip negative ones
+            # here to keep the pairing between ``starts[i]`` and the cluster
+            # index aligned.
+            i = 0
+            for cluster_i in cluster_range:
+                if cluster_i < 0:
+                    continue
                 stop = starts[i + 1] if i + 1 < len(starts) else total_length
                 cluster_buffer = col_decompressed_buffers[cluster_i]
                 cluster_buffer = self.gpu_deserialize_pages(
@@ -1140,6 +1152,7 @@ in file {self.file.file_path}"""
                     res[starts[i] : stop] = res[starts[i] : stop].view(
                         field_metadata.dtype
                     )[: stop - starts[i]]
+                i += 1
 
             self.combine_cluster_arrays(res, starts, field_metadata)
             col_arrays[key_nr] = res
@@ -1227,9 +1240,22 @@ in file {self.file.file_path}"""
         library = numpy if array_library_string == "numpy" else uproot.extras.cupy()
         num_elements = len(destination)
 
-        content = library.copy(destination)
+        # Plain columns need no transform; the raw data is already in place.
+        if not (
+            field_metadata.split
+            or field_metadata.isbit
+            or field_metadata.dtype_str in ("real32trunc", "real32quant")
+        ):
+            return
+
         if field_metadata.split:
-            content = content.view(library.uint8)
+            # The raw data only occupies the first num_elements * itemsize(dtype)
+            # bytes of destination (destination may be the wider dtype_result when
+            # the field has multiple column representations), so operate on just
+            # that portion to avoid mixing in garbage tail bytes.
+            content = library.copy(
+                destination.view(field_metadata.dtype)[:num_elements]
+            ).view(library.uint8)
             length = content.shape[0]
             if field_metadata.nbits == 16:
                 # AAAAABBBBB needs to become
@@ -1259,7 +1285,9 @@ in file {self.file.file_path}"""
                 res[5::8] = content[length * 5 // 8 : length * 6 // 8]
                 res[6::8] = content[length * 6 // 8 : length * 7 // 8]
                 res[7::8] = content[length * 7 // 8 : length * 8 // 8]
-            content = res.view(field_metadata.dtype)
+            destination.view(field_metadata.dtype)[:num_elements] = res.view(
+                field_metadata.dtype
+            )
 
         if field_metadata.isbit:
             content = library.unpackbits(
@@ -1276,8 +1304,6 @@ in file {self.file.file_path}"""
                 content <<= 32 - field_metadata.nbits
             # TODO: check why this needs to be trimmed
             destination.view(numpy.uint32)[:] = content[:num_elements]
-        else:
-            destination[:] = content
 
     def get_field_metadata(self, ncol):
         """
@@ -1287,6 +1313,9 @@ in file {self.file.file_path}"""
         Returns a uproot.models.RNTuple.FieldClusterMetadata which provides
         metadata needed for processing payload data associated with column ncol.
         """
+        cached = self._field_metadata_cache.get(ncol)
+        if cached is not None:
+            return cached
         dtype_byte = self.column_records[ncol].type
         dtype_str = uproot.const.rntuple_col_num_to_dtype_dict[dtype_byte]
         isbit = dtype_str == "bit"
@@ -1345,6 +1374,7 @@ in file {self.file.file_path}"""
             isbit,
             nbits,
         )
+        self._field_metadata_cache[ncol] = field_metadata
         return field_metadata
 
     def combine_cluster_arrays(self, array, starts, field_metadata):
@@ -1382,7 +1412,6 @@ def _extract_bits(packed, nbits):
     packed = packed.view(dtype=library.uint32)
     total_bits = packed.size * 32
     n_values = total_bits // nbits
-    result = library.empty(n_values, dtype=library.uint32)
 
     # Indices into packed array
     bit_positions = library.arange(n_values, dtype=library.uint32) * nbits
@@ -2044,7 +2073,7 @@ def _cupy_insert0(arr):
     return out_arr
 
 
-CupyArray = any
+CupyArray = Any
 
 
 @dataclasses.dataclass
@@ -2131,9 +2160,9 @@ class ClusterRefs:
     payload datas and for accessing field payload datas across multiple clusters.
     """
 
-    clusters: [int] = dataclasses.field(default_factory=list)
+    clusters: list[int] = dataclasses.field(default_factory=list)
     columns: list[str] = dataclasses.field(default_factory=list)
-    refs: dict[int:FieldRefsCluster] = dataclasses.field(default_factory=dict)
+    refs: dict[int, FieldRefsCluster] = dataclasses.field(default_factory=dict)
 
     def _add_cluster(self, Cluster):
         for nCol in Cluster.fieldpayloads.keys():

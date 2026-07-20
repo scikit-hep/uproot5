@@ -165,6 +165,7 @@ def iterate(
     files = uproot._util.regularize_files(files, steps_allowed=False, **options)
     library = uproot.interpretation.library._regularize_library(library)
 
+    global_offset = 0
     for file_path, object_path in files:
         hasfields = uproot._util.regularize_object_path(
             file_path, object_path, None, allow_missing, options
@@ -173,7 +174,7 @@ def iterate(
         if hasfields is not None:
             with hasfields:
                 try:
-                    yield from hasfields.iterate(
+                    for item in hasfields.iterate(
                         expressions=expressions,
                         cut=cut,
                         filter_name=filter_name,
@@ -189,13 +190,28 @@ def iterate(
                         report=report,
                         filter_branch=filter_branch,
                         interpretation_executor=interpretation_executor,
-                    )
+                    ):
+                        if report:
+                            arrays, rep = item
+                            arrays = library.global_index(arrays, global_offset)
+                            rep = rep.to_global(global_offset)
+                            popper = [arrays]
+                            del arrays
+                            del item
+                            yield popper.pop(), rep
+
+                        else:
+                            popper = [library.global_index(item, global_offset)]
+                            del item
+                            yield popper.pop()
 
                 except uproot.exceptions.KeyInFileError:
                     if allow_missing:
                         continue
                     else:
                         raise
+
+                global_offset += hasfields.num_entries
 
 
 def concatenate(
@@ -1601,8 +1617,8 @@ class HasFields(Mapping):
             raise uproot.KeyInFileError(
                 original_where,
                 keys=self.keys(recursive=recursive),
-                file_path=self._file.file_path,
-                object_path=self.object_path,
+                file_path=self.ntuple.parent._file.file_path,
+                object_path=self.path,
             )
 
     def __iter__(self):
