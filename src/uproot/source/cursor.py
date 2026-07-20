@@ -389,7 +389,7 @@ class Cursor:
         stop = start + int(length)
         if move:
             self._index = stop
-        return uproot._util.tobytes(chunk.get(start, stop, self, context))
+        return chunk.get(start, stop, self, context).tobytes()
 
     def string(
         self, chunk: uproot.source.chunk.Chunk, context: dict, move: bool = True
@@ -439,7 +439,7 @@ class Cursor:
         if move:
             self._index = stop
         data = chunk.get(start, stop, self, context)
-        return uproot._util.tobytes(data)
+        return data.tobytes()
 
     def string_with_length(
         self,
@@ -492,9 +492,7 @@ of file path {chunk.source.file_path}"""
         if move:
             self._index += local_stop
 
-        return uproot._util.tobytes(remainder[: local_stop - 1]).decode(
-            errors="surrogateescape"
-        )
+        return remainder[: local_stop - 1].tobytes().decode(errors="surrogateescape")
 
     def rntuple_string(
         self, chunk: uproot.source.chunk.Chunk, context: dict, move: bool = True

@@ -3,7 +3,8 @@ import skhep_testdata
 
 import uproot
 
-pytest.importorskip("pandas")
+pytest.importorskip("dask")
+pytest.importorskip("dask_awkward")
 
 
 def test_decompression_threadpool_executor_for_dask():
