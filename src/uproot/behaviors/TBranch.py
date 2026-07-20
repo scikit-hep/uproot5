@@ -3661,8 +3661,8 @@ def _ranges_or_baskets_to_arrays(
             original_index = range_original_index[(chunk.start, chunk.stop)]
             if update_ranges_or_baskets:
                 replace(ranges_or_baskets, original_index, basket)
-        except Exception:
-            notifications.put(sys.exc_info())
+        except Exception as err:
+            notifications.put(err)
         else:
             notifications.put(basket)
 
@@ -3716,8 +3716,8 @@ def _ranges_or_baskets_to_arrays(
                     # no longer needed, save memory
                     basket_arrays.clear()
 
-        except Exception:
-            notifications.put(sys.exc_info())
+        except Exception as err:
+            notifications.put(err)
         else:
             notifications.put(None)
 
@@ -3741,11 +3741,8 @@ def _ranges_or_baskets_to_arrays(
         elif obj is None:
             pass
 
-        elif isinstance(obj, tuple) and len(obj) == 3:
-            uproot.source.futures.delayed_raise(*obj)
-
         else:
-            raise AssertionError(obj)
+            raise obj
 
         obj = None  # release before blocking
 

@@ -21,7 +21,6 @@ import http.client
 import queue
 import re
 import socket
-import sys
 import threading
 import urllib.parse
 from urllib.parse import urlparse
@@ -281,7 +280,7 @@ for URL {self._file_path}"""
     def multifuture(
         source: uproot.source.chunk.Source,
         range_header: dict,
-        ranges: list[(int, int)],
+        ranges: list[tuple[int, int]],
         futures,
         results,
     ):
@@ -360,10 +359,9 @@ for URL {source.file_path}"""
                         source, futures, results, response, ranges
                     )
 
-            except Exception:
-                excinfo = sys.exc_info()
+            except Exception as err:
                 for future in futures.values():
-                    future._set_excinfo(excinfo)
+                    future._set_excinfo(err)
 
             finally:
                 connection.close()
@@ -376,7 +374,7 @@ for URL {source.file_path}"""
     _content_range = re.compile(b"Content-Range: bytes ([0-9]+-[0-9]+)", re.I)
 
     def is_multipart_supported(
-        self, ranges: list[(int, int)], response: http.client.HTTPResponse
+        self, ranges: list[tuple[int, int]], response: http.client.HTTPResponse
     ) -> bool:
         """
         Helper function for :ref:`uproot.source.http.HTTPResource.multifuture`
@@ -397,7 +395,7 @@ for URL {source.file_path}"""
     def handle_no_multipart(
         self,
         source: uproot.source.chunk.Source,
-        ranges: list[(int, int)],
+        ranges: list[tuple[int, int]],
         futures,
         results,
     ):
@@ -421,7 +419,7 @@ for URL {source.file_path}"""
         futures,
         results,
         response: http.client.HTTPResponse,
-        ranges: list[(int, int)],
+        ranges: list[tuple[int, int]],
     ):
         """
         Helper function for :ref:`uproot.source.http.HTTPResource.multifuture`
@@ -661,7 +659,7 @@ class HTTPSource(uproot.source.chunk.Source):
 
     def chunks(
         self,
-        ranges: list[(int, int)],
+        ranges: list[tuple[int, int]],
         notifications: queue.Queue,
     ) -> list[uproot.source.chunk.Chunk]:
         if self._fallback is None:
