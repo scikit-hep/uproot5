@@ -2397,8 +2397,8 @@ class WritableNTuple:
 
             if "." in field_name:
                 parts = field_name.split(".")
-                actual_field_name = parts[-1]  
-                parent_name = parts[-2] 
+                actual_field_name = parts[-1]
+                parent_name = parts[-2]
                 parent_field_id = None
                 for i, fr in enumerate(existing_field_records):
                     if fr.field_name == parent_name:
