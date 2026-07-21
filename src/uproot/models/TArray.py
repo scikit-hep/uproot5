@@ -93,7 +93,7 @@ in file {self.file.file_path}"""
             x._serialize(out, True, None, tobject_flags)
 
         out.append(_tarray_format1.pack(self._members["fN"]))
-        out.append(uproot._util.tobytes(self._data))
+        out.append(self._data.tobytes())
 
         if header:
             num_bytes = sum(len(x) for x in out[where:])

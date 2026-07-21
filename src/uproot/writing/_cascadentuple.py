@@ -497,7 +497,7 @@ class NTuple_Footer(CascadeLeaf):
         super().__init__(location, None)
 
     def __repr__(self):
-        return f"{type(self).__name__}(extension_field_record_frames = {self.extension_field_record_frames}, column_group_record_frames = {self.extension_column_record_frames}, cluster_summary_record_frames={self.extension_column_record_frames}, cluster_group_record_frames{self.cluster_group_record_frames}, metadata_block_envelope_link = {self.metadata_block_envelope_links})"
+        return f"{type(self).__name__}(extension_field_record_frames={self.extension_field_record_frames}, extension_column_record_frames={self.extension_column_record_frames}, cluster_group_record_frames={self.cluster_group_record_frames})"
 
     def serialize(self):
         out = []
@@ -756,19 +756,6 @@ class NTuple_Anchor(CascadeLeaf):
         return out
 
 
-class Ntuple_PageLink:
-    def __init__(self, num_bytes, offset):
-        self.num_bytes = num_bytes
-        self.offset = offset
-
-    def serialize(self):
-        outbytes = _rntuple_locator_size_format.pack(self.num_bytes, self.offset)
-        return outbytes
-
-    def __repr__(self):
-        return f"{type(self).__name__}({self.num_bytes}, {self.offset})"
-
-
 class NTuple(CascadeNode):
     """
     Writes a RNTuple, including all fields, columns, and (upon ``extend``) pages.
@@ -828,16 +815,8 @@ class NTuple(CascadeNode):
         return self._key.title
 
     @property
-    def branch_types(self):
-        return self._branch_types
-
-    @property
     def freesegments(self):
         return self._freesegments
-
-    @property
-    def field_name(self):
-        return self._field_name
 
     @property
     def location(self):
@@ -956,7 +935,10 @@ class NTuple(CascadeNode):
 
         old_footer_key = self._footer_key
         self._freesegments.release(
-            old_footer_key.location, old_footer_key.location + old_footer_key.allocation
+            old_footer_key.location,
+            old_footer_key.location
+            + old_footer_key.num_bytes
+            + old_footer_key.compressed_bytes,
         )
         footer_raw_data = self._footer.serialize()
         self._footer_key = self.add_rblob(sink, footer_raw_data, len(footer_raw_data))
@@ -1041,9 +1023,6 @@ class NTuple(CascadeNode):
         #### Anchor end ##############################
 
         self._freesegments.write(sink)
-
-    def write_updates(self, sink):
-        sink.flush()
 
 
 def _to_packed_form(form):

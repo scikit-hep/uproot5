@@ -415,10 +415,6 @@ class Tree:
         return self._key.title
 
     @property
-    def branch_types(self):
-        return self._branch_types
-
-    @property
     def freesegments(self):
         return self._freesegments
 
@@ -1068,7 +1064,7 @@ class Tree:
                 | uproot.const.kByteCountMask
             )
 
-            out.append(uproot._util.tobytes(leaf_header))
+            out.append(leaf_header.tobytes())
             if len(leaf_name) < 255:
                 out.append(
                     struct.pack(f">B{len(leaf_name)}s", len(leaf_name), leaf_name)
@@ -1143,15 +1139,15 @@ class Tree:
 
             # speedbump and fBasketBytes
             out.append(b"\x01")
-            out.append(uproot._util.tobytes(datum["fBasketBytes"]))
+            out.append(datum["fBasketBytes"].tobytes())
 
             # speedbump and fBasketEntry
             out.append(b"\x01")
-            out.append(uproot._util.tobytes(datum["fBasketEntry"]))
+            out.append(datum["fBasketEntry"].tobytes())
 
             # speedbump and fBasketSeek
             out.append(b"\x01")
-            out.append(uproot._util.tobytes(datum["fBasketSeek"]))
+            out.append(datum["fBasketSeek"].tobytes())
 
             # empty fFileName
             out.append(b"\x00")
@@ -1175,9 +1171,7 @@ class Tree:
         )
 
         # TObjArray of TLeaf references
-        tleaf_reference_bytes = uproot._util.tobytes(
-            numpy.array(tleaf_reference_numbers, ">u4")
-        )
+        tleaf_reference_bytes = numpy.array(tleaf_reference_numbers, ">u4").tobytes()
         out.append(
             struct.pack(
                 ">I13sI4s",
@@ -1283,11 +1277,9 @@ class Tree:
 
             start, stop = datum["arrays_write_start"], datum["arrays_write_stop"]
 
-            fBasketBytes_part = uproot._util.tobytes(datum["fBasketBytes"][start:stop])
-            fBasketEntry_part = uproot._util.tobytes(
-                datum["fBasketEntry"][start : stop + 1]
-            )
-            fBasketSeek_part = uproot._util.tobytes(datum["fBasketSeek"][start:stop])
+            fBasketBytes_part = datum["fBasketBytes"][start:stop].tobytes()
+            fBasketEntry_part = datum["fBasketEntry"][start : stop + 1].tobytes()
+            fBasketSeek_part = datum["fBasketSeek"][start:stop].tobytes()
 
             position = base + datum["basket_metadata_start"] + 1
             position += datum["fBasketBytes"][:start].nbytes
@@ -1365,7 +1357,7 @@ class Tree:
         for item in array.shape[1:]:
             itemsize *= item
 
-        uncompressed_data = uproot._util.tobytes(array)
+        uncompressed_data = array.tobytes()
         compressed_data = uproot.compression.compress(uncompressed_data, compression)
 
         fObjlen = len(uncompressed_data)
@@ -1440,8 +1432,8 @@ class Tree:
         offsets *= itemsize
         offsets += fKeylen
 
-        raw_array = uproot._util.tobytes(array)
-        raw_offsets = uproot._util.tobytes(offsets)
+        raw_array = array.tobytes()
+        raw_offsets = offsets.tobytes()
         uncompressed_data = (
             raw_array + _tbasket_offsets_length.pack(len(offsets)) + raw_offsets
         )
@@ -1520,8 +1512,8 @@ class Tree:
         offsets *= itemsize
         offsets += fKeylen
 
-        raw_array = uproot._util.tobytes(array)
-        raw_offsets = uproot._util.tobytes(offsets)
+        raw_array = array.tobytes()
+        raw_offsets = offsets.tobytes()
         uncompressed_data = (
             raw_array
             + _tbasket_offsets_length.pack(len(offsets))
