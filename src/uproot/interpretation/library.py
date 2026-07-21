@@ -122,6 +122,8 @@ class Library:
                 ``list``, and ``dict``. Note that the container *type itself*
                 must be passed as ``how``, not an instance of that type (i.e.
                 ``how=tuple``, not ``how=()``).
+                For ``library="ak"``, passing ``how="zip"`` applies ``ak.zip``
+                to interleave data from compatible branches.
 
         Combine the finalized ``arrays`` into a library-appropriate group type.
         """

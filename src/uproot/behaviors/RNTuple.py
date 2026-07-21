@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import sys
 import warnings
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from functools import partial
 
 import awkward as ak
@@ -41,7 +41,7 @@ def iterate(
     language=uproot.language.python.python_language,  # TODO: Not implemented yet
     step_size="100 MB",
     decompression_executor=None,  # TODO: Not implemented yet
-    library="ak",  # TODO: Not implemented yet
+    library="ak",
     ak_add_doc=False,
     how=None,
     report=False,
@@ -84,7 +84,7 @@ def iterate(
             :doc:`uproot.source.futures.TrivialExecutor` is created. (Not implemented yet.)
         library (str or :doc:`uproot.interpretation.library.Library`): The library
             that is used to represent arrays. Options are ``"np"`` for NumPy,
-            ``"ak"`` for Awkward Array, and ``"pd"`` for Pandas. (Not implemented yet.)
+            ``"ak"`` for Awkward Array, and ``"pd"`` for Pandas.
         ak_add_doc (bool | dict ): If True and ``library="ak"``, add the RField ``description``
             to the Awkward ``__doc__`` parameter of the array.
             if dict = {key:value} and ``library="ak"``, add the RField ``value`` to the
@@ -94,6 +94,8 @@ def iterate(
             ``list``, and ``dict``. Note that the container *type itself*
             must be passed as ``how``, not an instance of that type (i.e.
             ``how=tuple``, not ``how=()``).
+            For ``library="ak"``, passing ``how="zip"`` applies ``ak.zip`` to
+            interleave data from compatible branches.
         report (bool): If True, this generator yields
             (arrays, :doc:`uproot.behaviors.TBranch.Report`) pairs; if False,
             it only yields arrays. The report has data about the ``TFile``,
@@ -165,6 +167,7 @@ def iterate(
     files = uproot._util.regularize_files(files, steps_allowed=False, **options)
     library = uproot.interpretation.library._regularize_library(library)
 
+    global_offset = 0
     for file_path, object_path in files:
         hasfields = uproot._util.regularize_object_path(
             file_path, object_path, None, allow_missing, options
@@ -173,7 +176,7 @@ def iterate(
         if hasfields is not None:
             with hasfields:
                 try:
-                    yield from hasfields.iterate(
+                    for item in hasfields.iterate(
                         expressions=expressions,
                         cut=cut,
                         filter_name=filter_name,
@@ -189,13 +192,28 @@ def iterate(
                         report=report,
                         filter_branch=filter_branch,
                         interpretation_executor=interpretation_executor,
-                    )
+                    ):
+                        if report:
+                            arrays, rep = item
+                            arrays = library.global_index(arrays, global_offset)
+                            rep = rep.to_global(global_offset)
+                            popper = [arrays]
+                            del arrays
+                            del item
+                            yield popper.pop(), rep
+
+                        else:
+                            popper = [library.global_index(item, global_offset)]
+                            del item
+                            yield popper.pop()
 
                 except uproot.exceptions.KeyInFileError:
                     if allow_missing:
                         continue
                     else:
                         raise
+
+                global_offset += hasfields.num_entries
 
 
 def concatenate(
@@ -211,7 +229,7 @@ def concatenate(
     entry_start=None,
     entry_stop=None,
     decompression_executor=None,  # TODO: Not implemented yet
-    library="ak",  # TODO: Not implemented yet
+    library="ak",
     backend="cpu",
     interpreter="cpu",
     ak_add_doc=False,
@@ -257,7 +275,7 @@ def concatenate(
             :doc:`uproot.source.futures.TrivialExecutor` is created. (Not implemented yet.)
         library (str or :doc:`uproot.interpretation.library.Library`): The library
             that is used to represent arrays. Options are ``"np"`` for NumPy,
-            ``"ak"`` for Awkward Array, and ``"pd"`` for Pandas. (Not implemented yet.)
+            ``"ak"`` for Awkward Array, and ``"pd"`` for Pandas.
         ak_add_doc (bool | dict ): If True and ``library="ak"``, add the RField ``description``
             to the Awkward ``__doc__`` parameter of the array.
             if dict = {key:value} and ``library="ak"``, add the RField ``value`` to the
@@ -267,6 +285,8 @@ def concatenate(
             ``list``, and ``dict``. Note that the container *type itself*
             must be passed as ``how``, not an instance of that type (i.e.
             ``how=tuple``, not ``how=()``).
+            For ``library="ak"``, passing ``how="zip"`` applies ``ak.zip`` to
+            interleave data from compatible branches.
         report (bool): If True, this generator yields
             (arrays, :doc:`uproot.behaviors.TBranch.Report`) pairs; if False,
             it only yields arrays. The report has data about the ``TFile``,
@@ -523,9 +543,9 @@ class HasFields(Mapping):
                 filter to select ``RFields`` using the full
                 :doc:`uproot.models.RNTuple.RField` object. The ``RField`` is
                 included if the function returns True, excluded if it returns False.
-            ak_add_doc (bool | dict ): If True and ``library="ak"``, add the RField ``description``
+            ak_add_doc (bool | dict ): If True, add the RField ``description``
                 to the Awkward ``__doc__`` parameter of the array.
-                if dict = {key:value} and ``library="ak"``, add the RField ``value`` to the
+                if dict = {key:value}, add the RField ``value`` to the
                 Awkward ``key`` parameter of the array.
             filter_branch (None or function of :doc:`uproot.models.RNTuple.RField` \u2192 bool): An alias for ``filter_field`` included
                 for compatibility with software that was used for :doc:`uproot.behaviors.TBranch.TBranch`. This argument should not be used
@@ -621,7 +641,7 @@ class HasFields(Mapping):
         entry_stop=None,
         decompression_executor=None,  # TODO: Not implemented yet
         array_cache="inherit",
-        library="ak",  # TODO: Not implemented yet
+        library="ak",
         backend="cpu",
         interpreter="cpu",
         ak_add_doc=False,
@@ -669,7 +689,7 @@ class HasFields(Mapping):
                 if a memory size, create a new cache of this size.
             library (str or :doc:`uproot.interpretation.library.Library`): The library
                 that is used to represent arrays. Options are ``"np"`` for NumPy,
-                ``"ak"`` for Awkward Array, and ``"pd"`` for Pandas. (Not implemented yet.)
+                ``"ak"`` for Awkward Array, and ``"pd"`` for Pandas.
             backend (str): The backend Awkward Array will use.
             interpreter (str): If "cpu" will use cpu to interpret raw data. If "gpu" and
                 ``backend="cuda"`` will use KvikIO bindings to CuFile and nvCOMP to
@@ -683,6 +703,8 @@ class HasFields(Mapping):
                 ``list``, and ``dict``. Note that the container *type itself*
                 must be passed as ``how``, not an instance of that type (i.e.
                 ``how=tuple``, not ``how=()``).
+                For ``library="ak"``, passing ``how="zip"`` applies ``ak.zip``
+                to interleave data from compatible branches.
             virtual (bool): If True, return virtual Awkward arrays, meaning that the data will not be
                 loaded into memory until it is accessed.
             access_log (None or object with a ``__iadd__`` method): If an access_log is
@@ -860,24 +882,33 @@ class HasFields(Mapping):
                             "The array was not constructed correctly. Please report this issue."
                         )
 
-        # TODO: The conversion would be ideally be fully handled by Awkward.
-        # However, jagged arrays fail to be converted.
-        # We still need to match the TTree behavior for jagged arrays, and implement
-        # the conversion to Pandas.
-        if library.name == "np":
-            return arrays.to_numpy()
+        expression_context = [(f, None) for f in arrays.fields]
 
-        # TODO: This should be done with library.group, if possible
-        if how is tuple:
-            arrays = tuple(arrays[f] for f in arrays.fields)
-        elif how is list:
-            arrays = [arrays[f] for f in arrays.fields]
-        elif how is dict:
-            arrays = {f: arrays[f] for f in arrays.fields}
-        elif how is not None:
-            raise ValueError(
-                f"unrecognized 'how' parameter: {how}. Options are None, tuple, list and dict."
-            )
+        # TODO: The conversion would be ideally be fully handled by Awkward.
+        if library.name in ("np", "pd"):
+            numpy_data = {}
+            for f in arrays.fields:
+                try:
+                    numpy_data[f] = arrays[f].to_numpy()
+                except (ValueError, TypeError):
+                    try:
+                        numpy_data[f] = _awkward_to_numpy(arrays[f])
+                    except Exception:
+                        msg = f"Field {f} cannot be converted to NumPy/Pandas"
+                        raise ValueError(msg) from None
+            if library.name == "pd":
+                pd = uproot.extras.pandas()
+                pandas_index = pd.RangeIndex(
+                    start=entry_start, stop=entry_start + len(arrays)
+                )
+                pandas_data = pd.DataFrame(numpy_data, index=pandas_index)
+                arrays = pandas_data
+            else:
+                arrays = numpy_data
+
+        if how is not None:
+            arrays = library.group(arrays, expression_context, how)
+
         return arrays
 
     def __array__(self, *args, **kwargs):
@@ -904,7 +935,7 @@ class HasFields(Mapping):
         entry_stop=None,
         step_size="100 MB",
         decompression_executor=None,  # TODO: Not implemented yet
-        library="ak",  # TODO: Not implemented yet
+        library="ak",
         backend="cpu",
         interpreter="cpu",
         ak_add_doc=False,
@@ -952,16 +983,18 @@ class HasFields(Mapping):
                 is used. (Not implemented yet.)
             library (str or :doc:`uproot.interpretation.library.Library`): The library
                 that is used to represent arrays. Options are ``"np"`` for NumPy,
-                ``"ak"`` for Awkward Array, and ``"pd"`` for Pandas. (Not implemented yet.)
+                ``"ak"`` for Awkward Array, and ``"pd"`` for Pandas.
             ak_add_doc (bool | dict ): If True and ``library="ak"``, add the RField ``description``
                 to the Awkward ``__doc__`` parameter of the array.
                 if dict = {key:value} and ``library="ak"``, add the RField ``value`` to the
-                Awkward ``key`` parameter of the array. (Not implemented yet.)
+                Awkward ``key`` parameter of the array.
             how (None, str, or container type): Library-dependent instructions
                 for grouping. The only recognized container types are ``tuple``,
                 ``list``, and ``dict``. Note that the container *type itself*
                 must be passed as ``how``, not an instance of that type (i.e.
                 ``how=tuple``, not ``how=()``).
+                For ``library="ak"``, passing ``how="zip"`` applies ``ak.zip``
+                to interleave data from compatible branches.
             report (bool): If True, this generator yields
                 (arrays, :doc:`uproot.behaviors.TBranch.Report`) pairs; if False,
                 it only yields arrays. The report has data about the ``TFile``,
@@ -1593,8 +1626,8 @@ class HasFields(Mapping):
             raise uproot.KeyInFileError(
                 original_where,
                 keys=self.keys(recursive=recursive),
-                file_path=self._file.file_path,
-                object_path=self.object_path,
+                file_path=self.ntuple.parent._file.file_path,
+                object_path=self.path,
             )
 
     def __iter__(self):
@@ -1968,3 +2001,34 @@ def _fill_container_dict(container_dict, content, key, dtype_byte, dtype):
         else:
             container_dict[f"{key}-data"] = content
             container_dict[f"{key}-offsets"] = content
+
+
+def _awkward_to_numpy(data):
+    if isinstance(data, str):
+        return data
+
+    if isinstance(data, ak.Array) and isinstance(data.layout, ak.contents.RecordArray):
+        try:
+            return data.to_numpy()
+        except (TypeError, ValueError):
+            fields = data.fields
+            arrays = [_awkward_to_numpy(data[f]) for f in fields]
+            dtypes = [arr.dtype if len(arr.shape) == 1 else "O" for arr in arrays]
+            tuple_array = [tuple(arr[i] for arr in arrays) for i in range(len(data))]
+            del arrays
+            return numpy.array(
+                tuple_array, dtype=list(zip(fields, dtypes, strict=True))
+            )
+
+    if not isinstance(data, Iterable) or len(data) == 0:
+        return numpy.asarray(data)
+
+    converted = [_awkward_to_numpy(item) for item in data]
+
+    shapes = [c.shape if isinstance(c, numpy.ndarray) else (1,) for c in converted]
+    if len(set(shapes)) == 1:
+        return numpy.array(converted)
+
+    arr = numpy.empty(len(converted), dtype=object)
+    arr[:] = converted
+    return arr

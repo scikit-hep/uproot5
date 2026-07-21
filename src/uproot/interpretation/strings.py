@@ -301,7 +301,7 @@ class AsStrings(uproot.interpretation.Interpretation):
             offsets[0] = 0
             numpy.cumsum(counts, out=offsets[1:])
 
-            data = uproot._util.tobytes(data)
+            data = data.tobytes()
 
         output = StringArray(offsets, data)
 

@@ -176,9 +176,6 @@ class Interpretation:
     def __eq__(self, other):
         raise AssertionError
 
-    def __ne__(self, other):
-        raise not self == other
-
     def hook_before_basket_array(self, *args, **kwargs):
         """
         Called in :ref:`uproot.interpretation.Interpretation.basket_array`,

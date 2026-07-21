@@ -32,17 +32,6 @@ import uproot.source.object
 wasm = sys.platform in ("emscripten", "wasi")
 
 
-def tobytes(array):
-    """
-    Calls ``array.tobytes()`` or its older equivalent, ``array.tostring()``,
-    depending on what's available in this NumPy version. (tobytes added in 1.9)
-    """
-    if hasattr(array, "tobytes"):
-        return array.tobytes()
-    else:
-        return array.tostring()
-
-
 def isint(x) -> bool:
     """
     Returns True if and only if ``x`` is an integer (including NumPy, not
@@ -273,23 +262,19 @@ def regularize_rename(rename):
 
 
 _fix_url_path = re.compile(r"^((file|https?|root):/)([^/])", re.I)
+_object_in_path_regex = re.compile(r"(.+\.root(\.[0-9]+)?):(.*$)", re.IGNORECASE)
+_memory_size_regex = re.compile(
+    r"^\s*([+-]?(\d+(\.\d*)?|\.\d+)(e[+-]?\d+)?)\s*([kmgtpezy]?[i]?b)\s*$",
+    re.I,
+)
 
 
 def regularize_path(path):
     """
-    Converts pathlib Paths into plain string paths (for all versions of Python).
+    Converts pathlib Paths and other os.PathLike objects into plain string paths.
     """
-    if isinstance(path, getattr(os, "PathLike", ())):
+    if isinstance(path, os.PathLike):
         path = _fix_url_path.sub(r"\1/\3", os.fspath(path))
-
-    elif hasattr(path, "__fspath__"):
-        path = _fix_url_path.sub(r"\1/\3", path.__fspath__())
-
-    elif path.__class__.__module__ == "pathlib":
-        import pathlib
-
-        if isinstance(path, pathlib.Path):
-            path = _fix_url_path.sub(r"\1/\3", str(path))
 
     return path
 
@@ -312,9 +297,8 @@ def file_object_path_split(urlpath: str) -> tuple[str, str | None]:
 
     separator = "::"
     parts = urlpath.split(separator)
-    object_regex = re.compile(r"(.+\.root(\.[0-9]+)?):(.*$)", re.IGNORECASE)
     for i, part in enumerate(reversed(parts)):
-        match = object_regex.match(part)
+        match = _object_in_path_regex.match(part)
         if match:
             obj = re.sub(r"/+", "/", match.group(3).strip().lstrip("/")).rstrip("/")
             parts[-i - 1] = match.group(1)
@@ -368,22 +352,10 @@ def file_path_to_source_class(
         )
 
 
-if isinstance(__builtins__, dict):
-    if "FileNotFoundError" in __builtins__:
-        _FileNotFoundError = __builtins__["FileNotFoundError"]
-    else:
-        _FileNotFoundError = __builtins__["IOError"]
-else:
-    if hasattr(__builtins__, "FileNotFoundError"):
-        _FileNotFoundError = __builtins__.FileNotFoundError
-    else:
-        _FileNotFoundError = __builtins__.IOError
-
-
 def _file_not_found(files, message=None):
     message = "" if message is None else " (" + message + ")"
 
-    return _FileNotFoundError(f"""file not found{message}
+    return FileNotFoundError(f"""file not found{message}
 
     {files!r}
 
@@ -413,11 +385,7 @@ def memory_size(data, error_message=None) -> int:
     an integer number of bytes.
     """
     if isinstance(data, str):
-        m = re.match(
-            r"^\s*([+-]?(\d+(\.\d*)?|\.\d+)(e[+-]?\d+)?)\s*([kmgtpezy]?[i]?b)\s*$",
-            data,
-            re.I,
-        )
+        m = _memory_size_regex.match(data)
         if m is not None:
             target, unit = float(m.group(1)), m.group(5).upper()
             if unit == "KB":
@@ -722,7 +690,7 @@ def get_ttree_form(
     return awkward.forms.RecordForm(contents, common_keys, parameters=parameters)
 
 
-def damerau_levenshtein(a, b, ratio=False):
+def damerau_levenshtein(a, b):
     """
     Calculates the Damerau-Levenshtein distance of two strings.
 
@@ -758,7 +726,7 @@ def damerau_levenshtein(a, b, ratio=False):
                 i > 1
                 and j > 1
                 and a[i - 1].lower() == b[j - 2].lower()
-                and a[i - 2].lower() == b[j - 2].lower()
+                and a[i - 2].lower() == b[j - 1].lower()
             ):
                 if a[i - 1] == b[j - 2] and a[i - 2] == b[j - 1]:
                     # Transpose only
@@ -767,10 +735,7 @@ def damerau_levenshtein(a, b, ratio=False):
                     # Transpose and capitalization
                     M[i][j] = min(M[i][j], M[i - 2][j - 2] + 1.5)
 
-    if not ratio:
-        return M[len(a)][len(b)]
-    else:
-        return (len(a) + len(b)) - M[len(a)][len(b)] / (len(a) + len(b))
+    return M[len(a)][len(b)]
 
 
 def code_to_datetime(code):
@@ -920,6 +885,7 @@ def _regularize_files_inner(
         for key, maybe_object_path in files.items():
             if not isinstance(maybe_object_path, (type(None), str, dict)):
                 raise TypeError("object_path may only be a string, dict, or None")
+            maybe_steps = None
             if isinstance(maybe_object_path, dict):
                 maybe_steps = maybe_object_path.get("steps", None)
                 object_path = maybe_object_path.get("object_path", None)
