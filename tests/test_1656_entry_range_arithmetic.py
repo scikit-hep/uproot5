@@ -129,7 +129,7 @@ def test_rntuple_iterate_clamps_entry_stop(tmp_path):
     path = str(tmp_path / "nt.root")
     with uproot.recreate(path) as f:
         f.mkrntuple("nt", {"x": numpy.dtype("int64")})
-        f["nt"].extend({"x": numpy.arange(50000)})
+        f["nt"].extend({"x": numpy.arange(50000, dtype=numpy.int64)})
 
     with uproot.open(path)["nt"] as nt:
         total = 0
