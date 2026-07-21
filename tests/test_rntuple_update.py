@@ -304,3 +304,30 @@ def test_ntuple_add_field_and_extend_same_session(tmp_path):
 
     reader = ROOT.RNTupleReader.Open("mytuple", os.path.join(tmp_path, "test.root"))
     assert reader.GetNEntries() == 5
+
+def test_ntuple_accept_new_fields(tmp_path):
+    with uproot.recreate(os.path.join(tmp_path, "test.root")) as f:
+        f["mytuple"] = {"x": np.array([1, 2, 3], dtype=np.float32)}
+
+    # should raise without accept_new_fields
+    with uproot.update(os.path.join(tmp_path, "test.root")) as f:
+        with pytest.raises(ValueError, match="not in this RNTuple"):
+            f["mytuple"].extend({
+                "x": np.array([4, 5], dtype=np.float32),
+                "z": np.array([40, 50], dtype=np.int32),
+            })
+
+    # with accept_new_fields=True - z backfilled with zeros, then user values
+    with uproot.update(os.path.join(tmp_path, "test.root")) as f:
+        f["mytuple"].extend({
+            "x": np.array([4, 5], dtype=np.float32),
+            "z": np.array([40, 50], dtype=np.int32),
+        }, accept_new_fields=True)
+
+    with uproot.open(os.path.join(tmp_path, "test.root")) as f:
+        nt = f["mytuple"]
+        assert ak.all(nt["x"].array() == np.array([1, 2, 3, 4, 5], dtype=np.float32))
+        assert ak.all(nt["z"].array() == np.array([0, 0, 0, 40, 50], dtype=np.int32))
+
+    reader = ROOT.RNTupleReader.Open("mytuple", os.path.join(tmp_path, "test.root"))
+    assert reader.GetNEntries() == 5

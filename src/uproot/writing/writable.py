@@ -2270,7 +2270,7 @@ class WritableNTuple:
         """
         return self._cascading.num_entries
 
-    def extend(self, data):
+    def extend(self, data, accept_new_fields=False):
         """
         Args:
             data (dict of str \u2192 arrays): More array data to add to the RNTuple.
@@ -2297,6 +2297,26 @@ class WritableNTuple:
 
             **As a word of warning,** be sure that each call to :ref:`uproot.writing.writable.WritableNTuple.extend` includes at least 100 kB per branch/array. (NumPy and Awkward Arrays have an `nbytes <https://numpy.org/doc/stable/reference/generated/numpy.ndarray.nbytes.html>`__ property; you want at least ``100000`` per array.) If you ask Uproot to write very small TBaskets, it will spend more time working on TBasket overhead than actually writing data. The absolute worst case is one-entry-per-:ref:`uproot.writing.writable.WritableTree.extend`. See `#428 (comment) <https://github.com/scikit-hep/uproot5/pull/428#issuecomment-908703486>`__.
         """
+        if isinstance(data, dict):
+            existing_keys = set(self._cascading._header._akform.fields)
+            if hasattr(self._cascading, "_existing_field_records"):
+                existing_keys.update(
+                    fr.field_name for fr in self._cascading._existing_field_records
+                )
+            new_field_names = {k for k in data.keys() if k not in existing_keys}
+            if new_field_names and not accept_new_fields:
+                raise ValueError(
+                    f"Data contains fields not in this RNTuple: {sorted(new_field_names)}. "
+                    f"Call add_fields() first, or pass accept_new_fields=True to add them automatically."
+                )
+            elif new_field_names and accept_new_fields:
+                # add new fields with zeros for existing entries
+                self.add_fields({k: numpy.array(list(data[k])).dtype for k in new_field_names})
+                # reload from file so ntuple knows about new fields
+                key = self._file.root_directory._cascading.data.get_key(self._path[-1], 1)
+                reloaded = self._file.root_directory._load_existing_ntuple(key)
+                self._cascading = reloaded._cascading
+
         self._cascading.extend(self._file, self._file.sink, data)
 
     def add_fields(self, new_fields):
