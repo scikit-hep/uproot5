@@ -479,12 +479,12 @@ input stream
                 local_stop = stop - start
                 to_append = basket_arrays[basket_num][local_start:local_stop]
 
-            elif start <= entry_stop <= stop:
+            elif start < entry_stop <= stop:
                 local_start = 0
                 local_stop = entry_stop - start
                 to_append = basket_arrays[basket_num][local_start:local_stop]
 
-            elif entry_start < stop and start <= entry_stop:
+            elif entry_start < stop and start < entry_stop:
                 to_append = basket_arrays[basket_num]
 
             if to_append is not None and has_any_awkward_types:
