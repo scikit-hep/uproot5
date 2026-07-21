@@ -342,12 +342,15 @@ def test_ntuple_accept_new_fields(tmp_path):
     reader = ROOT.RNTupleReader.Open("mytuple", os.path.join(tmp_path, "test.root"))
     assert reader.GetNEntries() == 5
 
+
 def test_ntuple_add_subfield(tmp_path):
     with uproot.recreate(os.path.join(tmp_path, "test.root")) as f:
-        f["mytuple"] = ak.Array([
-            {"particle": {"pt": 1.0, "eta": 2.0}},
-            {"particle": {"pt": 3.0, "eta": 4.0}},
-        ])
+        f["mytuple"] = ak.Array(
+            [
+                {"particle": {"pt": 1.0, "eta": 2.0}},
+                {"particle": {"pt": 3.0, "eta": 4.0}},
+            ]
+        )
 
     with uproot.update(os.path.join(tmp_path, "test.root")) as f:
         f["mytuple"].add_fields({"particle.phi": np.float32})

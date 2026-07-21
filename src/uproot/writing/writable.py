@@ -2383,7 +2383,9 @@ class WritableNTuple:
                         parent_field_id = i
                         break
                 if parent_field_id is None:
-                    raise ValueError(f"Parent field {parent_name!r} not found in RNTuple")
+                    raise ValueError(
+                        f"Parent field {parent_name!r} not found in RNTuple"
+                    )
             else:
                 actual_field_name = field_name
                 parent_field_id = next_field_id
