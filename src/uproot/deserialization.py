@@ -25,6 +25,13 @@ scope = {
 
 np_uint8 = numpy.dtype("u1")
 
+# Plain-int copies of these constants, used in the hot deserialization path to
+# avoid creating numpy scalars and doing numpy bitwise ops on every object read.
+_kByteCountMask = int(uproot.const.kByteCountMask)
+_kStreamedMemberWise = int(uproot.const.kStreamedMemberWise)
+_kClassMask = int(uproot.const.kClassMask)
+_kNewClassTag = int(uproot.const.kNewClassTag)
+
 
 def _actually_compile(class_code, new_scope):
     exec(compile(class_code, "<dynamic>", "exec"), new_scope)
@@ -123,16 +130,15 @@ def numbytes_version(chunk, cursor, context, move=True):
       number; False otherwise.
     """
     num_bytes, version = cursor.fields(chunk, _numbytes_version_1, context, move=False)
-    num_bytes = numpy.int64(num_bytes)
 
-    if num_bytes & uproot.const.kByteCountMask:
+    if num_bytes & _kByteCountMask:
         # Note this extra 4 bytes: the num_bytes field doesn't count itself,
         # but we count the Model.start_cursor position from the point just
         # before these two fields (since num_bytes might not exist, it's a more
         # stable point than after num_bytes).
         #                                                           |
         #                                                           V
-        num_bytes = int(num_bytes & ~uproot.const.kByteCountMask) + 4
+        num_bytes = (num_bytes & ~_kByteCountMask) + 4
         if move:
             cursor.skip(_numbytes_version_1.size)
 
@@ -140,9 +146,9 @@ def numbytes_version(chunk, cursor, context, move=True):
         num_bytes = None
         version = cursor.field(chunk, _numbytes_version_2, context, move=move)
 
-    is_memberwise = version & uproot.const.kStreamedMemberWise
+    is_memberwise = bool(version & _kStreamedMemberWise)
     if is_memberwise:
-        version = version & ~uproot.const.kStreamedMemberWise
+        version = version & ~_kStreamedMemberWise
 
     return num_bytes, version, is_memberwise
 
@@ -222,9 +228,9 @@ def read_object_any(chunk, cursor, context, file, selffile, parent, as_class=Non
     # https://github.com/root-project/root/blob/c4aa801d24d0b1eeb6c1623fd18160ef2397ee54/io/io/src/TBufferFile.cxx#L2404
 
     beg = cursor.displacement()
-    bcnt = numpy.int64(cursor.field(chunk, _read_object_any_format1, context))
+    bcnt = cursor.field(chunk, _read_object_any_format1, context)
 
-    if (bcnt & uproot.const.kByteCountMask) == 0 or (bcnt == uproot.const.kNewClassTag):
+    if (bcnt & _kByteCountMask) == 0 or (bcnt == _kNewClassTag):
         vers = 0
         start = 0
         tag = bcnt
@@ -232,10 +238,9 @@ def read_object_any(chunk, cursor, context, file, selffile, parent, as_class=Non
     else:
         vers = 1
         start = cursor.displacement()
-        tag = numpy.int64(cursor.field(chunk, _read_object_any_format1, context))
-        bcnt = int(bcnt)
+        tag = cursor.field(chunk, _read_object_any_format1, context)
 
-    if tag & uproot.const.kClassMask == 0:
+    if tag & _kClassMask == 0:
         # reference object
 
         if tag == 0:
@@ -245,15 +250,15 @@ def read_object_any(chunk, cursor, context, file, selffile, parent, as_class=Non
             return parent  # return parent
 
         elif tag not in cursor.refs:
-            # copied from numbytes_version
-            if bcnt & uproot.const.kByteCountMask:
-                # Note this extra 4 bytes: the num_bytes field doesn't count itself,
-                # but we count the Model.start_cursor position from the point just
-                # before these two fields (since num_bytes might not exist, it's a more
-                # stable point than after num_bytes).
-                #                                                 |
-                #                                                 V
-                bcnt = int(bcnt & ~uproot.const.kByteCountMask) + 4
+            # Skip past this unresolved forward reference, matching ROOT's
+            # TBufferFile::CheckByteCount, which positions the buffer at
+            # startpos + bcnt + sizeof(UInt_t). Here ``beg`` is the position
+            # before the byte-count field (ROOT's startpos) and the trailing
+            # ``+ 4`` is sizeof(UInt_t); the stripped ``bcnt`` does not get an
+            # extra 4 (unlike numbytes_version, which measures from a different
+            # reference point).
+            if bcnt & _kByteCountMask:
+                bcnt = bcnt & ~_kByteCountMask
 
             # jump past this object
             cursor.move_to(cursor.origin + beg + bcnt + 4)
@@ -262,7 +267,7 @@ def read_object_any(chunk, cursor, context, file, selffile, parent, as_class=Non
         else:
             return cursor.refs[int(tag)]  # return object
 
-    elif tag == uproot.const.kNewClassTag:
+    elif tag == _kNewClassTag:
         # new class and object
 
         classname = cursor.classname(chunk, context)
@@ -289,7 +294,7 @@ def read_object_any(chunk, cursor, context, file, selffile, parent, as_class=Non
     else:
         # reference class, new object
 
-        ref = int(tag & ~uproot.const.kClassMask)
+        ref = tag & ~_kClassMask
 
         if as_class is None:
             if ref not in cursor.refs:

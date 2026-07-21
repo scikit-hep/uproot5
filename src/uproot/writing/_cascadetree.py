@@ -569,7 +569,7 @@ class Tree:
 
                 if k in provided and not numpy.array_equal(v, provided[k]):
                     raise ValueError(
-                        f"branch {kk!r} provided both as an explicit array and generated as a counter, and they disagree"
+                        f"branch {k!r} provided both as an explicit array and generated as a counter, and they disagree"
                     )
                 provided[k] = v
 
@@ -642,9 +642,17 @@ class Tree:
                     layout = awkward.to_layout(branch_array)
                     if isinstance(
                         layout,
-                        (awkward.contents.ListArray, awkward.contents.RegularArray),
+                        (
+                            awkward.contents.ListArray,
+                            awkward.contents.RegularArray,
+                            awkward.contents.ListOffsetArray,
+                        ),
                     ):
-                        layout = layout.to_ListOffsetArray64()
+                        # start_at_zero=True normalizes offsets[0] to 0 and
+                        # trims the content, which is required for a sliced
+                        # array (e.g. ak.Array([...])[2:]) to produce a basket
+                        # that reads back correctly.
+                        layout = layout.to_ListOffsetArray64(True)
 
                     lengths = numpy.asarray(awkward.num(layout))
                     which_big = lengths >= 255
@@ -689,7 +697,7 @@ class Tree:
                     )
                 else:
                     big_endian = uproot._util.ensure_numpy(branch_array).astype(
-                        datum["dtype"]
+                        datum["dtype"], copy=False
                     )
                     if big_endian.shape != (len(branch_array),) + datum["shape"]:
                         raise ValueError(
@@ -772,9 +780,12 @@ class Tree:
             datum = self._branch_data[self._branch_lookup[branch_name]]
 
             if datum["dtype"] == ">U0":
-                totbytes, zipbytes, location = self.write_string_basket(
+                totbytes, zipbytes, location, fLen = self.write_string_basket(
                     sink, branch_name, compression, big_endian, big_endian_offsets
                 )
+                # fLen is the size of the biggest string; accumulate the max
+                # across extends and keep it per-branch (not shared tree-wide).
+                datum["fLen"] = max(datum.get("fLen", 0), fLen)
                 datum["fEntryOffsetLen"] = 4 * (len(big_endian_offsets) - 1)
 
             elif big_endian_offsets is None:
@@ -1302,7 +1313,7 @@ class Tree:
                 sink.write(
                     position,
                     uproot.models.TLeaf._tleaf2_format0.pack(
-                        self._metadata["fLen"],
+                        datum.get("fLen", 0),
                         datum["dtype"].itemsize,
                         0,
                         datum["kind"] == "counter",
@@ -1511,12 +1522,8 @@ class Tree:
         )
         compressed_data = uproot.compression.compress(uncompressed_data, compression)
 
-        # get size of biggest string
-        self._metadata["fLen"] = (
-            0
-            if len(offsets) == 1
-            else max([offsets[i + 1] - offsets[i] for i in range(len(offsets) - 1)])
-        )
+        # get size of biggest string in this basket
+        fLen = 0 if len(offsets) <= 1 else int(numpy.diff(offsets).max())
 
         fLast = offsets[-1]
         offsets[-1] = 0
@@ -1570,7 +1577,7 @@ class Tree:
         sink.set_file_length(self._freesegments.fileheader.end)
         sink.flush()
 
-        return fKeylen + fObjlen, fNbytes, location
+        return fKeylen + fObjlen, fNbytes, location, fLen
 
 
 _tbasket_offsets_length = struct.Struct(">I")
@@ -1594,7 +1601,7 @@ def recarray_to_dict(array):
     for field_name in array.dtype.fields:
         field = array[field_name]
         if field.dtype.fields is not None:
-            for subfield_name, subfield in recarray_to_dict(field):
+            for subfield_name, subfield in recarray_to_dict(field).items():
                 out[field_name + "." + subfield_name] = subfield
         else:
             out[field_name] = field
