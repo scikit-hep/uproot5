@@ -258,10 +258,11 @@ def test_ntuple_multiple_in_file(tmp_path):
         )
         assert ak.all(f["tuple2"]["y"].array() == np.array([4, 5, 6], dtype=np.int32))
 
-    reader1 = ROOT.RNTupleReader.Open("tuple1", os.path.join(tmp_path, "test.root"))
-    reader2 = ROOT.RNTupleReader.Open("tuple2", os.path.join(tmp_path, "test.root"))
-    assert reader1.GetNEntries() == 5
-    assert reader2.GetNEntries() == 3
+    if hasattr(ROOT, "RNTupleReader"):
+        reader1 = ROOT.RNTupleReader.Open("tuple1", os.path.join(tmp_path, "test.root"))
+        reader2 = ROOT.RNTupleReader.Open("tuple2", os.path.join(tmp_path, "test.root"))
+        assert reader1.GetNEntries() == 5
+        assert reader2.GetNEntries() == 3
 
 
 def test_ntuple_multiple_add_fields_then_extend(tmp_path):
