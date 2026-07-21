@@ -349,6 +349,15 @@ class AsStrings(uproot.interpretation.Interpretation):
                 assert isinstance(library, uproot.interpretation.library.Awkward)
                 awkward = library.imported
                 output = awkward.concatenate(trimmed, mergebool=False, highlevel=False)
+            else:
+                # Mixed StringArray/awkward baskets: concatenate after promoting
+                # to awkward so ``output`` is always bound.
+                awkward = uproot.extras.awkward()
+                output = awkward.concatenate(
+                    [awkward.to_layout(x) for x in trimmed],
+                    mergebool=False,
+                    highlevel=False,
+                )
 
             self.hook_before_library_finalize(
                 basket_arrays=basket_arrays,

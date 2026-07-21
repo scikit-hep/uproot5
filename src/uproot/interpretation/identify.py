@@ -373,10 +373,11 @@ def interpretation_of(branch, context, simplify=True):
         if cls.match_branch(branch, context, simplify)
     ]
 
-    assert (
-        len(matched_custom_interpretations) <= 1
-    ), "Multiple custom interpretations matched, "
-    f"uproot cannot determine which one to use: {matched_custom_interpretations}"
+    if len(matched_custom_interpretations) > 1:
+        raise ValueError(
+            "Multiple custom interpretations matched, uproot cannot determine "
+            f"which one to use: {matched_custom_interpretations}"
+        )
 
     if len(matched_custom_interpretations) == 1:
         return matched_custom_interpretations[0](branch, context, simplify)
@@ -810,6 +811,33 @@ def _parse_node(tokens, i, typename, file, quote, header, inner_header):
         return i + 1, _parse_maybe_quote('numpy.dtype(">i8")', quote)
     elif tokens[i].group(0) == "Long64_t":
         return i + 1, _parse_maybe_quote('numpy.dtype(">i8")', quote)
+
+    elif (
+        i + 2 < len(tokens)
+        and tokens[i].group(0) == "unsigned"
+        and tokens[i + 1].group(0) == "long"
+        and _simplify_token(tokens[i + 2]) == "long*"
+    ):
+        return (
+            i + 3,
+            _parse_maybe_quote(
+                f'uproot.containers.AsArray(False, {header}, numpy.dtype(">u8"))',
+                quote,
+            ),
+        )
+    elif (
+        has2
+        and tokens[i].group(0) == "long"
+        and _simplify_token(tokens[i + 1]) == "long*"
+    ):
+        return (
+            i + 2,
+            _parse_maybe_quote(
+                f'uproot.containers.AsArray(False, {header}, numpy.dtype(">i8"))',
+                quote,
+            ),
+        )
+
     elif tokens[i].group(0) == "long":
         return i + 1, _parse_maybe_quote('numpy.dtype(">i8")', quote)
     elif tokens[i].group(0) == "ULong_t":
@@ -820,32 +848,6 @@ def _parse_node(tokens, i, typename, file, quote, header, inner_header):
         return i + 2, _parse_maybe_quote('numpy.dtype(">u8")', quote)
     elif has2 and tokens[i].group(0) == "signed" and tokens[i + 1].group(0) == "long":
         return i + 2, _parse_maybe_quote('numpy.dtype(">i8")', quote)
-
-    elif (
-        has2
-        and tokens[i].group(0) == "long"
-        and _simplify_token(tokens[i + 1]) == "long*"
-    ):
-        return (
-            i + 2,
-            _parse_maybe_quote(
-                f'uproot.containers.AsArray({header}, numpy.dtype(">i8"))',
-                quote,
-            ),
-        )
-    elif (
-        i + 2 < len(tokens)
-        and tokens[i].group(0) == "unsigned"
-        and _simplify_token(tokens[i + 1]) == "long"
-        and _simplify_token(tokens[i + 2]) == "long*"
-    ):
-        return (
-            i + 3,
-            _parse_maybe_quote(
-                f'uproot.containers.AsArray({header}, numpy.dtype(">u8"))',
-                quote,
-            ),
-        )
 
     elif _simplify_token(tokens[i]) == "Long_t*":
         return (

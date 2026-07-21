@@ -270,7 +270,7 @@ class NumPy(Library):
 def _strided_to_awkward(awkward, path, interpretation, data):
     contents = []
     names = []
-    data = data.flatten()
+    data = data.reshape(-1)
     for name, member in interpretation.members:
         if not name.startswith("@"):
             p = name
@@ -835,7 +835,7 @@ def _process_array_for_pandas(
                     array = uproot.extras.awkward_pandas().AwkwardExtensionArray(array)
             else:
                 array = _object_to_awkward_array(awkward, form, array)
-            return array
+        return array
 
 
 class Pandas(Library):
