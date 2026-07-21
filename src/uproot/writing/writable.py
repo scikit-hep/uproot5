@@ -1050,6 +1050,21 @@ class WritableDirectory(MutableMapping):
             return readonlykey.get()
 
     def _load_existing_ntuple(self, key):
+        """
+        Loads an existing RNTuple from disk and reconstructs a writable
+        :doc:`uproot.writing.writable.WritableNTuple` object from it.
+
+        This is called when accessing a preexisting RNTuple via
+        ``f["name"]`` in update mode. Reads the existing metadata
+        (anchor, header, footer, page lists) and sets up the in-memory
+        state needed for subsequent ``extend`` or ``add_fields`` calls.
+
+        Args:
+            key: The ROOT key object pointing to the RNTuple in the file.
+
+        Returns:
+            :doc:`uproot.writing.writable.WritableNTuple`
+        """
         import numpy
 
         import uproot.writing._cascade as casc
@@ -2271,6 +2286,12 @@ class WritableNTuple:
         """
         Args:
             data (dict of str \u2192 arrays): More array data to add to the RNTuple.
+            accept_new_fields (bool): If False (default), raises ValueError if
+                data contains fields not already in the RNTuple, forcing the user
+                to call :ref:`uproot.writing.writable.WritableNTuple.add_fields`
+                first. If True, new fields are automatically added back-filled
+                with zeros for existing entries, then extended with the provided
+                values for new entries.
 
         This method adds data to an existing RNTuple, whether it was created through
         assignment or :doc:`uproot.writing.writable.WritableDirectory.mkrntuple`.
@@ -2285,10 +2306,13 @@ class WritableNTuple:
 
         .. code-block:: python
 
-            my_directory.mkrntuple("ntuple6", {"branch1": numpy_dtype, "branch2": awkward_type})
+            with uproot.update("file.root") as f:
+                f["mytuple"].extend({"x": np.array([4, 5, 6])})
 
-            my_directory["ntuple6"].extend({"branch1": another_numpy_array,
-                                          "branch2": another_awkward_array})
+            # automatically add new field and extend
+            with uproot.update("file.root") as f:
+                f["mytuple"].extend({"x": np.array([7, 8]), "z": np.array([70, 80])},
+                                    accept_new_fields=True)
 
         .. warning::
 
@@ -2307,11 +2331,9 @@ class WritableNTuple:
                     f"Call add_fields() first, or pass accept_new_fields=True to add them automatically."
                 )
             elif new_field_names and accept_new_fields:
-                # add new fields with zeros for existing entries
                 self.add_fields(
                     {k: numpy.array(list(data[k])).dtype for k in new_field_names}
                 )
-                # reload from file so ntuple knows about new fields
                 key = self._file.root_directory._cascading.data.get_key(
                     self._path[-1], 1
                 )
@@ -2373,8 +2395,8 @@ class WritableNTuple:
 
             if "." in field_name:
                 parts = field_name.split(".")
-                actual_field_name = parts[-1]  # phi
-                parent_name = parts[-2]  # track (immediate parent)
+                actual_field_name = parts[-1]  
+                parent_name = parts[-2] 
                 parent_field_id = None
                 for i, fr in enumerate(existing_field_records):
                     if fr.field_name == parent_name:
