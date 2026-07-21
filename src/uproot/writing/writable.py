@@ -1155,11 +1155,9 @@ class WritableDirectory(MutableMapping):
             am["fSeekFooter"],
         )
         ntuple_cascading._num_entries = num_entries
-        full_header = cnt.NTuple_Header(
-            None, existing.name, existing._header.ntuple_description, full_akform
-        )
+        num_columns = len(existing._header.column_records) + len(existing._footer.extension_links.column_records)
         ntuple_cascading._column_counts = numpy.array(
-            [num_entries] * len(full_header._column_keys), dtype=int
+            [num_entries] * num_columns, dtype=int
         )
         ntuple_cascading._existing_footer = existing_footer
         ntuple_cascading._existing_page_list_envelopes = existing_page_list_envelopes
