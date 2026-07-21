@@ -365,12 +365,15 @@ def test_ntuple_add_subfield(tmp_path):
     reader = ROOT.RNTupleReader.Open("mytuple", os.path.join(tmp_path, "test.root"))
     assert reader.GetNEntries() == 2
 
+
 def test_ntuple_add_nested_subfield(tmp_path):
     with uproot.recreate(os.path.join(tmp_path, "test.root")) as f:
-        f["mytuple"] = ak.Array([
-            {"particle": {"track": {"pt": 1.0}}},
-            {"particle": {"track": {"pt": 3.0}}},
-        ])
+        f["mytuple"] = ak.Array(
+            [
+                {"particle": {"track": {"pt": 1.0}}},
+                {"particle": {"track": {"pt": 3.0}}},
+            ]
+        )
 
     with uproot.update(os.path.join(tmp_path, "test.root")) as f:
         f["mytuple"].add_fields({"particle.track.phi": np.float32})
