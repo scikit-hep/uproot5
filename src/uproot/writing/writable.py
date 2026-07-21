@@ -2310,9 +2310,13 @@ class WritableNTuple:
                 )
             elif new_field_names and accept_new_fields:
                 # add new fields with zeros for existing entries
-                self.add_fields({k: numpy.array(list(data[k])).dtype for k in new_field_names})
+                self.add_fields(
+                    {k: numpy.array(list(data[k])).dtype for k in new_field_names}
+                )
                 # reload from file so ntuple knows about new fields
-                key = self._file.root_directory._cascading.data.get_key(self._path[-1], 1)
+                key = self._file.root_directory._cascading.data.get_key(
+                    self._path[-1], 1
+                )
                 reloaded = self._file.root_directory._load_existing_ntuple(key)
                 self._cascading = reloaded._cascading
 
