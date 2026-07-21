@@ -389,7 +389,7 @@ class Cursor:
         stop = start + int(length)
         if move:
             self._index = stop
-        return uproot._util.tobytes(chunk.get(start, stop, self, context))
+        return chunk.get(start, stop, self, context).tobytes()
 
     def string(
         self, chunk: uproot.source.chunk.Chunk, context: dict, move: bool = True
@@ -439,7 +439,7 @@ class Cursor:
         if move:
             self._index = stop
         data = chunk.get(start, stop, self, context)
-        return uproot._util.tobytes(data)
+        return data.tobytes()
 
     def string_with_length(
         self,
@@ -481,23 +481,18 @@ class Cursor:
         null-terminated, UTF-8 encoded string.
         """
         remainder = chunk.remainder(self._index, self, context)
-        local_stop = 0
-        char = None
-        while char != 0:
-            if local_stop > len(remainder):
-                raise OSError(
-                    f"""C-style string has no terminator (null byte) in Chunk {self._start}:{self._stop}
-of file path {self._source.file_path}"""
-                )
-            char = remainder[local_stop]
-            local_stop += 1
+        terminator = remainder.tobytes().find(0)
+        if terminator < 0:
+            raise OSError(
+                f"""C-style string has no terminator (null byte) in Chunk {chunk.start}:{chunk.stop}
+of file path {chunk.source.file_path}"""
+            )
+        local_stop = terminator + 1
 
         if move:
             self._index += local_stop
 
-        return uproot._util.tobytes(remainder[: local_stop - 1]).decode(
-            errors="surrogateescape"
-        )
+        return remainder[: local_stop - 1].tobytes().decode(errors="surrogateescape")
 
     def rntuple_string(
         self, chunk: uproot.source.chunk.Chunk, context: dict, move: bool = True

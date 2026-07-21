@@ -129,7 +129,7 @@ def _ftype_to_struct(fType):
 
 
 def _copy_bytes(chunk, start, stop, cursor, context):
-    return uproot._util.tobytes(chunk.get(start, stop, cursor, context))
+    return chunk.get(start, stop, cursor, context).tobytes()
 
 
 _tstreamerinfo_format1 = struct.Struct(">Ii")

@@ -301,7 +301,7 @@ class AsStrings(uproot.interpretation.Interpretation):
             offsets[0] = 0
             numpy.cumsum(counts, out=offsets[1:])
 
-            data = uproot._util.tobytes(data)
+            data = data.tobytes()
 
         output = StringArray(offsets, data)
 
@@ -423,7 +423,7 @@ class AsStrings(uproot.interpretation.Interpretation):
                         before += off[local_stop] - off[local_start]
                         contents.append(cnt[off[local_start] : off[local_stop]])
 
-                    elif start <= entry_stop <= stop:
+                    elif start < entry_stop <= stop:
                         local_start = 0
                         local_stop = entry_stop - start
                         off, cnt = (
@@ -438,7 +438,7 @@ class AsStrings(uproot.interpretation.Interpretation):
                         before += off[local_stop] - off[local_start]
                         contents.append(cnt[off[local_start] : off[local_stop]])
 
-                    elif entry_start < stop and start <= entry_stop:
+                    elif entry_start < stop and start < entry_stop:
                         off, cnt = (
                             basket_offsets[basket_num],
                             basket_content[basket_num],
