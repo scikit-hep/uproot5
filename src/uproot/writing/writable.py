@@ -2374,7 +2374,9 @@ class WritableNTuple:
             type_size = uproot.const.rntuple_col_num_to_size_dict[type_num]
 
             if "." in field_name:
-                parent_name, actual_field_name = field_name.rsplit(".", 1)
+                parts = field_name.split(".")
+                actual_field_name = parts[-1]  # phi
+                parent_name = parts[-2]  # track (immediate parent)
                 parent_field_id = None
                 for i, fr in enumerate(existing_field_records):
                     if fr.field_name == parent_name:

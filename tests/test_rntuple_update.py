@@ -361,3 +361,21 @@ def test_ntuple_add_subfield(tmp_path):
 
     reader = ROOT.RNTupleReader.Open("mytuple", os.path.join(tmp_path, "test.root"))
     assert reader.GetNEntries() == 2
+
+def test_ntuple_add_nested_subfield(tmp_path):
+    with uproot.recreate(os.path.join(tmp_path, "test.root")) as f:
+        f["mytuple"] = ak.Array([
+            {"particle": {"track": {"pt": 1.0}}},
+            {"particle": {"track": {"pt": 3.0}}},
+        ])
+
+    with uproot.update(os.path.join(tmp_path, "test.root")) as f:
+        f["mytuple"].add_fields({"particle.track.phi": np.float32})
+
+    with uproot.open(os.path.join(tmp_path, "test.root")) as f:
+        nt = f["mytuple"]
+        assert "particle.track.phi" in nt.keys()
+        assert ak.all(nt["particle.track.phi"].array() == np.zeros(2, dtype=np.float32))
+
+    reader = ROOT.RNTupleReader.Open("mytuple", os.path.join(tmp_path, "test.root"))
+    assert reader.GetNEntries() == 2
