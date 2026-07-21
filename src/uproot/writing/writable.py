@@ -2369,10 +2369,23 @@ class WritableNTuple:
             type_num = cnt._ak_primitive_to_num_dict[ak_primitive]
             type_size = uproot.const.rntuple_col_num_to_size_dict[type_num]
 
+            if "." in field_name:
+                parent_name, actual_field_name = field_name.rsplit(".", 1)
+                parent_field_id = None
+                for i, fr in enumerate(existing_field_records):
+                    if fr.field_name == parent_name:
+                        parent_field_id = i
+                        break
+                if parent_field_id is None:
+                    raise ValueError(f"Parent field {parent_name!r} not found in RNTuple")
+            else:
+                actual_field_name = field_name
+                parent_field_id = next_field_id
+
             new_field = cnt.NTuple_Field_Description(
-                next_field_id,
+                parent_field_id,
                 uproot.const.RNTupleFieldRole.LEAF,
-                field_name,
+                actual_field_name,
                 type_name,
             )
             footer.extension_field_record_frames.append(new_field)
