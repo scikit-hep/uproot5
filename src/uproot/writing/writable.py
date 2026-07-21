@@ -2026,7 +2026,6 @@ class WritableTree:
         """
         self._cascading.extend(self._file, self._file.sink, data)
 
-
     def show(
         self,
         *,
