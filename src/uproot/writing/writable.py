@@ -1065,7 +1065,6 @@ class WritableDirectory(MutableMapping):
         Returns:
             :doc:`uproot.writing.writable.WritableNTuple`
         """
-        import numpy
 
         import uproot.writing._cascade as casc
         import uproot.writing._cascadentuple as cnt
@@ -2358,9 +2357,7 @@ class WritableNTuple:
             with uproot.update("file.root") as f:
                 f["mytuple"].add_fields({"z": np.int32})
         """
-        import numpy
 
-        import uproot.compression
         import uproot.writing._cascadentuple as cnt
 
         compression = self._cascading._freesegments.fileheader.compression
