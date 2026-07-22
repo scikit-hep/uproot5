@@ -2381,15 +2381,12 @@ class WritableNTuple:
                 raise ValueError(f"Field {field_name!r} already exists in this RNTuple")
 
         for field_name, field_dtype_raw in new_fields.items():
-            field_dtype = numpy.dtype(field_dtype_raw)
-            ak_primitive = {
-                numpy.dtype("float32"): "float32",
-                numpy.dtype("float64"): "float64",
-                numpy.dtype("int32"): "int32",
-                numpy.dtype("int64"): "int64",
-                numpy.dtype("uint32"): "uint32",
-                numpy.dtype("uint64"): "uint64",
-            }.get(field_dtype, "int32")
+            ak_form = _type_specification_to_awkward_form(field_dtype_raw)
+            if not isinstance(ak_form, awkward.forms.NumpyForm):
+                raise TypeError(
+                    f"add_fields only supports simple numeric types, got {field_dtype_raw!r}"
+                )
+            ak_primitive = ak_form.primitive
             type_name = cnt._ak_primitive_to_typename_dict[ak_primitive]
             type_num = cnt._ak_primitive_to_num_dict[ak_primitive]
             type_size = uproot.const.rntuple_col_num_to_size_dict[type_num]
@@ -2423,7 +2420,7 @@ class WritableNTuple:
             )
             footer.extension_column_record_frames.append(new_col)
 
-            new_data = numpy.zeros(num_entries, dtype=field_dtype)
+            new_data = numpy.zeros(num_entries, dtype=numpy.dtype(ak_primitive))
             raw_data = new_data.view("uint8")
             compressed_data = uproot.compression.compress(raw_data, compression)
             page_key = self._cascading.add_rblob(
