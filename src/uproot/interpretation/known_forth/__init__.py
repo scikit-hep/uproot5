@@ -39,7 +39,7 @@ def known_forth_of(model):
         try:
             typename = model.classname
         except AttributeError:
-            typename = uproot.model.classname_decode(model.__name__)
+            typename = uproot.model.classname_decode(model.__name__)[0]
 
     if typename not in KNOWN_FORTH_DICT:
         return
