@@ -1,14 +1,15 @@
-import uproot
 import os
-import pytest
-
-ROOT = pytest.importorskip("ROOT")
-
-import numpy as np
 
 import awkward as ak
-from skhep_testdata import data_path
+import numpy as np
+import pytest
+import uproot
 
+try:
+    import ROOT
+    has_root = True
+except ImportError:
+    has_root = False
 
 def test_extend_existing_ntuple(tmp_path):
     with uproot.recreate(os.path.join(tmp_path, "test.root")) as f:
@@ -35,7 +36,7 @@ def test_extend_existing_ntuple(tmp_path):
             == np.array([10, 20, 30, 40, 50, 60, 70, 80], dtype=np.int32)
         )
 
-    if hasattr(ROOT, "RNTupleReader"):
+    if has_root and hasattr(ROOT, "RNTupleReader"):
         reader = ROOT.RNTupleReader.Open("mytuple", os.path.join(tmp_path, "test.root"))
         assert reader.GetNEntries() == 8
 
@@ -52,7 +53,7 @@ def test_add_field_ntuple(tmp_path):
         assert ak.all(nt["x"].array() == np.array([1, 2, 3, 4, 5], dtype=np.float32))
         assert ak.all(nt["z"].array() == np.zeros(5, dtype=np.int32))
 
-    if hasattr(ROOT, "RNTupleReader"):
+    if has_root and hasattr(ROOT, "RNTupleReader"):
         reader = ROOT.RNTupleReader.Open("mytuple", os.path.join(tmp_path, "test.root"))
         assert reader.GetNEntries() == 5
 
@@ -82,7 +83,7 @@ def test_extend_ntuple_multiple_times(tmp_path):
             == np.array([1, 2, 3, 4, 5, 6, 7, 8, 9], dtype=np.float32)
         )
 
-    if hasattr(ROOT, "RNTupleReader"):
+    if has_root and hasattr(ROOT, "RNTupleReader"):
         reader = ROOT.RNTupleReader.Open("mytuple", os.path.join(tmp_path, "test.root"))
         assert reader.GetNEntries() == 9
 
@@ -101,7 +102,7 @@ def test_add_multiple_fields_ntuple(tmp_path):
         assert ak.all(f["mytuple"]["y"].array() == np.zeros(3, dtype=np.int32))
         assert ak.all(f["mytuple"]["z"].array() == np.zeros(3, dtype=np.float64))
 
-    if hasattr(ROOT, "RNTupleReader"):
+    if has_root and hasattr(ROOT, "RNTupleReader"):
         reader = ROOT.RNTupleReader.Open("mytuple", os.path.join(tmp_path, "test.root"))
         assert reader.GetNEntries() == 3
 
@@ -144,7 +145,7 @@ def test_ntuple_dtypes(tmp_path):
         assert ak.all(nt["x_f32"].array() == np.array([1, 2, 3], dtype=np.float32))
         assert ak.all(nt["z_i64"].array() == np.zeros(3, dtype=np.int64))
 
-    if hasattr(ROOT, "RNTupleReader"):
+    if has_root and hasattr(ROOT, "RNTupleReader"):
         reader = ROOT.RNTupleReader.Open("mytuple", os.path.join(tmp_path, "test.root"))
         assert reader.GetNEntries() == 3
 
@@ -164,7 +165,7 @@ def test_ntuple_variable_length(tmp_path):
             == ak.Array([[1, 2], [3, 4, 5], [6], [7, 8, 9], [10]])
         )
 
-    if hasattr(ROOT, "RNTupleReader"):
+    if has_root and hasattr(ROOT, "RNTupleReader"):
         reader = ROOT.RNTupleReader.Open("mytuple", os.path.join(tmp_path, "test.root"))
         assert reader.GetNEntries() == 5
 
@@ -193,7 +194,7 @@ def test_ntuple_mixed_types_extend(tmp_path):
             nt["jets"].array() == ak.Array([[1, 2], [3], [4, 5, 6], [7, 8, 9], [10]])
         )
 
-    if hasattr(ROOT, "RNTupleReader"):
+    if has_root and hasattr(ROOT, "RNTupleReader"):
         reader = ROOT.RNTupleReader.Open("mytuple", os.path.join(tmp_path, "test.root"))
         assert reader.GetNEntries() == 5
 
@@ -222,7 +223,7 @@ def test_ntuple_add_field_then_extend(tmp_path):
             nt["z"].array() == np.array([0, 0, 0, 40, 50, 60], dtype=np.int32)
         )
 
-    if hasattr(ROOT, "RNTupleReader"):
+    if has_root and hasattr(ROOT, "RNTupleReader"):
         reader = ROOT.RNTupleReader.Open("mytuple", os.path.join(tmp_path, "test.root"))
         assert reader.GetNEntries() == 6
 
@@ -239,7 +240,7 @@ def test_ntuple_extend_empty(tmp_path):
         assert nt.num_entries == 3
         assert ak.all(nt["x"].array() == np.array([1, 2, 3], dtype=np.float32))
 
-    if hasattr(ROOT, "RNTupleReader"):
+    if has_root and hasattr(ROOT, "RNTupleReader"):
         reader = ROOT.RNTupleReader.Open("mytuple", os.path.join(tmp_path, "test.root"))
         assert reader.GetNEntries() == 3
 
@@ -258,7 +259,7 @@ def test_ntuple_multiple_in_file(tmp_path):
         )
         assert ak.all(f["tuple2"]["y"].array() == np.array([4, 5, 6], dtype=np.int32))
 
-    if hasattr(ROOT, "RNTupleReader"):
+    if has_root and hasattr(ROOT, "RNTupleReader"):
         reader1 = ROOT.RNTupleReader.Open("tuple1", os.path.join(tmp_path, "test.root"))
         reader2 = ROOT.RNTupleReader.Open("tuple2", os.path.join(tmp_path, "test.root"))
         assert reader1.GetNEntries() == 5
@@ -294,7 +295,7 @@ def test_ntuple_multiple_add_fields_then_extend(tmp_path):
             nt["z"].array() == np.array([0, 0, 0, 400, 500, 600], dtype=np.float64)
         )
 
-    if hasattr(ROOT, "RNTupleReader"):
+    if has_root and hasattr(ROOT, "RNTupleReader"):
         reader = ROOT.RNTupleReader.Open("mytuple", os.path.join(tmp_path, "test.root"))
         assert reader.GetNEntries() == 6
 
@@ -317,7 +318,7 @@ def test_ntuple_add_field_and_extend_same_session(tmp_path):
         assert ak.all(nt["x"].array() == np.array([1, 2, 3, 4, 5], dtype=np.float32))
         assert ak.all(nt["y"].array() == np.array([0, 0, 0, 40, 50], dtype=np.int32))
 
-    if hasattr(ROOT, "RNTupleReader"):
+    if has_root and hasattr(ROOT, "RNTupleReader"):
         reader = ROOT.RNTupleReader.Open("mytuple", os.path.join(tmp_path, "test.root"))
         assert reader.GetNEntries() == 5
 
@@ -351,7 +352,7 @@ def test_ntuple_accept_new_fields(tmp_path):
         assert ak.all(nt["x"].array() == np.array([1, 2, 3, 4, 5], dtype=np.float32))
         assert ak.all(nt["z"].array() == np.array([0, 0, 0, 40, 50], dtype=np.int32))
 
-    if hasattr(ROOT, "RNTupleReader"):
+    if has_root and hasattr(ROOT, "RNTupleReader"):
         reader = ROOT.RNTupleReader.Open("mytuple", os.path.join(tmp_path, "test.root"))
         assert reader.GetNEntries() == 5
 
@@ -375,7 +376,7 @@ def test_ntuple_add_subfield(tmp_path):
         assert ak.all(nt["particle"].array().pt == np.array([1.0, 3.0]))
         assert ak.all(nt["particle"].array().phi == np.zeros(2, dtype=np.float32))
 
-    if hasattr(ROOT, "RNTupleReader"):
+    if has_root and hasattr(ROOT, "RNTupleReader"):
         reader = ROOT.RNTupleReader.Open("mytuple", os.path.join(tmp_path, "test.root"))
         assert reader.GetNEntries() == 2
 
@@ -397,6 +398,6 @@ def test_ntuple_add_nested_subfield(tmp_path):
         assert "particle.track.phi" in nt.keys()
         assert ak.all(nt["particle.track.phi"].array() == np.zeros(2, dtype=np.float32))
 
-    if hasattr(ROOT, "RNTupleReader"):
+    if has_root and hasattr(ROOT, "RNTupleReader"):
         reader = ROOT.RNTupleReader.Open("mytuple", os.path.join(tmp_path, "test.root"))
         assert reader.GetNEntries() == 2
