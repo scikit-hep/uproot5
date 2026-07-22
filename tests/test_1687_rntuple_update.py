@@ -401,3 +401,29 @@ def test_ntuple_add_nested_subfield(tmp_path):
     if has_root and hasattr(ROOT, "RNTupleReader"):
         reader = ROOT.RNTupleReader.Open("mytuple", os.path.join(tmp_path, "test.root"))
         assert reader.GetNEntries() == 2
+
+def test_ntuple_add_subfield_nonexistent_parent(tmp_path):
+    with uproot.recreate(os.path.join(tmp_path, "test.root")) as f:
+        f["mytuple"] = {"x": np.array([1, 2, 3], dtype=np.float32)}
+
+    with uproot.update(os.path.join(tmp_path, "test.root")) as f:
+        with pytest.raises(ValueError, match="not found"):
+            f["mytuple"].add_fields({"nonexistent.phi": np.float32})
+
+
+def test_ntuple_add_subfield_typed_parent(tmp_path):
+    with uproot.recreate(os.path.join(tmp_path, "test.root")) as f:
+        f["mytuple"] = ak.Array([{"pt": 1.0}, {"pt": 2.0}])
+
+    with uproot.update(os.path.join(tmp_path, "test.root")) as f:
+        with pytest.raises((ValueError, TypeError)):
+            f["mytuple"].add_fields({"pt.x": np.float32})
+
+
+def test_ntuple_add_subfield_to_collection(tmp_path):
+    with uproot.recreate(os.path.join(tmp_path, "test.root")) as f:
+        f["mytuple"] = {"jets": ak.Array([[1.0, 2.0], [3.0]])}
+
+    with uproot.update(os.path.join(tmp_path, "test.root")) as f:
+        with pytest.raises((ValueError, TypeError)):
+            f["mytuple"].add_fields({"jets.x": np.float32})

@@ -2399,6 +2399,15 @@ class WritableNTuple:
                 for i, fr in enumerate(existing_field_records):
                     if fr.field_name == parent_name:
                         parent_field_id = i
+                        if fr.type_name != "":
+                            raise ValueError(
+                                f"Field {parent_name!r} has type {fr.type_name!r} and cannot be extended. "
+                                f"Only untyped records (empty type_name) can have subfields added."
+                            )
+                        if fr.struct_role != uproot.const.RNTupleFieldRole.RECORD:
+                            raise ValueError(
+                                f"Field {parent_name!r} is not a record and cannot have subfields added."
+                            )
                         break
                 if parent_field_id is None:
                     raise ValueError(
