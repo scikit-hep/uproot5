@@ -1069,6 +1069,8 @@ class WritableDirectory(MutableMapping):
         import uproot.writing._cascade as casc
         import uproot.writing._cascadentuple as cnt
 
+        _rblob_key_size = uproot.reading._key_format_big.size + 8
+
         name = key.name.string
         existing_file = uproot.open(self.file_path, minimal_ttree_metadata=False)
         existing = existing_file[name]
@@ -1116,7 +1118,7 @@ class WritableDirectory(MutableMapping):
             footer.extension_column_record_frames.append(new_col)
         for cg in existing_footer.cluster_group_records:
             loc = cg.page_list_link.locator
-            start = loc.offset - 56
+            start = loc.offset - _rblob_key_size
             end = loc.offset + loc.num_bytes
             self._cascading._freesegments._data.slices = [
                 s
@@ -1147,7 +1149,7 @@ class WritableDirectory(MutableMapping):
             anchor,
         )
         ntuple_cascading._header_key = casc.Key(
-            am["fSeekHeader"] - 56,
+            am["fSeekHeader"] - _rblob_key_size,
             am["fLenHeader"],
             am["fNBytesHeader"],
             casc.String(None, "RBlob"),
@@ -1158,7 +1160,7 @@ class WritableDirectory(MutableMapping):
             am["fSeekHeader"],
         )
         ntuple_cascading._footer_key = casc.Key(
-            am["fSeekFooter"] - 56,
+            am["fSeekFooter"] - _rblob_key_size,
             am["fLenFooter"],
             am["fNBytesFooter"],
             casc.String(None, "RBlob"),
