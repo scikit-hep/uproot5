@@ -428,6 +428,27 @@ def test_ntuple_add_subfield_to_collection(tmp_path):
         with pytest.raises((ValueError, TypeError)):
             f["mytuple"].add_fields({"jets.x": np.float32})
 
+def test_ntuple_add_subfield_to_collection_of_records(tmp_path):
+    with uproot.recreate(os.path.join(tmp_path, "test.root")) as f:
+        f["mytuple"] = ak.Array({
+            "jets": [[{"pt": 1., "eta": 0.}], [{"pt": 2., "eta": 3.}]]
+        })
+
+    with uproot.update(os.path.join(tmp_path, "test.root")) as f:
+        with pytest.raises((ValueError, TypeError)):
+            f["mytuple"].add_fields({"jets.phi": np.float32})
+
+
+def test_ntuple_add_subfield_to_variant(tmp_path):
+    with uproot.recreate(os.path.join(tmp_path, "test.root")) as f:
+        f["mytuple"] = ak.Array({
+            "variant": ak.Array([{"jet": {"pt": 1., "eta": 2.}}, 2])
+        })
+
+    with uproot.update(os.path.join(tmp_path, "test.root")) as f:
+        with pytest.raises((ValueError, TypeError, AssertionError)):
+            f["mytuple"].add_fields({"variant.jet.eta": np.float32})
+
 def test_ntuple_num_entries(tmp_path):
     with uproot.recreate(os.path.join(tmp_path, "test.root")) as f:
         f["mytuple"] = {"x": np.array([1, 2, 3], dtype=np.float32)}
