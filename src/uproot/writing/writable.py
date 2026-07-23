@@ -1072,6 +1072,9 @@ class WritableDirectory(MutableMapping):
         _rblob_key_size = uproot.reading._key_format_big.size + 8
 
         name = key.name.string
+        # TODO: opening the file again in read mode to access existing metadata is
+        # a bit awkward since the file is already open in write mode. We should
+        # look into a better way to do this in the future.
         existing_file = uproot.open(self.file_path, minimal_ttree_metadata=False)
         existing = existing_file[name]
         _ = existing.keys()
