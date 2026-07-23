@@ -9,9 +9,11 @@ import uproot
 
 try:
     import ROOT
+
     has_root = True
 except ImportError:
     has_root = False
+
 
 def test_extend_existing_ntuple(tmp_path):
     with uproot.recreate(os.path.join(tmp_path, "test.root")) as f:
@@ -404,6 +406,7 @@ def test_ntuple_add_nested_subfield(tmp_path):
         reader = ROOT.RNTupleReader.Open("mytuple", os.path.join(tmp_path, "test.root"))
         assert reader.GetNEntries() == 2
 
+
 def test_ntuple_add_subfield_nonexistent_parent(tmp_path):
     with uproot.recreate(os.path.join(tmp_path, "test.root")) as f:
         f["mytuple"] = {"x": np.array([1, 2, 3], dtype=np.float32)}
@@ -461,7 +464,6 @@ def test_ntuple_num_entries(tmp_path):
     with uproot.update(os.path.join(tmp_path, "test.root")) as f:
         nt = f["mytuple"]
         assert nt.num_entries == 3
-
 
 def test_ntuple_add_field_duplicate_after_extension(tmp_path):
     with uproot.recreate(os.path.join(tmp_path, "test.root")) as f:
