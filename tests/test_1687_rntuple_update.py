@@ -1,8 +1,10 @@
 import os
+import shutil
 
 import awkward as ak
 import numpy as np
 import pytest
+import skhep_testdata
 import uproot
 
 try:
@@ -412,11 +414,12 @@ def test_ntuple_add_subfield_nonexistent_parent(tmp_path):
 
 
 def test_ntuple_add_subfield_typed_parent(tmp_path):
+    # fields with C++ typenames (like those written by ROOT) cannot have subfields added
     with uproot.recreate(os.path.join(tmp_path, "test.root")) as f:
         f["mytuple"] = ak.Array([{"pt": 1.0}, {"pt": 2.0}])
 
     with uproot.update(os.path.join(tmp_path, "test.root")) as f:
-        with pytest.raises((ValueError, TypeError)):
+        with pytest.raises(ValueError):
             f["mytuple"].add_fields({"pt.x": np.float32})
 
 
@@ -427,6 +430,7 @@ def test_ntuple_add_subfield_to_collection(tmp_path):
     with uproot.update(os.path.join(tmp_path, "test.root")) as f:
         with pytest.raises((ValueError, TypeError)):
             f["mytuple"].add_fields({"jets.x": np.float32})
+
 
 def test_ntuple_add_subfield_to_collection_of_records(tmp_path):
     with uproot.recreate(os.path.join(tmp_path, "test.root")) as f:
@@ -449,6 +453,7 @@ def test_ntuple_add_subfield_to_variant(tmp_path):
         with pytest.raises((ValueError, TypeError, AssertionError)):
             f["mytuple"].add_fields({"variant.jet.eta": np.float32})
 
+
 def test_ntuple_num_entries(tmp_path):
     with uproot.recreate(os.path.join(tmp_path, "test.root")) as f:
         f["mytuple"] = {"x": np.array([1, 2, 3], dtype=np.float32)}
@@ -456,6 +461,7 @@ def test_ntuple_num_entries(tmp_path):
     with uproot.update(os.path.join(tmp_path, "test.root")) as f:
         nt = f["mytuple"]
         assert nt.num_entries == 3
+
 
 def test_ntuple_add_field_duplicate_after_extension(tmp_path):
     with uproot.recreate(os.path.join(tmp_path, "test.root")) as f:
