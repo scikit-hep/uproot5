@@ -2338,7 +2338,7 @@ class WritableNTuple:
                 )
             elif new_field_names and accept_new_fields:
                 self.add_fields(
-                    {k: numpy.array(list(data[k])).dtype for k in new_field_names}
+                    {k: numpy.asarray(awkward.flatten(awkward.Array(data[k]), axis=None)).dtype for k in new_field_names}
                 )
                 key = self._file.root_directory._cascading.data.get_key(
                     self._path[-1], 1
