@@ -1085,7 +1085,7 @@ class WritableDirectory(MutableMapping):
         num_entries = existing.num_entries
         existing_footer = existing._footer
         existing_page_list_envelopes = existing.page_list_envelopes
-        existing_field_records = existing._header.field_records
+        existing_field_records = existing._ntuple.field_records
         existing_file.close()
 
         header = cnt.NTuple_Header(
@@ -2373,9 +2373,8 @@ class WritableNTuple:
         existing_page_list_envelopes = self._cascading._existing_page_list_envelopes
         existing_field_records = self._cascading._existing_field_records
 
-        next_field_id = len(existing_field_records) + len(
-            existing_footer.extension_links.field_records
-        )
+        next_field_id = len(existing_field_records) 
+        
         new_pages = {}
 
         existing_field_names = {fr.field_name for fr in existing_field_records}

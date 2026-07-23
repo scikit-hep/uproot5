@@ -435,3 +435,15 @@ def test_ntuple_num_entries(tmp_path):
     with uproot.update(os.path.join(tmp_path, "test.root")) as f:
         nt = f["mytuple"]
         assert nt.num_entries == 3
+
+def test_ntuple_add_field_duplicate_after_extension(tmp_path):
+    with uproot.recreate(os.path.join(tmp_path, "test.root")) as f:
+        f["mytuple"] = {"x": np.array([1, 2, 3], dtype=np.float32)}
+
+    with uproot.update(os.path.join(tmp_path, "test.root")) as f:
+        f["mytuple"].add_fields({"z": np.int32})
+
+    # try to add z again - should fail even though it's an extension field
+    with uproot.update(os.path.join(tmp_path, "test.root")) as f:
+        with pytest.raises(ValueError, match="already exists"):
+            f["mytuple"].add_fields({"z": np.float32})
