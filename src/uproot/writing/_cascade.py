@@ -2109,7 +2109,7 @@ class FileHeader(CascadeLeaf):
             compression_code,
             info_location,
             info_num_bytes,
-            uuid_version,
+            _uuid_version,
             uuid_bytes,
         ) = uproot.reading._file_header_fields_small.unpack(
             raw_bytes[: uproot.reading._file_header_fields_small.size]
@@ -2128,7 +2128,7 @@ class FileHeader(CascadeLeaf):
                 compression_code,
                 info_location,
                 info_num_bytes,
-                uuid_version,
+                _uuid_version,
                 uuid_bytes,
             ) = uproot.reading._file_header_fields_big.unpack(raw_bytes)
             assert units == 8
@@ -2145,8 +2145,6 @@ class FileHeader(CascadeLeaf):
         assert compression_code >= 0
         assert info_location >= 0
         assert info_num_bytes >= 0
-        assert uuid_version == 1
-
         out = FileHeader(
             end,
             free_location,
