@@ -437,9 +437,9 @@ def test_ntuple_add_subfield_to_collection(tmp_path):
 
 def test_ntuple_add_subfield_to_collection_of_records(tmp_path):
     with uproot.recreate(os.path.join(tmp_path, "test.root")) as f:
-        f["mytuple"] = ak.Array({
-            "jets": [[{"pt": 1., "eta": 0.}], [{"pt": 2., "eta": 3.}]]
-        })
+        f["mytuple"] = ak.Array(
+            {"jets": [[{"pt": 1.0, "eta": 0.0}], [{"pt": 2.0, "eta": 3.0}]]}
+        )
 
     with uproot.update(os.path.join(tmp_path, "test.root")) as f:
         with pytest.raises((ValueError, TypeError)):
@@ -448,9 +448,9 @@ def test_ntuple_add_subfield_to_collection_of_records(tmp_path):
 
 def test_ntuple_add_subfield_to_variant(tmp_path):
     with uproot.recreate(os.path.join(tmp_path, "test.root")) as f:
-        f["mytuple"] = ak.Array({
-            "variant": ak.Array([{"jet": {"pt": 1., "eta": 2.}}, 2])
-        })
+        f["mytuple"] = ak.Array(
+            {"variant": ak.Array([{"jet": {"pt": 1.0, "eta": 2.0}}, 2])}
+        )
 
     with uproot.update(os.path.join(tmp_path, "test.root")) as f:
         with pytest.raises((ValueError, TypeError, AssertionError)):
@@ -464,6 +464,7 @@ def test_ntuple_num_entries(tmp_path):
     with uproot.update(os.path.join(tmp_path, "test.root")) as f:
         nt = f["mytuple"]
         assert nt.num_entries == 3
+
 
 def test_ntuple_add_field_duplicate_after_extension(tmp_path):
     with uproot.recreate(os.path.join(tmp_path, "test.root")) as f:
