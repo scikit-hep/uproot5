@@ -94,6 +94,8 @@ def iterate(
             ``list``, and ``dict``. Note that the container *type itself*
             must be passed as ``how``, not an instance of that type (i.e.
             ``how=tuple``, not ``how=()``).
+            For ``library="ak"``, passing ``how="zip"`` applies ``ak.zip`` to
+            interleave data from compatible branches.
         report (bool): If True, this generator yields
             (arrays, :doc:`uproot.behaviors.TBranch.Report`) pairs; if False,
             it only yields arrays. The report has data about the ``TFile``,
@@ -283,6 +285,8 @@ def concatenate(
             ``list``, and ``dict``. Note that the container *type itself*
             must be passed as ``how``, not an instance of that type (i.e.
             ``how=tuple``, not ``how=()``).
+            For ``library="ak"``, passing ``how="zip"`` applies ``ak.zip`` to
+            interleave data from compatible branches.
         report (bool): If True, this generator yields
             (arrays, :doc:`uproot.behaviors.TBranch.Report`) pairs; if False,
             it only yields arrays. The report has data about the ``TFile``,
@@ -416,6 +420,7 @@ def concatenate(
                 arrays = library.global_index(arrays, global_start)
             except uproot.exceptions.KeyInFileError:
                 if allow_missing:
+                    global_start = global_stop
                     continue
                 else:
                     raise
@@ -698,6 +703,8 @@ class HasFields(Mapping):
                 ``list``, and ``dict``. Note that the container *type itself*
                 must be passed as ``how``, not an instance of that type (i.e.
                 ``how=tuple``, not ``how=()``).
+                For ``library="ak"``, passing ``how="zip"`` applies ``ak.zip``
+                to interleave data from compatible branches.
             virtual (bool): If True, return virtual Awkward arrays, meaning that the data will not be
                 loaded into memory until it is accessed.
             access_log (None or object with a ``__iadd__`` method): If an access_log is
@@ -986,6 +993,8 @@ class HasFields(Mapping):
                 ``list``, and ``dict``. Note that the container *type itself*
                 must be passed as ``how``, not an instance of that type (i.e.
                 ``how=tuple``, not ``how=()``).
+                For ``library="ak"``, passing ``how="zip"`` applies ``ak.zip``
+                to interleave data from compatible branches.
             report (bool): If True, this generator yields
                 (arrays, :doc:`uproot.behaviors.TBranch.Report`) pairs; if False,
                 it only yields arrays. The report has data about the ``TFile``,
@@ -1046,7 +1055,7 @@ class HasFields(Mapping):
                 filter_typename=filter_typename,
                 filter_field=filter_field,
                 entry_start=start,
-                entry_stop=start + step_size,
+                entry_stop=min(start + step_size, entry_stop),
                 library=library,
                 backend=backend,
                 interpreter=interpreter,

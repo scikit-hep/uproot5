@@ -16,8 +16,6 @@ import numpy
 import uproot
 import uproot._awkwardforth as af
 
-COUNT_NAMES = []
-
 _canonical_typename_patterns = [
     (re.compile(r"\bChar_t\b"), "char"),
     (re.compile(r"\bUChar_t\b"), "unsigned char"),
@@ -75,66 +73,59 @@ def _sanitize_string(s):
     )
 
 
+_ftype_to_dtype_map = {
+    uproot.const.kBool: "numpy.dtype(numpy.bool_)",
+    uproot.const.kChar: "numpy.dtype('i1')",
+    uproot.const.kUChar: "numpy.dtype('u1')",
+    uproot.const.kCharStar: "numpy.dtype('u1')",
+    uproot.const.kShort: "numpy.dtype('>i2')",
+    uproot.const.kUShort: "numpy.dtype('>u2')",
+    uproot.const.kInt: "numpy.dtype('>i4')",
+    uproot.const.kBits: "numpy.dtype('>u4')",
+    uproot.const.kUInt: "numpy.dtype('>u4')",
+    uproot.const.kCounter: "numpy.dtype('>u4')",
+    uproot.const.kLong: "numpy.dtype('>i8')",
+    uproot.const.kULong: "numpy.dtype('>u8')",
+    uproot.const.kLong64: "numpy.dtype('>i8')",
+    uproot.const.kULong64: "numpy.dtype('>u8')",
+    uproot.const.kFloat: "numpy.dtype('>f4')",
+    uproot.const.kFloat16: "numpy.dtype('>f4')",
+    uproot.const.kDouble: "numpy.dtype('>f8')",
+    uproot.const.kDouble32: "numpy.dtype('>f8')",
+}
+
+
 def _ftype_to_dtype(fType):
-    if fType == uproot.const.kBool:
-        return "numpy.dtype(numpy.bool_)"
-    elif fType == uproot.const.kChar:
-        return "numpy.dtype('i1')"
-    elif fType in (uproot.const.kUChar, uproot.const.kCharStar):
-        return "numpy.dtype('u1')"
-    elif fType == uproot.const.kShort:
-        return "numpy.dtype('>i2')"
-    elif fType == uproot.const.kUShort:
-        return "numpy.dtype('>u2')"
-    elif fType == uproot.const.kInt:
-        return "numpy.dtype('>i4')"
-    elif fType in (uproot.const.kBits, uproot.const.kUInt, uproot.const.kCounter):
-        return "numpy.dtype('>u4')"
-    elif fType == uproot.const.kLong:
-        return "numpy.dtype('>i8')"
-    elif fType == uproot.const.kULong:
-        return "numpy.dtype('>u8')"
-    elif fType == uproot.const.kLong64:
-        return "numpy.dtype('>i8')"
-    elif fType == uproot.const.kULong64:
-        return "numpy.dtype('>u8')"
-    elif fType in (uproot.const.kFloat, uproot.const.kFloat16):
-        return "numpy.dtype('>f4')"
-    elif fType in (uproot.const.kDouble, uproot.const.kDouble32):
-        return "numpy.dtype('>f8')"
-    else:
-        return None
+    return _ftype_to_dtype_map.get(fType)
+
+
+_ftype_to_struct_map = {
+    uproot.const.kBool: "?",
+    uproot.const.kChar: "b",
+    uproot.const.kUChar: "B",
+    uproot.const.kCharStar: "B",
+    uproot.const.kShort: "h",
+    uproot.const.kUShort: "H",
+    uproot.const.kInt: "i",
+    uproot.const.kBits: "I",
+    uproot.const.kUInt: "I",
+    uproot.const.kCounter: "I",
+    uproot.const.kLong: "q",
+    uproot.const.kULong: "Q",
+    uproot.const.kLong64: "q",
+    uproot.const.kULong64: "Q",
+    uproot.const.kFloat: "f",
+    uproot.const.kFloat16: "f",
+    uproot.const.kDouble: "d",
+    uproot.const.kDouble32: "d",
+}
 
 
 def _ftype_to_struct(fType):
-    if fType == uproot.const.kBool:
-        return "?"
-    elif fType == uproot.const.kChar:
-        return "b"
-    elif fType in (uproot.const.kUChar, uproot.const.kCharStar):
-        return "B"
-    elif fType == uproot.const.kShort:
-        return "h"
-    elif fType == uproot.const.kUShort:
-        return "H"
-    elif fType == uproot.const.kInt:
-        return "i"
-    elif fType in (uproot.const.kBits, uproot.const.kUInt, uproot.const.kCounter):
-        return "I"
-    elif fType == uproot.const.kLong:
-        return "q"
-    elif fType == uproot.const.kULong:
-        return "Q"
-    elif fType == uproot.const.kLong64:
-        return "q"
-    elif fType == uproot.const.kULong64:
-        return "Q"
-    elif fType in (uproot.const.kFloat, uproot.const.kFloat16):
-        return "f"
-    elif fType in (uproot.const.kDouble, uproot.const.kDouble32):
-        return "d"
-    else:
-        raise NotImplementedError(fType)
+    try:
+        return _ftype_to_struct_map[fType]
+    except KeyError:
+        raise NotImplementedError(fType) from None
 
 
 def _copy_bytes(chunk, start, stop, cursor, context):
@@ -216,9 +207,10 @@ class Model_TStreamerInfo(uproot.model.Model):
         Returns Python code as a string that, when evaluated, would be a suitable
         :doc:`uproot.model.VersionedModel` for this class and version.
         """
+        count_names = []
         for element in self.elements:  # (self is a TStreamerInfo)
             if element.has_member("fCountName"):
-                COUNT_NAMES.append(element.member("fCountName"))
+                count_names.append(element.member("fCountName"))
         read_members = [
             "    def read_members(self, chunk, cursor, context, file):",
             "        if self.is_memberwise:",
@@ -286,6 +278,7 @@ class Model_TStreamerInfo(uproot.model.Model):
                 base_names_versions,
                 member_names,
                 class_flags,
+                count_names,
             )
 
         read_members.extend(
@@ -635,6 +628,7 @@ class Model_TStreamerArtificial(Model_TStreamerElement):
         base_names_versions,
         member_names,
         class_flags,
+        count_names,
     ):
         read_member_n.append(f"        if member_index == {i}:")
 
@@ -706,6 +700,7 @@ class Model_TStreamerBase(Model_TStreamerElement):
         base_names_versions,
         member_names,
         class_flags,
+        count_names,
     ):
         read_member_n.append(f"        if member_index == {i}:")
 
@@ -764,6 +759,7 @@ class Model_TStreamerBase(Model_TStreamerElement):
         streamer_versions = streamers.get(self.name)
         if streamer_versions is not None:
             base_version = self.base_version
+            streamer = None
             if len(streamer_versions) == 0:
                 pass
             elif base_version == "max" or base_version not in streamer_versions:
@@ -813,6 +809,7 @@ class Model_TStreamerBasicPointer(Model_TStreamerElement):
         base_names_versions,
         member_names,
         class_flags,
+        count_names,
     ):
         read_member_n.append(f"        if member_index == {i}:")
 
@@ -934,6 +931,7 @@ class Model_TStreamerBasicType(Model_TStreamerElement):
         base_names_versions,
         member_names,
         class_flags,
+        count_names,
     ):
         read_member_n.append(f"        if member_index == {i}:")
         if self.typename == "Double32_t":
@@ -992,7 +990,7 @@ class Model_TStreamerBasicType(Model_TStreamerElement):
                             "            forth_obj.add_node(nested_forth_stash)",
                         ]
                     )
-                    if fields[-1][0] in COUNT_NAMES:
+                    if fields[-1][0] in count_names:
                         read_members.extend(
                             [
                                 f'            nested_forth_stash.init_code.append(f"variable var_{_sanitize_string(fields[-1][0])}\\n")',
@@ -1010,14 +1008,14 @@ class Model_TStreamerBasicType(Model_TStreamerElement):
                 else:
                     # AwkwardForth testing E: test_0637's 01,02,05,08,09,11,12,13,15,16,29,35,39,45,46,47,49,50,56
                     read_members.append("        if forth_obj is not None:")
-                    for i in range(len(formats[-1])):
+                    for j in range(len(formats[-1])):
                         read_members.extend(
                             [
                                 "           key = key_number ; key_number += 1",
                                 '           form_key = f"node{key}-data"',
-                                f'           nested_forth_stash = af.Node(f"node{{key}}", field_name={fields[-1][i]!r}, form_details={{ "class": "NumpyArray", "primitive": "{af.struct_to_dtype_name[formats[-1][i]]}", "inner_shape": [], "parameters": {{}}, "form_key": f"node{{key}}"}})',
-                                f'           nested_forth_stash.header_code.append(f"output {{form_key}} {af.struct_to_dtype_name[formats[-1][i]]}\\n")',
-                                f'           nested_forth_stash.pre_code.append(f"stream !{formats[-1][i]}-> {{form_key}}\\n")',
+                                f'           nested_forth_stash = af.Node(f"node{{key}}", field_name={fields[-1][j]!r}, form_details={{ "class": "NumpyArray", "primitive": "{af.struct_to_dtype_name[formats[-1][j]]}", "inner_shape": [], "parameters": {{}}, "form_key": f"node{{key}}"}})',
+                                f'           nested_forth_stash.header_code.append(f"output {{form_key}} {af.struct_to_dtype_name[formats[-1][j]]}\\n")',
+                                f'           nested_forth_stash.pre_code.append(f"stream !{formats[-1][j]}-> {{form_key}}\\n")',
                                 "           forth_obj.add_node(nested_forth_stash)",
                             ]
                         )
@@ -1051,13 +1049,13 @@ class Model_TStreamerBasicType(Model_TStreamerElement):
                 ]
             )
 
-            dtypes.append(_ftype_to_dtype(self.fType))
-
             read_member_n.extend(
                 [
                     f"            self._members[{self.name!r}] = cursor.array(chunk, {self.array_length}, self._dtype{len(dtypes)}, context)",
                 ]
             )
+
+            dtypes.append(_ftype_to_dtype(self.fType))
 
         if self.array_length == 0 and self.typename not in ("Double32_t", "Float16_t"):
             strided_interpretation.append(
@@ -1208,6 +1206,7 @@ class Model_TStreamerLoop(Model_TStreamerElement):
         base_names_versions,
         member_names,
         class_flags,
+        count_names,
     ):
         # untested as of PR #629
         read_members.extend(
@@ -1311,6 +1310,7 @@ class Model_TStreamerSTL(Model_TStreamerElement):
         base_names_versions,
         member_names,
         class_flags,
+        count_names,
     ):
         read_member_n.append(f"        if member_index == {i}:")
 
@@ -1432,6 +1432,7 @@ class TStreamerPointerTypes:
         base_names_versions,
         member_names,
         class_flags,
+        count_names,
     ):
         read_member_n.append(f"        if member_index == {i}:")
 
@@ -1580,6 +1581,7 @@ class TStreamerObjectTypes:
         base_names_versions,
         member_names,
         class_flags,
+        count_names,
     ):
         read_member_n.append(f"        if member_index == {i}:")
 

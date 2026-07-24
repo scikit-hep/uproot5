@@ -10,6 +10,7 @@ import re
 
 import fsspec
 import fsspec.asyn
+import fsspec.implementations.cached
 
 import uproot
 import uproot.source.chunk
@@ -174,20 +175,24 @@ class FSSpecSource(uproot.source.chunk.Source):
             paths = [self._file_path] * len(request_ranges)
             starts = [start for start, _ in request_ranges]
             ends = [stop for _, stop in request_ranges]
-            # _cat_ranges is async while cat_ranges is not.
-            coroutine = (
-                self._fs._cat_ranges(paths=paths, starts=starts, ends=ends)
-                if self._async_impl and not self._fs._cached
-                else async_wrapper_thread(
-                    self._fs.cat_ranges, paths=paths, starts=starts, ends=ends
-                )
-            )
             if uproot._util.wasm:
                 # Threads can't be spawned in pyodide yet, so we run the function directly
                 # and return a future that is already resolved.
                 return uproot.source.futures.TrivialFuture(
                     self._fs.cat_ranges(paths=paths, starts=starts, ends=ends)
                 )
+            # _cat_ranges is async while cat_ranges is not. Avoid the native
+            # async path for caching filesystems, whose _cat_ranges is not async.
+            is_caching = isinstance(
+                self._fs, fsspec.implementations.cached.CachingFileSystem
+            )
+            coroutine = (
+                self._fs._cat_ranges(paths=paths, starts=starts, ends=ends)
+                if self._async_impl and not is_caching
+                else async_wrapper_thread(
+                    self._fs.cat_ranges, paths=paths, starts=starts, ends=ends
+                )
+            )
             return self._executor.submit(coroutine)
 
         return coalesce_requests(

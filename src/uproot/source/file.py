@@ -124,6 +124,9 @@ class MemmapSource(uproot.source.chunk.Source):
     def __getstate__(self):
         state = dict(self.__dict__)
         state.pop("_file")
+        # _open() recreates the fallback; keeping it here would leak its
+        # worker threads (revived by __setstate__) when _open() overwrites it.
+        state.pop("_fallback", None)
         return state
 
     def __setstate__(self, state):
@@ -156,7 +159,7 @@ class MemmapSource(uproot.source.chunk.Source):
             return self._fallback.chunk(start, stop)
 
     def chunks(
-        self, ranges: list[(int, int)], notifications: queue.Queue
+        self, ranges: list[tuple[int, int]], notifications: queue.Queue
     ) -> list[uproot.source.chunk.Chunk]:
         if self._fallback is None:
             if self.closed:

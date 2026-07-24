@@ -349,6 +349,15 @@ class AsStrings(uproot.interpretation.Interpretation):
                 assert isinstance(library, uproot.interpretation.library.Awkward)
                 awkward = library.imported
                 output = awkward.concatenate(trimmed, mergebool=False, highlevel=False)
+            else:
+                # Mixed StringArray/awkward baskets: concatenate after promoting
+                # to awkward so ``output`` is always bound.
+                awkward = uproot.extras.awkward()
+                output = awkward.concatenate(
+                    [awkward.to_layout(x) for x in trimmed],
+                    mergebool=False,
+                    highlevel=False,
+                )
 
             self.hook_before_library_finalize(
                 basket_arrays=basket_arrays,
@@ -423,7 +432,7 @@ class AsStrings(uproot.interpretation.Interpretation):
                         before += off[local_stop] - off[local_start]
                         contents.append(cnt[off[local_start] : off[local_stop]])
 
-                    elif start <= entry_stop <= stop:
+                    elif start < entry_stop <= stop:
                         local_start = 0
                         local_stop = entry_stop - start
                         off, cnt = (
@@ -438,7 +447,7 @@ class AsStrings(uproot.interpretation.Interpretation):
                         before += off[local_stop] - off[local_start]
                         contents.append(cnt[off[local_start] : off[local_stop]])
 
-                    elif entry_start < stop and start <= entry_stop:
+                    elif entry_start < stop and start < entry_stop:
                         off, cnt = (
                             basket_offsets[basket_num],
                             basket_content[basket_num],

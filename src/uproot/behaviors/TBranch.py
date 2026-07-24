@@ -126,6 +126,8 @@ def iterate(
             ``list``, and ``dict``. Note that the container *type itself*
             must be passed as ``how``, not an instance of that type (i.e.
             ``how=tuple``, not ``how=()``).
+            For ``library="ak"``, passing ``how="zip"`` applies ``ak.zip`` to
+            interleave data from compatible branches.
         report (bool): If True, this generator yields
             (arrays, :doc:`uproot.behaviors.TBranch.Report`) pairs; if False,
             it only yields arrays. The report has data about the ``TFile``,
@@ -330,6 +332,8 @@ def concatenate(
             ``list``, and ``dict``. Note that the container *type itself*
             must be passed as ``how``, not an instance of that type (i.e.
             ``how=tuple``, not ``how=()``).
+            For ``library="ak"``, passing ``how="zip"`` applies ``ak.zip`` to
+            interleave data from compatible branches.
         custom_classes (None or dict): If a dict, override the classes from
             the :doc:`uproot.reading.ReadOnlyFile` or ``uproot.classes``.
         allow_missing (bool): If True, skip over any files that do not contain
@@ -462,6 +466,7 @@ def concatenate(
                 arrays = library.global_index(arrays, global_start)
             except uproot.exceptions.KeyInFileError:
                 if allow_missing:
+                    global_start = global_stop
                     continue
                 else:
                     raise
@@ -840,6 +845,8 @@ class HasBranches(Mapping):
                 ``list``, and ``dict``. Note that the container *type itself*
                 must be passed as ``how``, not an instance of that type (i.e.
                 ``how=tuple``, not ``how=()``).
+                For ``library="ak"``, passing ``how="zip"`` applies ``ak.zip``
+                to interleave data from compatible branches.
             virtual (bool): If True, return virtual arrays that compute their
                 data on demand; if False, return fully realized arrays.
             access_log (None or object with a ``__iadd__`` method): If an access_log is
@@ -1196,6 +1203,8 @@ class HasBranches(Mapping):
                 ``list``, and ``dict``. Note that the container *type itself*
                 must be passed as ``how``, not an instance of that type (i.e.
                 ``how=tuple``, not ``how=()``).
+                For ``library="ak"``, passing ``how="zip"`` applies ``ak.zip``
+                to interleave data from compatible branches.
 
         Returns a group of arrays from the ``TTree``.
 
@@ -1420,6 +1429,8 @@ class HasBranches(Mapping):
                 ``list``, and ``dict``. Note that the container *type itself*
                 must be passed as ``how``, not an instance of that type (i.e.
                 ``how=tuple``, not ``how=()``).
+                For ``library="ak"``, passing ``how="zip"`` applies ``ak.zip``
+                to interleave data from compatible branches.
             report (bool): If True, this generator yields
                 (arrays, :doc:`uproot.behaviors.TBranch.Report`) pairs; if False,
                 it only yields arrays. The report has data about the ``TFile``,
@@ -2877,7 +2888,9 @@ in file {self._file.file_path}"""
         out = []
         start = entry_offsets[0]
         for basket_num, stop in enumerate(entry_offsets[1:]):
-            if entry_start < stop and start <= entry_stop:
+            if entry_start < stop and (
+                start < entry_stop or entry_start == entry_stop == start
+            ):
                 if 0 <= basket_num < self._num_normal_baskets:
                     byte_start = self.member("fBasketSeek")[basket_num]
                     byte_stop = byte_start + self.basket_compressed_bytes(basket_num)
@@ -3651,8 +3664,8 @@ def _ranges_or_baskets_to_arrays(
             original_index = range_original_index[(chunk.start, chunk.stop)]
             if update_ranges_or_baskets:
                 replace(ranges_or_baskets, original_index, basket)
-        except Exception:
-            notifications.put(sys.exc_info())
+        except Exception as err:
+            notifications.put(err)
         else:
             notifications.put(basket)
 
@@ -3706,8 +3719,8 @@ def _ranges_or_baskets_to_arrays(
                     # no longer needed, save memory
                     basket_arrays.clear()
 
-        except Exception:
-            notifications.put(sys.exc_info())
+        except Exception as err:
+            notifications.put(err)
         else:
             notifications.put(None)
 
@@ -3731,11 +3744,8 @@ def _ranges_or_baskets_to_arrays(
         elif obj is None:
             pass
 
-        elif isinstance(obj, tuple) and len(obj) == 3:
-            uproot.source.futures.delayed_raise(*obj)
-
         else:
-            raise AssertionError(obj)
+            raise obj
 
         obj = None  # release before blocking
 
@@ -3780,7 +3790,9 @@ def _hasbranches_num_entries_for(
             entry_offsets = branch.entry_offsets
             start = entry_offsets[0]
             for basket_num, stop in enumerate(entry_offsets[1:]):
-                if entry_start < stop and start <= entry_stop:
+                if entry_start < stop and (
+                    start < entry_stop or entry_start == entry_stop == start
+                ):
                     total_bytes += branch.basket_uncompressed_bytes(basket_num)
                 start = stop
 
