@@ -1599,6 +1599,204 @@ in file {source.file_path} in directory {source.path}"""
                 old_key.data_uncompressed_bytes,
             )
 
+    def add_branches(self, source, branches):
+        """
+        Args:
+            source (str): Name of existing TTree to add branches to.
+            branches (dict of str -> array): Names and data of new branches.
+
+        Adds new branches to an existing TTree in-place. Only the new branch
+        data and an updated TTree header are written; existing data is never
+        touched. Works with both simple TBranch and TBranchElement files.
+
+        .. code-block:: python
+
+            with uproot.update("file.root") as f:
+                f.add_branches("tree", {"new_branch": np.ones(100, dtype=np.float32)})
+        """
+        import struct
+        import uproot.compression
+
+        if self._file.sink.closed:
+            raise ValueError("cannot modify a TTree in a closed file")
+
+        # open existing tree in read mode
+        existing_file = uproot.open(self.file_path, minimal_ttree_metadata=False)
+        try:
+            old_ttree = existing_file[source]
+        except Exception:
+            raise ValueError(f"TTree {source!r} not found in file {self.file_path}") from None
+        if not isinstance(old_ttree, uproot.TTree):
+            raise TypeError("'source' must be the name of a TTree")
+
+        # get tree key info
+        tree_key = existing_file.key(source + ";1")
+        key_seek = tree_key.fSeekKey
+        key_len = tree_key.fKeylen
+        compression = existing_file._file.compression
+        file_end = existing_file._file.fEND
+
+        # get directory key info
+        with uproot.update(self.file_path) as tmp:
+            dir_key = tmp._cascading.data.get_key(source, 1)
+            dir_key_location = dir_key.location
+            dir_key_big = dir_key.big
+
+        # get decompressed blob
+        chunk, cursor = tree_key.get_uncompressed_chunk_cursor()
+        orig_raw = bytearray(chunk.raw_data.tobytes())
+        num_branches = len(old_ttree.branches)
+        last_branch = list(old_ttree.branches)[-1]
+        c = last_branch.cursor.copy()
+        c.skip_after(last_branch)
+        insertion_point = c.index
+        existing_file.close()
+
+        # find fBranches TObjArray bcnt
+        tobjarray_bcnt_pos = None
+        for i in range(190, 220):
+            val = struct.unpack(">I", orig_raw[i : i + 4])[0]
+            if val & 0x40000000 and (val & ~0x40000000) > 100:
+                tobjarray_bcnt_pos = i
+                old_tobjarray_bcnt = val & ~0x40000000
+                break
+        if tobjarray_bcnt_pos is None:
+            raise RuntimeError("Could not find fBranches TObjArray byte count header")
+
+        # build new blob inserting all new branches
+        new_blob = bytearray(orig_raw)
+        extra_bytes = 0
+
+        for branch_name, branch_data in branches.items():
+            import numpy
+
+            branch_data = numpy.asarray(branch_data)
+            dtype = branch_data.dtype
+
+            # create minimal tree to get branch bytes
+            import tempfile, os
+            with tempfile.NamedTemporaryFile(suffix=".root", delete=False) as tmp_f:
+                tmp_path = tmp_f.name
+            try:
+                with uproot.recreate(tmp_path) as tmp_file:
+                    tmp_file.mktree("tree", {branch_name: dtype})
+                    tmp_file["tree"].extend({branch_name: branch_data})
+
+                with uproot.open(tmp_path) as tmp_open:
+                    tmp_branch = tmp_open["tree"].branches[0]
+                    basket_seek_val = tmp_branch.member("fBasketSeek")[0]
+                    basket_bytes_size = tmp_branch.member("fBasketBytes")[0]
+                    tmp_key = tmp_open.key("tree;1")
+                    tmp_chunk, tmp_cursor = tmp_key.get_uncompressed_chunk_cursor()
+                    tmp_raw = bytearray(tmp_chunk.raw_data.tobytes())
+                    tmp_fsize_pos = tmp_raw.find(struct.pack(">i", 1))
+                    tmp_c = tmp_branch.cursor.copy()
+                    tmp_c.skip_after(tmp_branch)
+                    tbranch_pos = tmp_raw.find(b"TBranch", tmp_fsize_pos)
+                    elem_start = tbranch_pos - 8
+                    new_branch_bytes = bytearray(tmp_raw[elem_start : tmp_c.index])
+
+                    # find fBasketSeek offset (8-byte)
+                    target8 = struct.pack(">q", basket_seek_val)
+                    idx8 = tmp_raw.find(target8, elem_start)
+                    basket_seek_offset_8 = idx8 - elem_start
+
+                    # find tleaf offset
+                    tleaf_fsize = tmp_raw.find(struct.pack(">i", 1), tmp_c.index)
+                    tleaf_refs_start = tleaf_fsize + 8
+                    tleaf_ref = struct.unpack(">I", tmp_raw[tleaf_refs_start : tleaf_refs_start + 4])[0]
+                    tleaf_offset = tleaf_ref - elem_start
+
+                    with open(tmp_path, "rb") as bf:
+                        bf.seek(basket_seek_val)
+                        basket_data_bytes = bytearray(bf.read(basket_bytes_size))
+            finally:
+                os.unlink(tmp_path)
+
+            # write basket at file_end, key after basket
+            new_basket_seek = file_end
+            new_key_seek = file_end + basket_bytes_size
+
+            # update basket key header (8-byte fSeekKey)
+            struct.pack_into(">q", basket_data_bytes, 18, new_basket_seek)
+
+            # insert new branch bytes at insertion point
+            new_blob = (
+                new_blob[: insertion_point + extra_bytes]
+                + new_branch_bytes
+                + new_blob[insertion_point + extra_bytes :]
+            )
+
+            # patch fBasketSeek in blob
+            basket_seek_pos = insertion_point + extra_bytes + basket_seek_offset_8
+            struct.pack_into(">q", new_blob, basket_seek_pos, new_basket_seek)
+
+            # patch tLeaf fSize
+            tleaf_fsize_pos = new_blob.find(
+                struct.pack(">i", num_branches), insertion_point + extra_bytes
+            )
+            struct.pack_into(">i", new_blob, tleaf_fsize_pos, num_branches + 1)
+
+            # append tleaf ref
+            tleaf_refs_start_p = tleaf_fsize_pos + 8
+            tleaf_refs_end = tleaf_refs_start_p + num_branches * 4
+            new_tleaf_ref = struct.pack(">I", insertion_point + extra_bytes + tleaf_offset)
+            new_blob = new_blob[:tleaf_refs_end] + bytearray(new_tleaf_ref) + new_blob[tleaf_refs_end:]
+
+            # patch tLeaf TObjArray bcnt
+            tleaf_tobjarray_bcnt_pos = insertion_point + extra_bytes + len(new_branch_bytes)
+            old_tleaf_bcnt = struct.unpack(">I", new_blob[tleaf_tobjarray_bcnt_pos : tleaf_tobjarray_bcnt_pos + 4])[0] & ~0x40000000
+            struct.pack_into(">I", new_blob, tleaf_tobjarray_bcnt_pos, (old_tleaf_bcnt + 4) | 0x40000000)
+
+            extra_bytes += len(new_branch_bytes) + 4  # +4 for tleaf ref
+
+            # write basket and update file_end for next branch
+            self._file.sink.write(new_basket_seek, bytes(basket_data_bytes))
+            file_end = new_key_seek
+
+        # patch TTree bcnt
+        total_added = extra_bytes
+        old_bcnt = struct.unpack(">I", new_blob[:4])[0] & ~0x40000000
+        struct.pack_into(">I", new_blob, 0, (old_bcnt + total_added) | 0x40000000)
+
+        # patch fBranches TObjArray bcnt
+        struct.pack_into(">I", new_blob, tobjarray_bcnt_pos, (old_tobjarray_bcnt + total_added - len(branches) * 4) | 0x40000000)
+
+        # patch fBranches fSize
+        fbranches_fsize_pos = new_blob.find(struct.pack(">i", num_branches))
+        struct.pack_into(">i", new_blob, fbranches_fsize_pos, num_branches + len(branches))
+
+        # compress and write new key
+        compressed = uproot.compression.compress(bytes(new_blob), compression)
+        new_nbytes = key_len + len(compressed)
+        new_objlen = len(new_blob)
+
+        # copy original key header and update
+        self._file.sink.set_file_length(new_key_seek + new_nbytes)
+        raw_key = bytearray(self._file.sink.read(key_seek, key_len))
+        struct.pack_into(">i", raw_key, 0, new_nbytes)
+        struct.pack_into(">i", raw_key, 6, new_objlen)
+        if dir_key_big:
+            struct.pack_into(">q", raw_key, 18, new_key_seek)
+        else:
+            struct.pack_into(">i", raw_key, 18, new_key_seek)
+        self._file.sink.write(new_key_seek, bytes(raw_key) + compressed)
+
+        # update directory entry
+        raw_dir = bytearray(self._file.sink.read(dir_key_location, 26))
+        struct.pack_into(">i", raw_dir, 0, new_nbytes)
+        struct.pack_into(">i", raw_dir, 6, new_objlen)
+        if dir_key_big:
+            struct.pack_into(">q", raw_dir, 18, new_key_seek)
+        else:
+            struct.pack_into(">i", raw_dir, 18, new_key_seek)
+        self._file.sink.write(dir_key_location, bytes(raw_dir))
+
+        # update fEND in file header
+        new_file_end = new_key_seek + new_nbytes
+        self._file.sink.write(12, struct.pack(">i", new_file_end))
+        self._file.sink.flush()
+
     def update(self, pairs=None, **more_pairs):
         """
         Args:
