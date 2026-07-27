@@ -1927,7 +1927,7 @@ class WritableTree:
         self._file.sink.write(12, struct.pack(">i", new_file_end))
         self._file.sink.flush()
 
-    def _extend_inplace(self, data):
+    def _extend_inplace(self, data, *, accept_new_fields=False):
         """
         Args:
             data (dict of str -> array): Names and new data arrays for existing branches.
@@ -1976,7 +1976,7 @@ class WritableTree:
         # find TTree fEntries position in blob
         fentries_pos = orig_raw.find(struct.pack(">q", fEntries))
 
-        # validate all branches exist and have same length
+        # validate lengths and separate new vs existing branches
         n_new = None
         for bname, bdata in data.items():
             bdata = numpy.asarray(bdata)
@@ -1986,6 +1986,21 @@ class WritableTree:
                 raise ValueError(
                     f"all arrays must have the same length, but {bname!r} has {len(bdata)} entries"
                 )
+
+        # handle new fields
+        existing_branch_names = [b.name for b in old_ttree.branches]
+        new_fields = {k: v for k, v in data.items() if k not in existing_branch_names}
+        if new_fields:
+            if not accept_new_fields:
+                raise ValueError(
+                    f"new branches {list(new_fields.keys())} not in TTree; "
+                    f"use accept_new_fields=True to add them automatically"
+                )
+            # back-fill new branches with zeros for existing entries
+            zeros = {k: numpy.zeros(fEntries, dtype=numpy.asarray(v).dtype) for k, v in new_fields.items()}
+            self.add_branches(zeros)
+            # now extend all fields (existing + new) using fresh call
+            return self._extend_inplace(data, accept_new_fields=False)
 
         new_blob = bytearray(orig_raw)
         current_file_end = file_end
@@ -2252,10 +2267,12 @@ class WritableTree:
         """
         return self._cascading.num_baskets
 
-    def extend(self, data):
+    def extend(self, data, *, accept_new_fields=False):
         """
         Args:
             data (dict of str \u2192 arrays): More array data to add to the TTree.
+            accept_new_fields (bool): If True, new fields in data are automatically added
+                with zeros back-filled for existing entries before extending.
 
         This method adds data to an existing TTree, whether it was created through
         assignment or :doc:`uproot.writing.writable.WritableDirectory.mktree`.
@@ -2280,7 +2297,7 @@ class WritableTree:
             **As a word of warning,** be sure that each call to :ref:`uproot.writing.writable.WritableTree.extend` includes at least 100 kB per branch/array. (NumPy and Awkward Arrays have an `nbytes <https://numpy.org/doc/stable/reference/generated/numpy.ndarray.nbytes.html>`__ property; you want at least ``100000`` per array.) If you ask Uproot to write very small TBaskets, it will spend more time working on TBasket overhead than actually writing data. The absolute worst case is one-entry-per-:ref:`uproot.writing.writable.WritableTree.extend`. See `#428 (comment) <https://github.com/scikit-hep/uproot5/pull/428#issuecomment-908703486>`__.
         """
         if self._cascading is None:
-            return self._extend_inplace(data)
+            return self._extend_inplace(data, accept_new_fields=accept_new_fields)
         self._cascading.extend(self._file, self._file.sink, data)
 
     def show(

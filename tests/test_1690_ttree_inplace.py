@@ -258,3 +258,32 @@ def test_add_branch_nonexistent_tree(tmp_path):
             f["nonexistent"].add_branches(
                 {"new_branch": np.ones(100, dtype=np.float32)}
             )
+
+
+def test_extend_accept_new_fields(tmp_path):
+    with uproot.recreate(os.path.join(tmp_path, "test.root")) as f:
+        f.mktree("tree", {"x": np.float32})
+        f["tree"].extend({"x": np.ones(100, dtype=np.float32)})
+
+    with uproot.update(os.path.join(tmp_path, "test.root")) as f:
+        f["tree"].extend(
+            {"x": np.ones(50, dtype=np.float32) * 2, "new_branch": np.ones(50, dtype=np.float32) * 99},
+            accept_new_fields=True,
+        )
+
+    with uproot.open(os.path.join(tmp_path, "test.root")) as f:
+        assert f["tree"].member("fEntries") == 150
+        assert "new_branch" in [b.name for b in f["tree"].branches]
+        assert np.all(f["tree"]["new_branch"].array()[:100] == 0.0)
+        assert np.all(f["tree"]["new_branch"].array()[100:] == 99.0)
+        assert np.all(f["tree"]["x"].array()[100:] == 2.0)
+
+
+def test_extend_new_fields_error_without_flag(tmp_path):
+    with uproot.recreate(os.path.join(tmp_path, "test.root")) as f:
+        f.mktree("tree", {"x": np.float32})
+        f["tree"].extend({"x": np.ones(100, dtype=np.float32)})
+
+    with uproot.update(os.path.join(tmp_path, "test.root")) as f:
+        with pytest.raises(ValueError, match="accept_new_fields"):
+            f["tree"].extend({"x": np.ones(50, dtype=np.float32), "new_branch": np.ones(50, dtype=np.float32)})
