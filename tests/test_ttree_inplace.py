@@ -123,6 +123,7 @@ def test_add_branch_tbranchelement_root_readable(tmp_path):
     f = ROOT.TFile.Open(str(os.path.join(tmp_path, "HZZ.root")), "READ")
     tree = f.Get("events")
     assert tree.GetNbranches() == 23
-    branch = tree.GetBranch("new_branch")
-    assert branch.GetBasketSeek(0) > 0
+    tree.SetCacheSize(0)
+    tree.GetEntry(0)
+    assert tree.new_branch == pytest.approx(1.0)
     f.Close()
