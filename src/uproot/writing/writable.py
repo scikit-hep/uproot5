@@ -1915,6 +1915,165 @@ class WritableTree:
         self._file.sink.write(12, struct.pack(">i", new_file_end))
         self._file.sink.flush()
 
+    def _extend_inplace(self, data):
+        """
+        Args:
+            data (dict of str -> array): Names and new data arrays for existing branches.
+
+        Extends an existing TTree in-place by appending new entries to each branch.
+        Only new basket data and an updated TTree header are written; existing data
+        is never touched. Works with both simple TBranch and TBranchElement files.
+
+        .. code-block:: python
+
+            with uproot.update("file.root") as f:
+                f["tree"].extend({"x": np.ones(100, dtype=np.float32),
+                                  "y": np.zeros(100, dtype=np.int32)})
+        """
+        import os
+        import struct
+        import tempfile
+
+        import numpy
+
+        import uproot.compression
+
+        if self._file.sink.closed:
+            raise ValueError("cannot modify a TTree in a closed file")
+
+        source = self._path[-1]
+        file_path = self._file.file_path
+
+        existing_file = uproot.open(file_path, minimal_ttree_metadata=False)
+        try:
+            old_ttree = existing_file[source]
+        except Exception:
+            raise ValueError(f"TTree {source!r} not found in file {file_path}") from None
+
+        tree_key = existing_file.key(source + ";1")
+        key_seek = tree_key.fSeekKey
+        key_len = tree_key.fKeylen
+        compression = existing_file._file.compression
+        file_end = existing_file._file.fEND
+
+        with uproot.update(file_path) as tmp:
+            dir_key = tmp._cascading.data.get_key(source, 1)
+            dir_key_location = dir_key.location
+            dir_key_big = dir_key.big
+
+        chunk, cursor = tree_key.get_uncompressed_chunk_cursor()
+        orig_raw = bytearray(chunk.raw_data.tobytes())
+        fEntries = old_ttree.member("fEntries")
+        fMaxBaskets = list(old_ttree.branches)[0].member("fMaxBaskets")
+        existing_file.close()
+
+        # find TTree fEntries position in blob
+        fentries_pos = orig_raw.find(struct.pack(">q", fEntries))
+
+        # validate all branches exist and have same length
+        n_new = None
+        for bname, bdata in data.items():
+            bdata = numpy.asarray(bdata)
+            if n_new is None:
+                n_new = len(bdata)
+            elif len(bdata) != n_new:
+                raise ValueError(
+                    f"all arrays must have the same length, but {bname!r} has {len(bdata)} entries"
+                )
+
+        new_blob = bytearray(orig_raw)
+        current_file_end = file_end
+
+        for bname, bdata in data.items():
+            bdata = numpy.asarray(bdata)
+
+            with uproot.open(file_path) as f:
+                branch = f[source][bname]
+                basket_seek_val = branch.member("fBasketSeek")[0]
+                fWriteBasket = branch.member("fWriteBasket")
+
+            # find array positions from fBasketSeek[0]
+            target8 = struct.pack(">q", basket_seek_val)
+            seek_pos = new_blob.find(target8)
+            entry_pos = seek_pos - 1 - fMaxBaskets * 8
+            bytes_pos = entry_pos - 1 - fMaxBaskets * 4
+
+            # find fWriteBasket position
+            wb_pattern = struct.pack(">i", fWriteBasket) + struct.pack(">q", fEntries)
+            wb_pos = new_blob.find(wb_pattern, seek_pos - 500)
+
+            # create new basket from temporary file
+            with tempfile.NamedTemporaryFile(suffix=".root", delete=False) as tmp_f:
+                tmp_path = tmp_f.name
+            try:
+                with uproot.recreate(tmp_path) as tmp_file:
+                    tmp_file.mktree("tree", {bname: bdata.dtype})
+                    tmp_file["tree"].extend({bname: bdata})
+                with uproot.open(tmp_path) as tmp_open:
+                    tmp_branch = tmp_open["tree"].branches[0]
+                    new_basket_seek_val = tmp_branch.member("fBasketSeek")[0]
+                    new_basket_bytes = tmp_branch.member("fBasketBytes")[0]
+                    with open(tmp_path, "rb") as bf:
+                        bf.seek(new_basket_seek_val)
+                        basket_bytes_data = bytearray(bf.read(new_basket_bytes))
+            finally:
+                os.unlink(tmp_path)
+
+            new_basket_location = current_file_end
+
+            # update basket key header fSeekKey (8-byte)
+            struct.pack_into(">q", basket_bytes_data, 18, new_basket_location)
+
+            # patch blob
+            struct.pack_into(">i", new_blob, wb_pos, fWriteBasket + 1)                              # fWriteBasket
+            struct.pack_into(">q", new_blob, wb_pos + 4, fEntries + n_new)                          # fEntryNumber
+            struct.pack_into(">i", new_blob, bytes_pos + fWriteBasket * 4, new_basket_bytes)        # fBasketBytes[fWriteBasket]
+            struct.pack_into(">q", new_blob, entry_pos + fWriteBasket * 8, fEntries)                # fBasketEntry[fWriteBasket]
+            struct.pack_into(">q", new_blob, entry_pos + (fWriteBasket + 1) * 8, fEntries + n_new) # fBasketEntry[fWriteBasket+1]
+            struct.pack_into(">q", new_blob, seek_pos + fWriteBasket * 8, new_basket_location)      # fBasketSeek[fWriteBasket]
+
+            # patch branch fEntries (in _tbranch13_format2, after fSplitLevel=0)
+            branch_fentries_pattern = struct.pack(">i", 0) + struct.pack(">q", fEntries)
+            branch_fentries_pos = new_blob.find(branch_fentries_pattern, wb_pos) + 4
+            struct.pack_into(">q", new_blob, branch_fentries_pos, fEntries + n_new)
+
+            # write basket to file
+            self._file.sink.write(new_basket_location, bytes(basket_bytes_data))
+            current_file_end = new_basket_location + new_basket_bytes
+
+        # patch TTree fEntries
+        struct.pack_into(">q", new_blob, fentries_pos, fEntries + n_new)
+
+        # compress and write new key
+        new_key_seek = current_file_end
+        compressed = uproot.compression.compress(bytes(new_blob), compression)
+        new_nbytes = key_len + len(compressed)
+        new_objlen = len(new_blob)
+
+        raw_key = bytearray(self._file.sink.read(key_seek, key_len))
+        struct.pack_into(">i", raw_key, 0, new_nbytes)
+        struct.pack_into(">i", raw_key, 6, new_objlen)
+        if dir_key_big:
+            struct.pack_into(">q", raw_key, 18, new_key_seek)
+        else:
+            struct.pack_into(">i", raw_key, 18, new_key_seek)
+        self._file.sink.write(new_key_seek, bytes(raw_key) + compressed)
+
+        # update directory entry
+        raw_dir = bytearray(self._file.sink.read(dir_key_location, 40))
+        struct.pack_into(">i", raw_dir, 0, new_nbytes)
+        struct.pack_into(">i", raw_dir, 6, new_objlen)
+        if dir_key_big:
+            struct.pack_into(">q", raw_dir, 18, new_key_seek)
+        else:
+            struct.pack_into(">i", raw_dir, 18, new_key_seek)
+        self._file.sink.write(dir_key_location, bytes(raw_dir))
+
+        # update fEND
+        new_file_end = new_key_seek + new_nbytes
+        self._file.sink.write(12, struct.pack(">i", new_file_end))
+        self._file.sink.flush()
+
     def __repr__(self):
         return "<WritableTree {} at 0x{:012x}>".format(
             repr("/" + "/".join(self._path)), id(self)
@@ -2104,6 +2263,8 @@ class WritableTree:
 
             **As a word of warning,** be sure that each call to :ref:`uproot.writing.writable.WritableTree.extend` includes at least 100 kB per branch/array. (NumPy and Awkward Arrays have an `nbytes <https://numpy.org/doc/stable/reference/generated/numpy.ndarray.nbytes.html>`__ property; you want at least ``100000`` per array.) If you ask Uproot to write very small TBaskets, it will spend more time working on TBasket overhead than actually writing data. The absolute worst case is one-entry-per-:ref:`uproot.writing.writable.WritableTree.extend`. See `#428 (comment) <https://github.com/scikit-hep/uproot5/pull/428#issuecomment-908703486>`__.
         """
+        if self._cascading is None:
+            return self._extend_inplace(data)
         self._cascading.extend(self._file, self._file.sink, data)
 
     def show(
