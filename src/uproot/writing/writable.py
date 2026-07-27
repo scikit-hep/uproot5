@@ -1997,7 +1997,10 @@ class WritableTree:
                     f"use accept_new_fields=True to add them automatically"
                 )
             # back-fill new branches with zeros for existing entries
-            zeros = {k: numpy.zeros(fEntries, dtype=numpy.asarray(v).dtype) for k, v in new_fields.items()}
+            zeros = {
+                k: numpy.zeros(fEntries, dtype=numpy.asarray(v).dtype)
+                for k, v in new_fields.items()
+            }
             self.add_branches(zeros)
             # now extend all fields (existing + new) using fresh call
             return self._extend_inplace(data, accept_new_fields=False)

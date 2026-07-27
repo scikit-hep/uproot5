@@ -267,7 +267,10 @@ def test_extend_accept_new_fields(tmp_path):
 
     with uproot.update(os.path.join(tmp_path, "test.root")) as f:
         f["tree"].extend(
-            {"x": np.ones(50, dtype=np.float32) * 2, "new_branch": np.ones(50, dtype=np.float32) * 99},
+            {
+                "x": np.ones(50, dtype=np.float32) * 2,
+                "new_branch": np.ones(50, dtype=np.float32) * 99,
+            },
             accept_new_fields=True,
         )
 
@@ -286,4 +289,9 @@ def test_extend_new_fields_error_without_flag(tmp_path):
 
     with uproot.update(os.path.join(tmp_path, "test.root")) as f:
         with pytest.raises(ValueError, match="accept_new_fields"):
-            f["tree"].extend({"x": np.ones(50, dtype=np.float32), "new_branch": np.ones(50, dtype=np.float32)})
+            f["tree"].extend(
+                {
+                    "x": np.ones(50, dtype=np.float32),
+                    "new_branch": np.ones(50, dtype=np.float32),
+                }
+            )
