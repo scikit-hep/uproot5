@@ -1015,9 +1015,7 @@ class WritableDirectory(MutableMapping):
                 return self._file._get_tree(key.seek_location)
             else:
                 # return a WritableTree wrapper for preexisting trees (update mode)
-                return WritableTree(
-                    self._path + (key.name.string,), self._file, None
-                )
+                return WritableTree(self._path + (key.name.string,), self._file, None)
         elif key.classname.string == "ROOT::RNTuple":
             if self._file._has_ntuple(key.seek_location):
                 return self._file._get_ntuple(key.seek_location)
@@ -1755,7 +1753,9 @@ class WritableTree:
         try:
             old_ttree = existing_file[source]
         except Exception:
-            raise ValueError(f"TTree {source!r} not found in file {file_path}") from None
+            raise ValueError(
+                f"TTree {source!r} not found in file {file_path}"
+            ) from None
         if not isinstance(old_ttree, uproot.TTree):
             raise TypeError("'source' must be the name of a TTree")
 
@@ -1825,7 +1825,9 @@ class WritableTree:
                     basket_seek_offset_8 = idx8 - elem_start
                     tleaf_fsize = tmp_raw.find(struct.pack(">i", 1), tmp_c.index)
                     tleaf_refs_start = tleaf_fsize + 8
-                    tleaf_ref = struct.unpack(">I", tmp_raw[tleaf_refs_start : tleaf_refs_start + 4])[0]
+                    tleaf_ref = struct.unpack(
+                        ">I", tmp_raw[tleaf_refs_start : tleaf_refs_start + 4]
+                    )[0]
                     tleaf_offset = tleaf_ref - elem_start
 
                 with open(tmp_path, "rb") as bf:
@@ -1859,12 +1861,21 @@ class WritableTree:
             tleaf_refs_start_p = tleaf_fsize_pos + 8
             tleaf_refs_end = tleaf_refs_start_p + cur_num_branches * 4
             new_tleaf_ref = struct.pack(">I", insert_at + tleaf_offset)
-            new_blob = new_blob[:tleaf_refs_end] + bytearray(new_tleaf_ref) + new_blob[tleaf_refs_end:]
+            new_blob = (
+                new_blob[:tleaf_refs_end]
+                + bytearray(new_tleaf_ref)
+                + new_blob[tleaf_refs_end:]
+            )
 
             # patch tLeaf TObjArray bcnt
             tleaf_bcnt_pos = insert_at + len(new_branch_bytes)
-            old_tleaf_bcnt = struct.unpack(">I", new_blob[tleaf_bcnt_pos : tleaf_bcnt_pos + 4])[0] & ~0x40000000
-            struct.pack_into(">I", new_blob, tleaf_bcnt_pos, (old_tleaf_bcnt + 4) | 0x40000000)
+            old_tleaf_bcnt = (
+                struct.unpack(">I", new_blob[tleaf_bcnt_pos : tleaf_bcnt_pos + 4])[0]
+                & ~0x40000000
+            )
+            struct.pack_into(
+                ">I", new_blob, tleaf_bcnt_pos, (old_tleaf_bcnt + 4) | 0x40000000
+            )
 
             branch_extra_bytes += len(new_branch_bytes)
             extra_bytes += len(new_branch_bytes) + 4
@@ -1879,11 +1890,17 @@ class WritableTree:
         struct.pack_into(">I", new_blob, 0, (old_bcnt + extra_bytes) | 0x40000000)
 
         # patch fBranches TObjArray bcnt (extra_bytes minus tleaf refs)
-        struct.pack_into(">I", new_blob, tobjarray_bcnt_pos,
-            (old_tobjarray_bcnt + extra_bytes - num_added * 4) | 0x40000000)
+        struct.pack_into(
+            ">I",
+            new_blob,
+            tobjarray_bcnt_pos,
+            (old_tobjarray_bcnt + extra_bytes - num_added * 4) | 0x40000000,
+        )
 
         # patch fBranches fSize
-        fbranches_fsize_pos = new_blob.find(struct.pack(">i", num_branches), tobjarray_bcnt_pos)
+        fbranches_fsize_pos = new_blob.find(
+            struct.pack(">i", num_branches), tobjarray_bcnt_pos
+        )
         struct.pack_into(">i", new_blob, fbranches_fsize_pos, num_branches + num_added)
 
         # compress and write new key
@@ -1948,7 +1965,9 @@ class WritableTree:
         try:
             old_ttree = existing_file[source]
         except Exception:
-            raise ValueError(f"TTree {source!r} not found in file {file_path}") from None
+            raise ValueError(
+                f"TTree {source!r} not found in file {file_path}"
+            ) from None
 
         tree_key = existing_file.key(source + ";1")
         key_seek = tree_key.fSeekKey
@@ -2025,12 +2044,22 @@ class WritableTree:
             struct.pack_into(">q", basket_bytes_data, 18, new_basket_location)
 
             # patch blob
-            struct.pack_into(">i", new_blob, wb_pos, fWriteBasket + 1)                              # fWriteBasket
-            struct.pack_into(">q", new_blob, wb_pos + 4, fEntries + n_new)                          # fEntryNumber
-            struct.pack_into(">i", new_blob, bytes_pos + fWriteBasket * 4, new_basket_bytes)        # fBasketBytes[fWriteBasket]
-            struct.pack_into(">q", new_blob, entry_pos + fWriteBasket * 8, fEntries)                # fBasketEntry[fWriteBasket]
-            struct.pack_into(">q", new_blob, entry_pos + (fWriteBasket + 1) * 8, fEntries + n_new) # fBasketEntry[fWriteBasket+1]
-            struct.pack_into(">q", new_blob, seek_pos + fWriteBasket * 8, new_basket_location)      # fBasketSeek[fWriteBasket]
+            struct.pack_into(">i", new_blob, wb_pos, fWriteBasket + 1)  # fWriteBasket
+            struct.pack_into(
+                ">q", new_blob, wb_pos + 4, fEntries + n_new
+            )  # fEntryNumber
+            struct.pack_into(
+                ">i", new_blob, bytes_pos + fWriteBasket * 4, new_basket_bytes
+            )  # fBasketBytes[fWriteBasket]
+            struct.pack_into(
+                ">q", new_blob, entry_pos + fWriteBasket * 8, fEntries
+            )  # fBasketEntry[fWriteBasket]
+            struct.pack_into(
+                ">q", new_blob, entry_pos + (fWriteBasket + 1) * 8, fEntries + n_new
+            )  # fBasketEntry[fWriteBasket+1]
+            struct.pack_into(
+                ">q", new_blob, seek_pos + fWriteBasket * 8, new_basket_location
+            )  # fBasketSeek[fWriteBasket]
 
             # patch branch fEntries (in _tbranch13_format2, after fSplitLevel=0)
             branch_fentries_pattern = struct.pack(">i", 0) + struct.pack(">q", fEntries)
