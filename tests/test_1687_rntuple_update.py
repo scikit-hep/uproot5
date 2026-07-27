@@ -417,13 +417,22 @@ def test_ntuple_add_subfield_nonexistent_parent(tmp_path):
 
 
 def test_ntuple_add_subfield_typed_parent(tmp_path):
-    # fields with C++ typenames (like those written by ROOT) cannot have subfields added
-    with uproot.recreate(os.path.join(tmp_path, "test.root")) as f:
-        f["mytuple"] = ak.Array([{"pt": 1.0}, {"pt": 2.0}])
+    # structs written by ROOT have C++ typenames and cannot have subfields added
+    src = skhep_testdata.data_path("test_nested_structs_rntuple_v1-0-0-0.root")
+    shutil.copy(src, os.path.join(tmp_path, "test.root"))
 
     with uproot.update(os.path.join(tmp_path, "test.root")) as f:
-        with pytest.raises(ValueError):
-            f["mytuple"].add_fields({"pt.x": np.float32})
+        # my_struct has typename TopStruct
+        with pytest.raises(ValueError, match="TopStruct"):
+            f["ntuple"].add_fields({"my_struct.new_field": np.float32})
+
+        # sub_struct has typename SubStruct
+        with pytest.raises(ValueError, match="SubStruct"):
+            f["ntuple"].add_fields({"sub_struct.new_field": np.float32})
+
+        # sub_sub_struct has typename SubSubSruct
+        with pytest.raises(ValueError, match="SubSubSruct"):
+            f["ntuple"].add_fields({"sub_sub_struct.new_field": np.float32})
 
 
 def test_ntuple_add_subfield_to_collection(tmp_path):
