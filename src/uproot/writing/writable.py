@@ -2338,7 +2338,12 @@ class WritableNTuple:
                 )
             elif new_field_names and accept_new_fields:
                 self.add_fields(
-                    {k: numpy.asarray(awkward.flatten(awkward.Array(data[k]), axis=None)).dtype for k in new_field_names}
+                    {
+                        k: numpy.asarray(
+                            awkward.flatten(awkward.Array(data[k]), axis=None)
+                        ).dtype
+                        for k in new_field_names
+                    }
                 )
                 key = self._file.root_directory._cascading.data.get_key(
                     self._path[-1], 1
@@ -2373,8 +2378,8 @@ class WritableNTuple:
         existing_page_list_envelopes = self._cascading._existing_page_list_envelopes
         existing_field_records = self._cascading._existing_field_records
 
-        next_field_id = len(existing_field_records) 
-        
+        next_field_id = len(existing_field_records)
+
         new_pages = {}
 
         existing_field_names = {fr.field_name for fr in existing_field_records}
