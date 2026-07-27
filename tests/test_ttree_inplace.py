@@ -127,3 +127,117 @@ def test_add_branch_tbranchelement_root_readable(tmp_path):
     tree.GetEntry(0)
     assert tree.new_branch == pytest.approx(1.0)
     f.Close()
+
+
+def test_extend_simple(tmp_path):
+    with uproot.recreate(os.path.join(tmp_path, "test.root")) as f:
+        f.mktree("tree", {"x": np.float32, "y": np.int32})
+        f["tree"].extend({"x": np.ones(100, dtype=np.float32), "y": np.zeros(100, dtype=np.int32)})
+
+    with uproot.update(os.path.join(tmp_path, "test.root")) as f:
+        f["tree"].extend({"x": np.ones(50, dtype=np.float32) * 2, "y": np.ones(50, dtype=np.int32) * 3})
+
+    with uproot.open(os.path.join(tmp_path, "test.root")) as f:
+        assert f["tree"].member("fEntries") == 150
+        assert np.all(f["tree"]["x"].array()[:100] == 1.0)
+        assert np.all(f["tree"]["x"].array()[100:] == 2.0)
+        assert np.all(f["tree"]["y"].array()[:100] == 0)
+        assert np.all(f["tree"]["y"].array()[100:] == 3)
+
+
+def test_extend_preserves_existing(tmp_path):
+    with uproot.recreate(os.path.join(tmp_path, "test.root")) as f:
+        f.mktree("tree", {"x": np.float32})
+        f["tree"].extend({"x": np.arange(100, dtype=np.float32)})
+
+    with uproot.update(os.path.join(tmp_path, "test.root")) as f:
+        f["tree"].extend({"x": np.arange(100, dtype=np.float32) + 100})
+
+    with uproot.open(os.path.join(tmp_path, "test.root")) as f:
+        arr = f["tree"]["x"].array()
+        assert len(arr) == 200
+        assert np.all(arr[:100] == np.arange(100, dtype=np.float32))
+        assert np.all(arr[100:] == np.arange(100, dtype=np.float32) + 100)
+
+
+def test_extend_tbranchelement(tmp_path):
+    shutil.copy(
+        data_path("uproot-HZZ-objects.root"),
+        os.path.join(tmp_path, "HZZ.root"),
+    )
+
+    with uproot.update(os.path.join(tmp_path, "HZZ.root")) as f:
+        f["events"].extend({"eventweight": np.ones(100, dtype=np.float32) * 99.0})
+
+    with uproot.open(os.path.join(tmp_path, "HZZ.root")) as f:
+        assert f["events"].member("fEntries") == 2521
+        assert np.all(f["events"]["eventweight"].array()[2421:] == 99.0)
+
+
+@skip_no_root
+def test_extend_root_readable(tmp_path):
+    with uproot.recreate(os.path.join(tmp_path, "test.root")) as f:
+        f.mktree("tree", {"x": np.float32})
+        f["tree"].extend({"x": np.ones(100, dtype=np.float32)})
+
+    with uproot.update(os.path.join(tmp_path, "test.root")) as f:
+        f["tree"].extend({"x": np.ones(50, dtype=np.float32) * 2})
+
+    ROOT.gROOT.ProcessLine("gErrorIgnoreLevel = kError;")
+    f = ROOT.TFile.Open(str(os.path.join(tmp_path, "test.root")), "READ")
+    tree = f.Get("tree")
+    assert tree.GetEntries() == 150
+    tree.SetCacheSize(0)
+    tree.GetEntry(149)
+    assert tree.x == pytest.approx(2.0)
+    f.Close()
+
+
+@skip_no_root
+def test_extend_tbranchelement_root_readable(tmp_path):
+    shutil.copy(
+        data_path("uproot-HZZ-objects.root"),
+        os.path.join(tmp_path, "HZZ.root"),
+    )
+
+    with uproot.update(os.path.join(tmp_path, "HZZ.root")) as f:
+        f["events"].extend({"eventweight": np.ones(100, dtype=np.float32) * 99.0})
+
+    ROOT.gROOT.ProcessLine("gErrorIgnoreLevel = kError;")
+    f = ROOT.TFile.Open(str(os.path.join(tmp_path, "HZZ.root")), "READ")
+    tree = f.Get("events")
+    assert tree.GetEntries() == 2521
+    tree.SetCacheSize(0)
+    tree.GetEntry(2520)
+    assert tree.eventweight == pytest.approx(99.0)
+    f.Close()
+
+
+def test_extend_nonexistent_branch(tmp_path):
+    with uproot.recreate(os.path.join(tmp_path, "test.root")) as f:
+        f.mktree("tree", {"x": np.float32})
+        f["tree"].extend({"x": np.ones(100, dtype=np.float32)})
+
+    with uproot.update(os.path.join(tmp_path, "test.root")) as f:
+        with pytest.raises(Exception):
+            f["tree"].extend({"nonexistent": np.ones(100, dtype=np.float32)})
+
+
+def test_extend_mismatched_lengths(tmp_path):
+    with uproot.recreate(os.path.join(tmp_path, "test.root")) as f:
+        f.mktree("tree", {"x": np.float32, "y": np.int32})
+        f["tree"].extend({"x": np.ones(100, dtype=np.float32), "y": np.zeros(100, dtype=np.int32)})
+
+    with uproot.update(os.path.join(tmp_path, "test.root")) as f:
+        with pytest.raises(ValueError, match="same length"):
+            f["tree"].extend({"x": np.ones(50, dtype=np.float32), "y": np.ones(30, dtype=np.int32)})
+
+
+def test_add_branch_nonexistent_tree(tmp_path):
+    with uproot.recreate(os.path.join(tmp_path, "test.root")) as f:
+        f.mktree("tree", {"x": np.float32})
+        f["tree"].extend({"x": np.ones(100, dtype=np.float32)})
+
+    with uproot.update(os.path.join(tmp_path, "test.root")) as f:
+        with pytest.raises(Exception):
+            f["nonexistent"].add_branches({"new_branch": np.ones(100, dtype=np.float32)})
