@@ -2012,6 +2012,7 @@ class WritableTree:
                 branch = f[source][bname]
                 basket_seek_val = branch.member("fBasketSeek")[0]
                 fWriteBasket = branch.member("fWriteBasket")
+                fEntries_current = f[source].member("fEntries")
 
             # find array positions from fBasketSeek[0]
             target8 = struct.pack(">q", basket_seek_val)
@@ -2019,9 +2020,33 @@ class WritableTree:
             entry_pos = seek_pos - 1 - fMaxBaskets * 8
             bytes_pos = entry_pos - 1 - fMaxBaskets * 4
 
-            # find fWriteBasket position
-            wb_pattern = struct.pack(">i", fWriteBasket) + struct.pack(">q", fEntries)
-            wb_pos = new_blob.find(wb_pattern, seek_pos - 500)
+            # find fWriteBasket using fWriteBasket value read from file
+            # search for pattern: fWriteBasket(4) + fEntryNumber(8) near seek_pos
+            if fWriteBasket >= fMaxBaskets - 1:
+                raise ValueError(
+                    f"branch {bname!r} has reached its maximum basket capacity ({fMaxBaskets}). "
+                    f"Cannot extend further. Consider recreating the TTree with a larger initial_basket_capacity."
+                )
+
+            # read fEntries_current from new_blob (may have been updated in previous iteration)
+            fEntries_in_blob = struct.unpack(">q", new_blob[fentries_pos:fentries_pos+8])[0]
+            wb_pattern = struct.pack(">i", fWriteBasket) + struct.pack(">q", fEntries_in_blob)
+            # search backward from seek_pos to find the LAST occurrence before seek_pos
+            wb_pos = -1
+            search_start = max(0, seek_pos - 1000)
+            idx = search_start
+            while True:
+                idx = new_blob.find(wb_pattern, idx)
+                if idx == -1 or idx >= seek_pos:
+                    break
+                wb_pos = idx
+                idx += 1
+            if wb_pos == -1:
+                raise ValueError(
+                    f"branch {bname!r} has likely reached its maximum basket capacity. "
+                    f"Cannot extend further. Consider recreating the TTree with a larger initial_basket_capacity."
+                )
+            entry_number_pos = wb_pos + 4
 
             # create new basket from temporary file
             with tempfile.NamedTemporaryFile(suffix=".root", delete=False) as tmp_f:
