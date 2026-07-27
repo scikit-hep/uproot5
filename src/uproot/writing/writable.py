@@ -20,8 +20,11 @@ from __future__ import annotations
 
 import datetime
 import itertools
+import os
 import queue
+import struct
 import sys
+import tempfile
 import uuid
 from collections.abc import Mapping, MutableMapping
 from pathlib import Path
@@ -1734,14 +1737,6 @@ class WritableTree:
             with uproot.update("file.root") as f:
                 f["tree"].add_branches({"new_branch": np.ones(100, dtype=np.float32)})
         """
-        import os
-        import struct
-        import tempfile
-
-        import numpy
-
-        import uproot.compression
-
         if self._file.sink.closed:
             raise ValueError("cannot modify a TTree in a closed file")
 
@@ -1947,14 +1942,6 @@ class WritableTree:
                 f["tree"].extend({"x": np.ones(100, dtype=np.float32),
                                   "y": np.zeros(100, dtype=np.int32)})
         """
-        import os
-        import struct
-        import tempfile
-
-        import numpy
-
-        import uproot.compression
-
         if self._file.sink.closed:
             raise ValueError("cannot modify a TTree in a closed file")
 
