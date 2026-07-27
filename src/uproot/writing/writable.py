@@ -2313,7 +2313,10 @@ class WritableNTuple:
         .. code-block:: python
 
             with uproot.update("file.root") as f:
-                f["mytuple"].extend({"x": np.array([4, 5, 6])})
+                f["mytuple"].extend({
+                    "x": np.array([4, 5, 6]),
+                    "y": np.array([40, 50, 60]),
+                })
 
             # automatically add new field and extend
             with uproot.update("file.root") as f:
@@ -2365,7 +2368,7 @@ class WritableNTuple:
         .. code-block:: python
 
             with uproot.update("file.root") as f:
-                f["mytuple"].add_fields({"z": np.int32})
+                f["mytuple"].add_fields({"z": np.int32, "w": np.float32})
         """
 
         import uproot.writing._cascadentuple as cnt
