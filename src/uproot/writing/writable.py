@@ -1772,8 +1772,15 @@ class WritableTree:
         c = last_branch.cursor.copy()
         c.skip_after(last_branch)
         insertion_point = c.index
+        tree_entries = old_ttree.member("fEntries")
         existing_file.close()
-
+        # validate all new branches have same length as existing tree
+        for bname, bdata in branches.items():
+            if len(numpy.asarray(bdata)) != tree_entries:
+                raise ValueError(
+                    f"branch {bname!r} has {len(numpy.asarray(bdata))} entries but TTree has "
+                    f"{tree_entries} entries; all new branches must match the tree length"
+                )
         # find fBranches TObjArray bcnt
         tobjarray_bcnt_pos = None
         # TObjArray bcnt: 4-byte value with 0x40000000 (kByteCountMask) bit set,

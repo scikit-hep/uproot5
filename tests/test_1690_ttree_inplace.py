@@ -295,3 +295,13 @@ def test_extend_new_fields_error_without_flag(tmp_path):
                     "new_branch": np.ones(50, dtype=np.float32),
                 }
             )
+
+
+def test_add_branch_wrong_length(tmp_path):
+    with uproot.recreate(os.path.join(tmp_path, "test.root")) as f:
+        f.mktree("tree", {"x": np.float32})
+        f["tree"].extend({"x": np.ones(100, dtype=np.float32)})
+
+    with uproot.update(os.path.join(tmp_path, "test.root")) as f:
+        with pytest.raises(ValueError, match="entries"):
+            f["tree"].add_branches({"new_branch": np.ones(50, dtype=np.float32)})
