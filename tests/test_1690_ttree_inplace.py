@@ -9,6 +9,7 @@ from skhep_testdata import data_path
 
 try:
     import ROOT
+
     has_root = True
 except ImportError:
     has_root = False
@@ -17,6 +18,7 @@ skip_no_root = pytest.mark.skipif(not has_root, reason="ROOT is not installed")
 
 
 # ── add_branches tests ────────────────────────────────────────────────────────
+
 
 def test_add_branch_simple(tmp_path):
     with uproot.recreate(os.path.join(tmp_path, "test.root")) as f:
@@ -38,10 +40,12 @@ def test_add_branch_multiple_branches(tmp_path):
         f["tree"].extend({"x": np.ones(100, dtype=np.float32)})
 
     with uproot.update(os.path.join(tmp_path, "test.root")) as f:
-        f["tree"].add_branches({
-            "branch_a": np.ones(100, dtype=np.float32),
-            "branch_b": np.zeros(100, dtype=np.int32),
-        })
+        f["tree"].add_branches(
+            {
+                "branch_a": np.ones(100, dtype=np.float32),
+                "branch_b": np.zeros(100, dtype=np.int32),
+            }
+        )
 
     with uproot.open(os.path.join(tmp_path, "test.root")) as f:
         assert len(f["tree"].branches) == 3
@@ -64,10 +68,12 @@ def test_add_branch_int32(tmp_path):
 def test_add_branch_preserves_existing(tmp_path):
     with uproot.recreate(os.path.join(tmp_path, "test.root")) as f:
         f.mktree("tree", {"x": np.float32, "y": np.int32})
-        f["tree"].extend({
-            "x": np.arange(100, dtype=np.float32),
-            "y": np.arange(100, dtype=np.int32),
-        })
+        f["tree"].extend(
+            {
+                "x": np.arange(100, dtype=np.float32),
+                "y": np.arange(100, dtype=np.int32),
+            }
+        )
 
     with uproot.update(os.path.join(tmp_path, "test.root")) as f:
         f["tree"].add_branches({"new_branch": np.ones(100, dtype=np.float32)})
@@ -79,7 +85,9 @@ def test_add_branch_preserves_existing(tmp_path):
 
 
 def test_add_branch_tbranchelement(tmp_path):
-    shutil.copy(data_path("uproot-HZZ-objects.root"), os.path.join(tmp_path, "HZZ.root"))
+    shutil.copy(
+        data_path("uproot-HZZ-objects.root"), os.path.join(tmp_path, "HZZ.root")
+    )
 
     with uproot.update(os.path.join(tmp_path, "HZZ.root")) as f:
         f["events"].add_branches({"new_branch": np.ones(2421, dtype=np.float32)})
@@ -106,7 +114,9 @@ def test_add_branch_nonexistent_tree(tmp_path):
 
     with uproot.update(os.path.join(tmp_path, "test.root")) as f:
         with pytest.raises(Exception):
-            f["nonexistent"].add_branches({"new_branch": np.ones(100, dtype=np.float32)})
+            f["nonexistent"].add_branches(
+                {"new_branch": np.ones(100, dtype=np.float32)}
+            )
 
 
 @skip_no_root
@@ -128,7 +138,9 @@ def test_add_branch_root_readable(tmp_path):
 
 @skip_no_root
 def test_add_branch_tbranchelement_root_readable(tmp_path):
-    shutil.copy(data_path("uproot-HZZ-objects.root"), os.path.join(tmp_path, "HZZ.root"))
+    shutil.copy(
+        data_path("uproot-HZZ-objects.root"), os.path.join(tmp_path, "HZZ.root")
+    )
 
     with uproot.update(os.path.join(tmp_path, "HZZ.root")) as f:
         f["events"].add_branches({"new_branch": np.ones(2421, dtype=np.float32)})
@@ -145,13 +157,21 @@ def test_add_branch_tbranchelement_root_readable(tmp_path):
 
 # ── extend tests ──────────────────────────────────────────────────────────────
 
+
 def test_extend_simple(tmp_path):
     with uproot.recreate(os.path.join(tmp_path, "test.root")) as f:
         f.mktree("tree", {"x": np.float32, "y": np.int32})
-        f["tree"].extend({"x": np.ones(100, dtype=np.float32), "y": np.zeros(100, dtype=np.int32)})
+        f["tree"].extend(
+            {"x": np.ones(100, dtype=np.float32), "y": np.zeros(100, dtype=np.int32)}
+        )
 
     with uproot.update(os.path.join(tmp_path, "test.root")) as f:
-        f["tree"].extend({"x": np.ones(50, dtype=np.float32) * 2, "y": np.ones(50, dtype=np.int32) * 3})
+        f["tree"].extend(
+            {
+                "x": np.ones(50, dtype=np.float32) * 2,
+                "y": np.ones(50, dtype=np.int32) * 3,
+            }
+        )
 
     with uproot.open(os.path.join(tmp_path, "test.root")) as f:
         assert f["tree"].member("fEntries") == 150
@@ -179,7 +199,9 @@ def test_extend_preserves_existing(tmp_path):
 def test_extend_missing_branch(tmp_path):
     with uproot.recreate(os.path.join(tmp_path, "test.root")) as f:
         f.mktree("tree", {"x": np.float32, "y": np.int32})
-        f["tree"].extend({"x": np.ones(100, dtype=np.float32), "y": np.zeros(100, dtype=np.int32)})
+        f["tree"].extend(
+            {"x": np.ones(100, dtype=np.float32), "y": np.zeros(100, dtype=np.int32)}
+        )
 
     with uproot.update(os.path.join(tmp_path, "test.root")) as f:
         with pytest.raises(ValueError, match="missing"):
@@ -189,11 +211,15 @@ def test_extend_missing_branch(tmp_path):
 def test_extend_mismatched_lengths(tmp_path):
     with uproot.recreate(os.path.join(tmp_path, "test.root")) as f:
         f.mktree("tree", {"x": np.float32, "y": np.int32})
-        f["tree"].extend({"x": np.ones(100, dtype=np.float32), "y": np.zeros(100, dtype=np.int32)})
+        f["tree"].extend(
+            {"x": np.ones(100, dtype=np.float32), "y": np.zeros(100, dtype=np.int32)}
+        )
 
     with uproot.update(os.path.join(tmp_path, "test.root")) as f:
         with pytest.raises(ValueError, match="same length"):
-            f["tree"].extend({"x": np.ones(50, dtype=np.float32), "y": np.ones(30, dtype=np.int32)})
+            f["tree"].extend(
+                {"x": np.ones(50, dtype=np.float32), "y": np.ones(30, dtype=np.int32)}
+            )
 
 
 def test_extend_nonexistent_branch(tmp_path):
@@ -213,7 +239,10 @@ def test_extend_accept_new_fields(tmp_path):
 
     with uproot.update(os.path.join(tmp_path, "test.root")) as f:
         f["tree"].extend(
-            {"x": np.ones(50, dtype=np.float32) * 2, "new_branch": np.ones(50, dtype=np.float32) * 99},
+            {
+                "x": np.ones(50, dtype=np.float32) * 2,
+                "new_branch": np.ones(50, dtype=np.float32) * 99,
+            },
             accept_new_fields=True,
         )
 
@@ -232,7 +261,12 @@ def test_extend_new_fields_error_without_flag(tmp_path):
 
     with uproot.update(os.path.join(tmp_path, "test.root")) as f:
         with pytest.raises(ValueError, match="accept_new_fields"):
-            f["tree"].extend({"x": np.ones(50, dtype=np.float32), "new_branch": np.ones(50, dtype=np.float32)})
+            f["tree"].extend(
+                {
+                    "x": np.ones(50, dtype=np.float32),
+                    "new_branch": np.ones(50, dtype=np.float32),
+                }
+            )
 
 
 @skip_no_root
