@@ -1760,11 +1760,10 @@ class WritableTree:
         compression = existing_file._file.compression
         file_end = existing_file._file.fEND
 
-        # get directory key info
-        with uproot.update(file_path) as tmp:
-            dir_key = tmp._cascading.data.get_key(source, 1)
-            dir_key_location = dir_key.location
-            dir_key_big = dir_key.big
+        # get directory key info from current file
+        dir_key = self._file._cascading.rootdirectory.data.get_key(source, 1)
+        dir_key_location = dir_key.location
+        dir_key_big = dir_key.big
 
         chunk, cursor = tree_key.get_uncompressed_chunk_cursor()
         orig_raw = bytearray(chunk.raw_data.tobytes())
@@ -1962,10 +1961,10 @@ class WritableTree:
         compression = existing_file._file.compression
         file_end = existing_file._file.fEND
 
-        with uproot.update(file_path) as tmp:
-            dir_key = tmp._cascading.data.get_key(source, 1)
-            dir_key_location = dir_key.location
-            dir_key_big = dir_key.big
+        # get directory key info from current file
+        dir_key = self._file._cascading.rootdirectory.data.get_key(source, 1)
+        dir_key_location = dir_key.location
+        dir_key_big = dir_key.big
 
         chunk, cursor = tree_key.get_uncompressed_chunk_cursor()
         orig_raw = bytearray(chunk.raw_data.tobytes())
