@@ -1977,8 +1977,12 @@ class WritableTree:
         existing_file.close()
 
         # find TTree fEntries position in blob
-        fentries_pos = orig_raw.find(struct.pack(">q", fEntries))
-
+        fTotBytes = old_ttree.member("fTotBytes")
+        fZipBytes = old_ttree.member("fZipBytes")
+        fentries_seq = struct.pack(">q", fEntries) + struct.pack(">q", fTotBytes) + struct.pack(">q", fZipBytes)
+        fentries_pos = orig_raw.find(fentries_seq)
+        if fentries_pos == -1:
+            raise RuntimeError("Could not find TTree fEntries position in blob")
         # validate lengths and separate new vs existing branches
         n_new = None
         for bname, bdata in data.items():
