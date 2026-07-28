@@ -2008,6 +2008,12 @@ class WritableTree:
         # handle new fields
         existing_branch_names = [b.name for b in old_ttree.branches]
         new_fields = {k: v for k, v in data.items() if k not in existing_branch_names}
+        # check all existing branches are present (partial extends are inconsistent)
+        missing = [b for b in existing_branch_names if b not in data]
+        if missing:
+            raise ValueError(
+                f"data is missing branches {missing}; all existing branches must be extended together"
+            )
         if new_fields:
             if not accept_new_fields:
                 raise ValueError(
