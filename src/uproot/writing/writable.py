@@ -1979,7 +1979,11 @@ class WritableTree:
         # find TTree fEntries position in blob
         fTotBytes = old_ttree.member("fTotBytes")
         fZipBytes = old_ttree.member("fZipBytes")
-        fentries_seq = struct.pack(">q", fEntries) + struct.pack(">q", fTotBytes) + struct.pack(">q", fZipBytes)
+        fentries_seq = (
+            struct.pack(">q", fEntries)
+            + struct.pack(">q", fTotBytes)
+            + struct.pack(">q", fZipBytes)
+        )
         fentries_pos = orig_raw.find(fentries_seq)
         if fentries_pos == -1:
             raise RuntimeError("Could not find TTree fEntries position in blob")
