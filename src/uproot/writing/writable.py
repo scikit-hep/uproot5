@@ -2031,8 +2031,12 @@ class WritableTree:
                 )
 
             # read fEntries_current from new_blob (may have been updated in previous iteration)
-            fEntries_in_blob = struct.unpack(">q", new_blob[fentries_pos:fentries_pos+8])[0]
-            wb_pattern = struct.pack(">i", fWriteBasket) + struct.pack(">q", fEntries_in_blob)
+            fEntries_in_blob = struct.unpack(
+                ">q", new_blob[fentries_pos : fentries_pos + 8]
+            )[0]
+            wb_pattern = struct.pack(">i", fWriteBasket) + struct.pack(
+                ">q", fEntries_in_blob
+            )
             # search backward from seek_pos to find the LAST occurrence before seek_pos
             wb_pos = -1
             search_start = max(0, seek_pos - 1000)
