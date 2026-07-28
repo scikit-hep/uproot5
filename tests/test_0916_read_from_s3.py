@@ -16,7 +16,7 @@ def test_s3_fail():
         with uproot.source.fsspec.FSSpecSource(
             "s3://pivarski-princeton/does-not-exist", anon=True
         ) as source:
-            uproot._util.tobytes(source.chunk(0, 100).raw_data)
+            source.chunk(0, 100)
 
 
 @pytest.mark.network
