@@ -1776,12 +1776,16 @@ class WritableTree:
 
         # find fBranches TObjArray bcnt
         tobjarray_bcnt_pos = None
-        for i in range(190, 220):
+        # TObjArray bcnt: 4-byte value with 0x40000000 (kByteCountMask) bit set,
+        # immediately followed by 2-byte version=3
+        for i in range(len(orig_raw) - 4 - 2):  # -4 for bcnt, -2 for version
             val = struct.unpack(">I", orig_raw[i : i + 4])[0]
             if val & 0x40000000 and (val & ~0x40000000) > 100:
-                tobjarray_bcnt_pos = i
-                old_tobjarray_bcnt = val & ~0x40000000
-                break
+                version = struct.unpack(">H", orig_raw[i + 4 : i + 6])[0]
+                if version == 3:
+                    tobjarray_bcnt_pos = i
+                    old_tobjarray_bcnt = val & ~0x40000000
+                    break
         if tobjarray_bcnt_pos is None:
             raise RuntimeError("Could not find fBranches TObjArray byte count header")
 
