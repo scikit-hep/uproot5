@@ -1934,7 +1934,11 @@ class WritableTree:
 
         # update fEND
         new_file_end = file_end + new_nbytes
-        self._file.sink.write(12, struct.pack(">i", new_file_end))
+        # fEND is 4-byte for small files, 8-byte for files >= 2GB
+        if self._file._cascading.fileheader.big:
+            self._file.sink.write(12, struct.pack(">q", new_file_end))
+        else:
+            self._file.sink.write(12, struct.pack(">i", new_file_end))
         self._file.sink.flush()
 
     def _extend_inplace(self, data, *, accept_new_fields=False):
@@ -2158,7 +2162,11 @@ class WritableTree:
 
         # update fEND
         new_file_end = new_key_seek + new_nbytes
-        self._file.sink.write(12, struct.pack(">i", new_file_end))
+        # fEND is 4-byte for small files, 8-byte for files >= 2GB
+        if self._file._cascading.fileheader.big:
+            self._file.sink.write(12, struct.pack(">q", new_file_end))
+        else:
+            self._file.sink.write(12, struct.pack(">i", new_file_end))
         self._file.sink.flush()
 
     def __repr__(self):
