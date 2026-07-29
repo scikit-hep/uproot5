@@ -2502,6 +2502,12 @@ class WritableNTuple:
         footer.cluster_group_record_frames = []
         for cg_idx, cg in enumerate(existing_footer.cluster_group_records):
             ple = existing_page_list_envelopes[cg_idx]
+            if len(ple.pagelinklist) > 1:
+                raise ValueError(
+                    f"add_fields does not yet support RNTuples with multiple clusters per cluster group "
+                    f"(cluster group {cg_idx} has {len(ple.pagelinklist)} clusters). "
+                    f"This is a known limitation that will be fixed in a future version."
+                )
             new_cluster_page_data = []
             for col_pages in ple.pagelinklist[0]:
                 existing_pages = [

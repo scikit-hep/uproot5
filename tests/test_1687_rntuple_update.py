@@ -501,3 +501,12 @@ def test_ntuple_extend_root_written_raises(tmp_path):
                     "two_floats": np.array([1.5, 2.5], dtype=np.float32),
                 }
             )
+
+
+def test_ntuple_add_fields_multi_cluster_raises(tmp_path):
+    src = skhep_testdata.data_path("test_multiple_cluster_groups_rntuple_v1-0-0-0.root")
+    shutil.copy(src, os.path.join(tmp_path, "test.root"))
+
+    with uproot.update(os.path.join(tmp_path, "test.root")) as f:
+        with pytest.raises(ValueError):
+            f["ntuple"].add_fields({"newcol": np.int32})
