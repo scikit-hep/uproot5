@@ -43,6 +43,12 @@ def test_extend_existing_ntuple(tmp_path):
     if has_root and hasattr(ROOT, "RNTupleReader"):
         reader = ROOT.RNTupleReader.Open("mytuple", os.path.join(tmp_path, "test.root"))
         assert reader.GetNEntries() == 8
+        entry = reader.CreateEntry()
+        vals = []
+        for i in range(reader.GetNEntries()):
+            reader.LoadEntry(i, entry)
+            vals.append(entry["x"])
+        assert vals == pytest.approx([1, 2, 3, 4, 5, 6, 7, 8])
 
 
 def test_add_field_ntuple(tmp_path):
@@ -60,6 +66,12 @@ def test_add_field_ntuple(tmp_path):
     if has_root and hasattr(ROOT, "RNTupleReader"):
         reader = ROOT.RNTupleReader.Open("mytuple", os.path.join(tmp_path, "test.root"))
         assert reader.GetNEntries() == 5
+        entry = reader.CreateEntry()
+        vals = []
+        for i in range(reader.GetNEntries()):
+            reader.LoadEntry(i, entry)
+            vals.append(entry["x"])
+        assert vals == pytest.approx([1.0, 2.0, 3.0, 4.0, 5.0])
 
 
 def test_add_field_ntuple_duplicate(tmp_path):
@@ -201,6 +213,12 @@ def test_ntuple_mixed_types_extend(tmp_path):
     if has_root and hasattr(ROOT, "RNTupleReader"):
         reader = ROOT.RNTupleReader.Open("mytuple", os.path.join(tmp_path, "test.root"))
         assert reader.GetNEntries() == 5
+        entry = reader.CreateEntry()
+        vals = []
+        for i in range(reader.GetNEntries()):
+            reader.LoadEntry(i, entry)
+            vals.append(entry["pt"])
+        assert vals == pytest.approx([10.0, 20.0, 30.0, 40.0, 50.0])
 
 
 def test_ntuple_add_field_then_extend(tmp_path):
@@ -325,6 +343,12 @@ def test_ntuple_add_field_and_extend_same_session(tmp_path):
     if has_root and hasattr(ROOT, "RNTupleReader"):
         reader = ROOT.RNTupleReader.Open("mytuple", os.path.join(tmp_path, "test.root"))
         assert reader.GetNEntries() == 5
+        entry = reader.CreateEntry()
+        vals = []
+        for i in range(reader.GetNEntries()):
+            reader.LoadEntry(i, entry)
+            vals.append(entry["x"])
+        assert vals == pytest.approx([1.0, 2.0, 3.0, 4.0, 5.0])
 
 
 def test_ntuple_accept_new_fields(tmp_path):
@@ -359,6 +383,12 @@ def test_ntuple_accept_new_fields(tmp_path):
     if has_root and hasattr(ROOT, "RNTupleReader"):
         reader = ROOT.RNTupleReader.Open("mytuple", os.path.join(tmp_path, "test.root"))
         assert reader.GetNEntries() == 5
+        entry = reader.CreateEntry()
+        vals = []
+        for i in range(reader.GetNEntries()):
+            reader.LoadEntry(i, entry)
+            vals.append(entry["x"])
+        assert vals == pytest.approx([1.0, 2.0, 3.0, 4.0, 5.0])
 
 
 def test_ntuple_add_subfield(tmp_path):
