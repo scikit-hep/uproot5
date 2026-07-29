@@ -1202,9 +1202,20 @@ class WritableDirectory(MutableMapping):
         num_columns = len(existing._header.column_records) + len(
             existing._footer.extension_links.column_records
         )
-        ntuple_cascading._column_counts = numpy.array(
-            [num_entries] * num_columns, dtype=int
-        )
+        # recover per-column element counts from existing page lists
+        # for jagged fields, data columns advance by elements not entries
+        column_counts = []
+        for cg_idx, cg in enumerate(existing_footer.cluster_group_records):
+            ple = existing_page_list_envelopes[cg_idx]
+            if not column_counts:
+                column_counts = [0] * num_columns
+            for col_idx, col_pages in enumerate(ple.pagelinklist[0]):
+                column_counts[col_idx] += sum(
+                    p.num_elements for p in col_pages.pages
+                )
+        if not column_counts:
+            column_counts = [num_entries] * num_columns
+        ntuple_cascading._column_counts = numpy.array(column_counts, dtype=int)
         ntuple_cascading._existing_footer = existing_footer
         ntuple_cascading._existing_page_list_envelopes = existing_page_list_envelopes
         ntuple_cascading._existing_field_records = existing_field_records
