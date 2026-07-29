@@ -1081,17 +1081,19 @@ class WritableDirectory(MutableMapping):
         # a bit awkward since the file is already open in write mode. We should
         # look into a better way to do this in the future.
         existing_file = uproot.open(self.file_path, minimal_ttree_metadata=False)
-        existing = existing_file[name]
-        _ = existing.keys()
-        full_akform, _ = existing.to_akform()
-        am = existing._ntuple.all_members
-        existing_key = existing_file.key(name + ";1")
-        anchor_location = existing_key.fSeekKey + existing_key.fKeylen
-        num_entries = existing.num_entries
-        existing_footer = existing._footer
-        existing_page_list_envelopes = existing.page_list_envelopes
-        existing_field_records = existing._ntuple.field_records
-        existing_file.close()
+        try:
+            existing = existing_file[name]
+            _ = existing.keys()
+            full_akform, _ = existing.to_akform()
+            am = existing._ntuple.all_members
+            existing_key = existing_file.key(name + ";1")
+            anchor_location = existing_key.fSeekKey + existing_key.fKeylen
+            num_entries = existing.num_entries
+            existing_footer = existing._footer
+            existing_page_list_envelopes = existing.page_list_envelopes
+            existing_field_records = existing._ntuple.field_records
+        finally:
+            existing_file.close()
 
         header = cnt.NTuple_Header(
             None, existing.name, existing._header.ntuple_description, full_akform
@@ -1230,7 +1232,7 @@ class WritableDirectory(MutableMapping):
         path = (*self._path, name)
         writable_ntuple = WritableNTuple(path, self._file, ntuple_cascading)
         writable_ntuple._column_encoding_error = _column_encoding_error
-        self._file._ntuples[anchor_location] = writable_ntuple
+        self._file._ntuples[key.seek_location] = writable_ntuple
         return writable_ntuple
 
     def _del(self, name, cycle):
