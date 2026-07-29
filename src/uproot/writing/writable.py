@@ -1072,6 +1072,11 @@ class WritableDirectory(MutableMapping):
         _rblob_key_size = uproot.reading._key_format_big.size + 8
 
         name = key.name.string
+        if self.file_path is None:
+            raise TypeError(
+                "uproot.update() on a file-like object does not support accessing "
+                "existing RNTuples; use uproot.update() with a file path instead."
+            )
         # TODO: opening the file again in read mode to access existing metadata is
         # a bit awkward since the file is already open in write mode. We should
         # look into a better way to do this in the future.
