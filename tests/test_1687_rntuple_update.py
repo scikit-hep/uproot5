@@ -510,3 +510,37 @@ def test_ntuple_add_fields_multi_cluster_raises(tmp_path):
     with uproot.update(os.path.join(tmp_path, "test.root")) as f:
         with pytest.raises(ValueError):
             f["ntuple"].add_fields({"newcol": np.int32})
+
+
+def test_ntuple_add_fields_sequential_same_session(tmp_path):
+    # test that holding onto a WritableNTuple object and calling add_fields twice works
+    with uproot.recreate(os.path.join(tmp_path, "test.root")) as f:
+        f["mytuple"] = ak.Array([{"x": 1.0}, {"x": 2.0}, {"x": 3.0}])
+
+    with uproot.update(os.path.join(tmp_path, "test.root")) as f:
+        nt = f["mytuple"]
+        nt.add_fields({"y": np.int32})
+        nt.add_fields({"z": np.float64})
+
+    with uproot.open(os.path.join(tmp_path, "test.root")) as f:
+        assert set(f["mytuple"].keys()) == {"x", "y", "z"}
+        assert np.all(f["mytuple"]["y"].array() == 0)
+        assert np.all(f["mytuple"]["z"].array() == 0.0)
+
+
+def test_ntuple_add_fields_then_extend_same_object(tmp_path):
+    # test add_fields then extend using same nt object (not re-opening f["mytuple"])
+    with uproot.recreate(os.path.join(tmp_path, "test.root")) as f:
+        f["mytuple"] = {"x": np.array([1, 2, 3], dtype=np.float32)}
+
+    with uproot.update(os.path.join(tmp_path, "test.root")) as f:
+        nt = f["mytuple"]
+        nt.add_fields({"y": np.int32})
+        nt.extend({
+            "x": np.array([4, 5], dtype=np.float32),
+            "y": np.array([40, 50], dtype=np.int32),
+        })
+
+    with uproot.open(os.path.join(tmp_path, "test.root")) as f:
+        assert ak.all(f["mytuple"]["x"].array() == np.array([1, 2, 3, 4, 5], dtype=np.float32))
+        assert ak.all(f["mytuple"]["y"].array() == np.array([0, 0, 0, 40, 50], dtype=np.int32))

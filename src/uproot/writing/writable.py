@@ -2371,6 +2371,15 @@ class WritableNTuple:
 
             **As a word of warning,** be sure that each call to :ref:`uproot.writing.writable.WritableNTuple.extend` includes at least 100 kB per branch/array. (NumPy and Awkward Arrays have an `nbytes <https://numpy.org/doc/stable/reference/generated/numpy.ndarray.nbytes.html>`__ property; you want at least ``100000`` per array.) If you ask Uproot to write very small TBaskets, it will spend more time working on TBasket overhead than actually writing data. The absolute worst case is one-entry-per-:ref:`uproot.writing.writable.WritableTree.extend`. See `#428 (comment) <https://github.com/scikit-hep/uproot5/pull/428#issuecomment-908703486>`__.
         """
+        # if _column_counts has more columns than _column_keys, reload cascading
+        # this happens after add_fields adds extension columns
+        if len(self._cascading._column_counts) > len(self._cascading._header._column_keys):
+            key = self._file.root_directory._cascading.data.get_key(
+                self._path[-1], 1
+            )
+            reloaded = self._file.root_directory._load_existing_ntuple(key)
+            self._cascading = reloaded._cascading
+
         if isinstance(data, dict):
             existing_keys = set(self._cascading._header._akform.fields)
             if hasattr(self._cascading, "_existing_field_records"):
@@ -2568,6 +2577,35 @@ class WritableNTuple:
         self._file.sink.write(self._cascading._anchor._location, anchor_raw)
         self._cascading._freesegments.write(self._file.sink)
         self._file.sink.flush()
+
+        # reload ntuple so subsequent add_fields/extend calls see updated schema
+        # find the directory that owns this ntuple and reload via _load_existing_ntuple
+        parent_dir = self._file._cascading.rootdirectory
+        key = parent_dir.data.get_key(self._path[-1], 1)
+        # rebuild cascading from file
+        existing_file = uproot.open(self._file.file_path, minimal_ttree_metadata=False)
+        try:
+            existing = existing_file[self._path[-1]]
+            _ = existing.keys()
+            self._cascading._existing_footer = existing._footer
+            self._cascading._existing_page_list_envelopes = existing.page_list_envelopes
+            self._cascading._existing_field_records = existing._ntuple.field_records
+            full_akform, _ = existing.to_akform()
+            self._cascading._header._akform = full_akform
+            # update column counts from existing page lists
+            existing_footer_reload = existing._footer
+            existing_ples = existing.page_list_envelopes
+            num_columns = len(existing._header.column_records) + len(
+                existing._footer.extension_links.column_records
+            ) if existing._footer else len(existing.column_records)
+            column_counts = [0] * num_columns
+            for cg_idx, cg in enumerate(existing_footer_reload.cluster_group_records):
+                ple = existing_ples[cg_idx]
+                for col_idx, col_pages in enumerate(ple.pagelinklist[0]):
+                    column_counts[col_idx] += sum(p.num_elements for p in col_pages.pages)
+            self._cascading._column_counts = numpy.array(column_counts, dtype=int)
+        finally:
+            existing_file.close()
 
 
 def _is_type_specification(obj):
