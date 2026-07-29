@@ -495,5 +495,9 @@ def test_ntuple_extend_root_written_raises(tmp_path):
 
     with uproot.update(os.path.join(tmp_path, "test.root")) as f:
         with pytest.raises(ValueError, match="column encodings"):
-            f["ntuple"].extend({"one_integers": np.array([100, 200], dtype=np.int32),
-                                "two_floats": np.array([1.5, 2.5], dtype=np.float32)})
+            f["ntuple"].extend(
+                {
+                    "one_integers": np.array([100, 200], dtype=np.int32),
+                    "two_floats": np.array([1.5, 2.5], dtype=np.float32),
+                }
+            )

@@ -1105,10 +1105,14 @@ class WritableDirectory(MutableMapping):
                 f"schema mismatch — this RNTuple may use column encodings uproot cannot write"
             )
         else:
-            for i, (existing_cr, new_cr) in enumerate(zip(existing_col_records, new_col_records)):
-                if (existing_cr.type != new_cr.type_num or
-                        existing_cr.nbits != new_cr.bits_on_disk or
-                        existing_cr.field_id != new_cr.field_id):
+            for i, (existing_cr, new_cr) in enumerate(
+                zip(existing_col_records, new_col_records)
+            ):
+                if (
+                    existing_cr.type != new_cr.type_num
+                    or existing_cr.nbits != new_cr.bits_on_disk
+                    or existing_cr.field_id != new_cr.field_id
+                ):
                     _column_encoding_error = (
                         f"cannot extend: column {i} type mismatch — "
                         f"existing column has type={existing_cr.type}, nbits={existing_cr.nbits} "
