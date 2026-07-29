@@ -608,8 +608,12 @@ def test_ntuple_update_root_written_file_opens(tmp_path):
     with uproot.update(os.path.join(tmp_path, "test.root")) as f:
         # accessing the ntuple should work (even though we can't extend ROOT-written files)
         with pytest.raises(ValueError, match="column encodings"):
-            f["ntuple"].extend({"one_integers": np.array([1], dtype=np.int32),
-                                "two_floats": np.array([1.0], dtype=np.float32)})
+            f["ntuple"].extend(
+                {
+                    "one_integers": np.array([1], dtype=np.int32),
+                    "two_floats": np.array([1.0], dtype=np.float32),
+                }
+            )
 
 
 def test_ntuple_root_written_add_fields_raises(tmp_path):
@@ -632,13 +636,19 @@ def test_ntuple_hold_object_across_operations(tmp_path):
         nt = f["mytuple"]  # hold the object
         nt.add_fields({"y": np.int32})
         nt.add_fields({"z": np.float64})
-        nt.extend({
-            "x": np.array([4, 5], dtype=np.float32),
-            "y": np.array([10, 20], dtype=np.int32),
-            "z": np.array([1.1, 2.2], dtype=np.float64),
-        })
+        nt.extend(
+            {
+                "x": np.array([4, 5], dtype=np.float32),
+                "y": np.array([10, 20], dtype=np.int32),
+                "z": np.array([1.1, 2.2], dtype=np.float64),
+            }
+        )
 
     with uproot.open(os.path.join(tmp_path, "test.root")) as f:
         assert set(f["mytuple"].keys()) == {"x", "y", "z"}
-        assert np.all(f["mytuple"]["x"].array() == np.array([1, 2, 3, 4, 5], dtype=np.float32))
-        assert np.all(f["mytuple"]["y"].array() == np.array([0, 0, 0, 10, 20], dtype=np.int32))
+        assert np.all(
+            f["mytuple"]["x"].array() == np.array([1, 2, 3, 4, 5], dtype=np.float32)
+        )
+        assert np.all(
+            f["mytuple"]["y"].array() == np.array([0, 0, 0, 10, 20], dtype=np.int32)
+        )
