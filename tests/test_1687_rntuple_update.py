@@ -560,3 +560,17 @@ def test_ntuple_add_subfield_correct_parent(tmp_path):
         keys = list(f["mytuple"].keys())
         assert "p2.track.phi" in keys
         assert "p1.track.phi" not in keys
+
+
+def test_ntuple_update_root_written_file_opens(tmp_path):
+    # ROOT-written files use UUID versions other than 1 — verify uproot.update can open them
+    # This test uses a ROOT-written file and checks it can be accessed in update mode
+    src = skhep_testdata.data_path("test_int_float_rntuple_v1-0-0-0.root")
+    shutil.copy(src, os.path.join(tmp_path, "test.root"))
+
+    # should not raise — previously failed with assert uuid_version == 1
+    with uproot.update(os.path.join(tmp_path, "test.root")) as f:
+        # accessing the ntuple should work (even though we can't extend ROOT-written files)
+        with pytest.raises(ValueError, match="column encodings"):
+            f["ntuple"].extend({"one_integers": np.array([1], dtype=np.int32),
+                                "two_floats": np.array([1.0], dtype=np.float32)})
