@@ -566,14 +566,20 @@ def test_ntuple_add_fields_then_extend_same_object(tmp_path):
     with uproot.update(os.path.join(tmp_path, "test.root")) as f:
         nt = f["mytuple"]
         nt.add_fields({"y": np.int32})
-        nt.extend({
-            "x": np.array([4, 5], dtype=np.float32),
-            "y": np.array([40, 50], dtype=np.int32),
-        })
+        nt.extend(
+            {
+                "x": np.array([4, 5], dtype=np.float32),
+                "y": np.array([40, 50], dtype=np.int32),
+            }
+        )
 
     with uproot.open(os.path.join(tmp_path, "test.root")) as f:
-        assert ak.all(f["mytuple"]["x"].array() == np.array([1, 2, 3, 4, 5], dtype=np.float32))
-        assert ak.all(f["mytuple"]["y"].array() == np.array([0, 0, 0, 40, 50], dtype=np.int32))
+        assert ak.all(
+            f["mytuple"]["x"].array() == np.array([1, 2, 3, 4, 5], dtype=np.float32)
+        )
+        assert ak.all(
+            f["mytuple"]["y"].array() == np.array([0, 0, 0, 40, 50], dtype=np.int32)
+        )
 
 
 def test_ntuple_add_subfield_correct_parent(tmp_path):
