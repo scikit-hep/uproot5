@@ -119,7 +119,7 @@ def test_extend_ntuple_wrong_fields(tmp_path):
         }
 
     with uproot.update(os.path.join(tmp_path, "test.root")) as f:
-        with pytest.raises(Exception):
+        with pytest.raises(ValueError):
             f["mytuple"].extend(
                 {"x": np.array([7, 8, 9], dtype=np.float32)}
             )  # missing y
@@ -440,7 +440,7 @@ def test_ntuple_add_subfield_to_collection(tmp_path):
         f["mytuple"] = {"jets": ak.Array([[1.0, 2.0], [3.0]])}
 
     with uproot.update(os.path.join(tmp_path, "test.root")) as f:
-        with pytest.raises((ValueError, TypeError)):
+        with pytest.raises(ValueError, match="type"):
             f["mytuple"].add_fields({"jets.x": np.float32})
 
 
@@ -451,7 +451,7 @@ def test_ntuple_add_subfield_to_collection_of_records(tmp_path):
         )
 
     with uproot.update(os.path.join(tmp_path, "test.root")) as f:
-        with pytest.raises((ValueError, TypeError)):
+        with pytest.raises(ValueError, match="not a record"):
             f["mytuple"].add_fields({"jets.phi": np.float32})
 
 
@@ -462,7 +462,7 @@ def test_ntuple_add_subfield_to_variant(tmp_path):
         )
 
     with uproot.update(os.path.join(tmp_path, "test.root")) as f:
-        with pytest.raises((ValueError, TypeError, AssertionError)):
+        with pytest.raises((ValueError, AssertionError)):
             f["mytuple"].add_fields({"variant.jet.eta": np.float32})
 
 
@@ -574,3 +574,35 @@ def test_ntuple_update_root_written_file_opens(tmp_path):
         with pytest.raises(ValueError, match="column encodings"):
             f["ntuple"].extend({"one_integers": np.array([1], dtype=np.int32),
                                 "two_floats": np.array([1.0], dtype=np.float32)})
+
+
+def test_ntuple_root_written_add_fields_raises(tmp_path):
+    # ROOT-written files use split encoding which uproot cannot write
+    # add_fields should raise a clear error not corrupt data
+    src = skhep_testdata.data_path("ntpl001_staff_rntuple_v1-0-0-0.root")
+    shutil.copy(src, os.path.join(tmp_path, "test.root"))
+
+    with uproot.update(os.path.join(tmp_path, "test.root")) as f:
+        with pytest.raises(ValueError, match="column encodings"):
+            f["Staff"].add_fields({"new_field": np.float32})
+
+
+def test_ntuple_hold_object_across_operations(tmp_path):
+    # hold WritableNTuple object across add_fields and extend
+    with uproot.recreate(os.path.join(tmp_path, "test.root")) as f:
+        f["mytuple"] = {"x": np.array([1, 2, 3], dtype=np.float32)}
+
+    with uproot.update(os.path.join(tmp_path, "test.root")) as f:
+        nt = f["mytuple"]  # hold the object
+        nt.add_fields({"y": np.int32})
+        nt.add_fields({"z": np.float64})
+        nt.extend({
+            "x": np.array([4, 5], dtype=np.float32),
+            "y": np.array([10, 20], dtype=np.int32),
+            "z": np.array([1.1, 2.2], dtype=np.float64),
+        })
+
+    with uproot.open(os.path.join(tmp_path, "test.root")) as f:
+        assert set(f["mytuple"].keys()) == {"x", "y", "z"}
+        assert np.all(f["mytuple"]["x"].array() == np.array([1, 2, 3, 4, 5], dtype=np.float32))
+        assert np.all(f["mytuple"]["y"].array() == np.array([0, 0, 0, 10, 20], dtype=np.int32))
