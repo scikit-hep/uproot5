@@ -1083,7 +1083,7 @@ class WritableDirectory(MutableMapping):
         existing_file = uproot.open(self.file_path, minimal_ttree_metadata=False)
         try:
             existing = existing_file[name]
-            _ = existing.keys()
+            _ = existing.keys()  # trigger lazy loading of footer and page lists
             full_akform, _ = existing.to_akform()
             am = existing._ntuple.all_members
             existing_key = existing_file.key(name + ";1")
@@ -2411,8 +2411,21 @@ class WritableNTuple:
         """
         Args:
             new_fields (dict of str -> numpy dtype): New field names and types.
+                Only scalar numeric types are accepted (e.g. ``np.int32``,
+                ``np.float64``). Variable-length or nested types are not supported.
 
         Adds new fields to this RNTuple, back-filled with zeros for existing entries.
+        Only top-level fields or subfields of existing untyped record fields are supported.
+
+        Note: when using ``accept_new_fields=True`` in :meth:`extend`, new fields
+        must be flat (scalar) types. Jagged or nested new fields will fail the
+        form compatibility check in ``extend``.
+
+        Raises:
+            TypeError: if a field type is not a simple scalar numeric type.
+            ValueError: if a field already exists, if the subfield parent is not
+                found or is a typed struct (C++ typename), or if the file was
+                opened without a file path (file-like objects are not supported).
 
         For example,
 
@@ -2611,7 +2624,7 @@ class WritableNTuple:
         existing_file = uproot.open(self._file.file_path, minimal_ttree_metadata=False)
         try:
             existing = existing_file[self._path[-1]]
-            _ = existing.keys()
+            _ = existing.keys()  # trigger lazy loading of footer and page lists
             self._cascading._existing_footer = existing._footer
             self._cascading._existing_page_list_envelopes = existing.page_list_envelopes
             self._cascading._existing_field_records = existing._ntuple.field_records
