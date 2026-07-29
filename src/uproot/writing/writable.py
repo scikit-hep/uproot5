@@ -1155,15 +1155,6 @@ class WritableDirectory(MutableMapping):
                 cr.type, cr.nbits, cr.field_id, cr.flags, cr.repr_idx
             )
             footer.extension_column_record_frames.append(new_col)
-        for cg in existing_footer.cluster_group_records:
-            loc = cg.page_list_link.locator
-            start = loc.offset - _rblob_key_size
-            end = loc.offset + loc.num_bytes
-            self._cascading._freesegments._data.slices = [
-                s
-                for s in self._cascading._freesegments._data.slices
-                if not (s[0] < end and start < s[1])
-            ]
         anchor = cnt.NTuple_Anchor(
             anchor_location,
             am["fVersionEpoch"],
