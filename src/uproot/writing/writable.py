@@ -2371,10 +2371,10 @@ class WritableNTuple:
         """
         # if _column_counts has more columns than _column_keys, reload cascading
         # this happens after add_fields adds extension columns
-        if len(self._cascading._column_counts) > len(self._cascading._header._column_keys):
-            key = self._file.root_directory._cascading.data.get_key(
-                self._path[-1], 1
-            )
+        if len(self._cascading._column_counts) > len(
+            self._cascading._header._column_keys
+        ):
+            key = self._file.root_directory._cascading.data.get_key(self._path[-1], 1)
             reloaded = self._file.root_directory._load_existing_ntuple(key)
             self._cascading = reloaded._cascading
 
@@ -2477,12 +2477,17 @@ class WritableNTuple:
                     for part_idx, part in enumerate(parts[:-1]):
                         found = None
                         for i, fr in enumerate(existing_field_records):
-                            is_root_field = (fr.parent_field_id == 0 or fr.parent_field_id == i)
+                            is_root_field = (
+                                fr.parent_field_id == 0 or fr.parent_field_id == i
+                            )
                             if fr.field_name == part:
                                 if current_parent_id is None and is_root_field:
                                     found = (i, fr)
                                     break
-                                elif current_parent_id is not None and fr.parent_field_id == current_parent_id:
+                                elif (
+                                    current_parent_id is not None
+                                    and fr.parent_field_id == current_parent_id
+                                ):
                                     found = (i, fr)
                                     break
                         if found is None:
@@ -2620,14 +2625,19 @@ class WritableNTuple:
             # update column counts from existing page lists
             existing_footer_reload = existing._footer
             existing_ples = existing.page_list_envelopes
-            num_columns = len(existing._header.column_records) + len(
-                existing._footer.extension_links.column_records
-            ) if existing._footer else len(existing.column_records)
+            num_columns = (
+                len(existing._header.column_records)
+                + len(existing._footer.extension_links.column_records)
+                if existing._footer
+                else len(existing.column_records)
+            )
             column_counts = [0] * num_columns
             for cg_idx, cg in enumerate(existing_footer_reload.cluster_group_records):
                 ple = existing_ples[cg_idx]
                 for col_idx, col_pages in enumerate(ple.pagelinklist[0]):
-                    column_counts[col_idx] += sum(p.num_elements for p in col_pages.pages)
+                    column_counts[col_idx] += sum(
+                        p.num_elements for p in col_pages.pages
+                    )
             self._cascading._column_counts = numpy.array(column_counts, dtype=int)
         finally:
             existing_file.close()
