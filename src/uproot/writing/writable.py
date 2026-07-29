@@ -1092,6 +1092,31 @@ class WritableDirectory(MutableMapping):
             None, existing.name, existing._header.ntuple_description, full_akform
         )
         header._checksum = existing._header.checksum
+
+        # check column records match existing — store mismatch for later error
+        # (e.g. ROOT writes split-encoded columns, uproot writes unsplit)
+        existing_col_records = existing.column_records
+        new_col_records = header._column_records
+        _column_encoding_error = None
+        if len(existing_col_records) != len(new_col_records):
+            _column_encoding_error = (
+                f"cannot extend: existing RNTuple has {len(existing_col_records)} columns "
+                f"but reconstructed header has {len(new_col_records)}; "
+                f"schema mismatch — this RNTuple may use column encodings uproot cannot write"
+            )
+        else:
+            for i, (existing_cr, new_cr) in enumerate(zip(existing_col_records, new_col_records)):
+                if (existing_cr.type != new_cr.type_num or
+                        existing_cr.nbits != new_cr.bits_on_disk or
+                        existing_cr.field_id != new_cr.field_id):
+                    _column_encoding_error = (
+                        f"cannot extend: column {i} type mismatch — "
+                        f"existing column has type={existing_cr.type}, nbits={existing_cr.nbits} "
+                        f"but uproot would write type={new_cr.type_num}, nbits={new_cr.bits_on_disk}. "
+                        f"This RNTuple uses column encodings (e.g. split encoding) that uproot cannot write."
+                    )
+                    break
+
         footer = cnt.NTuple_Footer(None, header._checksum)
 
         for cg in existing_footer.cluster_group_records:
@@ -1186,6 +1211,7 @@ class WritableDirectory(MutableMapping):
 
         path = (*self._path, name)
         writable_ntuple = WritableNTuple(path, self._file, ntuple_cascading)
+        writable_ntuple._column_encoding_error = _column_encoding_error
         self._file._ntuples[anchor_location] = writable_ntuple
         return writable_ntuple
 
@@ -2197,6 +2223,7 @@ class WritableNTuple:
         self._path = path
         self._file = file
         self._cascading = cascading
+        self._column_encoding_error = None
 
     def __repr__(self):
         return "<WritableNTuple {} at 0x{:012x}>".format(
@@ -2289,6 +2316,8 @@ class WritableNTuple:
         return self._cascading.num_entries
 
     def extend(self, data, accept_new_fields=False):
+        if self._column_encoding_error is not None:
+            raise ValueError(self._column_encoding_error)
         """
         Args:
             data (dict of str \u2192 arrays): More array data to add to the RNTuple.
@@ -2442,6 +2471,8 @@ class WritableNTuple:
             new_data = numpy.zeros(num_entries, dtype=numpy.dtype(ak_primitive))
             raw_data = new_data.view("uint8")
             compressed_data = uproot.compression.compress(raw_data, compression)
+            if self._column_encoding_error is not None:
+                raise ValueError(self._column_encoding_error)
             page_key = self._cascading.add_rblob(
                 self._file.sink, compressed_data, len(raw_data)
             )

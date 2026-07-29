@@ -486,3 +486,14 @@ def test_ntuple_add_field_duplicate_after_extension(tmp_path):
     with uproot.update(os.path.join(tmp_path, "test.root")) as f:
         with pytest.raises(ValueError, match="already exists"):
             f["mytuple"].add_fields({"z": np.float32})
+
+
+def test_ntuple_extend_root_written_raises(tmp_path):
+    # ROOT-written RNTuples use split encoding which uproot cannot write
+    src = skhep_testdata.data_path("test_int_float_rntuple_v1-0-0-0.root")
+    shutil.copy(src, os.path.join(tmp_path, "test.root"))
+
+    with uproot.update(os.path.join(tmp_path, "test.root")) as f:
+        with pytest.raises(ValueError, match="column encodings"):
+            f["ntuple"].extend({"one_integers": np.array([100, 200], dtype=np.int32),
+                                "two_floats": np.array([1.5, 2.5], dtype=np.float32)})
