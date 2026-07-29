@@ -1197,6 +1197,7 @@ class WritableDirectory(MutableMapping):
             1,
             100,
             am["fSeekHeader"],
+            big=True,
         )
         ntuple_cascading._footer_key = casc.Key(
             am["fSeekFooter"] - _rblob_key_size,
@@ -1208,6 +1209,7 @@ class WritableDirectory(MutableMapping):
             1,
             100,
             am["fSeekFooter"],
+            big=True,
         )
         ntuple_cascading._num_entries = num_entries
         num_columns = len(existing._header.column_records) + len(
