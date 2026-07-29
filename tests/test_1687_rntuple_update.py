@@ -544,3 +544,19 @@ def test_ntuple_add_fields_then_extend_same_object(tmp_path):
     with uproot.open(os.path.join(tmp_path, "test.root")) as f:
         assert ak.all(f["mytuple"]["x"].array() == np.array([1, 2, 3, 4, 5], dtype=np.float32))
         assert ak.all(f["mytuple"]["y"].array() == np.array([0, 0, 0, 40, 50], dtype=np.int32))
+
+
+def test_ntuple_add_subfield_correct_parent(tmp_path):
+    # verify p2.track.phi goes to p2.track not p1.track
+    with uproot.recreate(os.path.join(tmp_path, "test.root")) as f:
+        f["mytuple"] = ak.Array(
+            [{"p1": {"track": {"pt": 1.0}}, "p2": {"track": {"pt": 2.0}}}] * 2
+        )
+
+    with uproot.update(os.path.join(tmp_path, "test.root")) as f:
+        f["mytuple"].add_fields({"p2.track.phi": np.float32})
+
+    with uproot.open(os.path.join(tmp_path, "test.root")) as f:
+        keys = list(f["mytuple"].keys())
+        assert "p2.track.phi" in keys
+        assert "p1.track.phi" not in keys

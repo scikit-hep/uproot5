@@ -2457,24 +2457,51 @@ class WritableNTuple:
             if "." in field_name:
                 parts = field_name.split(".")
                 actual_field_name = parts[-1]
-                parent_name = parts[-2]
                 parent_field_id = None
-                for i, fr in enumerate(existing_field_records):
-                    if fr.field_name == parent_name:
-                        parent_field_id = i
-                        if fr.type_name != "":
+                # walk the full dotted path against the parent-id chain
+                # for single-level paths (e.g. "parent.field"), match by name only
+                # for multi-level paths (e.g. "p2.track.field"), walk full chain
+                if len(parts) == 2:
+                    # single-level: match immediate parent by name only (backward compat)
+                    parent_field_id = None
+                    for i, fr in enumerate(existing_field_records):
+                        if fr.field_name == parts[0]:
+                            parent_field_id = i
+                            break
+                    if parent_field_id is None:
+                        raise ValueError(
+                            f"Field {parts[0]!r} not found in this RNTuple"
+                        )
+                    fr = existing_field_records[parent_field_id]
+                else:
+                    # multi-level: walk full dotted path using parent-id chain
+                    current_parent_id = None  # None means root
+                    for part_idx, part in enumerate(parts[:-1]):
+                        found = None
+                        for i, fr in enumerate(existing_field_records):
+                            is_root_field = (fr.parent_field_id == 0 or fr.parent_field_id == i)
+                            if fr.field_name == part:
+                                if current_parent_id is None and is_root_field:
+                                    found = (i, fr)
+                                    break
+                                elif current_parent_id is not None and fr.parent_field_id == current_parent_id:
+                                    found = (i, fr)
+                                    break
+                        if found is None:
                             raise ValueError(
-                                f"Field {parent_name!r} has type {fr.type_name!r} and cannot be extended. "
-                                f"Only untyped records (empty type_name) can have subfields added."
+                                f"Field {'.'.join(parts[:part_idx+1])!r} not found in this RNTuple"
                             )
-                        if fr.struct_role != uproot.const.RNTupleFieldRole.RECORD:
-                            raise ValueError(
-                                f"Field {parent_name!r} is not a record and cannot have subfields added."
-                            )
-                        break
-                if parent_field_id is None:
+                        current_parent_id = found[0]
+                        parent_field_id = found[0]
+                        fr = found[1]
+                if fr.type_name != "":
                     raise ValueError(
-                        f"Parent field {parent_name!r} not found in RNTuple"
+                        f"Field {'.'.join(parts[:-1])!r} has type {fr.type_name!r} and cannot be extended. "
+                        f"Only untyped records (empty type_name) can have subfields added."
+                    )
+                if fr.struct_role != uproot.const.RNTupleFieldRole.RECORD:
+                    raise ValueError(
+                        f"Field {'.'.join(parts[:-1])!r} is not a record and cannot have subfields added."
                     )
             else:
                 actual_field_name = field_name
