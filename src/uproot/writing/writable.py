@@ -1214,9 +1214,7 @@ class WritableDirectory(MutableMapping):
             if not column_counts:
                 column_counts = [0] * num_columns
             for col_idx, col_pages in enumerate(ple.pagelinklist[0]):
-                column_counts[col_idx] += sum(
-                    p.num_elements for p in col_pages.pages
-                )
+                column_counts[col_idx] += sum(p.num_elements for p in col_pages.pages)
         if not column_counts:
             column_counts = [num_entries] * num_columns
         ntuple_cascading._column_counts = numpy.array(column_counts, dtype=int)
