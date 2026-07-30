@@ -2634,37 +2634,26 @@ class WritableNTuple:
         self._cascading._freesegments.write(self._file.sink)
         self._file.sink.flush()
 
-        # reload ntuple so subsequent add_fields/extend calls see updated schema
-        # find the directory that owns this ntuple and reload via _load_existing_ntuple
-        parent_dir = self._file._cascading.rootdirectory
-        key = parent_dir.data.get_key(self._path[-1], 1)
-        # rebuild cascading from file
+        # update in-memory state without full reload
+        # update field records and column counts directly from what we just wrote
+        self._cascading._existing_field_records = (
+            list(existing_field_records) + list(footer.extension_field_record_frames)
+        )
+        self._cascading._column_counts = numpy.append(
+            self._cascading._column_counts,
+            numpy.zeros(len(new_fields), dtype=int)
+        )
+        # reload footer, page list envelopes and akform from file
+        # (needed for next add_fields call; read-only footer has cluster_group_records
+        # while writable footer only has cluster_group_record_frames)
         existing_file = uproot.open(self._file.file_path, minimal_ttree_metadata=False)
         try:
             existing = existing_file[self._path[-1]]
             _ = existing.keys()  # trigger lazy loading of footer and page lists
             self._cascading._existing_footer = existing._footer
             self._cascading._existing_page_list_envelopes = existing.page_list_envelopes
-            self._cascading._existing_field_records = existing._ntuple.field_records
             full_akform, _ = existing.to_akform()
             self._cascading._header._akform = full_akform
-            # update column counts from existing page lists
-            existing_footer_reload = existing._footer
-            existing_ples = existing.page_list_envelopes
-            num_columns = (
-                len(existing._header.column_records)
-                + len(existing._footer.extension_links.column_records)
-                if existing._footer
-                else len(existing.column_records)
-            )
-            column_counts = [0] * num_columns
-            for cg_idx, cg in enumerate(existing_footer_reload.cluster_group_records):
-                ple = existing_ples[cg_idx]
-                for col_idx, col_pages in enumerate(ple.pagelinklist[0]):
-                    column_counts[col_idx] += sum(
-                        p.num_elements for p in col_pages.pages
-                    )
-            self._cascading._column_counts = numpy.array(column_counts, dtype=int)
         finally:
             existing_file.close()
 
