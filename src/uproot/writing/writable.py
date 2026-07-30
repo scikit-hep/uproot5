@@ -2554,38 +2554,51 @@ class WritableNTuple:
         footer.cluster_group_record_frames = []
         for cg_idx, cg in enumerate(existing_footer.cluster_group_records):
             ple = existing_page_list_envelopes[cg_idx]
-            if len(ple.pagelinklist) > 1:
-                raise ValueError(
-                    f"add_fields does not yet support RNTuples with multiple clusters per cluster group "
-                    f"(cluster group {cg_idx} has {len(ple.pagelinklist)} clusters). "
-                    f"This is a known limitation that will be fixed in a future version."
-                )
-            new_cluster_page_data = []
-            for col_pages in ple.pagelinklist[0]:
-                existing_pages = [
-                    cnt.NTuple_PageDescription(
-                        p.num_elements,
-                        cnt.NTuple_Locator(p.locator.num_bytes, p.locator.offset),
+            all_cluster_page_data = []
+            for cluster_idx, cluster_col_pages in enumerate(ple.pagelinklist):
+                new_cluster_page_data = []
+                cluster_num_entries = ple.cluster_summaries[cluster_idx].num_entries
+                for col_pages in cluster_col_pages:
+                    existing_pages = [
+                        cnt.NTuple_PageDescription(
+                            p.num_elements,
+                            cnt.NTuple_Locator(p.locator.num_bytes, p.locator.offset),
+                        )
+                        for p in col_pages.pages
+                    ]
+                    new_cluster_page_data.append(
+                        cnt.NTuple_ColumnPageListDescription(
+                            existing_pages, col_pages.element_offset, compression.code
+                        )
                     )
-                    for p in col_pages.pages
-                ]
-                new_cluster_page_data.append(
-                    cnt.NTuple_ColumnPageListDescription(
-                        existing_pages, col_pages.element_offset, compression.code
+                # write one new page per new field for this cluster
+                for field_name, field_dtype_raw in new_fields.items():
+                    ak_form = _type_specification_to_awkward_form(field_dtype_raw)
+                    ak_primitive = ak_form.primitive
+                    cluster_data = numpy.zeros(cluster_num_entries, dtype=numpy.dtype(ak_primitive))
+                    raw_cluster = cluster_data.view("uint8")
+                    compressed_cluster = uproot.compression.compress(raw_cluster, compression)
+                    cluster_page_key = self._cascading.add_rblob(
+                        self._file.sink, compressed_cluster, len(raw_cluster)
                     )
-                )
-            for field_name in new_fields:
-                new_cluster_page_data.append(
-                    cnt.NTuple_ColumnPageListDescription(
-                        [new_pages[field_name]], 0, compression.code
+                    cluster_page_locator = cnt.NTuple_Locator(
+                        len(compressed_cluster),
+                        cluster_page_key.location + cluster_page_key.allocation,
                     )
-                )
+                    new_cluster_page_data.append(
+                        cnt.NTuple_ColumnPageListDescription(
+                            [cnt.NTuple_PageDescription(cluster_num_entries, cluster_page_locator)],
+                            0,
+                            compression.code,
+                        )
+                    )
+                all_cluster_page_data.append(new_cluster_page_data)
             cluster_summaries = [
                 cnt.NTuple_ClusterSummary(s.num_first_entry, s.num_entries)
                 for s in ple.cluster_summaries
             ]
             pagelistenv = cnt.NTuple_PageListEnvelope(
-                header._checksum, cluster_summaries, [new_cluster_page_data]
+                header._checksum, cluster_summaries, all_cluster_page_data
             )
             pagelistenv_raw = pagelistenv.serialize()
             pagelistenv_key = self._cascading.add_rblob(

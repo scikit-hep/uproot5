@@ -533,13 +533,24 @@ def test_ntuple_extend_root_written_raises(tmp_path):
             )
 
 
-def test_ntuple_add_fields_multi_cluster_raises(tmp_path):
-    src = skhep_testdata.data_path("test_multiple_cluster_groups_rntuple_v1-0-0-0.root")
-    shutil.copy(src, os.path.join(tmp_path, "test.root"))
+def test_ntuple_add_fields_multi_cluster_groups(tmp_path):
+    # multiple cluster groups (one cluster each) — should work
+    with uproot.recreate(os.path.join(tmp_path, "test.root")) as f:
+        f["ntuple"] = {"x": np.array([1, 2, 3], dtype=np.float32)}
 
     with uproot.update(os.path.join(tmp_path, "test.root")) as f:
-        with pytest.raises(ValueError):
-            f["ntuple"].add_fields({"newcol": np.int32})
+        f["ntuple"].extend({"x": np.array([4, 5, 6], dtype=np.float32)})
+
+    with uproot.update(os.path.join(tmp_path, "test.root")) as f:
+        f["ntuple"].extend({"x": np.array([7, 8, 9], dtype=np.float32)})
+
+    with uproot.update(os.path.join(tmp_path, "test.root")) as f:
+        f["ntuple"].add_fields({"y": np.int32})
+
+    with uproot.open(os.path.join(tmp_path, "test.root")) as f:
+        assert f["ntuple"].num_entries == 9
+        assert np.all(f["ntuple"]["x"].array() == np.arange(1, 10, dtype=np.float32))
+        assert np.all(f["ntuple"]["y"].array() == 0)
 
 
 def test_ntuple_add_fields_sequential_same_session(tmp_path):
