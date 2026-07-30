@@ -2575,9 +2575,13 @@ class WritableNTuple:
                 for _field_name, field_dtype_raw in new_fields.items():
                     ak_form = _type_specification_to_awkward_form(field_dtype_raw)
                     ak_primitive = ak_form.primitive
-                    cluster_data = numpy.zeros(cluster_num_entries, dtype=numpy.dtype(ak_primitive))
+                    cluster_data = numpy.zeros(
+                        cluster_num_entries, dtype=numpy.dtype(ak_primitive)
+                    )
                     raw_cluster = cluster_data.view("uint8")
-                    compressed_cluster = uproot.compression.compress(raw_cluster, compression)
+                    compressed_cluster = uproot.compression.compress(
+                        raw_cluster, compression
+                    )
                     cluster_page_key = self._cascading.add_rblob(
                         self._file.sink, compressed_cluster, len(raw_cluster)
                     )
@@ -2587,7 +2591,11 @@ class WritableNTuple:
                     )
                     new_cluster_page_data.append(
                         cnt.NTuple_ColumnPageListDescription(
-                            [cnt.NTuple_PageDescription(cluster_num_entries, cluster_page_locator)],
+                            [
+                                cnt.NTuple_PageDescription(
+                                    cluster_num_entries, cluster_page_locator
+                                )
+                            ],
                             0,
                             compression.code,
                         )
@@ -2636,12 +2644,11 @@ class WritableNTuple:
 
         # update in-memory state without full reload
         # update field records and column counts directly from what we just wrote
-        self._cascading._existing_field_records = (
-            list(existing_field_records) + list(footer.extension_field_record_frames)
+        self._cascading._existing_field_records = list(existing_field_records) + list(
+            footer.extension_field_record_frames
         )
         self._cascading._column_counts = numpy.append(
-            self._cascading._column_counts,
-            numpy.zeros(len(new_fields), dtype=int)
+            self._cascading._column_counts, numpy.zeros(len(new_fields), dtype=int)
         )
         # reload footer, page list envelopes and akform from file
         # (needed for next add_fields call; read-only footer has cluster_group_records
