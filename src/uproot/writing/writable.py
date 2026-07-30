@@ -1113,7 +1113,7 @@ class WritableDirectory(MutableMapping):
             )
         else:
             for i, (existing_cr, new_cr) in enumerate(
-                zip(existing_col_records, new_col_records)
+                zip(existing_col_records, new_col_records, strict=False)
             ):
                 if (
                     existing_cr.type != new_cr.type_num
@@ -1209,7 +1209,7 @@ class WritableDirectory(MutableMapping):
         # recover per-column element counts from existing page lists
         # for jagged fields, data columns advance by elements not entries
         column_counts = []
-        for cg_idx, cg in enumerate(existing_footer.cluster_group_records):
+        for cg_idx, _cg in enumerate(existing_footer.cluster_group_records):
             ple = existing_page_list_envelopes[cg_idx]
             if not column_counts:
                 column_counts = [0] * num_columns
@@ -2572,7 +2572,7 @@ class WritableNTuple:
                         )
                     )
                 # write one new page per new field for this cluster
-                for field_name, field_dtype_raw in new_fields.items():
+                for _field_name, field_dtype_raw in new_fields.items():
                     ak_form = _type_specification_to_awkward_form(field_dtype_raw)
                     ak_primitive = ak_form.primitive
                     cluster_data = numpy.zeros(cluster_num_entries, dtype=numpy.dtype(ak_primitive))
