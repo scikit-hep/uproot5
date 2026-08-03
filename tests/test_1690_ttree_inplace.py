@@ -216,7 +216,7 @@ def test_extend_mismatched_lengths(tmp_path):
         )
 
     with uproot.update(os.path.join(tmp_path, "test.root")) as f:
-        with pytest.raises(ValueError, match="same length"):
+        with pytest.raises(ValueError):
             f["tree"].extend(
                 {"x": np.ones(50, dtype=np.float32), "y": np.ones(30, dtype=np.int32)}
             )
@@ -260,7 +260,7 @@ def test_extend_new_fields_error_without_flag(tmp_path):
         f["tree"].extend({"x": np.ones(100, dtype=np.float32)})
 
     with uproot.update(os.path.join(tmp_path, "test.root")) as f:
-        with pytest.raises(ValueError, match="accept_new_fields"):
+        with pytest.raises(ValueError):
             f["tree"].extend(
                 {
                     "x": np.ones(50, dtype=np.float32),

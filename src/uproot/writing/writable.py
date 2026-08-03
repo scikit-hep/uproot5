@@ -1017,8 +1017,8 @@ class WritableDirectory(MutableMapping):
             if self._file._has_tree(key.seek_location):
                 return self._file._get_tree(key.seek_location)
             else:
-                # return a WritableTree wrapper for preexisting trees (update mode)
-                return WritableTree(self._path + (key.name.string,), self._file, None)
+                # load existing TTree and reconstruct cascade
+                return self._load_existing_ttree(key)
         elif key.classname.string == "ROOT::RNTuple":
             if self._file._has_ntuple(key.seek_location):
                 return self._file._get_ntuple(key.seek_location)
@@ -1055,6 +1055,132 @@ class WritableDirectory(MutableMapping):
             )
 
             return readonlykey.get()
+
+
+    def _load_existing_ttree(self, key):
+        """
+        Loads an existing TTree from disk and reconstructs a writable
+        :doc:`uproot.writing.writable.WritableTree` object with a proper
+        cascade object, enabling extend via existing machinery.
+        """
+        import io
+        import struct as _struct
+        import uproot.writing._cascadetree as ct
+
+        if self.file_path is None:
+            raise TypeError(
+                "uproot.update() on a file-like object does not support accessing "
+                "existing TTrees; use uproot.update() with a file path instead."
+            )
+
+        name = key.name.string
+
+        _dtype_to_struct = {
+            "f4": "f", "f8": "d", "i4": "i", "i8": "q",
+            "i2": "h", "i1": "b", "u4": "I", "u8": "Q", "u2": "H", "u1": "B",
+        }
+
+        # flush and read via BytesIO to avoid OS caching issues
+        self._file.sink.flush()
+        _sink_file = self._file.sink._file
+        _sink_file.seek(0)
+        _buf = io.BytesIO(_sink_file.read())
+        existing_file = uproot.open(_buf, minimal_ttree_metadata=False)
+        try:
+            tree = existing_file[name]
+            branches = list(tree.branches)
+            rkey = existing_file.key(name + ";1")
+            chunk, cursor = rkey.get_uncompressed_chunk_cursor()
+            raw = bytearray(chunk.raw_data.tobytes())
+
+            fEntries = tree.member("fEntries")
+            fTotBytes = tree.member("fTotBytes")
+            fZipBytes_val = tree.member("fZipBytes")
+            seq = (
+                _struct.pack(">q", fEntries)
+                + _struct.pack(">q", fTotBytes)
+                + _struct.pack(">q", fZipBytes_val)
+            )
+            metadata_start = raw.find(seq)
+            if metadata_start == -1:
+                raise RuntimeError(
+                    f"Could not find TTree metadata position in {name!r}"
+                )
+
+            branch_data = []
+            branch_lookup = {}
+            for branch_idx, b in enumerate(branches):
+                refs_list = list(b.cursor._refs.keys())
+                dtype = b.interpretation.numpy_dtype.newbyteorder(">")
+                sc = _dtype_to_struct.get(dtype.kind + str(dtype.itemsize), "f")
+                bd = {
+                    "fName": b.name,
+                    "branch_type": dtype,
+                    "kind": "normal",
+                    "counter": None,
+                    "dtype": dtype,
+                    "shape": (),
+                    "fTitle": b.member("fTitle"),
+                    "compression": b.compression,
+                    "fBasketSize": b.member("fBasketSize"),
+                    "fEntryOffsetLen": b.member("fEntryOffsetLen"),
+                    "fOffset": b.member("fOffset"),
+                    "fSplitLevel": b.member("fSplitLevel"),
+                    "fFirstEntry": b.member("fFirstEntry"),
+                    "fTotBytes": b.member("fTotBytes"),
+                    "fZipBytes": b.member("fZipBytes"),
+                    "fBasketBytes": b.member("fBasketBytes").copy(),
+                    "fBasketEntry": b.member("fBasketEntry").copy(),
+                    "fBasketSeek": b.member("fBasketSeek").copy(),
+                    "arrays_write_start": b.member("fWriteBasket"),
+                    "arrays_write_stop": b.member("fWriteBasket"),
+                    "metadata_start": b.cursor.index + 38,
+                    "basket_metadata_start": b.cursor.index + 265,
+                    "tleaf_reference_number": refs_list[2 + branch_idx * 4] if 2 + branch_idx * 4 < len(refs_list) else 0,
+                    "tleaf_maximum_value": 0,
+                    "tleaf_special_struct": _struct.Struct(">" + sc + sc),
+                }
+                branch_data.append(bd)
+                branch_lookup[b.name] = branch_idx
+
+            fWriteBasket = branches[0].member("fWriteBasket") if branches else 0
+            metadata = {
+                k: tree.member(k)
+                for k in [
+                    "fTotBytes", "fZipBytes", "fSavedBytes", "fFlushedBytes",
+                    "fWeight", "fTimerInterval", "fScanField", "fUpdate",
+                    "fDefaultEntryOffsetLen", "fNClusterRange", "fMaxEntries",
+                    "fMaxEntryLoop", "fMaxVirtualSize", "fAutoSave",
+                    "fAutoFlush", "fEstimate",
+                ]
+            }
+        finally:
+            existing_file.close()
+
+        dir_key = self._cascading.data.get_key(name, 1)
+        freesegments = self._file._cascading.freesegments
+
+        casc = ct.Tree.__new__(ct.Tree)
+        casc._directory = self._file._cascading.rootdirectory
+        casc._name = name
+        casc._title = ""
+        casc._freesegments = freesegments
+        casc._branch_data = branch_data
+        casc._branch_lookup = branch_lookup
+        casc._basket_capacity = 10
+        casc._resize_factor = 10.0
+        casc._counter_name = None
+        casc._field_name = None
+        casc._metadata_start = metadata_start
+        casc._num_baskets = fWriteBasket
+        casc._num_entries = fEntries
+        casc._metadata = metadata
+        casc._key = dir_key
+
+        path = (*self._path, name)
+        writable_tree = WritableTree(path, self._file, casc)
+        self._file._trees[key.seek_location] = writable_tree
+        return writable_tree
 
     def _del(self, name, cycle):
         key = self._cascading.data.get_key(name, cycle)
@@ -2362,6 +2488,22 @@ class WritableTree:
         """
         if self._cascading is None:
             return self._extend_inplace(data, accept_new_fields=accept_new_fields)
+        # validate branches
+        if isinstance(data, dict):
+            existing_names = [bd["fName"] for bd in self._cascading._branch_data]
+            new_fields = {k: v for k, v in data.items() if k not in existing_names}
+            missing = [b for b in existing_names if b not in data]
+            if missing:
+                raise ValueError(
+                    f"'extend' must fill every branch with the same number of entries; missing: {missing}"
+                )
+            if new_fields:
+                if not accept_new_fields:
+                    raise ValueError(
+                        f"'extend' was given data that do not correspond to any branch: "
+                        + repr(next(iter(new_fields)))
+                    )
+                return self._extend_inplace(data, accept_new_fields=True)
         self._cascading.extend(self._file, self._file.sink, data)
 
     def show(
