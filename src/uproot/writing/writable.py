@@ -2448,8 +2448,6 @@ class WritableNTuple:
 
         next_field_id = len(existing_field_records)
 
-        new_pages = {}
-
         existing_field_names = {fr.field_name for fr in existing_field_records}
         for field_name in new_fields:
             if field_name in existing_field_names:
@@ -2546,7 +2544,6 @@ class WritableNTuple:
             all_cluster_page_data = []
             for cluster_idx, cluster_col_pages in enumerate(ple.pagelinklist):
                 new_cluster_page_data = []
-                cluster_num_entries = ple.cluster_summaries[cluster_idx].num_entries
                 for col_pages in cluster_col_pages:
                     existing_pages = [
                         cnt.NTuple_PageDescription(
