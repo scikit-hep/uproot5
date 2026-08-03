@@ -85,7 +85,6 @@ def test_open_fsspec_local():
         assert len(data) == 40
 
 
-@pytest.mark.network
 @pytest.mark.parametrize(
     "handler",
     [
@@ -93,16 +92,16 @@ def test_open_fsspec_local():
         None,
     ],
 )
-def test_open_fsspec_s3(handler):
-    pytest.importorskip("s3fs")
+def test_open_fsspec_s3(handler, s3_server):
+    bucket_url, storage_options = s3_server
 
     with uproot.open(
-        "s3://pivarski-princeton/pythia_ppZee_run17emb.picoDst.root:PicoDst",
-        anon=True,
+        f"{bucket_url}/uproot-HZZ-1.root:events",
         handler=handler,
+        **storage_options,
     ) as f:
-        data = f["Event/Event.mEventId"].array(library="np")
-        assert len(data) == 8004
+        data = f["Muon_Px"].array(library="np")
+        assert len(data) == 2421
 
 
 @pytest.mark.parametrize(
@@ -455,21 +454,21 @@ def test_fsspec_globbing_xrootd_no_files(handler):
         None,
     ],
 )
-def test_fsspec_globbing_s3(handler):
-    pytest.importorskip("s3fs")
+def test_fsspec_globbing_s3(handler, s3_server):
+    bucket_url, storage_options = s3_server
 
     iterator = uproot.iterate(
-        {"s3://pivarski-princeton/pythia_ppZee_run17emb.*.root": "PicoDst"},
-        ["Event/Event.mEventId"],
-        anon=True,
+        {f"{bucket_url}/uproot-HZZ-*.root": "events"},
+        ["Muon_Px"],
         handler=handler,
+        **storage_options,
     )
 
-    # if more files are added that match the glob, this test needs to be updated
+    # the bucket is populated by the s3_server fixture with exactly two matches
     arrays = [array for array in iterator]
-    assert len(arrays) == 1
+    assert len(arrays) == 2
     for array in arrays:
-        assert len(array) == 8004
+        assert len(array) == 2421
 
 
 @pytest.mark.parametrize(
