@@ -1152,7 +1152,8 @@ class WritableDirectory(MutableMapping):
             footer.extension_field_record_frames.append(new_field)
         for cr in existing_footer.extension_links.column_records:
             new_col = cnt.NTuple_Column_Description(
-                cr.type, cr.nbits, cr.field_id, cr.flags, cr.repr_idx
+                cr.type, cr.nbits, cr.field_id, int(cr.flags), cr.repr_idx,
+                first_element_index=cr.first_element_index
             )
             footer.extension_column_record_frames.append(new_col)
         anchor = cnt.NTuple_Anchor(
@@ -2530,25 +2531,13 @@ class WritableNTuple:
                 type_name,
             )
             footer.extension_field_record_frames.append(new_field)
-            new_col = cnt.NTuple_Column_Description(
-                type_num, type_size, next_field_id, 0, 0
-            )
-            footer.extension_column_record_frames.append(new_col)
-
-            new_data = numpy.zeros(num_entries, dtype=numpy.dtype(ak_primitive))
-            raw_data = new_data.view("uint8")
-            compressed_data = uproot.compression.compress(raw_data, compression)
             if self._column_encoding_error is not None:
                 raise ValueError(self._column_encoding_error)
-            page_key = self._cascading.add_rblob(
-                self._file.sink, compressed_data, len(raw_data)
+            # use deferred column — first_element_index marks where new data starts
+            new_col = cnt.NTuple_Column_Description(
+                type_num, type_size, next_field_id, 0, 0, first_element_index=num_entries
             )
-            page_locator = cnt.NTuple_Locator(
-                len(compressed_data), page_key.location + page_key.allocation
-            )
-            new_pages[field_name] = cnt.NTuple_PageDescription(
-                num_entries, page_locator
-            )
+            footer.extension_column_record_frames.append(new_col)
             next_field_id += 1
 
         footer.cluster_group_record_frames = []
@@ -2571,35 +2560,7 @@ class WritableNTuple:
                             existing_pages, col_pages.element_offset, compression.code
                         )
                     )
-                # write one new page per new field for this cluster
-                for _field_name, field_dtype_raw in new_fields.items():
-                    ak_form = _type_specification_to_awkward_form(field_dtype_raw)
-                    ak_primitive = ak_form.primitive
-                    cluster_data = numpy.zeros(
-                        cluster_num_entries, dtype=numpy.dtype(ak_primitive)
-                    )
-                    raw_cluster = cluster_data.view("uint8")
-                    compressed_cluster = uproot.compression.compress(
-                        raw_cluster, compression
-                    )
-                    cluster_page_key = self._cascading.add_rblob(
-                        self._file.sink, compressed_cluster, len(raw_cluster)
-                    )
-                    cluster_page_locator = cnt.NTuple_Locator(
-                        len(compressed_cluster),
-                        cluster_page_key.location + cluster_page_key.allocation,
-                    )
-                    new_cluster_page_data.append(
-                        cnt.NTuple_ColumnPageListDescription(
-                            [
-                                cnt.NTuple_PageDescription(
-                                    cluster_num_entries, cluster_page_locator
-                                )
-                            ],
-                            0,
-                            compression.code,
-                        )
-                    )
+                # deferred columns: no pages needed for existing cluster groups
                 all_cluster_page_data.append(new_cluster_page_data)
             cluster_summaries = [
                 cnt.NTuple_ClusterSummary(s.num_first_entry, s.num_entries)

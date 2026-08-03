@@ -242,21 +242,29 @@ class NTuple_Field_Description:
 
 # https://github.com/root-project/root/blob/master/tree/ntuple/v7/doc/specifications.md#column-description
 class NTuple_Column_Description:
-    def __init__(self, type_num, bits_on_disk, field_id, flags, repr_index):
+    def __init__(self, type_num, bits_on_disk, field_id, flags, repr_index, first_element_index=0):
         self.type_num = type_num
         self.bits_on_disk = bits_on_disk
         self.field_id = field_id
         self.flags = flags
         self.repr_index = repr_index
+        self.first_element_index = first_element_index
 
     def serialize(self):
+        import uproot.const
+        flags = self.flags
+        if self.first_element_index > 0:
+            flags = flags | uproot.const.RNTupleColumnFlags.DEFERRED
         header_bytes = _rntuple_column_record_format.pack(
             self.type_num,
             self.bits_on_disk,
             self.field_id,
-            self.flags,
+            int(flags),
             self.repr_index,
         )
+        if self.first_element_index > 0:
+            import struct
+            header_bytes += struct.pack("<Q", int(self.first_element_index))
         return header_bytes
 
 
