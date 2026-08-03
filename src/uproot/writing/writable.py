@@ -1056,7 +1056,6 @@ class WritableDirectory(MutableMapping):
 
             return readonlykey.get()
 
-
     def _load_existing_ttree(self, key):
         """
         Loads an existing TTree from disk and reconstructs a writable
@@ -1065,6 +1064,7 @@ class WritableDirectory(MutableMapping):
         """
         import io
         import struct as _struct
+
         import uproot.writing._cascadetree as ct
 
         if self.file_path is None:
@@ -1076,8 +1076,16 @@ class WritableDirectory(MutableMapping):
         name = key.name.string
 
         _dtype_to_struct = {
-            "f4": "f", "f8": "d", "i4": "i", "i8": "q",
-            "i2": "h", "i1": "b", "u4": "I", "u8": "Q", "u2": "H", "u1": "B",
+            "f4": "f",
+            "f8": "d",
+            "i4": "i",
+            "i8": "q",
+            "i2": "h",
+            "i1": "b",
+            "u4": "I",
+            "u8": "Q",
+            "u2": "H",
+            "u1": "B",
         }
 
         # flush and read via BytesIO to avoid OS caching issues
@@ -1136,7 +1144,11 @@ class WritableDirectory(MutableMapping):
                     "arrays_write_stop": b.member("fWriteBasket"),
                     "metadata_start": b.cursor.index + 38,
                     "basket_metadata_start": b.cursor.index + 265,
-                    "tleaf_reference_number": refs_list[2 + branch_idx * 4] if 2 + branch_idx * 4 < len(refs_list) else 0,
+                    "tleaf_reference_number": (
+                        refs_list[2 + branch_idx * 4]
+                        if 2 + branch_idx * 4 < len(refs_list)
+                        else 0
+                    ),
                     "tleaf_maximum_value": 0,
                     "tleaf_special_struct": _struct.Struct(">" + sc + sc),
                 }
@@ -1147,11 +1159,22 @@ class WritableDirectory(MutableMapping):
             metadata = {
                 k: tree.member(k)
                 for k in [
-                    "fTotBytes", "fZipBytes", "fSavedBytes", "fFlushedBytes",
-                    "fWeight", "fTimerInterval", "fScanField", "fUpdate",
-                    "fDefaultEntryOffsetLen", "fNClusterRange", "fMaxEntries",
-                    "fMaxEntryLoop", "fMaxVirtualSize", "fAutoSave",
-                    "fAutoFlush", "fEstimate",
+                    "fTotBytes",
+                    "fZipBytes",
+                    "fSavedBytes",
+                    "fFlushedBytes",
+                    "fWeight",
+                    "fTimerInterval",
+                    "fScanField",
+                    "fUpdate",
+                    "fDefaultEntryOffsetLen",
+                    "fNClusterRange",
+                    "fMaxEntries",
+                    "fMaxEntryLoop",
+                    "fMaxVirtualSize",
+                    "fAutoSave",
+                    "fAutoFlush",
+                    "fEstimate",
                 ]
             }
         finally:
@@ -2500,7 +2523,7 @@ class WritableTree:
             if new_fields:
                 if not accept_new_fields:
                     raise ValueError(
-                        f"'extend' was given data that do not correspond to any branch: "
+                        "'extend' was given data that do not correspond to any branch: "
                         + repr(next(iter(new_fields)))
                     )
                 return self._extend_inplace(data, accept_new_fields=True)
