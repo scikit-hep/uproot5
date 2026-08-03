@@ -2551,7 +2551,7 @@ class WritableNTuple:
         for cg_idx, cg in enumerate(existing_footer.cluster_group_records):
             ple = existing_page_list_envelopes[cg_idx]
             all_cluster_page_data = []
-            for cluster_idx, cluster_col_pages in enumerate(ple.pagelinklist):
+            for _cluster_idx, cluster_col_pages in enumerate(ple.pagelinklist):
                 new_cluster_page_data = []
                 for col_pages in cluster_col_pages:
                     existing_pages = [
