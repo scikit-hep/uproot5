@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, Any, Final, NamedTuple, Protocol, TypeVar
 
 import awkward
 import numpy
+from typing_extensions import Self
 
 import uproot
 from uproot._util import no_filter, unset
@@ -1202,11 +1203,11 @@ class UprootReadMixin:
             },
         )
 
-    def project(self: T, *, report: TypeTracerReport, state: dict) -> T:
+    def project(self, *, report: TypeTracerReport, state: dict) -> Self:
         keys = self.necessary_columns(report=report, state=state)
         return self.project_keys(keys)
 
-    def project_manually(self: T, columns: frozenset[str]) -> T:
+    def project_manually(self, columns: frozenset[str]) -> Self:
         return self.project_keys(columns)
 
     def necessary_columns(
@@ -1239,7 +1240,7 @@ class UprootReadMixin:
             self.common_keys
         )
 
-    def project_keys(self: T, keys: frozenset[str]) -> T:
+    def project_keys(self, keys: frozenset[str]) -> Self:
         raise NotImplementedError
 
 
@@ -1314,7 +1315,7 @@ class _UprootRead(UprootReadMixin):
         self.decompression_executor = decompression_executor
         self.interpretation_executor = interpretation_executor
 
-    def project_keys(self: T, keys: frozenset[str]) -> T:
+    def project_keys(self, keys: frozenset[str]) -> Self:
         return _UprootRead(
             self.ttrees,
             keys,
@@ -1481,7 +1482,7 @@ which has {num_entries} entries"""
         )
         return result
 
-    def project_keys(self: T, keys: frozenset[str]) -> T:
+    def project_keys(self, keys: frozenset[str]) -> Self:
         return _UprootOpenAndRead(
             self.custom_classes,
             self.allow_missing,

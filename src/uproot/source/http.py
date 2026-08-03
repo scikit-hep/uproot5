@@ -369,9 +369,9 @@ for URL {source.file_path}"""
         return uproot.source.futures.ResourceFuture(task)
 
     _content_range_size = re.compile(
-        b"Content-Range: bytes ([0-9]+-[0-9]+)/([0-9]+)", re.I
+        b"Content-Range: bytes ([0-9]+-[0-9]+)/([0-9]+)", re.IGNORECASE
     )
-    _content_range = re.compile(b"Content-Range: bytes ([0-9]+-[0-9]+)", re.I)
+    _content_range = re.compile(b"Content-Range: bytes ([0-9]+-[0-9]+)", re.IGNORECASE)
 
     def is_multipart_supported(
         self, ranges: list[tuple[int, int]], response: http.client.HTTPResponse

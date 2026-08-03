@@ -196,4 +196,4 @@ def ak_to_root(
 
 def none_to_none(*_):
     """Dummy reduction function where write tasks produce no metadata"""
-    return None
+    return
