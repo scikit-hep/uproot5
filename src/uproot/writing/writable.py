@@ -1152,8 +1152,12 @@ class WritableDirectory(MutableMapping):
             footer.extension_field_record_frames.append(new_field)
         for cr in existing_footer.extension_links.column_records:
             new_col = cnt.NTuple_Column_Description(
-                cr.type, cr.nbits, cr.field_id, int(cr.flags), cr.repr_idx,
-                first_element_index=cr.first_element_index
+                cr.type,
+                cr.nbits,
+                cr.field_id,
+                int(cr.flags),
+                cr.repr_idx,
+                first_element_index=cr.first_element_index,
             )
             footer.extension_column_record_frames.append(new_col)
         anchor = cnt.NTuple_Anchor(
@@ -2533,7 +2537,12 @@ class WritableNTuple:
                 raise ValueError(self._column_encoding_error)
             # use deferred column — first_element_index marks where new data starts
             new_col = cnt.NTuple_Column_Description(
-                type_num, type_size, next_field_id, 0, 0, first_element_index=num_entries
+                type_num,
+                type_size,
+                next_field_id,
+                0,
+                0,
+                first_element_index=num_entries,
             )
             footer.extension_column_record_frames.append(new_col)
             next_field_id += 1
