@@ -101,7 +101,12 @@ def s3_server():
     moto_server = pytest.importorskip("moto.server")
     import s3fs
 
-    server = moto_server.ThreadedMotoServer(port=0)
+    if not hasattr(moto_server.ThreadedMotoServer, "get_host_and_port"):
+        # On free-threaded Windows, moto[server] -> docker -> pywin32 has no
+        # wheels, so the resolver falls back to a years-old moto
+        pytest.skip("moto is too old to report which port it is listening on")
+
+    server = moto_server.ThreadedMotoServer(ip_address="127.0.0.1", port=0)
     server.start()
     _, port = server.get_host_and_port()
 
