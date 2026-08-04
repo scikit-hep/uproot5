@@ -7,7 +7,6 @@ import shutil
 from functools import wraps
 
 import pytest
-
 import skhep_testdata
 
 try:
