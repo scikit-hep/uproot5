@@ -106,19 +106,19 @@ def s3_server():
         # wheels, so the resolver falls back to a years-old moto
         pytest.skip("moto is too old to report which port it is listening on")
 
+    bucket = "uproot-test"
     server = moto_server.ThreadedMotoServer(ip_address="127.0.0.1", port=0)
     server.start()
-    _, port = server.get_host_and_port()
-
-    bucket = "uproot-test"
-    storage_options = {
-        # moto does not check these, but botocore insists on having them
-        "key": "testing",
-        "secret": "testing",
-        "client_kwargs": {"endpoint_url": f"http://127.0.0.1:{port}"},
-    }
 
     try:
+        _, port = server.get_host_and_port()
+        storage_options = {
+            # moto does not check these, but botocore insists on having them
+            "key": "testing",
+            "secret": "testing",
+            "client_kwargs": {"endpoint_url": f"http://127.0.0.1:{port}"},
+        }
+
         with pytest.MonkeyPatch.context() as monkeypatch:
             # botocore raises NoRegionError if it can't find a region anywhere
             monkeypatch.setenv("AWS_DEFAULT_REGION", "us-east-1")
