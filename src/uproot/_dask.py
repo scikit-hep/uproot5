@@ -10,7 +10,6 @@ from typing import TYPE_CHECKING, Any, Final, NamedTuple, Protocol, TypeVar
 
 import awkward
 import numpy
-from typing_extensions import Self
 
 import uproot
 from uproot._util import no_filter, unset
@@ -1056,7 +1055,7 @@ class FormMappingInfoWithVirtualArrays(TrivialFormMappingInfo):
             return _generator
 
         container = {}
-        for buffer_key, _ in self._form.expected_from_buffers().items():
+        for buffer_key in self._form.expected_from_buffers():
             container[buffer_key] = generator(tree, buffer_key)
 
         return container
@@ -1203,11 +1202,11 @@ class UprootReadMixin:
             },
         )
 
-    def project(self, *, report: TypeTracerReport, state: dict) -> Self:
+    def project(self: T, *, report: TypeTracerReport, state: dict) -> T:
         keys = self.necessary_columns(report=report, state=state)
         return self.project_keys(keys)
 
-    def project_manually(self, columns: frozenset[str]) -> Self:
+    def project_manually(self: T, columns: frozenset[str]) -> T:
         return self.project_keys(columns)
 
     def necessary_columns(
@@ -1240,7 +1239,7 @@ class UprootReadMixin:
             self.common_keys
         )
 
-    def project_keys(self, keys: frozenset[str]) -> Self:
+    def project_keys(self: T, keys: frozenset[str]) -> T:
         raise NotImplementedError
 
 
@@ -1315,7 +1314,7 @@ class _UprootRead(UprootReadMixin):
         self.decompression_executor = decompression_executor
         self.interpretation_executor = interpretation_executor
 
-    def project_keys(self, keys: frozenset[str]) -> Self:
+    def project_keys(self: T, keys: frozenset[str]) -> T:
         return _UprootRead(
             self.ttrees,
             keys,
@@ -1482,7 +1481,7 @@ which has {num_entries} entries"""
         )
         return result
 
-    def project_keys(self, keys: frozenset[str]) -> Self:
+    def project_keys(self: T, keys: frozenset[str]) -> T:
         return _UprootOpenAndRead(
             self.custom_classes,
             self.allow_missing,

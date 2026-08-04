@@ -156,11 +156,15 @@ extend-select = [
   "I",  # isort
   # "ARG", # flake8-unused-arguments
   "C4",  # flake8-comprehensions
+  "FURB132",  # use set.discard instead of check-and-remove
+  "FURB163",  # use math.log10/log2 instead of math.log with a redundant base
   "ISC",  # flake8-implicit-str-concat
+  "PERF102",  # don't use dict.items() when only the keys are used
   "PGH",  # pygrep-hooks
   "PIE",  # flake8-pie
   "PL",  # pylint
   "PT",  # flake8-pytest-style
+  "PYI025",  # alias collections.abc.Set to avoid confusion with the set builtin
   "RUF",  # Ruff-specific
   "SIM",  # flake8-simplify
   "T20",  # flake8-print
@@ -180,6 +184,15 @@ ignore = [
   "SIM114",  # combine `if` branches using logical `or` operator
   "SIM118"  # key in dict, broken since uproot doesn't behave like a dict
 ]
+# Ruff 0.16 greatly expanded the implicit default rule set; pin it to the previous
+# default so that the rules we opt into are the ones listed in extend-select above.
+# Deliberately not adopted from the 0.16 defaults:
+# BLE001/S110: broad excepts are intentional around optional imports and best-effort deserialization
+# DTZ: ROOT stores naive local-time datetimes, so tz-aware ones would be wrong
+# N999: would require renaming the tests-wasm and tests-cuda directories
+# S102: exec is how models are generated from TStreamerInfo
+# TRY002/TRY004: changing which exception types are raised is a user-visible change
+select = ["E4", "E7", "E9", "F"]
 isort.required-imports = ["from __future__ import annotations"]
 
 [tool.ruff.lint.per-file-ignores]
