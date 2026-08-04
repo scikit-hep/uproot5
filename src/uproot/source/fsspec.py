@@ -68,7 +68,6 @@ class FSSpecSource(uproot.source.chunk.Source):
         self._open_file = fsspec.open(self._file_path_orig, **self._fsspec_options)
         self._fs = self._open_file.fs
         self._file_path = self._open_file.path
-        self._fo = self._open_file.__enter__()
         self._async_impl = self._fs.async_impl
         self._closed = False
 
@@ -82,7 +81,6 @@ class FSSpecSource(uproot.source.chunk.Source):
         state = dict(self.__dict__)
         state.pop("_executor")
         state.pop("_open_file")
-        state.pop("_fo")
         state.pop("_fs")
         return state
 
