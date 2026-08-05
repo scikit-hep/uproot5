@@ -1056,7 +1056,6 @@ class WritableDirectory(MutableMapping):
 
             return readonlykey.get()
 
-
     def _load_existing_ttree(self, key):
         """
         Loads an existing TTree from disk and reconstructs a writable
@@ -1065,6 +1064,7 @@ class WritableDirectory(MutableMapping):
         """
         import io
         import struct as _struct
+
         import uproot.writing._cascadetree as ct
 
         if self.file_path is None:
@@ -1076,8 +1076,16 @@ class WritableDirectory(MutableMapping):
         name = key.name.string
 
         _dtype_to_struct = {
-            "f4": "f", "f8": "d", "i4": "i", "i8": "q",
-            "i2": "h", "i1": "b", "u4": "I", "u8": "Q", "u2": "H", "u1": "B",
+            "f4": "f",
+            "f8": "d",
+            "i4": "i",
+            "i8": "q",
+            "i2": "h",
+            "i1": "b",
+            "u4": "I",
+            "u8": "Q",
+            "u2": "H",
+            "u1": "B",
         }
 
         # flush and read via BytesIO to avoid OS caching issues
@@ -1090,7 +1098,7 @@ class WritableDirectory(MutableMapping):
             tree = existing_file[name]
             branches = list(tree.branches)
             rkey = existing_file.key(name + ";1")
-            chunk, cursor = rkey.get_uncompressed_chunk_cursor()
+            chunk, _cursor = rkey.get_uncompressed_chunk_cursor()
             raw = bytearray(chunk.raw_data.tobytes())
 
             fEntries = tree.member("fEntries")
@@ -1111,7 +1119,11 @@ class WritableDirectory(MutableMapping):
             branch_lookup = {}
             for branch_idx, b in enumerate(branches):
                 refs_list = list(b.cursor._refs.keys())
-                dtype = b.interpretation.numpy_dtype.newbyteorder(">")
+                try:
+                    dtype = b.interpretation.numpy_dtype.newbyteorder(">")
+                except AttributeError:
+                    # TBranchElement or other complex branch — skip
+                    continue
                 sc = _dtype_to_struct.get(dtype.kind + str(dtype.itemsize), "f")
                 bd = {
                     "fName": b.name,
@@ -1136,7 +1148,11 @@ class WritableDirectory(MutableMapping):
                     "arrays_write_stop": b.member("fWriteBasket"),
                     "metadata_start": b.cursor.index + 38,
                     "basket_metadata_start": b.cursor.index + 265,
-                    "tleaf_reference_number": refs_list[2 + branch_idx * 4] if 2 + branch_idx * 4 < len(refs_list) else 0,
+                    "tleaf_reference_number": (
+                        refs_list[2 + branch_idx * 4]
+                        if 2 + branch_idx * 4 < len(refs_list)
+                        else 0
+                    ),
                     "tleaf_maximum_value": 0,
                     "tleaf_special_struct": _struct.Struct(">" + sc + sc),
                 }
@@ -1147,11 +1163,22 @@ class WritableDirectory(MutableMapping):
             metadata = {
                 k: tree.member(k)
                 for k in [
-                    "fTotBytes", "fZipBytes", "fSavedBytes", "fFlushedBytes",
-                    "fWeight", "fTimerInterval", "fScanField", "fUpdate",
-                    "fDefaultEntryOffsetLen", "fNClusterRange", "fMaxEntries",
-                    "fMaxEntryLoop", "fMaxVirtualSize", "fAutoSave",
-                    "fAutoFlush", "fEstimate",
+                    "fTotBytes",
+                    "fZipBytes",
+                    "fSavedBytes",
+                    "fFlushedBytes",
+                    "fWeight",
+                    "fTimerInterval",
+                    "fScanField",
+                    "fUpdate",
+                    "fDefaultEntryOffsetLen",
+                    "fNClusterRange",
+                    "fMaxEntries",
+                    "fMaxEntryLoop",
+                    "fMaxVirtualSize",
+                    "fAutoSave",
+                    "fAutoFlush",
+                    "fEstimate",
                 ]
             }
         finally:
@@ -1866,206 +1893,97 @@ class WritableTree:
         if self._file.sink.closed:
             raise ValueError("cannot modify a TTree in a closed file")
 
+        if self._file.file_path is None:
+            raise TypeError(
+                "add_branches requires a file path; file-like objects are not supported"
+            )
+
         source = self._path[-1]
-        file_path = self._file.file_path
 
-        # open existing tree in read mode
-        existing_file = uproot.open(file_path, minimal_ttree_metadata=False)
-        try:
-            old_ttree = existing_file[source]
-        except Exception:
-            raise ValueError(
-                f"TTree {source!r} not found in file {file_path}"
-            ) from None
-        if not isinstance(old_ttree, uproot.TTree):
-            raise TypeError("'source' must be the name of a TTree")
-
-        tree_key = existing_file.key(source + ";1")
-        key_seek = tree_key.fSeekKey
-        key_len = tree_key.fKeylen
-        compression = existing_file._file.compression
-        file_end = existing_file._file.fEND
-
-        # get directory key info from current file
-        dir_key = self._file._cascading.rootdirectory.data.get_key(source, 1)
-        dir_key_location = dir_key.location
-        dir_key_big = dir_key.big
-
-        chunk, cursor = tree_key.get_uncompressed_chunk_cursor()
-        orig_raw = bytearray(chunk.raw_data.tobytes())
-        num_branches = len(old_ttree.branches)
-        last_branch = list(old_ttree.branches)[-1]
-        c = last_branch.cursor.copy()
-        c.skip_after(last_branch)
-        insertion_point = c.index
-        tree_entries = old_ttree.member("fEntries")
-        existing_file.close()
-        # validate all new branches have same length as existing tree
-        for bname, bdata in branches.items():
-            if len(numpy.asarray(bdata)) != tree_entries:
-                raise ValueError(
-                    f"branch {bname!r} has {len(numpy.asarray(bdata))} entries but TTree has "
-                    f"{tree_entries} entries; all new branches must match the tree length"
-                )
-        # find fBranches TObjArray bcnt
-        tobjarray_bcnt_pos = None
-        # TObjArray bcnt: 4-byte value with 0x40000000 (kByteCountMask) bit set,
-        # immediately followed by 2-byte version=3
-        for i in range(len(orig_raw) - 4 - 2):  # -4 for bcnt, -2 for version
-            val = struct.unpack(">I", orig_raw[i : i + 4])[0]
-            if val & 0x40000000 and (val & ~0x40000000) > 100:
-                version = struct.unpack(">H", orig_raw[i + 4 : i + 6])[0]
-                if version == 3:
-                    tobjarray_bcnt_pos = i
-                    old_tobjarray_bcnt = val & ~0x40000000
-                    break
-        if tobjarray_bcnt_pos is None:
-            raise RuntimeError("Could not find fBranches TObjArray byte count header")
-
-        new_blob = bytearray(orig_raw)
-        extra_bytes = 0
-        branch_extra_bytes = 0
-        num_added = 0
+        # validate all branches have same length as existing tree
+        key = self._file._cascading.rootdirectory.data.get_key(source, 1)
+        casc = self._file.root_directory._load_existing_ttree(key)._cascading
+        num_entries = casc._num_entries
 
         for branch_name, branch_data in branches.items():
-            branch_data = numpy.asarray(branch_data)
-            dtype = branch_data.dtype
+            arr = numpy.asarray(branch_data)
+            if len(arr) != num_entries:
+                raise ValueError(
+                    f"branch {branch_name!r} has {len(arr)} entries but TTree has "
+                    f"{num_entries} entries; all new branches must match the tree length"
+                )
+            if branch_name in casc._branch_lookup:
+                raise ValueError(f"branch {branch_name!r} already exists in this TTree")
 
-            with tempfile.NamedTemporaryFile(suffix=".root", delete=False) as tmp_f:
-                tmp_path = tmp_f.name
-            try:
-                with uproot.recreate(tmp_path) as tmp_file:
-                    tmp_file.mktree("tree", {branch_name: dtype})
-                    tmp_file["tree"].extend({branch_name: branch_data})
-
-                with uproot.open(tmp_path) as tmp_open:
-                    tmp_branch = tmp_open["tree"].branches[0]
-                    basket_seek_val = tmp_branch.member("fBasketSeek")[0]
-                    basket_bytes_size = tmp_branch.member("fBasketBytes")[0]
-                    tmp_key = tmp_open.key("tree;1")
-                    tmp_chunk, tmp_cursor = tmp_key.get_uncompressed_chunk_cursor()
-                    tmp_raw = bytearray(tmp_chunk.raw_data.tobytes())
-                    tmp_fsize_pos = tmp_raw.find(struct.pack(">i", 1))
-                    tmp_c = tmp_branch.cursor.copy()
-                    tmp_c.skip_after(tmp_branch)
-                    tbranch_pos = tmp_raw.find(b"TBranch", tmp_fsize_pos)
-                    elem_start = tbranch_pos - 8
-                    new_branch_bytes = bytearray(tmp_raw[elem_start : tmp_c.index])
-                    target8 = struct.pack(">q", basket_seek_val)
-                    idx8 = tmp_raw.find(target8, elem_start)
-                    basket_seek_offset_8 = idx8 - elem_start
-                    tleaf_fsize = tmp_raw.find(struct.pack(">i", 1), tmp_c.index)
-                    tleaf_refs_start = tleaf_fsize + 8
-                    tleaf_ref = struct.unpack(
-                        ">I", tmp_raw[tleaf_refs_start : tleaf_refs_start + 4]
-                    )[0]
-                    tleaf_offset = tleaf_ref - elem_start
-
-                with open(tmp_path, "rb") as bf:
-                    bf.seek(basket_seek_val)
-                    basket_data_bytes = bytearray(bf.read(basket_bytes_size))
-            finally:
-                os.unlink(tmp_path)
-
-            new_basket_seek = file_end
-            new_key_seek = file_end + basket_bytes_size
-
-            # update basket key header (8-byte fSeekKey)
-            struct.pack_into(">q", basket_data_bytes, 18, new_basket_seek)
-
-            # insert new branch bytes
-            insert_at = insertion_point + branch_extra_bytes
-            new_blob = new_blob[:insert_at] + new_branch_bytes + new_blob[insert_at:]
-
-            # patch fBasketSeek
-            basket_seek_pos = insert_at + basket_seek_offset_8
-            struct.pack_into(">q", new_blob, basket_seek_pos, new_basket_seek)
-
-            # patch tLeaf fSize
-            cur_num_branches = num_branches + num_added
-            tleaf_fsize_pos = new_blob.find(
-                struct.pack(">i", cur_num_branches), insert_at + len(new_branch_bytes)
-            )
-            struct.pack_into(">i", new_blob, tleaf_fsize_pos, cur_num_branches + 1)
-
-            # append tleaf ref
-            tleaf_refs_start_p = tleaf_fsize_pos + 8
-            tleaf_refs_end = tleaf_refs_start_p + cur_num_branches * 4
-            new_tleaf_ref = struct.pack(">I", insert_at + tleaf_offset)
-            new_blob = (
-                new_blob[:tleaf_refs_end]
-                + bytearray(new_tleaf_ref)
-                + new_blob[tleaf_refs_end:]
-            )
-
-            # patch tLeaf TObjArray bcnt
-            tleaf_bcnt_pos = insert_at + len(new_branch_bytes)
-            old_tleaf_bcnt = (
-                struct.unpack(">I", new_blob[tleaf_bcnt_pos : tleaf_bcnt_pos + 4])[0]
-                & ~0x40000000
-            )
-            struct.pack_into(
-                ">I", new_blob, tleaf_bcnt_pos, (old_tleaf_bcnt + 4) | 0x40000000
-            )
-
-            branch_extra_bytes += len(new_branch_bytes)
-            extra_bytes += len(new_branch_bytes) + 4
-            num_added += 1
-
-            # write basket
-            self._file.sink.write(new_basket_seek, bytes(basket_data_bytes))
-            file_end = new_key_seek
-
-        # patch TTree bcnt
-        old_bcnt = struct.unpack(">I", new_blob[:4])[0] & ~0x40000000
-        struct.pack_into(">I", new_blob, 0, (old_bcnt + extra_bytes) | 0x40000000)
-
-        # patch fBranches TObjArray bcnt (extra_bytes minus tleaf refs)
-        struct.pack_into(
-            ">I",
-            new_blob,
-            tobjarray_bcnt_pos,
-            (old_tobjarray_bcnt + extra_bytes - num_added * 4) | 0x40000000,
-        )
-
-        # patch fBranches fSize
-        fbranches_fsize_pos = new_blob.find(
-            struct.pack(">i", num_branches), tobjarray_bcnt_pos
-        )
-        struct.pack_into(">i", new_blob, fbranches_fsize_pos, num_branches + num_added)
-
-        # compress and write new key
-        compressed = uproot.compression.compress(bytes(new_blob), compression)
-        new_nbytes = key_len + len(compressed)
-        new_objlen = len(new_blob)
-
-        raw_key = bytearray(self._file.sink.read(key_seek, key_len))
-        struct.pack_into(">i", raw_key, 0, new_nbytes)
-        struct.pack_into(">i", raw_key, 6, new_objlen)
-        if dir_key_big:
-            struct.pack_into(">q", raw_key, 18, file_end)
-        else:
-            struct.pack_into(">i", raw_key, 18, file_end)
-        self._file.sink.write(file_end, bytes(raw_key) + compressed)
-
-        # update directory entry
-        raw_dir = bytearray(self._file.sink.read(dir_key_location, 40))
-        struct.pack_into(">i", raw_dir, 0, new_nbytes)
-        struct.pack_into(">i", raw_dir, 6, new_objlen)
-        if dir_key_big:
-            struct.pack_into(">q", raw_dir, 18, file_end)
-        else:
-            struct.pack_into(">i", raw_dir, 18, file_end)
-        self._file.sink.write(dir_key_location, bytes(raw_dir))
-
-        # update fEND
-        new_file_end = file_end + new_nbytes
-        # fEND is 4-byte for small files, 8-byte for files >= 2GB
-        if self._file._cascading.fileheader.big:
-            self._file.sink.write(12, struct.pack(">q", new_file_end))
-        else:
-            self._file.sink.write(12, struct.pack(">i", new_file_end))
+        # check if file has TBranchElement branches by seeing if cascade
+        # recovered fewer branches than the file has
         self._file.sink.flush()
+        import io as _io
+
+        _sf = self._file.sink._file
+        _sf.seek(0)
+        _buf = _io.BytesIO(_sf.read())
+        with uproot.open(_buf, minimal_ttree_metadata=False) as _rf:
+            _num_file_branches = len(list(_rf[source].branches))
+        if len(casc._branch_data) < _num_file_branches:
+            raise NotImplementedError(
+                "add_branches for files with TBranchElement branches is not yet "
+                "supported via the cascade approach"
+            )
+
+        # add new branch dicts to cascade
+        compression = casc._freesegments.fileheader.compression
+        for branch_name, branch_data in branches.items():
+            arr = numpy.asarray(branch_data)
+            if arr.dtype.kind == "O":
+                raise TypeError(
+                    f"branch {branch_name!r} has object dtype — only simple numeric "
+                    f"types are supported for add_branches"
+                )
+            dtype = arr.dtype.newbyteorder(">")
+            new_bd = casc._branch_np(branch_name, arr.dtype, dtype)
+            new_bd["compression"] = compression
+            casc._branch_data.append(new_bd)
+            casc._branch_lookup[branch_name] = len(casc._branch_data) - 1
+
+        # rewrite TTree metadata blob with new branches included
+        casc.write_anew(self._file.sink)
+
+        # write one basket per new branch
+        old_num_baskets = casc._num_baskets
+        casc._num_baskets = 0
+        for branch_name, branch_data in branches.items():
+            arr = numpy.asarray(branch_data).astype(
+                casc._branch_data[casc._branch_lookup[branch_name]]["dtype"]
+            )
+            totbytes, zipbytes, location = casc.write_np_basket(
+                self._file.sink, branch_name, compression, arr
+            )
+            datum = casc._branch_data[casc._branch_lookup[branch_name]]
+            datum["fTotBytes"] += totbytes
+            datum["fZipBytes"] += zipbytes
+            datum["fBasketBytes"][0] = zipbytes
+            datum["fBasketSeek"][0] = location
+            datum["fBasketEntry"][1] = num_entries
+            datum["arrays_write_start"] = 0
+            datum["arrays_write_stop"] = 1
+            casc._metadata["fTotBytes"] += totbytes
+            casc._metadata["fZipBytes"] += zipbytes
+
+        casc._num_baskets = old_num_baskets
+        casc.write_updates(self._file.sink)
+        self._file.sink.flush()
+
+        # update in-memory directory cache
+        dir_key_obj = self._file._cascading.rootdirectory.data.get_key(source, 1)
+        dir_key_obj._seek_location = casc._key.seek_location
+
+        # update self._cascading so subsequent extend uses correct metadata
+        writable_tree = uproot.writing.writable.WritableTree(
+            self._path, self._file, casc
+        )
+        self._file._trees[casc._key.seek_location] = writable_tree
+        self._cascading = casc
 
     def _extend_inplace(self, data, *, accept_new_fields=False):
         """
@@ -2107,10 +2025,10 @@ class WritableTree:
         dir_key_location = dir_key.location
         dir_key_big = dir_key.big
 
-        chunk, cursor = tree_key.get_uncompressed_chunk_cursor()
+        chunk, _cursor = tree_key.get_uncompressed_chunk_cursor()
         orig_raw = bytearray(chunk.raw_data.tobytes())
         fEntries = old_ttree.member("fEntries")
-        fMaxBaskets = list(old_ttree.branches)[0].member("fMaxBaskets")
+        fMaxBaskets = next(iter(old_ttree.branches)).member("fMaxBaskets")
         existing_file.close()
 
         # find TTree fEntries position in blob
@@ -2126,8 +2044,8 @@ class WritableTree:
             raise RuntimeError("Could not find TTree fEntries position in blob")
         # validate lengths and separate new vs existing branches
         n_new = None
-        for bname, bdata in data.items():
-            bdata = numpy.asarray(bdata)
+        for bname, bdata_raw in data.items():
+            bdata = numpy.asarray(bdata_raw)
             if n_new is None:
                 n_new = len(bdata)
             elif len(bdata) != n_new:
@@ -2156,20 +2074,21 @@ class WritableTree:
                 for k, v in new_fields.items()
             }
             self.add_branches(zeros)
-            # now extend all fields (existing + new) using fresh call
-            return self._extend_inplace(data, accept_new_fields=False)
+            # add_branches already updated self._cascading with correct metadata
+            # just extend using the updated cascade
+            self._cascading.extend(self._file, self._file.sink, data)
+            return
 
         new_blob = bytearray(orig_raw)
         current_file_end = file_end
 
-        for bname, bdata in data.items():
-            bdata = numpy.asarray(bdata)
+        for bname, bdata_raw in data.items():
+            bdata = numpy.asarray(bdata_raw)
 
             with uproot.open(file_path) as f:
                 branch = f[source][bname]
                 basket_seek_val = branch.member("fBasketSeek")[0]
                 fWriteBasket = branch.member("fWriteBasket")
-                fEntries_current = f[source].member("fEntries")
 
             # find array positions from fBasketSeek[0]
             target8 = struct.pack(">q", basket_seek_val)
@@ -2207,7 +2126,6 @@ class WritableTree:
                     f"branch {bname!r} has likely reached its maximum basket capacity. "
                     f"Cannot extend further. Consider recreating the TTree with a larger initial_basket_capacity."
                 )
-            entry_number_pos = wb_pos + 4
 
             # create new basket from temporary file
             with tempfile.NamedTemporaryFile(suffix=".root", delete=False) as tmp_f:
@@ -2500,7 +2418,7 @@ class WritableTree:
             if new_fields:
                 if not accept_new_fields:
                     raise ValueError(
-                        f"'extend' was given data that do not correspond to any branch: "
+                        "'extend' was given data that do not correspond to any branch: "
                         + repr(next(iter(new_fields)))
                     )
                 return self._extend_inplace(data, accept_new_fields=True)
