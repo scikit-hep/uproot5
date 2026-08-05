@@ -572,13 +572,19 @@ class NTuple_ClusterGroupRecord:
         self.entry_span = entry_span
         self.num_clusters = num_clusters
         self.page_list_envlink = page_list_envlink
+        self._serialized = None
 
     def serialize(self):
-        header_bytes = _rntuple_cluster_group_format.pack(
-            self.min_entry, self.entry_span, self.num_clusters
-        )
-        page_list_link_bytes = self.page_list_envlink.serialize()
-        return header_bytes + page_list_link_bytes
+        # A record is built once, appended to the footer, and never modified
+        # again, but every extension rewrites the whole footer and so
+        # re-serializes all of the records written so far. Cache the bytes.
+        if self._serialized is None:
+            header_bytes = _rntuple_cluster_group_format.pack(
+                self.min_entry, self.entry_span, self.num_clusters
+            )
+            page_list_link_bytes = self.page_list_envlink.serialize()
+            self._serialized = header_bytes + page_list_link_bytes
+        return self._serialized
 
     def __repr__(self):
         return f"{type(self).__name__}({self.num_clusters}, {self.page_list_envlink})"
@@ -983,7 +989,9 @@ class NTuple(CascadeNode):
         key.write(sink)
         sink.write(location + key.num_bytes, raw_data)
         sink.set_file_length(self._freesegments.fileheader.end)
-        sink.flush()
+        # no flush here: callers flush once at their commit boundary, because
+        # an extension adds one blob per column plus the page list and the
+        # footer, and a flush per blob is expensive for remote sinks
         return key
 
     def write(self, sink):
@@ -1023,6 +1031,8 @@ class NTuple(CascadeNode):
         #### Anchor end ##############################
 
         self._freesegments.write(sink)
+
+        sink.flush()
 
 
 def _to_packed_form(form):
