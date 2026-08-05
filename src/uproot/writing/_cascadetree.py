@@ -201,10 +201,14 @@ class Tree:
                         counter_name, counter_dtype, counter_dtype, kind="counter"
                     )
                     if counter_name in self._branch_lookup:
-                        # counters always replace non-counters
-                        del self._branch_data[self._branch_lookup[counter_name]]
-                    self._branch_lookup[counter_name] = len(self._branch_data)
-                    self._branch_data.append(counter)
+                        # counters always replace non-counters; replace the datum
+                        # in place, because deleting it would shift every later
+                        # datum down by one and invalidate the indices that
+                        # self._branch_lookup already holds for them
+                        self._branch_data[self._branch_lookup[counter_name]] = counter
+                    else:
+                        self._branch_lookup[counter_name] = len(self._branch_data)
+                        self._branch_data.append(counter)
 
                     if type(content).__name__ == "RecordType":
                         if hasattr(content, "contents"):
