@@ -919,6 +919,10 @@ class Pandas(Library):
             return tuple(self.global_index(x, global_offset) for x in arrays)
         elif isinstance(arrays, list):
             return [self.global_index(x, global_offset) for x in arrays]
+        elif isinstance(arrays, dict):
+            return {
+                name: self.global_index(x, global_offset) for name, x in arrays.items()
+            }
 
         if type(arrays.index).__name__ == "RangeIndex":
             index_start = arrays.index.start
