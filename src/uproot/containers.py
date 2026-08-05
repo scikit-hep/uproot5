@@ -11,7 +11,8 @@ from __future__ import annotations
 
 import struct
 import types
-from collections.abc import KeysView, Mapping, Sequence, Set, ValuesView
+from collections.abc import KeysView, Mapping, Sequence, ValuesView
+from collections.abc import Set as AbstractSet
 
 import awkward
 import numpy
@@ -1513,7 +1514,7 @@ class ROOTRVec(Container, Sequence):
     def __init__(self, values):
         if isinstance(values, types.GeneratorType):
             values = numpy.asarray(list(values))
-        elif isinstance(values, Set):
+        elif isinstance(values, AbstractSet):
             values = numpy.asarray(list(values))
         elif isinstance(values, (list, tuple)):
             values = numpy.asarray(values)
@@ -1572,7 +1573,7 @@ class STLList(Container, Sequence):
     def __init__(self, values):
         if isinstance(values, types.GeneratorType):
             values = numpy.asarray(list(values))
-        elif isinstance(values, Set):
+        elif isinstance(values, AbstractSet):
             values = numpy.asarray(list(values))
         elif isinstance(values, (list, tuple)):
             values = numpy.asarray(values)
@@ -1628,7 +1629,7 @@ class STLVector(Container, Sequence):
     def __init__(self, values):
         if isinstance(values, types.GeneratorType):
             values = numpy.asarray(list(values))
-        elif isinstance(values, Set):
+        elif isinstance(values, AbstractSet):
             values = numpy.asarray(list(values))
         elif isinstance(values, (list, tuple)):
             values = numpy.asarray(values)
@@ -1719,7 +1720,7 @@ class STLBitSet(Container, Sequence):
         ]
 
 
-class STLSet(Container, Set):
+class STLSet(Container, AbstractSet):
     """
     Args:
         keys (``numpy.ndarray`` or iterable): Contents of the ``std::set``.
@@ -1730,7 +1731,7 @@ class STLSet(Container, Set):
     def __init__(self, keys):
         if isinstance(keys, types.GeneratorType):
             keys = numpy.asarray(list(keys))
-        elif isinstance(keys, Set):
+        elif isinstance(keys, AbstractSet):
             keys = numpy.asarray(list(keys))
         else:
             keys = numpy.asarray(keys)
@@ -1763,7 +1764,7 @@ class STLSet(Container, Set):
             return False
 
     def __eq__(self, other):
-        if isinstance(other, Set):
+        if isinstance(other, AbstractSet):
             if not isinstance(other, STLSet):
                 other = STLSet(other)
         else:
@@ -1811,7 +1812,7 @@ class STLMap(Container, Mapping):
             keys = numpy.asarray(list(keys))
         elif isinstance(keys, types.GeneratorType):
             keys = numpy.asarray(list(keys))
-        elif isinstance(keys, Set):
+        elif isinstance(keys, AbstractSet):
             keys = numpy.asarray(list(keys))
         else:
             keys = numpy.asarray(keys)

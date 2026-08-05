@@ -1055,7 +1055,7 @@ class FormMappingInfoWithVirtualArrays(TrivialFormMappingInfo):
             return _generator
 
         container = {}
-        for buffer_key, _ in self._form.expected_from_buffers().items():
+        for buffer_key in self._form.expected_from_buffers():
             container[buffer_key] = generator(tree, buffer_key)
 
         return container

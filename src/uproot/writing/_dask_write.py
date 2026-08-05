@@ -22,7 +22,7 @@ class _ToROOTFn:
         self.fs = fs
         self.path = path
         self.prefix = prefix
-        self.zfill = math.ceil(math.log(npartitions, 10))
+        self.zfill = math.ceil(math.log10(npartitions))
         self.storage_options = storage_options
         self.fs.mkdirs(self.path, exist_ok=True)
         self.protocol = (
@@ -196,4 +196,4 @@ def ak_to_root(
 
 def none_to_none(*_):
     """Dummy reduction function where write tasks produce no metadata"""
-    return None
+    return

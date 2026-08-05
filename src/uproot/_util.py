@@ -139,17 +139,17 @@ def _regularize_filter_regex_flags(flags):
     flagsbyte = 0
     for flag in flags:
         if flag == "i":
-            flagsbyte += re.I
+            flagsbyte += re.IGNORECASE
         elif flag == "L":
-            flagsbyte += re.L
+            flagsbyte += re.LOCALE
         elif flag == "m":
-            flagsbyte += re.M
+            flagsbyte += re.MULTILINE
         elif flag == "s":
-            flagsbyte += re.S
+            flagsbyte += re.DOTALL
         elif flag == "u":
-            flagsbyte += re.U
+            flagsbyte += re.UNICODE
         elif flag == "x":
-            flagsbyte += re.X
+            flagsbyte += re.VERBOSE
     return flagsbyte
 
 
@@ -261,11 +261,11 @@ def regularize_rename(rename):
     )
 
 
-_fix_url_path = re.compile(r"^((file|https?|root):/)([^/])", re.I)
+_fix_url_path = re.compile(r"^((file|https?|root):/)([^/])", re.IGNORECASE)
 _object_in_path_regex = re.compile(r"(.+\.root(\.[0-9]+)?):(.*$)", re.IGNORECASE)
 _memory_size_regex = re.compile(
     r"^\s*([+-]?(\d+(\.\d*)?|\.\d+)(e[+-]?\d+)?)\s*([kmgtpezy]?[i]?b)\s*$",
-    re.I,
+    re.IGNORECASE,
 )
 
 

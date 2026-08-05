@@ -50,8 +50,7 @@ def unregister_interpretation(cls):
 
     This method removes a custom interpretation class from the registry.
     """
-    if cls in _registered_interpretations:
-        _registered_interpretations.remove(cls)
+    _registered_interpretations.discard(cls)
 
 
 def _normalize_ftype(fType):
