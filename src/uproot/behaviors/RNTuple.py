@@ -855,6 +855,9 @@ class HasFields(Mapping):
         cluster_offset = (
             cluster_starts[start_cluster_idx] if start_cluster_idx >= 0 else 0
         )
+        # keep the global range: the entries below are relative to the first
+        # cluster that was read, but the Pandas index must be global
+        global_entry_start = entry_start
         entry_start -= cluster_offset
         entry_stop -= cluster_offset
         arrays = ak.from_buffers(
@@ -899,7 +902,7 @@ class HasFields(Mapping):
             if library.name == "pd":
                 pd = uproot.extras.pandas()
                 pandas_index = pd.RangeIndex(
-                    start=entry_start, stop=entry_start + len(arrays)
+                    start=global_entry_start, stop=global_entry_start + len(arrays)
                 )
                 pandas_data = pd.DataFrame(numpy_data, index=pandas_index)
                 arrays = pandas_data
