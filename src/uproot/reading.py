@@ -1155,14 +1155,19 @@ in file {self._file_path}"""
 
         if cls is None:
             if len(streamers) == 0:
-                unknown_cls = uproot.unknown_classes.get(classname)
+                # key on the encoded name, which distinguishes this versionless
+                # UnknownClass from the per-version UnknownClassVersion classes
+                encoded_classname = uproot.model.classname_encode(
+                    classname, unknown=True
+                )
+                unknown_cls = uproot.unknown_classes.get(encoded_classname)
                 if unknown_cls is None:
                     unknown_cls = uproot._util.new_class(
-                        uproot.model.classname_encode(classname, unknown=True),
+                        encoded_classname,
                         (uproot.model.UnknownClass,),
                         {},
                     )
-                    uproot.unknown_classes[classname] = unknown_cls
+                    uproot.unknown_classes[encoded_classname] = unknown_cls
                 return unknown_cls
 
             else:
@@ -1183,16 +1188,17 @@ in file {self._file_path}"""
                 elif version == "min" and len(cls.known_versions) != 0:
                     version = min(cls.known_versions)
                 else:
-                    unknown_cls = uproot.unknown_classes.get(classname)
+                    encoded_classname = uproot.model.classname_encode(
+                        classname, version, unknown=True
+                    )
+                    unknown_cls = uproot.unknown_classes.get(encoded_classname)
                     if unknown_cls is None:
                         unknown_cls = uproot._util.new_class(
-                            uproot.model.classname_encode(
-                                classname, version, unknown=True
-                            ),
+                            encoded_classname,
                             (uproot.model.UnknownClassVersion,),
                             {},
                         )
-                        uproot.unknown_classes[classname] = unknown_cls
+                        uproot.unknown_classes[encoded_classname] = unknown_cls
                     return unknown_cls
 
             versioned_cls = cls.class_of_version(version)
