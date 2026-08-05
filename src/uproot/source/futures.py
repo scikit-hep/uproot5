@@ -109,9 +109,10 @@ class Future:
     The :doc:`uproot.source.futures.ResourceFuture` extends this class.
     """
 
-    def __init__(self, task, args):
+    def __init__(self, task, args, kwargs=None):
         self._task = task
         self._args = args
+        self._kwargs = {} if kwargs is None else kwargs
         self._finished = threading.Event()
         self._result = None
         self._excinfo = None
@@ -135,12 +136,13 @@ class Future:
         try:
             if self._task is None:
                 raise RuntimeError("cannot run Future twice")
-            self._result = self._task(*self._args)
+            self._result = self._task(*self._args, **self._kwargs)
         except Exception as err:
             self._excinfo = err
         self._finished.set()
         self._task = None
         self._args = ()
+        self._kwargs = {}
 
 
 class Worker(threading.Thread):
@@ -201,6 +203,7 @@ class ThreadPoolExecutor(Executor):
 
     def __init__(self, max_workers: int | None = None):
         self._max_workers = max_workers or os.cpu_count()
+        self._closed = False
 
         self._work_queue = queue.Queue()
         self._workers = []
@@ -235,14 +238,24 @@ class ThreadPoolExecutor(Executor):
 
     def submit(self, task, /, *args, **kwargs):
         """
-        Pass the ``task`` and ``args`` onto the workers'
+        Pass the ``task``, ``args``, and ``kwargs`` onto the workers'
         :ref:`uproot.source.futures.Worker.work_queue` as a
         :doc:`uproot.source.futures.Future` so that it will be executed when
         one is available.
         """
-        future = Future(task, args)
+        if self.closed:
+            raise OSError("executor is closed")
+        future = Future(task, args, kwargs)
         self._work_queue.put(future)
         return future
+
+    @property
+    def closed(self) -> bool:
+        """
+        True if :ref:`uproot.source.futures.ThreadPoolExecutor.shutdown` has
+        been started; False otherwise.
+        """
+        return self._closed
 
     def shutdown(self, wait: bool = True):
         """
@@ -250,6 +263,10 @@ class ThreadPoolExecutor(Executor):
         worker on the :ref:`uproot.source.futures.Worker.work_queue` and
         joining each worker thread.
         """
+        # mark this executor closed *before* queuing the sentinels: a submit
+        # accepted after a sentinel is queued would sit behind it in the queue,
+        # no worker would ever reach it, and its Future would block forever
+        self._closed = True
         for _ in self._workers:
             self._work_queue.put(None)
         for worker in self._workers:
@@ -390,9 +407,10 @@ class ResourceThreadPoolExecutor(ThreadPoolExecutor):
     @property
     def closed(self) -> bool:
         """
-        True if the :doc:`uproot.source.futures.ResourceWorker` threads have
-        been stopped and their
-        :ref:`uproot.source.futures.ResourceWorker.resource` freed.
+        True once the :doc:`uproot.source.futures.ResourceWorker` threads have
+        started stopping; their
+        :ref:`uproot.source.futures.ResourceWorker.resource` is freed by the
+        time teardown returns.
         """
         return self._closed
 
@@ -401,10 +419,11 @@ class ResourceThreadPoolExecutor(ThreadPoolExecutor):
             worker.resource.__enter__()
 
     def __exit__(self, exception_type, exception_value, traceback):
+        # shutdown sets self._closed before it queues the sentinels, so a
+        # concurrent submit is rejected instead of being orphaned behind one
         self.shutdown()
         for worker in self._workers:
             worker.resource.__exit__(exception_type, exception_value, traceback)
-        self._closed = True
 
 
 ##################### use-case 4: resources for I/O with trivial executor

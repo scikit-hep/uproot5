@@ -385,21 +385,25 @@ class Chunk:
         :ref:`uproot.source.chunk.Chunk.future` completes).
         """
         if self._raw_data is None:
-            self._raw_data = numpy.frombuffer(self._future.result(), dtype=self._dtype)
+            raw_data = numpy.frombuffer(self._future.result(), dtype=self._dtype)
             if insist is True:
-                requirement = len(self._raw_data) == self._stop - self._start
+                requirement = len(raw_data) == self._stop - self._start
             elif isinstance(insist, numbers.Integral):
-                requirement = len(self._raw_data) >= insist - self._start
+                requirement = len(raw_data) >= insist - self._start
             elif insist is False:
                 requirement = True
             else:
                 raise TypeError(f"""insist must be a bool or an int, not {insist!r}
 for file path {self._source.file_path}""")
 
+            # only publish the data once it has passed validation: assigning it
+            # first would make every later access skip this check and hand back
+            # the short buffer instead of raising again
             if not requirement:
                 raise OSError(f"""expected Chunk of length {self._stop - self._start},
-received {len(self._raw_data)} bytes from {type(self._source).__name__}
+received {len(raw_data)} bytes from {type(self._source).__name__}
 for file path {self._source.file_path}""")
+            self._raw_data = raw_data
             self._future = None
 
     @property
