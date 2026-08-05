@@ -125,6 +125,11 @@ def recreate(file_path: str | Path | IO, **options):
     storage_options = {
         key: value for key, value in options.items() if key not in recreate.defaults
     }
+    if isinstance(file_path, str):
+        # like ROOT's "RECREATE", physically truncate the file: otherwise a
+        # pre-existing, larger file would keep every byte beyond the new fEND.
+        # (uproot.update deliberately does not do this; it opens with "r+b".)
+        uproot.sink.file.FileSink._truncate_file(file_path, **storage_options)
     sink = uproot.sink.file.FileSink(file_path, **storage_options)
     compression = options.pop("compression", create.defaults["compression"])
 
