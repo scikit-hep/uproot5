@@ -277,3 +277,82 @@ def test_extend_root_readable(tmp_path):
     tree.GetEntry(149)
     assert tree.x == pytest.approx(2.0)
     f.Close()
+
+
+def test_add_branch_sequential(tmp_path):
+    with uproot.recreate(os.path.join(tmp_path, "test.root")) as f:
+        f.mktree("tree", {"x": np.float32})
+        f["tree"].extend({"x": np.ones(100, dtype=np.float32)})
+
+    with uproot.update(os.path.join(tmp_path, "test.root")) as f:
+        f["tree"].add_branches({"branch_a": np.ones(100, dtype=np.float32) * 2})
+
+    with uproot.update(os.path.join(tmp_path, "test.root")) as f:
+        f["tree"].add_branches({"branch_b": np.ones(100, dtype=np.int32) * 3})
+
+    with uproot.open(os.path.join(tmp_path, "test.root")) as f:
+        assert len(f["tree"].branches) == 3
+        assert np.all(f["tree"]["branch_a"].array() == 2.0)
+        assert np.all(f["tree"]["branch_b"].array() == 3)
+
+
+def test_add_branch_then_extend_same_session(tmp_path):
+    with uproot.recreate(os.path.join(tmp_path, "test.root")) as f:
+        f.mktree("tree", {"x": np.float32})
+        f["tree"].extend({"x": np.ones(100, dtype=np.float32)})
+
+    with uproot.update(os.path.join(tmp_path, "test.root")) as f:
+        t = f["tree"]
+        t.add_branches({"new_branch": np.zeros(100, dtype=np.float32)})
+        t.extend(
+            {
+                "x": np.ones(50, dtype=np.float32) * 2,
+                "new_branch": np.ones(50, dtype=np.float32) * 99,
+            }
+        )
+
+    with uproot.open(os.path.join(tmp_path, "test.root")) as f:
+        assert f["tree"].member("fEntries") == 150
+        assert np.all(f["tree"]["new_branch"].array()[:100] == 0.0)
+        assert np.all(f["tree"]["new_branch"].array()[100:] == 99.0)
+        assert np.all(f["tree"]["x"].array()[100:] == 2.0)
+
+
+def test_extend_multiple_sessions(tmp_path):
+    with uproot.recreate(os.path.join(tmp_path, "test.root")) as f:
+        f.mktree("tree", {"x": np.float32})
+        f["tree"].extend({"x": np.ones(100, dtype=np.float32)})
+
+    with uproot.update(os.path.join(tmp_path, "test.root")) as f:
+        f["tree"].extend({"x": np.ones(50, dtype=np.float32) * 2})
+
+    with uproot.update(os.path.join(tmp_path, "test.root")) as f:
+        f["tree"].extend({"x": np.ones(50, dtype=np.float32) * 3})
+
+    with uproot.open(os.path.join(tmp_path, "test.root")) as f:
+        assert f["tree"].member("fEntries") == 200
+        assert np.all(f["tree"]["x"].array()[:100] == 1.0)
+        assert np.all(f["tree"]["x"].array()[100:150] == 2.0)
+        assert np.all(f["tree"]["x"].array()[150:] == 3.0)
+
+
+def test_extend_after_add_branch_new_session(tmp_path):
+    with uproot.recreate(os.path.join(tmp_path, "test.root")) as f:
+        f.mktree("tree", {"x": np.float32})
+        f["tree"].extend({"x": np.ones(100, dtype=np.float32)})
+
+    with uproot.update(os.path.join(tmp_path, "test.root")) as f:
+        f["tree"].add_branches({"new_branch": np.zeros(100, dtype=np.float32)})
+
+    with uproot.update(os.path.join(tmp_path, "test.root")) as f:
+        f["tree"].extend(
+            {
+                "x": np.ones(50, dtype=np.float32) * 2,
+                "new_branch": np.ones(50, dtype=np.float32) * 99,
+            }
+        )
+
+    with uproot.open(os.path.join(tmp_path, "test.root")) as f:
+        assert f["tree"].member("fEntries") == 150
+        assert np.all(f["tree"]["new_branch"].array()[:100] == 0.0)
+        assert np.all(f["tree"]["new_branch"].array()[100:] == 99.0)

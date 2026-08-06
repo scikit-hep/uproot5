@@ -1143,8 +1143,27 @@ class WritableDirectory(MutableMapping):
                     "fBasketSeek": b.member("fBasketSeek").copy(),
                     "arrays_write_start": b.member("fWriteBasket"),
                     "arrays_write_stop": b.member("fWriteBasket"),
-                    "metadata_start": b.cursor.index + 38,
-                    "basket_metadata_start": b.cursor.index + 265,
+                    "metadata_start": (
+                        # find by searching for fBasketSize + fEntryOffsetLen + fWriteBasket pattern
+                        raw.find(
+                            _struct.pack(
+                                ">iii",
+                                b.member("fBasketSize"),
+                                b.member("fEntryOffsetLen"),
+                                b.member("fWriteBasket"),
+                            ),
+                            b.cursor.index,
+                        )
+                        - 4  # -4 for fCompress field before fBasketSize
+                    ),
+                    "basket_metadata_start": (
+                        # fBasketSeek[0] is preceded by: speedbump(1) + fBasketBytes(10*4) + speedbump(1) + fBasketEntry(10*8) + speedbump(1) = 123
+                        raw.find(
+                            _struct.pack(">q", b.member("fBasketSeek")[0]),
+                            b.cursor.index,
+                        )
+                        - 123
+                    ),
                     "tleaf_reference_number": (
                         refs_list[2 + branch_idx * 4]
                         if 2 + branch_idx * 4 < len(refs_list)
