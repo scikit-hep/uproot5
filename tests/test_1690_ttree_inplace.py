@@ -356,3 +356,24 @@ def test_extend_after_add_branch_new_session(tmp_path):
         assert f["tree"].member("fEntries") == 150
         assert np.all(f["tree"]["new_branch"].array()[:100] == 0.0)
         assert np.all(f["tree"]["new_branch"].array()[100:] == 99.0)
+
+
+def test_extend_jagged_array(tmp_path):
+    """Counter branches should not be required from the user when extending."""
+    ak = pytest.importorskip("awkward")
+    with uproot.recreate(os.path.join(tmp_path, "test.root")) as f:
+        f.mktree("tree", {"jets": "var * float32", "x": np.float32})
+        f["tree"].extend(
+            {
+                "jets": ak.Array([[1.0, 2.0], [3.0], [4.0, 5.0, 6.0]]),
+                "x": np.array([1.0, 2.0, 3.0], dtype=np.float32),
+            }
+        )
+
+    with uproot.open(os.path.join(tmp_path, "test.root")) as f:
+        assert f["tree"].num_entries == 3
+        assert f["tree"]["jets"].array().tolist() == [
+            [1.0, 2.0],
+            [3.0],
+            [4.0, 5.0, 6.0],
+        ]

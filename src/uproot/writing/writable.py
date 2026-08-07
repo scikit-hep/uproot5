@@ -1122,10 +1122,13 @@ class WritableDirectory(MutableMapping):
                     # TBranchElement or other complex branch — skip
                     continue
                 sc = _dtype_to_struct.get(dtype.kind + str(dtype.itemsize), "f")
+                # detect counter branches (e.g. njets for jagged jets array)
+                _branch_names = [br.name for br in branches]
+                _is_counter = b.name.startswith("n") and b.name[1:] in _branch_names
                 bd = {
                     "fName": b.name,
                     "branch_type": dtype,
-                    "kind": "normal",
+                    "kind": "counter" if _is_counter else "normal",
                     "counter": None,
                     "dtype": dtype,
                     "shape": (),
@@ -1169,11 +1172,25 @@ class WritableDirectory(MutableMapping):
                         if 2 + branch_idx * 4 < len(refs_list)
                         else 0
                     ),
-                    "tleaf_maximum_value": 0,
+                    "tleaf_maximum_value": (
+                        int(b.member("fLeaves")[0].member("fMaximum"))
+                        if b.member("fLeaves")
+                        else 0
+                    ),
                     "tleaf_special_struct": _struct.Struct(">" + sc + sc),
                 }
                 branch_data.append(bd)
                 branch_lookup[b.name] = branch_idx
+
+            # fix counter references for jagged branches
+            for bd in branch_data:
+                if bd.get("fEntryOffsetLen", 0) > 0 and bd["counter"] is None:
+                    counter_nm = "n" + bd["fName"]
+                    counter_bd = next(
+                        (x for x in branch_data if x["fName"] == counter_nm), None
+                    )
+                    if counter_bd is not None:
+                        bd["counter"] = counter_bd
 
             fWriteBasket = branches[0].member("fWriteBasket") if branches else 0
             metadata = {
@@ -1212,7 +1229,7 @@ class WritableDirectory(MutableMapping):
         casc._branch_lookup = branch_lookup
         casc._basket_capacity = 10
         casc._resize_factor = 10.0
-        casc._counter_name = None
+        casc._counter_name = lambda counted: "n" + counted
         casc._field_name = None
         casc._metadata_start = metadata_start
         casc._num_baskets = fWriteBasket
@@ -2198,7 +2215,11 @@ class WritableTree:
             )
         # validate branches
         if isinstance(data, dict):
-            existing_names = [bd["fName"] for bd in self._cascading._branch_data]
+            existing_names = [
+                bd["fName"]
+                for bd in self._cascading._branch_data
+                if bd["kind"] not in ("counter", "record")
+            ]
             new_fields = {k: v for k, v in data.items() if k not in existing_names}
             missing = [b for b in existing_names if b not in data]
             if missing:
