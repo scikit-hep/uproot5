@@ -1892,6 +1892,168 @@ class WritableTree:
         self._file = file
         self._cascading = cascading
 
+    def __repr__(self):
+        return "<WritableTree {} at 0x{:012x}>".format(
+            repr("/" + "/".join(self._path)), id(self)
+        )
+
+    @property
+    def path(self):
+        """
+        Path of directory names to this TTree as a tuple of strings.
+        """
+        return self._path
+
+    @property
+    def object_path(self) -> str:
+        """
+        Path of directory names to this TTree as a single string, delimited by
+        slashes.
+        """
+        return "/".join(("", *self._path, "")).replace("//", "/")
+
+    @property
+    def file_path(self) -> str | None:
+        """
+        Filesystem path of the open file, or None if using a file-like object.
+        """
+        return self._file.file_path
+
+    @property
+    def file(self):
+        """
+        Handle to the :doc:`uproot.writing.writable.WritableDirectory` in which
+        this directory can be found.
+        """
+        return self._file
+
+    def close(self):
+        """
+        Explicitly close the file.
+
+        (Files can also be closed with the Python ``with`` statement, as context
+        managers.)
+
+        After closing, objects cannot be read from or written to the file.
+        """
+        self._file.close()
+
+    @property
+    def closed(self) -> bool:
+        """
+        True if the file has been closed; False otherwise.
+
+        The file may have been closed explicitly with
+        :ref:`uproot.writing.writable.WritableFile.close` or implicitly in the Python
+        ``with`` statement, as a context manager.
+
+        After closing, objects cannot be read from or written to the file.
+        """
+        return self._file.closed
+
+    def __enter__(self):
+        self._file.sink.__enter__()
+        return self
+
+    def __exit__(self, exception_type, exception_value, traceback):
+        self._file.sink.__exit__(exception_type, exception_value, traceback)
+
+    @property
+    def compression(self):
+        """
+        Compression algorithm and level (:doc:`uproot.compression.Compression` or None)
+        for new TBaskets added to the TTree.
+
+        This property can be changed and doesn't have to be the same as the compression
+        of the file, which allows you to write different objects with different
+        compression settings.
+
+        The following are equivalent:
+
+        .. code-block:: python
+
+            my_directory["tree"]["branch1"].compression = uproot.ZLIB(1)
+            my_directory["tree"]["branch2"].compression = uproot.LZMA(9)
+
+        and
+
+        .. code-block:: python
+
+            my_directory["tree"].compression = {"branch1": uproot.ZLIB(1),
+                                                "branch2": uproot.LZMA(9)}
+        """
+        out = {}
+        last = None
+        for datum in self._cascading._branch_data:
+            if datum["kind"] != "record":
+                last = out[datum["fName"]] = datum["compression"]
+        if all(x == last for x in out.values()):
+            return last
+        else:
+            return out
+
+    @compression.setter
+    def compression(self, value):
+        if value is None or isinstance(value, uproot.compression.Compression):
+            for datum in self._cascading._branch_data:
+                if datum["kind"] != "record":
+                    datum["compression"] = value
+
+        elif (
+            isinstance(value, Mapping)
+            and all(
+                isinstance(k, str)
+                and (v is None or isinstance(v, uproot.compression.Compression))
+                for k, v in value.items()
+            )
+            and all(
+                datum["fName"] in value
+                for datum in self._cascading._branch_data
+                if datum["kind"] != "record"
+            )
+            and len(value)
+            == len(
+                [
+                    datum
+                    for datum in self._cascading._branch_data
+                    if datum["kind"] != "record"
+                ]
+            )
+        ):
+            for datum in self._cascading._branch_data:
+                if datum["kind"] != "record":
+                    datum["compression"] = value[datum["fName"]]
+
+        else:
+            raise TypeError(
+                "compression must be None, a uproot.compression.Compression object, like uproot.ZLIB(4) or uproot.ZSTD(0), or a mapping of branch names to such objects"
+            )
+
+    def __getitem__(self, where):
+        for datum in self._cascading._branch_data:
+            if datum["kind"] != "record" and datum["fName"] == where:
+                return WritableBranch(self, datum)
+        else:
+            raise uproot.KeyInFileError(
+                where,
+                because="no such branch in writable tree",
+                file_path=self.file_path,
+            )
+
+    @property
+    def num_entries(self) -> int:
+        """
+        The number of entries accumulated so far.
+        """
+        return self._cascading.num_entries
+
+    @property
+    def num_baskets(self) -> int:
+        """
+        The number of TBaskets accumulated so far.
+        """
+        return self._cascading.num_baskets
+
     def add_branches(self, branches):
         """
         Args:
