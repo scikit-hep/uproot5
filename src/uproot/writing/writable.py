@@ -2214,13 +2214,41 @@ class WritableTree:
                 "_cascading is None — this should not happen; please report this bug"
             )
         # validate branches
-        if isinstance(data, dict):
-            existing_names = [
-                bd["fName"]
+        # get user-facing branch names (exclude auto-generated counter and record parent branches)
+        # get record parent names to exclude their sub-fields
+        _record_names = {
+            bd.get("name", "")
+            for bd in self._cascading._branch_data
+            if bd.get("kind") == "record"
+        }
+        _user_branch_names = [
+            bd["fName"]
+            for bd in self._cascading._branch_data
+            if bd.get("kind") not in ("counter", "record")
+            and "fName" in bd
+            and not any(
+                bd["fName"].startswith(rn + "_") or bd["fName"].startswith(rn + ".")
+                for rn in _record_names
+                if rn
+            )
+        ]
+        # check if data looks like a flat dict of branch arrays (not a record/awkward array)
+        _data_is_flat_dict = isinstance(data, dict) and all(
+            not hasattr(v, "fields") for v in data.values()
+        )
+        if isinstance(data, dict) and _data_is_flat_dict:
+            existing_names = _user_branch_names
+            # also get record parent names that the user passes as dicts
+            _record_parent_names = {
+                bd.get("name")
                 for bd in self._cascading._branch_data
-                if bd["kind"] not in ("counter", "record")
-            ]
-            new_fields = {k: v for k, v in data.items() if k not in existing_names}
+                if bd.get("kind") == "record" and bd.get("name")
+            }
+            new_fields = {
+                k: v
+                for k, v in data.items()
+                if k not in existing_names and k not in _record_parent_names
+            }
             missing = [b for b in existing_names if b not in data]
             if missing:
                 raise ValueError(
