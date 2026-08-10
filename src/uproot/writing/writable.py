@@ -1160,12 +1160,19 @@ class WritableDirectory(MutableMapping):
                         - 4  # -4 for fCompress field before fBasketSize
                     ),
                     "basket_metadata_start": (
-                        # fBasketSeek[0] is preceded by: speedbump(1) + fBasketBytes(10*4) + speedbump(1) + fBasketEntry(10*8) + speedbump(1) = 123
+                        # fBasketSeek[0] is preceded by:
+                        # speedbump(1) + fBasketBytes(fMaxBaskets*4) + speedbump(1) + fBasketEntry(fMaxBaskets*8) + speedbump(1)
                         raw.find(
                             _struct.pack(">q", b.member("fBasketSeek")[0]),
                             b.cursor.index,
                         )
-                        - 123
+                        - (
+                            1
+                            + b.member("fMaxBaskets") * 4
+                            + 1
+                            + b.member("fMaxBaskets") * 8
+                            + 1
+                        )
                     ),
                     "tleaf_reference_number": (
                         refs_list[2 + branch_idx * 4]
@@ -1227,7 +1234,9 @@ class WritableDirectory(MutableMapping):
         casc._freesegments = freesegments
         casc._branch_data = branch_data
         casc._branch_lookup = branch_lookup
-        casc._basket_capacity = 10
+        casc._basket_capacity = (
+            next(iter(branches)).member("fMaxBaskets") if branches else 10
+        )
         casc._resize_factor = 10.0
         casc._counter_name = lambda counted: "n" + counted
         casc._field_name = None
