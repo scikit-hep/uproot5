@@ -2145,7 +2145,7 @@ class FileHeader(CascadeLeaf):
         assert compression_code >= 0
         assert info_location >= 0
         assert info_num_bytes >= 0
-        assert uuid_version == 1
+        assert uuid_version <= 8
 
         out = FileHeader(
             end,

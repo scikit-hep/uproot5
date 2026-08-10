@@ -22,6 +22,7 @@ test = [
   "aiohttp",
   "deflate",
   "isal",
+  "moto[s3,server]",
   "paramiko",
   "pytest-rerunfailures",
   "rangehttpserver",

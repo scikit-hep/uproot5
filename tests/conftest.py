@@ -87,6 +87,57 @@ def tests_directory() -> str:
     return os.path.dirname(os.path.realpath(__file__))
 
 
+@pytest.fixture(scope="session")
+def s3_server():
+    """
+    A local (in-process) S3 server, so that the S3 tests don't depend on the
+    network or on somebody else paying for the data transfer.
+
+    Yields ``(bucket_url, storage_options)``, where the bucket already contains
+    two copies of ``uproot-HZZ.root``, named ``uproot-HZZ-1.root`` and
+    ``uproot-HZZ-2.root``.
+    """
+    pytest.importorskip("s3fs")
+    moto_server = pytest.importorskip("moto.server")
+    import s3fs
+
+    if not hasattr(moto_server.ThreadedMotoServer, "get_host_and_port"):
+        # On free-threaded Windows, moto[server] -> docker -> pywin32 has no
+        # wheels, so the resolver falls back to a years-old moto
+        pytest.skip("moto is too old to report which port it is listening on")
+
+    bucket = "uproot-test"
+    server = moto_server.ThreadedMotoServer(ip_address="127.0.0.1", port=0)
+    server.start()
+
+    try:
+        _, port = server.get_host_and_port()
+        storage_options = {
+            # moto does not check these, but botocore insists on having them
+            "key": "testing",
+            "secret": "testing",
+            "client_kwargs": {"endpoint_url": f"http://127.0.0.1:{port}"},
+        }
+
+        with pytest.MonkeyPatch.context() as monkeypatch:
+            # botocore raises NoRegionError if it can't find a region anywhere
+            monkeypatch.setenv("AWS_DEFAULT_REGION", "us-east-1")
+
+            # don't reuse (or poison) filesystem instances from other tests
+            s3fs.S3FileSystem.clear_instance_cache()
+            fs = s3fs.S3FileSystem(**storage_options)
+            fs.mkdir(bucket)
+            local_path = skhep_testdata.data_path("uproot-HZZ.root")
+            for name in ("uproot-HZZ-1.root", "uproot-HZZ-2.root"):
+                fs.put(local_path, f"{bucket}/{name}")
+
+            yield f"s3://{bucket}", storage_options
+
+            s3fs.S3FileSystem.clear_instance_cache()
+    finally:
+        server.stop()
+
+
 @pytest.fixture(scope="module")
 def xrootd_server(tmpdir_factory):
     pytest.importorskip("XRootD")
