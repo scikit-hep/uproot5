@@ -1059,7 +1059,6 @@ class WritableDirectory(MutableMapping):
         :doc:`uproot.writing.writable.WritableTree` object with a proper
         cascade object, enabling extend via existing machinery.
         """
-        import io
         import struct as _struct
 
         import uproot.writing._cascadetree as ct
@@ -1085,144 +1084,162 @@ class WritableDirectory(MutableMapping):
             "u1": "B",
         }
 
-        # flush and read via BytesIO to avoid OS caching issues
+        # read using sink.read + Chunk.wrap + _ReadForUpdate (same as _get)
+        # avoids loading entire file into memory
         self._file.sink.flush()
-        _sink_file = self._file.sink._file
-        _sink_file.seek(0)
-        _buf = io.BytesIO(_sink_file.read())
-        existing_file = uproot.open(_buf, minimal_ttree_metadata=False)
-        try:
-            tree = existing_file[name]
-            branches = list(tree.branches)
-            rkey = existing_file.key(name + ";1")
-            chunk, _cursor = rkey.get_uncompressed_chunk_cursor()
-            raw = bytearray(chunk.raw_data.tobytes())
 
-            fEntries = tree.member("fEntries")
-            fTotBytes = tree.member("fTotBytes")
-            fZipBytes_val = tree.member("fZipBytes")
-            seq = (
-                _struct.pack(">q", fEntries)
-                + _struct.pack(">q", fTotBytes)
-                + _struct.pack(">q", fZipBytes_val)
+        def _get_chunk(start, stop):
+            raw_bytes = self._file.sink.read(start, stop - start)
+            return uproot.source.chunk.Chunk.wrap(
+                _readforupdate, raw_bytes, start=start
             )
-            metadata_start = raw.find(seq)
-            if metadata_start == -1:
-                raise RuntimeError(
-                    f"Could not find TTree metadata position in {name!r}"
-                )
 
-            branch_data = []
-            branch_lookup = {}
-            for branch_idx, b in enumerate(branches):
-                refs_list = list(b.cursor._refs.keys())
-                try:
-                    dtype = b.interpretation.numpy_dtype.newbyteorder(">")
-                except AttributeError:
-                    # TBranchElement or other complex branch — skip
-                    continue
-                sc = _dtype_to_struct.get(dtype.kind + str(dtype.itemsize), "f")
-                # detect counter branches (e.g. njets for jagged jets array)
-                _branch_names = [br.name for br in branches]
-                _is_counter = b.name.startswith("n") and b.name[1:] in _branch_names
-                bd = {
-                    "fName": b.name,
-                    "branch_type": dtype,
-                    "kind": "counter" if _is_counter else "normal",
-                    "counter": None,
-                    "dtype": dtype,
-                    "shape": (),
-                    "fTitle": b.member("fTitle"),
-                    "compression": b.compression,
-                    "fBasketSize": b.member("fBasketSize"),
-                    "fEntryOffsetLen": b.member("fEntryOffsetLen"),
-                    "fOffset": b.member("fOffset"),
-                    "fSplitLevel": b.member("fSplitLevel"),
-                    "fFirstEntry": b.member("fFirstEntry"),
-                    "fTotBytes": b.member("fTotBytes"),
-                    "fZipBytes": b.member("fZipBytes"),
-                    "fBasketBytes": b.member("fBasketBytes").copy(),
-                    "fBasketEntry": b.member("fBasketEntry").copy(),
-                    "fBasketSeek": b.member("fBasketSeek").copy(),
-                    "arrays_write_start": b.member("fWriteBasket"),
-                    "arrays_write_stop": b.member("fWriteBasket"),
-                    "metadata_start": (
-                        # find by searching for fBasketSize + fEntryOffsetLen + fWriteBasket pattern
-                        raw.find(
-                            _struct.pack(
-                                ">iii",
-                                b.member("fBasketSize"),
-                                b.member("fEntryOffsetLen"),
-                                b.member("fWriteBasket"),
-                            ),
-                            b.cursor.index,
-                        )
-                        - 4  # -4 for fCompress field before fBasketSize
-                    ),
-                    "basket_metadata_start": (
-                        # fBasketSeek[0] is preceded by:
-                        # speedbump(1) + fBasketBytes(fMaxBaskets*4) + speedbump(1) + fBasketEntry(fMaxBaskets*8) + speedbump(1)
-                        raw.find(
-                            _struct.pack(">q", b.member("fBasketSeek")[0]),
-                            b.cursor.index,
-                        )
-                        - (
-                            1
-                            + b.member("fMaxBaskets") * 4
-                            + 1
-                            + b.member("fMaxBaskets") * 8
-                            + 1
-                        )
-                    ),
-                    "tleaf_reference_number": (
-                        refs_list[2 + branch_idx * 4]
-                        if 2 + branch_idx * 4 < len(refs_list)
-                        else 0
-                    ),
-                    "tleaf_maximum_value": (
-                        int(b.member("fLeaves")[0].member("fMaximum"))
-                        if b.member("fLeaves")
-                        else 0
-                    ),
-                    "tleaf_special_struct": _struct.Struct(">" + sc + sc),
-                }
-                branch_data.append(bd)
-                branch_lookup[b.name] = branch_idx
+        _readforupdate = uproot.writing._cascade._ReadForUpdate(
+            self._file.file_path,
+            self._file.uuid,
+            _get_chunk,
+            self._file._cascading.tlist_of_streamers,
+        )
+        _readforupdate.options = dict(uproot.reading.open.defaults)
+        _readforupdate.options["minimal_ttree_metadata"] = False
 
-            # fix counter references for jagged branches
-            for bd in branch_data:
-                if bd.get("fEntryOffsetLen", 0) > 0 and bd["counter"] is None:
-                    counter_nm = "n" + bd["fName"]
-                    counter_bd = next(
-                        (x for x in branch_data if x["fName"] == counter_nm), None
+        _raw_bytes = self._file.sink.read(
+            key.seek_location,
+            key.num_bytes + key.compressed_bytes,
+        )
+        _chunk = uproot.source.chunk.Chunk.wrap(
+            _readforupdate, _raw_bytes, start=key.seek_location
+        )
+        _cursor = uproot.source.cursor.Cursor(key.seek_location, origin=key.num_bytes)
+        _readonlykey = uproot.reading.ReadOnlyKey(
+            _chunk, _cursor, {}, _readforupdate, self, read_strings=True
+        )
+        tree = _readonlykey.get()
+        branches = list(tree.branches)
+        _rkey_chunk, _rkey_cursor = _readonlykey.get_uncompressed_chunk_cursor()
+        raw = bytearray(_rkey_chunk.raw_data.tobytes())
+
+        fEntries = tree.member("fEntries")
+        fTotBytes = tree.member("fTotBytes")
+        fZipBytes_val = tree.member("fZipBytes")
+        seq = (
+            _struct.pack(">q", fEntries)
+            + _struct.pack(">q", fTotBytes)
+            + _struct.pack(">q", fZipBytes_val)
+        )
+        metadata_start = raw.find(seq)
+        if metadata_start == -1:
+            raise RuntimeError(f"Could not find TTree metadata position in {name!r}")
+
+        branch_data = []
+        branch_lookup = {}
+        for branch_idx, b in enumerate(branches):
+            refs_list = list(b.cursor._refs.keys())
+            try:
+                dtype = b.interpretation.numpy_dtype.newbyteorder(">")
+            except AttributeError:
+                # TBranchElement or other complex branch — skip
+                continue
+            sc = _dtype_to_struct.get(dtype.kind + str(dtype.itemsize), "f")
+            # detect counter branches (e.g. njets for jagged jets array)
+            _branch_names = [br.name for br in branches]
+            _is_counter = b.name.startswith("n") and b.name[1:] in _branch_names
+            bd = {
+                "fName": b.name,
+                "branch_type": dtype,
+                "kind": "counter" if _is_counter else "normal",
+                "counter": None,
+                "dtype": dtype,
+                "shape": (),
+                "fTitle": b.member("fTitle"),
+                "compression": b.compression,
+                "fBasketSize": b.member("fBasketSize"),
+                "fEntryOffsetLen": b.member("fEntryOffsetLen"),
+                "fOffset": b.member("fOffset"),
+                "fSplitLevel": b.member("fSplitLevel"),
+                "fFirstEntry": b.member("fFirstEntry"),
+                "fTotBytes": b.member("fTotBytes"),
+                "fZipBytes": b.member("fZipBytes"),
+                "fBasketBytes": b.member("fBasketBytes").copy(),
+                "fBasketEntry": b.member("fBasketEntry").copy(),
+                "fBasketSeek": b.member("fBasketSeek").copy(),
+                "arrays_write_start": b.member("fWriteBasket"),
+                "arrays_write_stop": b.member("fWriteBasket"),
+                "metadata_start": (
+                    # find by searching for fBasketSize + fEntryOffsetLen + fWriteBasket pattern
+                    raw.find(
+                        _struct.pack(
+                            ">iii",
+                            b.member("fBasketSize"),
+                            b.member("fEntryOffsetLen"),
+                            b.member("fWriteBasket"),
+                        ),
+                        b.cursor.index,
                     )
-                    if counter_bd is not None:
-                        bd["counter"] = counter_bd
-
-            fWriteBasket = branches[0].member("fWriteBasket") if branches else 0
-            metadata = {
-                k: tree.member(k)
-                for k in [
-                    "fTotBytes",
-                    "fZipBytes",
-                    "fSavedBytes",
-                    "fFlushedBytes",
-                    "fWeight",
-                    "fTimerInterval",
-                    "fScanField",
-                    "fUpdate",
-                    "fDefaultEntryOffsetLen",
-                    "fNClusterRange",
-                    "fMaxEntries",
-                    "fMaxEntryLoop",
-                    "fMaxVirtualSize",
-                    "fAutoSave",
-                    "fAutoFlush",
-                    "fEstimate",
-                ]
+                    - 4  # -4 for fCompress field before fBasketSize
+                ),
+                "basket_metadata_start": (
+                    # fBasketSeek[0] is preceded by:
+                    # speedbump(1) + fBasketBytes(fMaxBaskets*4) + speedbump(1) + fBasketEntry(fMaxBaskets*8) + speedbump(1)
+                    raw.find(
+                        _struct.pack(">q", b.member("fBasketSeek")[0]),
+                        b.cursor.index,
+                    )
+                    - (
+                        1
+                        + b.member("fMaxBaskets") * 4
+                        + 1
+                        + b.member("fMaxBaskets") * 8
+                        + 1
+                    )
+                ),
+                "tleaf_reference_number": (
+                    refs_list[2 + branch_idx * 4]
+                    if 2 + branch_idx * 4 < len(refs_list)
+                    else 0
+                ),
+                "tleaf_maximum_value": (
+                    int(b.member("fLeaves")[0].member("fMaximum"))
+                    if b.member("fLeaves")
+                    else 0
+                ),
+                "tleaf_special_struct": _struct.Struct(">" + sc + sc),
             }
-        finally:
-            existing_file.close()
+            branch_data.append(bd)
+            branch_lookup[b.name] = branch_idx
+
+        # fix counter references for jagged branches
+        for bd in branch_data:
+            if bd.get("fEntryOffsetLen", 0) > 0 and bd["counter"] is None:
+                counter_nm = "n" + bd["fName"]
+                counter_bd = next(
+                    (x for x in branch_data if x["fName"] == counter_nm), None
+                )
+                if counter_bd is not None:
+                    bd["counter"] = counter_bd
+
+        fWriteBasket = branches[0].member("fWriteBasket") if branches else 0
+        metadata = {
+            k: tree.member(k)
+            for k in [
+                "fTotBytes",
+                "fZipBytes",
+                "fSavedBytes",
+                "fFlushedBytes",
+                "fWeight",
+                "fTimerInterval",
+                "fScanField",
+                "fUpdate",
+                "fDefaultEntryOffsetLen",
+                "fNClusterRange",
+                "fMaxEntries",
+                "fMaxEntryLoop",
+                "fMaxVirtualSize",
+                "fAutoSave",
+                "fAutoFlush",
+                "fEstimate",
+            ]
+        }
 
         dir_key = self._cascading.data.get_key(name, 1)
         freesegments = self._file._cascading.freesegments
@@ -2097,11 +2114,6 @@ class WritableTree:
         if self._file.sink.closed:
             raise ValueError("cannot modify a TTree in a closed file")
 
-        if self._file.file_path is None:
-            raise TypeError(
-                "add_branches requires a file path; file-like objects are not supported"
-            )
-
         source = self._path[-1]
 
         # validate all branches have same length as existing tree
@@ -2119,17 +2131,12 @@ class WritableTree:
             if branch_name in casc._branch_lookup:
                 raise ValueError(f"branch {branch_name!r} already exists in this TTree")
 
-        # check if file has TBranchElement branches by seeing if cascade
-        # recovered fewer branches than the file has
-        self._file.sink.flush()
-        import io as _io
-
-        _sf = self._file.sink._file
-        _sf.seek(0)
-        _buf = _io.BytesIO(_sf.read())
-        with uproot.open(_buf, minimal_ttree_metadata=False) as _rf:
-            _num_file_branches = len(list(_rf[source].branches))
-        if len(casc._branch_data) < _num_file_branches:
+        # check if file has TBranchElement branches (object dtype)
+        # _load_existing_ttree skips them, so we detect by checking dtype
+        if any(
+            bd.get("dtype") is not None and bd.get("dtype") == numpy.dtype("O")
+            for bd in casc._branch_data
+        ):
             raise NotImplementedError(
                 "add_branches for files with TBranchElement branches is not yet "
                 "supported via the cascade approach"
@@ -2276,8 +2283,6 @@ class WritableTree:
                     for k, v in new_fields.items()
                 }
                 self.add_branches(zeros)
-                self._cascading.extend(self._file, self._file.sink, data)
-                return
         self._cascading.extend(self._file, self._file.sink, data)
 
     def show(
