@@ -377,3 +377,18 @@ def test_extend_jagged_array(tmp_path):
             [3.0],
             [4.0, 5.0, 6.0],
         ]
+
+
+def test_extend_after_many_extends(tmp_path):
+    """Extending a tree that already has more than 10 baskets (fMaxBaskets expansion)."""
+    with uproot.recreate(os.path.join(tmp_path, "test.root")) as f:
+        f.mktree("tree", {"x": np.float32})
+        for i in range(12):
+            f["tree"].extend({"x": np.full(5, i, dtype=np.float32)})
+
+    with uproot.update(os.path.join(tmp_path, "test.root")) as f:
+        f["tree"].extend({"x": np.full(5, 99, dtype=np.float32)})
+
+    with uproot.open(os.path.join(tmp_path, "test.root")) as f:
+        assert f["tree"].num_entries == 65
+        assert f["tree"]["x"].array()[-5:].tolist() == [99.0] * 5
