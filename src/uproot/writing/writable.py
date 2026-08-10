@@ -1223,7 +1223,7 @@ class WritableDirectory(MutableMapping):
         casc = ct.Tree.__new__(ct.Tree)
         casc._directory = self._file._cascading.rootdirectory
         casc._name = name
-        casc._title = ""
+        casc._title = tree.title
         casc._freesegments = freesegments
         casc._branch_data = branch_data
         casc._branch_lookup = branch_lookup
