@@ -1245,7 +1245,7 @@ class WritableDirectory(MutableMapping):
         freesegments = self._file._cascading.freesegments
 
         casc = ct.Tree.__new__(ct.Tree)
-        casc._directory = self._file._cascading.rootdirectory
+        casc._directory = self._cascading
         casc._name = name
         casc._title = tree.title
         casc._freesegments = freesegments
@@ -2116,9 +2116,14 @@ class WritableTree:
 
         source = self._path[-1]
 
+        # navigate to the correct directory (handles subdirectories)
+        directory = self._file.root_directory
+        for part in self._path[:-1]:
+            directory = directory[part]
+
         # validate all branches have same length as existing tree
-        key = self._file._cascading.rootdirectory.data.get_key(source, 1)
-        casc = self._file.root_directory._load_existing_ttree(key)._cascading
+        key = directory._cascading.data.get_key(source)
+        casc = directory._load_existing_ttree(key)._cascading
         num_entries = casc._num_entries
 
         for branch_name, branch_data in branches.items():
@@ -2186,7 +2191,7 @@ class WritableTree:
         self._file.sink.flush()
 
         # update in-memory directory cache
-        dir_key_obj = self._file._cascading.rootdirectory.data.get_key(source, 1)
+        dir_key_obj = directory._cascading.data.get_key(source)
         dir_key_obj._seek_location = casc._key.seek_location
 
         # update self._cascading so subsequent extend uses correct metadata
