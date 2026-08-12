@@ -21,4 +21,3 @@ Options (type; default):
     Skip rarely used metadata and defer reading of embedded TBaskets
 * http_max_header_bytes (int; 21784)
     Maximum size of HTTP packet in bytes when the source is http
-
