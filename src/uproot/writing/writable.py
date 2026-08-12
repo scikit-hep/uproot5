@@ -1241,7 +1241,7 @@ class WritableDirectory(MutableMapping):
             ]
         }
 
-        dir_key = self._cascading.data.get_key(name, 1)
+        dir_key = self._cascading.data.get_key(name, key.cycle)
         freesegments = self._file._cascading.freesegments
 
         casc = ct.Tree.__new__(ct.Tree)
