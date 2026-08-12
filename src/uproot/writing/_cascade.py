@@ -1059,6 +1059,7 @@ class _ReadForUpdate:
         self._get_chunk = get_chunk
         self._tlist_of_streamers = tlist_of_streamers
         self._custom_classes = None
+        self.source = self
 
     @property
     def detached(self):

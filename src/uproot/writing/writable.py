@@ -1077,23 +1077,46 @@ class WritableDirectory(MutableMapping):
                 "uproot.update() on a file-like object does not support accessing "
                 "existing RNTuples; use uproot.update() with a file path instead."
             )
-        # TODO: opening the file again in read mode to access existing metadata is
-        # a bit awkward since the file is already open in write mode. We should
-        # look into a better way to do this in the future.
-        existing_file = uproot.open(self.file_path, minimal_ttree_metadata=False)
-        try:
-            existing = existing_file[name]
-            _ = existing.keys()  # trigger lazy loading of footer and page lists
-            full_akform, _ = existing.to_akform()
-            am = existing._ntuple.all_members
-            existing_key = existing_file.key(name + ";1")
-            anchor_location = existing_key.fSeekKey + existing_key.fKeylen
-            num_entries = existing.num_entries
-            existing_footer = existing._footer
-            existing_page_list_envelopes = existing.page_list_envelopes
-            existing_field_records = existing._ntuple.field_records
-        finally:
-            existing_file.close()
+        # use _ReadForUpdate to avoid loading entire file into memory
+        self._file.sink.flush()
+
+        def _get_chunk_rn(start, stop):
+            raw_bytes = self._file.sink.read(start, stop - start)
+            return uproot.source.chunk.Chunk.wrap(
+                _readforupdate_rn, raw_bytes, start=start
+            )
+
+        _readforupdate_rn = uproot.writing._cascade._ReadForUpdate(
+            self._file.file_path,
+            self._file.uuid,
+            _get_chunk_rn,
+            self._file._cascading.tlist_of_streamers,
+        )
+        _readforupdate_rn.options = dict(uproot.reading.open.defaults)
+        _readforupdate_rn.options["minimal_ttree_metadata"] = False
+
+        _raw_bytes_rn = self._file.sink.read(
+            key.seek_location,
+            key.num_bytes + key.compressed_bytes,
+        )
+        _chunk_rn = uproot.source.chunk.Chunk.wrap(
+            _readforupdate_rn, _raw_bytes_rn, start=key.seek_location
+        )
+        _cursor_rn = uproot.source.cursor.Cursor(
+            key.seek_location, origin=key.num_bytes
+        )
+        _readonlykey_rn = uproot.reading.ReadOnlyKey(
+            _chunk_rn, _cursor_rn, {}, _readforupdate_rn, self, read_strings=True
+        )
+        existing = _readonlykey_rn.get()
+        _ = existing.keys()
+        full_akform, _ = existing.to_akform()
+        am = existing._ntuple.all_members
+        anchor_location = key.seek_location + key.num_bytes
+        num_entries = existing.num_entries
+        existing_footer = existing._footer
+        existing_page_list_envelopes = existing.page_list_envelopes
+        existing_field_records = existing._ntuple.field_records
 
         header = cnt.NTuple_Header(
             None, existing.name, existing._header.ntuple_description, full_akform
@@ -2617,19 +2640,51 @@ class WritableNTuple:
         self._cascading._column_counts = numpy.append(
             self._cascading._column_counts, numpy.zeros(len(new_fields), dtype=int)
         )
-        # reload footer, page list envelopes and akform from file
-        # (needed for next add_fields call; read-only footer has cluster_group_records
-        # while writable footer only has cluster_group_record_frames)
-        existing_file = uproot.open(self._file.file_path, minimal_ttree_metadata=False)
-        try:
-            existing = existing_file[self._path[-1]]
-            _ = existing.keys()  # trigger lazy loading of footer and page lists
-            self._cascading._existing_footer = existing._footer
-            self._cascading._existing_page_list_envelopes = existing.page_list_envelopes
-            full_akform, _ = existing.to_akform()
-            self._cascading._header._akform = full_akform
-        finally:
-            existing_file.close()
+        # reload footer, page list envelopes and akform using _ReadForUpdate
+        self._file.sink.flush()
+
+        def _get_chunk_reload(start, stop):
+            raw_bytes = self._file.sink.read(start, stop - start)
+            return uproot.source.chunk.Chunk.wrap(
+                _readforupdate_reload, raw_bytes, start=start
+            )
+
+        _readforupdate_reload = uproot.writing._cascade._ReadForUpdate(
+            self._file.file_path,
+            self._file.uuid,
+            _get_chunk_reload,
+            self._file._cascading.tlist_of_streamers,
+        )
+        _readforupdate_reload.options = dict(uproot.reading.open.defaults)
+        _readforupdate_reload.options["minimal_ttree_metadata"] = False
+
+        _ntuple_key = self._file._cascading.rootdirectory.data.get_key(self._path[-1])
+        _raw_reload = self._file.sink.read(
+            _ntuple_key.seek_location,
+            _ntuple_key.num_bytes + _ntuple_key.compressed_bytes,
+        )
+        _chunk_reload = uproot.source.chunk.Chunk.wrap(
+            _readforupdate_reload, _raw_reload, start=_ntuple_key.seek_location
+        )
+        _cursor_reload = uproot.source.cursor.Cursor(
+            _ntuple_key.seek_location, origin=_ntuple_key.num_bytes
+        )
+        _key_reload = uproot.reading.ReadOnlyKey(
+            _chunk_reload,
+            _cursor_reload,
+            {},
+            _readforupdate_reload,
+            self,
+            read_strings=True,
+        )
+        existing_reload = _key_reload.get()
+        _ = existing_reload.keys()
+        self._cascading._existing_footer = existing_reload._footer
+        self._cascading._existing_page_list_envelopes = (
+            existing_reload.page_list_envelopes
+        )
+        full_akform_reload, _ = existing_reload.to_akform()
+        self._cascading._header._akform = full_akform_reload
 
 
 def _is_type_specification(obj):
