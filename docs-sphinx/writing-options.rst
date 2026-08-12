@@ -1,4 +1,5 @@
 Options (type; default):
+
 * initial_directory_bytes (int; 256): The number of bytes to allocate for new directories so that
   TKeys can be added to them without needing immediate rewriting of the block.
 * initial_streamers_bytes (int; 1024): The number of bytes to allocate for a new list of streamers
@@ -10,4 +11,4 @@ Options (type; default):
 
 See :doc:`uproot.writing.writable.WritableFile` for details on these options.
 
-Additional options are passed to as ``storage_options`` to the fsspec filesystem
+Additional options are passed as ``storage_options`` to the fsspec filesystem

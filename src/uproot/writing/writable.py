@@ -56,7 +56,7 @@ def create(file_path: str | Path | IO, **options):
 
     Returns a :doc:`uproot.writing.writable.WritableDirectory`.
 
-    ..include:: writing-options.rst
+    .. include:: writing-options.rst
     """
     file_path = uproot._util.regularize_path(file_path)
     storage_options = {
@@ -84,7 +84,7 @@ def recreate(file_path: str | Path | IO, **options):
 
     Returns a :doc:`uproot.writing.writable.WritableDirectory`.
 
-    ..include:: writing-options.rst
+    .. include:: writing-options.rst
     """
 
     file_path = uproot._util.regularize_path(file_path)
@@ -132,7 +132,7 @@ def update(file_path: str | Path | IO, **options):
 
     Returns a :doc:`uproot.writing.writable.WritableDirectory`.
 
-    ..include:: writing-options.rst
+    .. include:: writing-options.rst
     """
 
     file_path = uproot._util.regularize_path(file_path)
