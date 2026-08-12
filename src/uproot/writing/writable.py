@@ -1142,8 +1142,8 @@ class WritableDirectory(MutableMapping):
                 continue
             sc = _dtype_to_struct.get(dtype.kind + str(dtype.itemsize), "f")
             # detect counter branches (e.g. njets for jagged jets array)
-            _branch_names = [br.name for br in branches]
-            _is_counter = b.name.startswith("n") and b.name[1:] in _branch_names
+            _leaves = b.member("fLeaves")
+            _is_counter = bool(_leaves) and bool(_leaves[0].member("fIsRange"))
             bd = {
                 "fName": b.name,
                 "branch_type": dtype,
