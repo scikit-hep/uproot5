@@ -165,17 +165,7 @@ def iterate(
     * already-open TTree objects.
     * iterables of the above.
 
-    Options (type; default):
-
-    * handler (:doc:`uproot.source.chunk.Source` class; None)
-    * timeout (float for HTTP, int for XRootD; 30)
-    * max_num_elements (None or int; None)
-        The maximum number of elements to be requested in a single vector read, when using XRootD.
-    * num_workers (int; 1)
-    * use_threads (bool; False on the emscripten platform (i.e. in a web browser), else True)
-    * num_fallback_workers (int; 10)
-    * begin_chunk_size (memory_size; 403, the smallest a ROOT file can be)
-    * minimal_ttree_metadata (bool; True)
+    ..include:: reading-options.rst
 
     See also :ref:`uproot.behaviors.TBranch.HasBranches.iterate` to iterate
     within a single file.
@@ -369,17 +359,7 @@ def concatenate(
     * already-open TTree objects.
     * iterables of the above.
 
-    Options (type; default):
-
-    * handler (:doc:`uproot.source.chunk.Source` class; None)
-    * timeout (float for HTTP, int for XRootD; 30)
-    * max_num_elements (None or int; None)
-        The maximum number of elements to be requested in a single vector read, when using XRootD.
-    * num_workers (int; 1)
-    * use_threads (bool; False on the emscripten platform (i.e. in a web browser), else True)
-    * num_fallback_workers (int; 10)
-    * begin_chunk_size (memory_size; 403, the smallest a ROOT file can be)
-    * minimal_ttree_metadata (bool; True)
+    ..include:: reading-options.rst
 
     Other file entry points:
 

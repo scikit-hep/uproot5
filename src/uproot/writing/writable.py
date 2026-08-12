@@ -56,18 +56,7 @@ def create(file_path: str | Path | IO, **options):
 
     Returns a :doc:`uproot.writing.writable.WritableDirectory`.
 
-    Options (type; default):
-
-    * initial_directory_bytes (int; 256)
-    * initial_streamers_bytes (int; 1024)
-    * uuid_function (callable; ``uuid.uuid1``)
-    * compression (:doc:`uproot.compression.Compression` or None): Compression algorithm
-    and level for new objects added to the file. Can be updated after creating
-    the :doc:`uproot.writing.writable.WritableFile`. Default is ``uproot.ZLIB(1)``.
-
-    See :doc:`uproot.writing.writable.WritableFile` for details on these options.
-
-    Additional options are passed to as ``storage_options`` to the fsspec filesystem
+    ..include:: writing-options.rst
     """
     file_path = uproot._util.regularize_path(file_path)
     storage_options = {
@@ -95,18 +84,7 @@ def recreate(file_path: str | Path | IO, **options):
 
     Returns a :doc:`uproot.writing.writable.WritableDirectory`.
 
-    Options (type; default):
-
-    * initial_directory_bytes (int; 256)
-    * initial_streamers_bytes (int; 1024)
-    * uuid_function (callable; ``uuid.uuid1``)
-    * compression (:doc:`uproot.compression.Compression` or None): Compression algorithm
-    and level for new objects added to the file. Can be updated after creating
-    the :doc:`uproot.writing.writable.WritableFile`. Default is ``uproot.ZLIB(1)``.
-
-    See :doc:`uproot.writing.writable.WritableFile` for details on these options.
-
-    Additional options are passed to as ``storage_options`` to the fsspec filesystem.
+    ..include:: writing-options.rst
     """
 
     file_path = uproot._util.regularize_path(file_path)
@@ -154,14 +132,7 @@ def update(file_path: str | Path | IO, **options):
 
     Returns a :doc:`uproot.writing.writable.WritableDirectory`.
 
-    Options (type; default):
-
-    * initial_directory_bytes (int; 256)
-    * uuid_function (callable; ``uuid.uuid1``)
-
-    See :doc:`uproot.writing.writable.WritableFile` for details on these options.
-
-    Additional options are passed to as ``storage_options`` to the fsspec filesystem
+    ..include:: writing-options.rst
     """
 
     file_path = uproot._util.regularize_path(file_path)
