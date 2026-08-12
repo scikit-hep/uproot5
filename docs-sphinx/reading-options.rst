@@ -1,6 +1,6 @@
 Options (type; default):
 
-* handler (:doc:`uproot.source.chunk.Source` class; None): Class implementing reading from the data source. 
+* handler (:doc:`uproot.source.chunk.Source` class; None): Class implementing reading from the data source.
   If None, deduced from input file type.
 * timeout (float for HTTP, int for XRootD; default defined by source implementation): The time in seconds
   to wait before giving up on the connection. Ignored for non-internet sources like local file paths.
