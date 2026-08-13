@@ -2253,6 +2253,12 @@ class WritableTree:
                 if rn
             )
         ]
+        # include counter branches that user explicitly provides in data
+        _counter_branch_names = [
+            bd["fName"]
+            for bd in self._cascading._branch_data
+            if bd.get("kind") == "counter" and "fName" in bd
+        ]
         # check if data looks like a flat dict of branch arrays (not a record/awkward array)
         _data_is_flat_dict = isinstance(data, dict) and all(
             not hasattr(v, "fields") for v in data.values()
@@ -2268,9 +2274,20 @@ class WritableTree:
             new_fields = {
                 k: v
                 for k, v in data.items()
-                if k not in existing_names and k not in _record_parent_names
+                if k not in existing_names
+                and k not in _record_parent_names
+                and k not in _counter_branch_names
             }
-            missing = [b for b in existing_names if b not in data]
+            # skip counter branches not provided by user (auto-generated)
+            missing = [
+                b
+                for b in existing_names
+                if b not in data and b not in _counter_branch_names
+            ]
+            # add counter branches to existing_names if user provides them
+            existing_names = _user_branch_names + [
+                c for c in _counter_branch_names if c in data
+            ]
             if missing:
                 raise ValueError(
                     f"'extend' must fill every branch with the same number of entries; missing: {missing}"
