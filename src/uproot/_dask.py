@@ -184,7 +184,7 @@ def dask(
     * already-open TTree objects.
     * iterables of the above.
 
-    ..include:: reading-options.rst
+    .. include:: reading-options.rst
 
     Other file entry points:
 

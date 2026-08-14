@@ -165,7 +165,7 @@ def iterate(
     * already-open TTree objects.
     * iterables of the above.
 
-    ..include:: reading-options.rst
+    .. include:: reading-options.rst
 
     See also :ref:`uproot.behaviors.TBranch.HasBranches.iterate` to iterate
     within a single file.
@@ -359,7 +359,7 @@ def concatenate(
     * already-open TTree objects.
     * iterables of the above.
 
-    ..include:: reading-options.rst
+    .. include:: reading-options.rst
 
     Other file entry points:
 
