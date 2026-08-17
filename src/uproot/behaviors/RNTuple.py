@@ -775,7 +775,7 @@ class HasFields(Mapping):
                     resolved_expr = expr
                     for alias_k, alias_v in aliases.items():
                         resolved_expr = resolved_expr.replace(alias_k, f"({alias_v})")
-                        
+
                     ast = formulate.from_root(resolved_expr)
                     required_fields.update(ast.variables)
                     parsed_expressions[expr] = ast.to_numexpr()
@@ -784,14 +784,13 @@ class HasFields(Mapping):
                 resolved_cut = cut
                 for alias_k, alias_v in aliases.items():
                     resolved_cut = resolved_cut.replace(alias_k, f"({alias_v})")
-                    
+
                 cut_ast = formulate.from_root(resolved_cut)
                 required_fields.update(cut_ast.variables)
                 parsed_cut = cut_ast.to_numexpr()
 
                 if filter_name == no_filter and expressions is not None:
                     filter_name = list(required_fields)
-
 
         if virtual:
             # some kwargs can't be used with virtual arrays
@@ -937,7 +936,7 @@ class HasFields(Mapping):
         # Evaluate expressions, cuts, and aliases using Awkward and Numexpr
         if parsed_expressions or (parsed_cut is not None):
             local_dict = {field: arrays[field] for field in arrays.fields}
-            
+
             # 1. Apply cut mask if cut was provided
             if parsed_cut is not None:
                 cut_mask = ak.numexpr.evaluate(parsed_cut, local_dict=local_dict)
@@ -948,7 +947,9 @@ class HasFields(Mapping):
             if parsed_expressions:
                 out_dict = {}
                 for expr, numexpr_str in parsed_expressions.items():
-                    out_dict[expr] = ak.numexpr.evaluate(numexpr_str, local_dict=local_dict)
+                    out_dict[expr] = ak.numexpr.evaluate(
+                        numexpr_str, local_dict=local_dict
+                    )
                 arrays = ak.zip(out_dict, depth_limit=1)
 
         expression_context = [(f, None) for f in arrays.fields]

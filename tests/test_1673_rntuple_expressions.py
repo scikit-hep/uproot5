@@ -5,6 +5,7 @@ import awkward as ak
 
 formulate = pytest.importorskip("formulate")
 
+
 def test_rntuple_expressions(tmp_path):
     # tmp_path is a pytest fixture that provides a temporary directory
     filename = tmp_path / "test_rntuple_expressions.root"
@@ -12,11 +13,13 @@ def test_rntuple_expressions(tmp_path):
     # 1. Create a test RNTuple
     with uproot.recreate(filename) as f:
         f.mkrntuple("ntuple", {"x": np.float64, "y": np.float64, "z": np.float64})
-        f["ntuple"].extend({
-            "x": np.array([1.0, 2.0, 3.0, 4.0, 5.0]),
-            "y": np.array([10.0, 20.0, 30.0, 40.0, 50.0]),
-            "z": np.array([0.1, 0.2, 0.3, 0.4, 0.5])
-        })
+        f["ntuple"].extend(
+            {
+                "x": np.array([1.0, 2.0, 3.0, 4.0, 5.0]),
+                "y": np.array([10.0, 20.0, 30.0, 40.0, 50.0]),
+                "z": np.array([0.1, 0.2, 0.3, 0.4, 0.5]),
+            }
+        )
 
     # 2. Test the reading
     with uproot.open(filename) as f:
