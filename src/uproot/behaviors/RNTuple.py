@@ -761,36 +761,57 @@ class HasFields(Mapping):
         parsed_cut = None
 
         if expressions is not None or cut is not None:
-            import formulate
+            try:
+                import formulate
+                has_formulate = True
+            except ModuleNotFoundError:
+                has_formulate = False
 
-            if aliases is None:
-                aliases = {}
+            if has_formulate:
+                if aliases is None:
+                    aliases = {}
 
-            required_fields = set()
+                required_fields = set()
 
-            if expressions is not None:
-                if isinstance(expressions, str):
-                    expressions = [expressions]
-                for expr in expressions:
-                    resolved_expr = expr
+                if expressions is not None:
+                    if isinstance(expressions, str):
+                        expressions = [expressions]
+                    for expr in expressions:
+                        resolved_expr = expr
+                        for alias_k, alias_v in aliases.items():
+                            resolved_expr = resolved_expr.replace(alias_k, f"({alias_v})")
+                            
+                        ast = formulate.from_root(resolved_expr)
+                        required_fields.update(ast.variables)
+                        parsed_expressions[expr] = ast.to_numexpr()
+
+                if cut is not None:
+                    resolved_cut = cut
                     for alias_k, alias_v in aliases.items():
-                        resolved_expr = resolved_expr.replace(alias_k, f"({alias_v})")
-
-                    ast = formulate.from_root(resolved_expr)
-                    required_fields.update(ast.variables)
-                    parsed_expressions[expr] = ast.to_numexpr()
-
-            if cut is not None:
-                resolved_cut = cut
-                for alias_k, alias_v in aliases.items():
-                    resolved_cut = resolved_cut.replace(alias_k, f"({alias_v})")
-
-                cut_ast = formulate.from_root(resolved_cut)
-                required_fields.update(cut_ast.variables)
-                parsed_cut = cut_ast.to_numexpr()
+                        resolved_cut = resolved_cut.replace(alias_k, f"({alias_v})")
+                        
+                    cut_ast = formulate.from_root(resolved_cut)
+                    required_fields.update(cut_ast.variables)
+                    parsed_cut = cut_ast.to_numexpr()
 
                 if filter_name == no_filter and expressions is not None:
                     filter_name = list(required_fields)
+            else:
+                # Fallback for environments without 'formulate' installed
+                if cut is not None or aliases is not None:
+                    raise ImportError(
+                        "The 'formulate' package is required to use 'cut' or 'aliases'. "
+                        "Install it with: pip install formulate"
+                    )
+                if expressions is not None:
+                    # Legacy behavior: treat expressions as filter_name
+                    if filter_name == no_filter:
+                        filter_name = expressions
+                    else:
+                        raise ValueError(
+                            "Expressions are not supported yet without the 'formulate' package. "
+                            "They are currently equivalent to filter_name."
+                        )
 
         if virtual:
             # some kwargs can't be used with virtual arrays
