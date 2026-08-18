@@ -126,11 +126,7 @@ addopts = ["-ra", "--showlocals", "--strict-markers", "--strict-config"]
 filterwarnings = [
   "error",
   "default:module 'sre_.*' is deprecated:DeprecationWarning",
-  "ignore:unclosed transport <asyncio.sslproto._SSLProtocolTransport",  # https://github.com/aio-libs/aiohttp/issues/1115
-  # numba-cuda hits a NumPy 2.5 deprecation while importing numba.cuda, which
-  # Awkward's CUDA backend imports; there is no released fix, so the GPU tests
-  # cannot run with this promoted to an error.
-  "ignore:The 'generic' unit for NumPy timedelta is deprecated:DeprecationWarning"
+  "ignore:unclosed transport <asyncio.sslproto._SSLProtocolTransport"  # https://github.com/aio-libs/aiohttp/issues/1115
 ]
 log_level = "INFO"
 markers = [
