@@ -144,9 +144,9 @@ def iterate(
       Future Dev Note: These shared reading options are manually copied across multiple files
       so they appear in `help` output of Python interpreter and the online documentation
       for the functions where they are used.
-    
+
     Options (type; default):
-    
+
     * handler (:doc:`uproot.source.chunk.Source` class; None): Class implementing reading from the data source.
       If None, deduced from input file type.
     * timeout (float for HTTP, int for XRootD; default defined by source implementation): The time in seconds
@@ -348,9 +348,9 @@ def concatenate(
       Future Dev Note: These shared reading options are manually copied across multiple files
       so they appear in `help` output of Python interpreter and the online documentation
       for the functions where they are used.
-    
+
     Options (type; default):
-    
+
     * handler (:doc:`uproot.source.chunk.Source` class; None): Class implementing reading from the data source.
       If None, deduced from input file type.
     * timeout (float for HTTP, int for XRootD; default defined by source implementation): The time in seconds
