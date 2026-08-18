@@ -1,9 +1,10 @@
 name: PR Type Label
 
 # SECURITY: pull_request_target grants a write token, so this workflow must
-# never check out or execute code from the PR. It only parses the PR title
-# (via the same pinned action used by semantic-pr-title.yml) and calls the
-# GitHub REST API to reconcile labels.
+# never check out or execute code from the PR. It runs no third-party
+# actions: the title is parsed by sed against a fixed allowlist, reaches the
+# script only through an environment variable, and labels are reconciled via
+# the GitHub REST API.
 on: # zizmor: ignore[dangerous-triggers] This privileged workflow never checks out or runs PR code; it only parses the PR title and edits labels via the REST API.
   pull_request_target:
     types:
@@ -29,31 +30,32 @@ jobs:
     permissions:
       pull-requests: write # Required to add/remove labels on the PR.
     steps:
-      - id: parse
-        name: Parse conventional-commit type from PR title
-        # Same action+pin as semantic-pr-title.yml. On an invalid title this
-        # step fails; continue-on-error lets the reconcile step still run with
-        # an empty type, which removes any stale type/ label.
-        uses: amannn/action-semantic-pull-request@48f256284bd46cdaab1048c3721360e808335d50 # v6.1.1
-        continue-on-error: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Reconcile type/<type> label
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TYPE: ${{ steps.parse.outputs.type }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           REPO: ${{ github.repository }}
         run: |
           # One label per conventional-commit type; .github/release.yml groups
-          # them into release-note sections.
-          if [ -n "$TYPE" ]; then
-            desired="type/${TYPE}"
+          # them into release-note sections. The allowlist below must match the
+          # types accepted by semantic-pr-title.yml (the defaults of
+          # amannn/action-semantic-pull-request). A title that does not parse
+          # to an allowed type yields an empty $type, which only strips stale
+          # type/ labels; semantic-pr-title.yml is what reports invalid titles.
+          type=$(printf '%s' "$PR_TITLE" |
+            sed -nE 's/^([a-z]+)(\([^)]*\))?!?: .+/\1/p')
+          case "$type" in
+            feat|fix|perf|docs|test|build|ci|chore|refactor|style|revert) ;;
+            *) type='' ;;
+          esac
+
+          if [ -n "$type" ]; then
+            desired="type/${type}"
           else
             desired=''
           fi
-          echo "PR #${PR_NUMBER}: type='${TYPE:-none}' -> label='${desired:-none}'"
+          echo "PR #${PR_NUMBER}: type='${type:-none}' -> label='${desired:-none}'"
 
           # Current labels in the type/ namespace (queried live, not from the
           # possibly stale event payload).
