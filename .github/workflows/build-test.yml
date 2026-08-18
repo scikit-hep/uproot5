@@ -203,11 +203,24 @@ jobs:
           version: ${{ env.PYODIDE_VERSION }}
           to: pyodide-dist
 
-      - name: Install browser
+      # Installed separately from Firefox because the two take different
+      # version spellings. "latest" gets Chrome a bleeding-edge Chromium
+      # snapshot, which Selenium Manager then refuses to drive because it
+      # picks the runner image's stable Chrome instead; "stable" keeps the
+      # installed Chrome on the same channel as the image's.
+      - name: Install Chrome
         uses: pyodide/pyodide-actions/install-browser@012fa537869d343726d01863a34b773fc4d96a14 # v2
         with:
           runner: selenium
-          browser: chrome firefox
+          browser: chrome
+          browser-version: stable
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install Firefox
+        uses: pyodide/pyodide-actions/install-browser@012fa537869d343726d01863a34b773fc4d96a14 # v2
+        with:
+          runner: selenium
+          browser: firefox
           browser-version: latest
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
