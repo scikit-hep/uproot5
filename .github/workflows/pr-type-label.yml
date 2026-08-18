@@ -1,0 +1,79 @@
+name: PR Type Label
+
+# SECURITY: pull_request_target grants a write token, so this workflow must
+# never check out or execute code from the PR. It runs no third-party
+# actions: the title is parsed by sed against a fixed allowlist, reaches the
+# script only through an environment variable, and labels are reconciled via
+# the GitHub REST API.
+on: # zizmor: ignore[dangerous-triggers] This privileged workflow never checks out or runs PR code; it only parses the PR title and edits labels via the REST API.
+  pull_request_target:
+    types:
+      - opened
+      - edited
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  # Not cancel-in-progress: workflow-level concurrency cancels a run before the
+  # job-level `if` below is evaluated, so a body-only edit right after a title
+  # edit would cancel the labeling run and then skip itself, leaving no label.
+  # Queueing is safe because the reconcile step is idempotent.
+  cancel-in-progress: false
+
+jobs:
+  label:
+    name: Reconcile type label from PR title
+    runs-on: ubuntu-latest
+    # Run on open, and only on edits that changed the title.
+    if: github.event.action == 'opened' || github.event.changes.title.from != null
+    permissions:
+      pull-requests: write # Required to add/remove labels on the PR.
+    steps:
+      - name: Reconcile type/<type> label
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          # One label per conventional-commit type; .github/release.yml groups
+          # them into release-note sections. The allowlist below must match the
+          # types accepted by semantic-pr-title.yml (the defaults of
+          # amannn/action-semantic-pull-request). A title that does not parse
+          # to an allowed type yields an empty $type, which only strips stale
+          # type/ labels; semantic-pr-title.yml is what reports invalid titles.
+          type=$(printf '%s' "$PR_TITLE" |
+            sed -nE 's/^([a-z]+)(\([^)]*\))?!?: .+/\1/p')
+          case "$type" in
+            feat|fix|perf|docs|test|build|ci|chore|refactor|style|revert) ;;
+            *) type='' ;;
+          esac
+
+          if [ -n "$type" ]; then
+            desired="type/${type}"
+          else
+            desired=''
+          fi
+          echo "PR #${PR_NUMBER}: type='${type:-none}' -> label='${desired:-none}'"
+
+          # Current labels in the type/ namespace (queried live, not from the
+          # possibly stale event payload).
+          current=$(gh api "repos/${REPO}/issues/${PR_NUMBER}/labels" \
+            --jq '.[].name | select(startswith("type/"))')
+
+          # Remove stale type/ labels; never touch other labels.
+          while IFS= read -r label; do
+            [ -n "$label" ] || continue
+            if [ "$label" != "$desired" ]; then
+              encoded=$(jq -rn --arg l "$label" '$l | @uri')
+              echo "Removing stale label '$label'"
+              gh api -X DELETE "repos/${REPO}/issues/${PR_NUMBER}/labels/${encoded}"
+            fi
+          done <<< "$current"
+
+          # Add the desired label if missing (POST is additive and idempotent).
+          if [ -n "$desired" ] && ! grep -qxF "$desired" <<< "$current"; then
+            echo "Adding label '$desired'"
+            gh api -X POST "repos/${REPO}/issues/${PR_NUMBER}/labels" -f "labels[]=$desired"
+          fi
