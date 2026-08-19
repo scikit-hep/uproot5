@@ -174,10 +174,7 @@ def update(file_path: str | Path | IO, **options):
 
     * initial_directory_bytes (int; 256): The number of bytes to allocate for new directories so that
       TKeys can be added to them without needing immediate rewriting of the block.
-    * initial_streamers_bytes (int; 1024): Ignored by ``update``.
     * uuid_function (callable; ``uuid.uuid1``): Function to create the file's UUID and/or any directory's UUID.
-    * compression (:doc:`uproot.compression.Compression` or None; ``uproot.ZLIB(1)``):
-      Ignored by ``update``.
 
     See :doc:`uproot.writing.writable.WritableFile` for details on these options.
 
