@@ -203,11 +203,17 @@ jobs:
           version: ${{ env.PYODIDE_VERSION }}
           to: pyodide-dist
 
-      - name: Install browser
+      # Chrome is deliberately not installed here: the runner image already
+      # ships Chrome and a ChromeDriver built to match it. Installing another
+      # copy is what broke this job -- Selenium Manager drives the image's
+      # Chrome regardless, so any version the action fetches has to agree with
+      # it, and neither "latest" (a Chromium dev snapshot) nor "stable" (a
+      # major ahead while the image lags) does.
+      - name: Install Firefox
         uses: pyodide/pyodide-actions/install-browser@012fa537869d343726d01863a34b773fc4d96a14 # v2
         with:
           runner: selenium
-          browser: chrome firefox
+          browser: firefox
           browser-version: latest
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
@@ -252,6 +258,11 @@ jobs:
         with:
           environment-name: test-env
           init-shell: bash
+          # numba-cuda 0.30.4 does not support NumPy 2.5: it calls
+          # overload(np.row_stack), removed in 2.5, while importing numba.cuda,
+          # which Awkward's CUDA backend imports. numba 0.66 used to hold NumPy
+          # back, but 0.67 relaxed its pin to <2.6. Drop this once numba-cuda
+          # releases a fix.
           create-args: >-
             -c rapidsai
             python=3.13
@@ -263,6 +274,7 @@ jobs:
             kvikio
             nvcomp
             pytest-cov
+            numpy<2.5
             ${{ matrix.cuda-version == 13 && 'root' || '' }}
 
       - name: Pip install the package
