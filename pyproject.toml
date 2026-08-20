@@ -84,6 +84,7 @@ classifiers = [
 dependencies = [
   "awkward>=2.8.2",
   "cramjam>=2.5.0",
+  "formulate",
   "xxhash",
   "numpy",
   "fsspec!=2026.2.0",
