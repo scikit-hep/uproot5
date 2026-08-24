@@ -1153,10 +1153,26 @@ class WritableDirectory(MutableMapping):
         for branch_idx, b in enumerate(branches):
             refs_list = list(b.cursor._refs.keys())
             try:
-                dtype = b.interpretation.numpy_dtype.newbyteorder(">")
+                interpretation = b.interpretation
+                if isinstance(interpretation, uproot.interpretation.jagged.AsJagged):
+                    # numpy_dtype of the AsJagged interpretation itself is
+                    # dtype('O'); the basket actually holds the *content*
+                    # dtype (e.g. float32 for "var * float32")
+                    dtype = interpretation.content.to_dtype.newbyteorder(">")
+                else:
+                    dtype = interpretation.numpy_dtype.newbyteorder(">")
             except AttributeError:
                 # TBranchElement or other complex branch — skip
                 continue
+
+            if dtype.kind == "O":
+                raise NotImplementedError(
+                    f"branch {b.name!r} has interpretation {interpretation!r}, "
+                    "which is not yet supported by uproot.update(); only "
+                    "numeric and jagged-numeric branches can currently be "
+                    "extended on an existing TTree opened with uproot.update()"
+                )
+
             sc = _dtype_to_struct.get(dtype.kind + str(dtype.itemsize), "f")
             # detect counter branches (e.g. njets for jagged jets array)
             _leaves = b.member("fLeaves")

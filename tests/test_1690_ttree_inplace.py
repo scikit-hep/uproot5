@@ -379,6 +379,33 @@ def test_extend_jagged_array(tmp_path):
         ]
 
 
+def test_extend_jagged_array_new_session(tmp_path):
+    """Extending a jagged branch via uproot.update() must not corrupt data.
+
+    Regression test: uproot.update() reconstructs branch metadata from disk
+    (_load_existing_ttree), which used to derive the on-disk dtype of a
+    jagged branch's content from the AsJagged interpretation's numpy_dtype
+    (always dtype('O')) instead of its content dtype, silently writing
+    garbage instead of raising.
+    """
+    ak = pytest.importorskip("awkward")
+    path = os.path.join(tmp_path, "test.root")
+    with uproot.recreate(path) as f:
+        f.mktree("tree", {"jets": "var * float32"})
+        f["tree"].extend({"jets": ak.Array([[1.0, 2.0], [3.0]])})
+
+    with uproot.update(path) as f:
+        f["tree"].extend({"jets": ak.Array([[7.0, 8.0, 9.0], [10.0]])})
+
+    with uproot.open(path) as f:
+        assert f["tree"]["jets"].array().tolist() == [
+            [1.0, 2.0],
+            [3.0],
+            [7.0, 8.0, 9.0],
+            [10.0],
+        ]
+
+
 def test_extend_after_many_extends(tmp_path):
     """Extending a tree that already has more than 10 baskets (fMaxBaskets expansion)."""
     with uproot.recreate(os.path.join(tmp_path, "test.root")) as f:
