@@ -36,6 +36,7 @@ from uproot.models.RNTuple import (
     _rntuple_envlink_size_format,
     _rntuple_feature_flag_format,
     _rntuple_field_description_format,
+    _rntuple_first_element_index_format,
     _rntuple_frame_num_items_format,
     _rntuple_frame_size_format,
     _rntuple_locator_offset_format,
@@ -266,9 +267,9 @@ class NTuple_Column_Description:
             self.repr_index,
         )
         if self.first_element_index > 0:
-            import struct
-
-            header_bytes += struct.pack("<Q", int(self.first_element_index))
+            header_bytes += _rntuple_first_element_index_format.pack(
+                int(self.first_element_index)
+            )
         return header_bytes
 
 
