@@ -56,18 +56,24 @@ def create(file_path: str | Path | IO, **options):
 
     Returns a :doc:`uproot.writing.writable.WritableDirectory`.
 
+    ..
+      Future Dev Note: These shared writing options are manually copied across
+      multiple docstrings to make them available in `help` and online.
+
     Options (type; default):
 
-    * initial_directory_bytes (int; 256)
-    * initial_streamers_bytes (int; 1024)
-    * uuid_function (callable; ``uuid.uuid1``)
-    * compression (:doc:`uproot.compression.Compression` or None): Compression algorithm
-    and level for new objects added to the file. Can be updated after creating
-    the :doc:`uproot.writing.writable.WritableFile`. Default is ``uproot.ZLIB(1)``.
+    * initial_directory_bytes (int; 256): The number of bytes to allocate for new directories so that
+      TKeys can be added to them without needing immediate rewriting of the block.
+    * initial_streamers_bytes (int; 1024): The number of bytes to allocate for a new list of streamers
+      so that streamers can be added to it without needing immediate rewriting
+    * uuid_function (callable; ``uuid.uuid1``): Function to create the file's UUID and/or any directory's UUID.
+    * compression (:doc:`uproot.compression.Compression` or None; ``uproot.ZLIB(1)``): Compression algorithm
+      and level for new objects added to the file. Can be updated after creating
+      the :doc:`uproot.writing.writable.WritableFile`.
 
     See :doc:`uproot.writing.writable.WritableFile` for details on these options.
 
-    Additional options are passed to as ``storage_options`` to the fsspec filesystem
+    Additional options are passed as ``storage_options`` to the fsspec filesystem
     """
     file_path = uproot._util.regularize_path(file_path)
     storage_options = {
@@ -95,18 +101,24 @@ def recreate(file_path: str | Path | IO, **options):
 
     Returns a :doc:`uproot.writing.writable.WritableDirectory`.
 
+    ..
+      Future Dev Note: These shared writing options are manually copied across
+      multiple docstrings to make them available in `help` and online.
+
     Options (type; default):
 
-    * initial_directory_bytes (int; 256)
-    * initial_streamers_bytes (int; 1024)
-    * uuid_function (callable; ``uuid.uuid1``)
-    * compression (:doc:`uproot.compression.Compression` or None): Compression algorithm
-    and level for new objects added to the file. Can be updated after creating
-    the :doc:`uproot.writing.writable.WritableFile`. Default is ``uproot.ZLIB(1)``.
+    * initial_directory_bytes (int; 256): The number of bytes to allocate for new directories so that
+      TKeys can be added to them without needing immediate rewriting of the block.
+    * initial_streamers_bytes (int; 1024): The number of bytes to allocate for a new list of streamers
+      so that streamers can be added to it without needing immediate rewriting
+    * uuid_function (callable; ``uuid.uuid1``): Function to create the file's UUID and/or any directory's UUID.
+    * compression (:doc:`uproot.compression.Compression` or None; ``uproot.ZLIB(1)``): Compression algorithm
+      and level for new objects added to the file. Can be updated after creating
+      the :doc:`uproot.writing.writable.WritableFile`.
 
     See :doc:`uproot.writing.writable.WritableFile` for details on these options.
 
-    Additional options are passed to as ``storage_options`` to the fsspec filesystem.
+    Additional options are passed as ``storage_options`` to the fsspec filesystem
     """
 
     file_path = uproot._util.regularize_path(file_path)
@@ -154,14 +166,19 @@ def update(file_path: str | Path | IO, **options):
 
     Returns a :doc:`uproot.writing.writable.WritableDirectory`.
 
+    ..
+      Future Dev Note: These shared writing options are manually copied across
+      multiple docstrings to make them available in `help` and online.
+
     Options (type; default):
 
-    * initial_directory_bytes (int; 256)
-    * uuid_function (callable; ``uuid.uuid1``)
+    * initial_directory_bytes (int; 256): The number of bytes to allocate for new directories so that
+      TKeys can be added to them without needing immediate rewriting of the block.
+    * uuid_function (callable; ``uuid.uuid1``): Function to create the file's UUID and/or any directory's UUID.
 
     See :doc:`uproot.writing.writable.WritableFile` for details on these options.
 
-    Additional options are passed to as ``storage_options`` to the fsspec filesystem
+    Additional options are passed as ``storage_options`` to the fsspec filesystem
     """
 
     file_path = uproot._util.regularize_path(file_path)
