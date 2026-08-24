@@ -1110,7 +1110,6 @@ class WritableDirectory(MutableMapping):
             self._file._cascading.tlist_of_streamers,
         )
         _readforupdate_rn.options = dict(uproot.reading.open.defaults)
-        _readforupdate_rn.options["minimal_ttree_metadata"] = False
 
         _raw_bytes_rn = self._file.sink.read(
             key.seek_location,
@@ -2673,7 +2672,6 @@ class WritableNTuple:
             self._file._cascading.tlist_of_streamers,
         )
         _readforupdate_reload.options = dict(uproot.reading.open.defaults)
-        _readforupdate_reload.options["minimal_ttree_metadata"] = False
 
         _ntuple_key = self._file._cascading.rootdirectory.data.get_key(self._path[-1])
         _raw_reload = self._file.sink.read(
