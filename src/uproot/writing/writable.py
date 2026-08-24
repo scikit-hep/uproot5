@@ -2402,8 +2402,6 @@ class WritableNTuple:
         return self._cascading.num_entries
 
     def extend(self, data, accept_new_fields=False):
-        if self._column_encoding_error is not None:
-            raise ValueError(self._column_encoding_error)
         """
         Args:
             data (dict of str \u2192 arrays): More array data to add to the RNTuple.
@@ -2441,7 +2439,19 @@ class WritableNTuple:
         .. warning::
 
             **As a word of warning,** be sure that each call to :ref:`uproot.writing.writable.WritableNTuple.extend` includes at least 100 kB per branch/array. (NumPy and Awkward Arrays have an `nbytes <https://numpy.org/doc/stable/reference/generated/numpy.ndarray.nbytes.html>`__ property; you want at least ``100000`` per array.) If you ask Uproot to write very small TBaskets, it will spend more time working on TBasket overhead than actually writing data. The absolute worst case is one-entry-per-:ref:`uproot.writing.writable.WritableTree.extend`. See `#428 (comment) <https://github.com/scikit-hep/uproot5/pull/428#issuecomment-908703486>`__.
+
+        .. note::
+
+            Extending an RNTuple opened with :doc:`uproot.writing.writable.WritableDirectory.update`
+            only works if every column uses an encoding Uproot itself writes.
+            RNTuples written by ROOT commonly use column encodings (e.g. split
+            encoding) that Uproot does not yet write, and are rejected with a
+            ``ValueError`` rather than risk writing an inconsistent file. In
+            practice, ``extend``/``add_fields`` after reopening a file only
+            work reliably on RNTuples that Uproot itself wrote.
         """
+        if self._column_encoding_error is not None:
+            raise ValueError(self._column_encoding_error)
         # if _column_counts has more columns than _column_keys, reload cascading
         # this happens after add_fields adds extension columns
         if len(self._cascading._column_counts) > len(
@@ -2495,8 +2505,10 @@ class WritableNTuple:
         Raises:
             TypeError: if a field type is not a simple scalar numeric type.
             ValueError: if a field already exists, if the subfield parent is not
-                found or is a typed struct (C++ typename), or if the file was
-                opened without a file path (file-like objects are not supported).
+                found or is a typed struct (C++ typename), if the file was
+                opened without a file path (file-like objects are not supported),
+                or if the RNTuple uses column encodings Uproot does not write
+                (see the note below).
 
         For example,
 
@@ -2504,6 +2516,17 @@ class WritableNTuple:
 
             with uproot.update("file.root") as f:
                 f["mytuple"].add_fields({"z": np.int32, "w": np.float32})
+
+        .. note::
+
+            Like :ref:`uproot.writing.writable.WritableNTuple.extend`, this only
+            works on an RNTuple opened with :doc:`uproot.writing.writable.WritableDirectory.update`
+            if every column uses an encoding Uproot itself writes. RNTuples
+            written by ROOT commonly use column encodings (e.g. split encoding)
+            that Uproot does not yet write, and are rejected with a
+            ``ValueError``. In practice, ``add_fields``/``extend`` after
+            reopening a file only work reliably on RNTuples that Uproot itself
+            wrote.
         """
 
         import uproot.writing._cascadentuple as cnt

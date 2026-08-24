@@ -109,6 +109,37 @@ def test_add_field_ntuple_duplicate(tmp_path):
             f["mytuple"].add_fields({"x": np.int32})
 
 
+def test_ntuple_extend_docstring_present():
+    """WritableNTuple.extend must have a docstring.
+
+    Regression test: the _column_encoding_error check was briefly inserted as
+    the first statement in extend()'s body, before its docstring, which
+    turned the docstring into a dangling (unused) string expression instead
+    of __doc__ -- silently dropping the method from generated docs.
+    """
+    assert uproot.writing.writable.WritableNTuple.extend.__doc__
+
+
+def test_add_fields_rejects_root_written_column_encoding(tmp_path):
+    """add_fields()/extend() on a genuinely ROOT-written RNTuple must raise cleanly.
+
+    ROOT commonly uses column encodings (e.g. split encoding) that Uproot does
+    not write, so mutating such a file would either produce an inconsistent
+    RNTuple or require Uproot to guess at an encoding it can't reproduce.
+    Confirms the encoding guard actually protects a real ROOT-written file
+    (not just a synthetic mismatch), matching the documented restriction that
+    extend()/add_fields() on a reopened file only work reliably for RNTuples
+    Uproot itself wrote.
+    """
+    path = os.path.join(tmp_path, "staff.root")
+    shutil.copy(skhep_testdata.data_path("ntpl001_staff_rntuple_v1-0-1-0.root"), path)
+
+    with uproot.update(path) as f:
+        key = next(iter(f.keys())).split(";")[0]
+        with pytest.raises(ValueError, match="column encodings"):
+            f[key].add_fields({"newfield": np.int32})
+
+
 def test_extend_ntuple_multiple_times(tmp_path):
     with uproot.recreate(os.path.join(tmp_path, "test.root")) as f:
         f["mytuple"] = {"x": np.array([1, 2, 3], dtype=np.float32)}
