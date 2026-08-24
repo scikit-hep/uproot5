@@ -74,6 +74,32 @@ def test_add_field_ntuple(tmp_path):
         assert vals == pytest.approx([1.0, 2.0, 3.0, 4.0, 5.0])
 
 
+def test_add_field_ntuple_same_session_as_creation(tmp_path):
+    """add_fields() on an RNTuple created earlier in the same session (not reopened).
+
+    Regression test: the NTuple cascading object only gets its
+    _existing_footer/_existing_page_list_envelopes/_existing_field_records
+    attributes set inside _load_existing_ntuple, the path used when
+    uproot.update() reconstructs a preexisting RNTuple from disk. An RNTuple
+    created via mkrntuple or directory assignment earlier in the same
+    session never goes through that path, so add_fields() raised a raw
+    AttributeError reading self._cascading._existing_footer.
+    """
+    path = os.path.join(tmp_path, "test.root")
+    with uproot.recreate(path) as f:
+        f["mytuple"] = {"x": np.array([1, 2, 3, 4, 5], dtype=np.float32)}
+        f["mytuple"].add_fields({"z": np.int32})
+
+    with uproot.open(path) as f:
+        nt = f["mytuple"]
+        assert ak.all(nt["x"].array() == np.array([1, 2, 3, 4, 5], dtype=np.float32))
+        assert ak.all(nt["z"].array() == np.zeros(5, dtype=np.int32))
+
+    if has_root and hasattr(ROOT, "RNTupleReader"):
+        reader = ROOT.RNTupleReader.Open("mytuple", path)
+        assert reader.GetNEntries() == 5
+
+
 def test_add_field_ntuple_duplicate(tmp_path):
     with uproot.recreate(os.path.join(tmp_path, "test.root")) as f:
         f["mytuple"] = {"x": np.array([1, 2, 3], dtype=np.float32)}

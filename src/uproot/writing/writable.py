@@ -2500,6 +2500,18 @@ class WritableNTuple:
 
         import uproot.writing._cascadentuple as cnt
 
+        if not hasattr(self._cascading, "_existing_footer"):
+            # this RNTuple was created in this same session (e.g. via mkrntuple or
+            # directory assignment) rather than loaded from an existing file by
+            # _load_existing_ntuple, so it never got the _existing_* attributes
+            # add_fields needs. Whatever has been written so far is already on
+            # disk (mkrntuple/assignment/extend all flush immediately), so it can
+            # be loaded the same way a preexisting RNTuple opened via
+            # uproot.update() would be.
+            directory, key = self._existing_key()
+            reloaded = directory._load_existing_ntuple(key)
+            self._cascading = reloaded._cascading
+
         compression = self._cascading._freesegments.fileheader.compression
         num_entries = self._cascading._num_entries
         header = self._cascading._header
