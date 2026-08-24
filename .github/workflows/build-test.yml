@@ -44,7 +44,7 @@ jobs:
           persist-credentials: false
 
       - name: Get micromamba
-        uses: mamba-org/setup-micromamba@ce51e99f4bb8a82ab7158c4dc59ef4634c59c4f9 # v3.1.0
+        uses: mamba-org/setup-micromamba@f457c30a868e4760d3a6fcea5f25dc655b8edf39 # v3.2.1
         with:
           environment-name: test-env
           init-shell: bash
@@ -59,7 +59,7 @@ jobs:
         if: contains(matrix.python-version, 'python-freethreading')
         run: echo "PYTHON_GIL=0" >> $GITHUB_ENV
 
-      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+      - uses: astral-sh/setup-uv@ae62891fec2bb8e7d6c99fc78c9fec3a63790f8d # v10.0.0
 
       - name: Check active Python version
         env:
@@ -110,7 +110,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
           allow-prereleases: true
 
-      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+      - uses: astral-sh/setup-uv@ae62891fec2bb8e7d6c99fc78c9fec3a63790f8d # v10.0.0
 
       - name: Pip install the package
         run: uv pip install --system -e. --group=dev
@@ -139,7 +139,7 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+      - uses: astral-sh/setup-uv@ae62891fec2bb8e7d6c99fc78c9fec3a63790f8d # v10.0.0
 
       - name: Pip install the package
         run: |
@@ -170,7 +170,7 @@ jobs:
         with:
           python-version: '3.13'
 
-      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+      - uses: astral-sh/setup-uv@ae62891fec2bb8e7d6c99fc78c9fec3a63790f8d # v10.0.0
 
       - name: Install pyodide-build
         run: python3 -m pip install pyodide-build==$PYODIDE_BUILD_VERSION
@@ -203,11 +203,17 @@ jobs:
           version: ${{ env.PYODIDE_VERSION }}
           to: pyodide-dist
 
-      - name: Install browser
+      # Chrome is deliberately not installed here: the runner image already
+      # ships Chrome and a ChromeDriver built to match it. Installing another
+      # copy is what broke this job -- Selenium Manager drives the image's
+      # Chrome regardless, so any version the action fetches has to agree with
+      # it, and neither "latest" (a Chromium dev snapshot) nor "stable" (a
+      # major ahead while the image lags) does.
+      - name: Install Firefox
         uses: pyodide/pyodide-actions/install-browser@012fa537869d343726d01863a34b773fc4d96a14 # v2
         with:
           runner: selenium
-          browser: chrome firefox
+          browser: firefox
           browser-version: latest
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
@@ -248,10 +254,15 @@ jobs:
           persist-credentials: false
 
       - name: Get micromamba
-        uses: mamba-org/setup-micromamba@ce51e99f4bb8a82ab7158c4dc59ef4634c59c4f9 # v3.1.0
+        uses: mamba-org/setup-micromamba@f457c30a868e4760d3a6fcea5f25dc655b8edf39 # v3.2.1
         with:
           environment-name: test-env
           init-shell: bash
+          # numba-cuda 0.30.4 does not support NumPy 2.5: it calls
+          # overload(np.row_stack), removed in 2.5, while importing numba.cuda,
+          # which Awkward's CUDA backend imports. numba 0.66 used to hold NumPy
+          # back, but 0.67 relaxed its pin to <2.6. Drop this once numba-cuda
+          # releases a fix.
           create-args: >-
             -c rapidsai
             python=3.13
@@ -263,6 +274,7 @@ jobs:
             kvikio
             nvcomp
             pytest-cov
+            numpy<2.5
             ${{ matrix.cuda-version == 13 && 'root' || '' }}
 
       - name: Pip install the package

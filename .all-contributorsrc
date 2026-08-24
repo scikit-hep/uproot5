@@ -704,6 +704,15 @@
       "contributions": [
         "code"
       ]
+    },
+    {
+      "login": "tomeichlersmith",
+      "name": "Tom Eichlersmith",
+      "avatar_url": "https://avatars.githubusercontent.com/u/31970302?v=4",
+      "profile": "https://tomeichlersmith.codeberg.page/",
+      "contributions": [
+        "doc"
+      ]
     }
   ],
   "contributorsPerLine": 7,
