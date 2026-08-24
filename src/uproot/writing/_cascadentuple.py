@@ -859,6 +859,18 @@ class NTuple(CascadeNode):
             msg = f"Data is not compatible with this RNTuple. Expected {self._header._akform}, got {data.form}"
             raise ValueError(msg)
 
+        # awkward Form equality does not consider field order for a RecordArray,
+        # only the set of fields and their types, so the check above can pass
+        # even when data's fields are physically ordered differently than
+        # self._header._akform's. The column buffers below are looked up by
+        # positional node-index (self._header._column_keys, built by walking
+        # self._header._akform in its field order) -- if data isn't reordered
+        # to match, a column's bytes silently get written under a different
+        # column's key, corrupting every field from the first mismatch onward.
+        header_fields = list(self._header._akform.fields)
+        if data.fields != header_fields:
+            data = data[header_fields]
+
         # 1. Write pages
         # We write a single page for each column for now
 

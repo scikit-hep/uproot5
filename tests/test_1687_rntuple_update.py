@@ -465,6 +465,65 @@ def test_ntuple_multiple_add_fields_same_session(tmp_path):
         assert reader.GetNEntries() == 5
 
 
+def test_ntuple_extend_after_add_fields_column_order(tmp_path):
+    """extend() after add_fields() must not scramble which data lands in which column.
+
+    Regression test: extend() validates data.form == self._header._akform, but
+    awkward Form equality for a RecordArray only checks the set of fields and
+    their types, not their physical order. Every dict passed to extend() gets
+    its keys alphabetically sorted by _regularize_input_type_to_awkward, but a
+    header rebuilt by _load_existing_ntuple (which extend() triggers whenever
+    a deferred column exists) reflects the true on-disk field order -- field
+    insertion order, not alphabetical. For a schema like x (original), a, b
+    (added together via add_fields), on-disk order is [x, a, b] but the data
+    dict gets reordered to [a, b, x]. The form check passed (same fields, same
+    types) while the column-buffer lookup below it is positional, keyed off
+    self._header._column_keys built by walking the header's own field order.
+    The result: 'x' silently received 'a's values, 'a' received 'b's, and 'b'
+    received 'x's, from the very first post-add_fields extend() onward, with
+    no exception raised. Confirmed independently against ROOT's own
+    RNTupleReader, not just uproot's reader, since both were reading the same
+    corrupted bytes.
+    """
+    path = os.path.join(tmp_path, "test.root")
+    with uproot.recreate(path) as f:
+        f["mytuple"] = {"x": np.array([1, 2, 3], dtype=np.float32)}
+
+    with uproot.update(path) as f:
+        f["mytuple"].add_fields({"a": np.float32, "b": np.float32})
+
+    with uproot.update(path) as f:
+        f["mytuple"].extend(
+            {
+                "x": np.array([4.0, 5.0], dtype=np.float32),
+                "a": np.array([40.0, 50.0], dtype=np.float32),
+                "b": np.array([400.0, 500.0], dtype=np.float32),
+            }
+        )
+
+    with uproot.open(path) as f:
+        nt = f["mytuple"]
+        assert ak.all(nt["x"].array() == np.array([1, 2, 3, 4, 5], dtype=np.float32))
+        assert ak.all(nt["a"].array() == np.array([0, 0, 0, 40, 50], dtype=np.float32))
+        assert ak.all(
+            nt["b"].array() == np.array([0, 0, 0, 400, 500], dtype=np.float32)
+        )
+
+    if has_root and hasattr(ROOT, "RNTupleReader"):
+        reader = ROOT.RNTupleReader.Open("mytuple", path)
+        assert reader.GetNEntries() == 5
+        entry = reader.CreateEntry()
+        xs, as_, bs = [], [], []
+        for i in range(reader.GetNEntries()):
+            reader.LoadEntry(i, entry)
+            xs.append(entry["x"])
+            as_.append(entry["a"])
+            bs.append(entry["b"])
+        assert xs == pytest.approx([1.0, 2.0, 3.0, 4.0, 5.0])
+        assert as_ == pytest.approx([0.0, 0.0, 0.0, 40.0, 50.0])
+        assert bs == pytest.approx([0.0, 0.0, 0.0, 400.0, 500.0])
+
+
 def test_ntuple_accept_new_fields(tmp_path):
     with uproot.recreate(os.path.join(tmp_path, "test.root")) as f:
         f["mytuple"] = {"x": np.array([1, 2, 3], dtype=np.float32)}
