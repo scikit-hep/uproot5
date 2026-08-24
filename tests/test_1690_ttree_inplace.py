@@ -434,6 +434,45 @@ def test_extend_jagged_array_new_session(tmp_path):
         ]
 
 
+def test_extend_string_branch_new_session(tmp_path):
+    """Extending a string branch via uproot.update() must work, not raise/corrupt.
+
+    Regression test: _load_existing_ttree had no handling for the AsStrings
+    interpretation (numpy_dtype is dtype('O'), same as AsJagged), so
+    extending a string branch after reopening with uproot.update() failed.
+    """
+    path = os.path.join(tmp_path, "test.root")
+    with uproot.recreate(path) as f:
+        f.mktree("tree", {"s": "string"})
+        f["tree"].extend({"s": ["a_very_long_string_here"]})
+
+    with uproot.update(path) as f:
+        f["tree"].extend({"s": ["x", "yy"]})
+
+    with uproot.open(path) as f:
+        assert f["tree"]["s"].array().tolist() == [
+            "a_very_long_string_here",
+            "x",
+            "yy",
+        ]
+
+
+def test_extend_string_branch_zero_basket(tmp_path):
+    """Extending a string branch that has never been extended (zero baskets)."""
+    path = os.path.join(tmp_path, "test.root")
+    with uproot.recreate(path) as f:
+        f.mktree("tree", {"s": "string", "x": np.float32})
+
+    with uproot.update(path) as f:
+        f["tree"].extend(
+            {"s": ["hi", "there"], "x": np.array([1.0, 2.0], dtype=np.float32)}
+        )
+
+    with uproot.open(path) as f:
+        assert f["tree"]["s"].array().tolist() == ["hi", "there"]
+        assert f["tree"]["x"].array().tolist() == [1.0, 2.0]
+
+
 def test_extend_after_many_extends(tmp_path):
     """Extending a tree that already has more than 10 baskets (fMaxBaskets expansion)."""
     with uproot.recreate(os.path.join(tmp_path, "test.root")) as f:

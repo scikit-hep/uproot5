@@ -1192,6 +1192,11 @@ class WritableDirectory(MutableMapping):
                     # dtype('O'); the basket actually holds the *content*
                     # dtype (e.g. float32 for "var * float32")
                     dtype = interpretation.content.to_dtype.newbyteorder(">")
+                elif isinstance(
+                    interpretation, uproot.interpretation.strings.AsStrings
+                ):
+                    # matches the dtype mktree/extend use for a "string" branch
+                    dtype = numpy.dtype(str).newbyteorder(">")
                 else:
                     dtype = interpretation.numpy_dtype.newbyteorder(">")
             except AttributeError:
@@ -1259,6 +1264,12 @@ class WritableDirectory(MutableMapping):
                 ),
                 "tleaf_special_struct": _struct.Struct(">" + sc + sc),
             }
+            if dtype == ">U0":
+                # the length of the longest string written so far; extend()
+                # accumulates this as max(existing, new), so it must be
+                # seeded from what's already on disk or a later extend with
+                # only shorter strings would shrink fLen and corrupt reads
+                bd["fLen"] = b.member("fLeaves")[0].member("fLen")
             branch_data.append(bd)
             branch_lookup[b.name] = branch_idx
 
