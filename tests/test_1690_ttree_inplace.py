@@ -92,8 +92,44 @@ def test_add_branch_tbranchelement(tmp_path):
     )
 
     with uproot.update(os.path.join(tmp_path, "HZZ.root")) as f:
-        with pytest.raises(Exception):
+        with pytest.raises(NotImplementedError):
             f["events"].add_branches({"new_branch": np.ones(2421, dtype=np.float32)})
+
+
+def test_tbranchelement_access_does_not_crash(tmp_path):
+    """Merely accessing (not mutating) a TBranchElement tree under uproot.update().
+
+    Regression test: _load_existing_ttree used to include every branch whose
+    interpretation.numpy_dtype didn't raise AttributeError, including
+    TBranchElement branches with numeric-looking interpretations (e.g.
+    AsJagged content from split objects). Building that branch's metadata
+    then crashed reading TLeafElement.fMaximum, a member plain TLeaf has but
+    TLeafElement doesn't -- so simply doing f["events"] raised KeyInFileError.
+    """
+    shutil.copy(
+        data_path("uproot-HZZ-objects.root"), os.path.join(tmp_path, "HZZ.root")
+    )
+
+    with uproot.update(os.path.join(tmp_path, "HZZ.root")) as f:
+        tree = f["events"]
+        assert tree.num_entries == 2421
+
+
+def test_extend_tbranchelement_raises(tmp_path):
+    """extend() on a TBranchElement file must raise, not silently desync entries.
+
+    Regression test: _load_existing_ttree leaves unsupported (non-TBranch)
+    branches out of _branch_data, so extend() -- which only asks for the
+    branches it knows about -- would otherwise add entries to the supported
+    branches while leaving the TBranchElement branches' entry counts behind.
+    """
+    shutil.copy(
+        data_path("uproot-HZZ-objects.root"), os.path.join(tmp_path, "HZZ.root")
+    )
+
+    with uproot.update(os.path.join(tmp_path, "HZZ.root")) as f:
+        with pytest.raises(NotImplementedError):
+            f["events"].extend({"MC_leptonpdgid": np.zeros(1, dtype=np.int32)})
 
 
 def test_add_branch_wrong_length(tmp_path):

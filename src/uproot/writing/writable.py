@@ -1184,6 +1184,16 @@ class WritableDirectory(MutableMapping):
         branch_data = []
         branch_lookup = {}
         for branch_idx, b in enumerate(branches):
+            if b.classname != "TBranch":
+                # TBranchElement, TBranchObject, etc. use an on-disk layout (split
+                # objects, embedded streamer info, header bytes in jagged baskets,
+                # ...) that this cascade — which only knows how to write plain
+                # TBranch/TLeaf — cannot reproduce. Leave them out of branch_data
+                # rather than crash trying to read TBranch-only fields (e.g.
+                # fMaximum, which TLeafElement doesn't have) or silently
+                # mis-write their baskets.
+                continue
+
             refs_list = list(b.cursor._refs.keys())
             try:
                 interpretation = b.interpretation
@@ -1271,7 +1281,9 @@ class WritableDirectory(MutableMapping):
                 # only shorter strings would shrink fLen and corrupt reads
                 bd["fLen"] = b.member("fLeaves")[0].member("fLen")
             branch_data.append(bd)
-            branch_lookup[b.name] = branch_idx
+            # index into branch_data, not into the raw branches list: branches
+            # skipped above (non-TBranch) mean the two can diverge
+            branch_lookup[b.name] = len(branch_data) - 1
 
         # fix counter references for jagged branches
         for bd in branch_data:
@@ -1316,6 +1328,7 @@ class WritableDirectory(MutableMapping):
         casc._freesegments = freesegments
         casc._branch_data = branch_data
         casc._branch_lookup = branch_lookup
+        casc._has_unsupported_branches = len(branch_data) != len(branches)
         casc._basket_capacity = (
             next(iter(branches)).member("fMaxBaskets") if branches else 10
         )
@@ -2201,15 +2214,14 @@ class WritableTree:
             if branch_name in casc._branch_lookup:
                 raise ValueError(f"branch {branch_name!r} already exists in this TTree")
 
-        # check if file has TBranchElement branches (object dtype)
-        # _load_existing_ttree skips them, so we detect by checking dtype
-        if any(
-            bd.get("dtype") is not None and bd.get("dtype") == numpy.dtype("O")
-            for bd in casc._branch_data
-        ):
+        # _load_existing_ttree leaves TBranchElement (and other non-TBranch)
+        # branches out of casc._branch_data entirely, so rewriting the branch
+        # listing from casc._branch_data alone (as write_anew does) would
+        # silently drop them from the file
+        if casc._has_unsupported_branches:
             raise NotImplementedError(
-                "add_branches for files with TBranchElement branches is not yet "
-                "supported via the cascade approach"
+                "add_branches for files with TBranchElement (or other non-TBranch) "
+                "branches is not yet supported via the cascade approach"
             )
 
         # add new branch dicts to cascade
@@ -2298,6 +2310,15 @@ class WritableTree:
         if self._cascading is None:
             raise RuntimeError(
                 "_cascading is None — this should not happen; please report this bug"
+            )
+        if self._cascading._has_unsupported_branches:
+            # _load_existing_ttree leaves TBranchElement (and other non-TBranch)
+            # branches out of _branch_data entirely, so extend() would only add
+            # entries to the branches it knows about, desynchronizing entry
+            # counts across the tree's branches
+            raise NotImplementedError(
+                "extend for files with TBranchElement (or other non-TBranch) "
+                "branches is not yet supported via the cascade approach"
             )
         # validate branches
         # get user-facing branch names (exclude auto-generated counter and record parent branches)

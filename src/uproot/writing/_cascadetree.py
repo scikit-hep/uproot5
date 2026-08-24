@@ -96,6 +96,7 @@ class Tree:
         self._field_name = field_name
         self._basket_capacity = initial_basket_capacity
         self._resize_factor = resize_factor
+        self._has_unsupported_branches = False
 
         if isinstance(branch_types, dict):
             branch_types_items = branch_types.items()
