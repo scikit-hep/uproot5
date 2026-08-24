@@ -85,8 +85,10 @@ def test_add_branch_preserves_existing(tmp_path):
 
 
 def test_add_branch_tbranchelement(tmp_path):
-    # add_branches for TBranchElement files is not supported
-    # due to internal reference numbers that break when blob is rewritten
+    # add_branches for TBranchElement files is not supported: _load_existing_ttree
+    # leaves TBranchElement branches out of branch_data (it can only write plain
+    # TBranch), so rewriting the branch listing from branch_data would silently
+    # drop them
     shutil.copy(
         data_path("uproot-HZZ-objects.root"), os.path.join(tmp_path, "HZZ.root")
     )
@@ -178,7 +180,7 @@ def test_add_branch_tbranchelement_root_readable(tmp_path):
     )
 
     with uproot.update(os.path.join(tmp_path, "HZZ.root")) as f:
-        with pytest.raises((NotImplementedError, TypeError, KeyError)):
+        with pytest.raises(NotImplementedError):
             f["events"].add_branches({"new_branch": np.ones(2421, dtype=np.float32)})
 
 
@@ -507,6 +509,63 @@ def test_extend_string_branch_zero_basket(tmp_path):
     with uproot.open(path) as f:
         assert f["tree"]["s"].array().tolist() == ["hi", "there"]
         assert f["tree"]["x"].array().tolist() == [1.0, 2.0]
+
+
+def test_access_fixed_size_array_branch(tmp_path):
+    """Accessing a real ROOT-written tree with fixed-size array branches (e.g. "bool[3]").
+
+    Regression test: _load_existing_ttree hardcoded every branch's "shape" to
+    () and used interpretation.numpy_dtype directly. For a fixed-size array
+    branch, that dtype carries a subdtype/shape (e.g. dtype(('?', (3,))) for
+    "bool[3]"), which isn't a key in _dtype_to_char, so even plain access (not
+    just extend) crashed with a KeyError.
+    """
+    path = os.path.join(tmp_path, "sample.root")
+    shutil.copy(data_path("uproot-sample-6.20.04-uncompressed.root"), path)
+
+    with uproot.update(path) as f:
+        assert f["sample"].num_entries == 30
+
+
+@skip_no_root
+def test_extend_divergent_basket_counts_raises(tmp_path):
+    """extend() on a ROOT-written tree whose branches have different basket counts.
+
+    Regression test: this cascade tracks one fWriteBasket/fMaxBaskets pair per
+    tree (taken from a single branch), not per branch. ROOT commonly flushes a
+    basket once a branch's accumulated data exceeds fBasketSize, so branches
+    with different per-entry sizes accumulate baskets at different rates even
+    when filled together from the start -- applying one branch's basket count
+    to every branch corrupted or crashed the file. It must now raise instead.
+    """
+    import array
+
+    path = os.path.join(tmp_path, "divergent.root")
+    rf = ROOT.TFile(str(path), "RECREATE")
+    rt = ROOT.TTree("tree", "tree")
+    x = array.array("f", [0.0])
+    y = array.array("d", [0.0])
+    # small basket size + different per-entry byte sizes (4 vs 8 bytes) so the
+    # two branches flush baskets at different rates
+    rt.Branch("x", x, "x/F", 64)
+    rt.Branch("y", y, "y/D", 64)
+    for i in range(100):
+        x[0] = float(i)
+        y[0] = float(i) * 2
+        rt.Fill()
+    rt.Write()
+    rf.Close()
+
+    with uproot.update(path) as f:
+        tree = f["tree"]
+        assert tree._cascading._has_divergent_baskets
+        with pytest.raises(NotImplementedError):
+            tree.extend(
+                {
+                    "x": np.array([999.0], dtype=np.float32),
+                    "y": np.array([888.0], dtype=np.float64),
+                }
+            )
 
 
 def test_extend_after_many_extends(tmp_path):

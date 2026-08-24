@@ -474,32 +474,6 @@ class WritableFile(uproot.reading.CommonFileMethods):
         self._trees[newloc] = tree
 
 
-# the fixed 25-byte "empty TObjArray" that uproot.writing._cascadetree.Tree.write_anew
-# writes twice per branch: once for the (always empty) TObjArray of sub-branches, and
-# once for the TObjArray of embedded fBaskets, immediately before that branch's
-# fBasketBytes/fBasketEntry/fBasketSeek arrays
-_EMPTY_TOBJARRAY_BYTES = (
-    b"@\x00\x00\x15\x00\x03\x00\x01\x00\x00\x00\x00\x03"
-    b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
-)
-
-
-def _find_basket_metadata_start(raw, start):
-    """
-    Locates the byte offset immediately after a branch's second
-    ``_EMPTY_TOBJARRAY_BYTES`` marker, i.e. where its
-    fBasketBytes/fBasketEntry/fBasketSeek arrays begin.
-
-    This can't be found by searching for the contents of fBasketSeek[0]
-    (as a previous implementation did) because that value is 0 for any
-    branch that has never had a basket written, and a search for eight
-    zero bytes matches arbitrary unrelated data, corrupting the file.
-    """
-    first = raw.find(_EMPTY_TOBJARRAY_BYTES, start)
-    second = raw.find(_EMPTY_TOBJARRAY_BYTES, first + len(_EMPTY_TOBJARRAY_BYTES))
-    return second + len(_EMPTY_TOBJARRAY_BYTES)
-
-
 class WritableDirectory(MutableMapping):
     """
     Args:
@@ -1159,31 +1133,20 @@ class WritableDirectory(MutableMapping):
         )
         tree = _readonlykey.get()
         branches = list(tree.branches)
-        _rkey_chunk, _rkey_cursor = _readonlykey.get_uncompressed_chunk_cursor()
-        raw = bytearray(_rkey_chunk.raw_data.tobytes())
 
         fEntries = tree.member("fEntries")
 
-        # the fixed TAttLine v2 + TAttFill v2 + TAttMarker v2 block that
-        # uproot.writing._cascadetree.Tree.write_anew writes immediately before a
-        # TTree's fEntries/fTotBytes/fZipBytes metadata. Searching for this literal
-        # (rather than the *values* of fEntries/fTotBytes/fZipBytes, as a previous
-        # implementation did) is required because those values are all 0 for a
-        # freshly mktree'd tree with no entries, and a search for 24 zero bytes
-        # matches arbitrary unrelated data, corrupting the file.
-        _attline_attfill_attmarker = (
-            b"@\x00\x00\x08\x00\x02\x02Z\x00\x01\x00\x01"
-            b"@\x00\x00\x06\x00\x02\x00\x00\x03\xe9"
-            b"@\x00\x00\n\x00\x02\x00\x01\x00\x01?\x80\x00\x00"
-        )
-        _attmarker_end = raw.find(_attline_attfill_attmarker)
-        if _attmarker_end == -1:
-            raise RuntimeError(f"Could not find TTree metadata position in {name!r}")
-        metadata_start = _attmarker_end + len(_attline_attfill_attmarker)
+        # metadata_start (TTree-level) and, per branch, metadata_start and
+        # basket_metadata_start are filled in below by casc._build_out(), which
+        # walks this cascade's layout the same way write_anew does -- rather than
+        # recovering them by searching the decompressed blob for the *current
+        # value* of a nearby field, which breaks whenever that value is 0 (e.g. a
+        # freshly mktree'd tree has fEntries == fTotBytes == fZipBytes == 0, and a
+        # search for zero bytes matches arbitrary unrelated data).
 
         branch_data = []
         branch_lookup = {}
-        for branch_idx, b in enumerate(branches):
+        for b in branches:
             if b.classname != "TBranch":
                 # TBranchElement, TBranchObject, etc. use an on-disk layout (split
                 # objects, embedded streamer info, header bytes in jagged baskets,
@@ -1194,7 +1157,6 @@ class WritableDirectory(MutableMapping):
                 # mis-write their baskets.
                 continue
 
-            refs_list = list(b.cursor._refs.keys())
             try:
                 interpretation = b.interpretation
                 if isinstance(interpretation, uproot.interpretation.jagged.AsJagged):
@@ -1221,6 +1183,13 @@ class WritableDirectory(MutableMapping):
                     "extended on an existing TTree opened with uproot.update()"
                 )
 
+            # a fixed-size array branch (e.g. "float[3]") has a numpy_dtype with
+            # a subdtype/shape, like _branch_np splits for a freshly created branch
+            if dtype.subdtype is not None:
+                dtype, shape = dtype.subdtype
+            else:
+                shape = ()
+
             sc = _dtype_to_struct.get(dtype.kind + str(dtype.itemsize), "f")
             # detect counter branches (e.g. njets for jagged jets array)
             _leaves = b.member("fLeaves")
@@ -1231,7 +1200,7 @@ class WritableDirectory(MutableMapping):
                 "kind": "counter" if _is_counter else "normal",
                 "counter": None,
                 "dtype": dtype,
-                "shape": (),
+                "shape": shape,
                 "fTitle": b.member("fTitle"),
                 "compression": b.compression,
                 "fBasketSize": b.member("fBasketSize"),
@@ -1246,27 +1215,10 @@ class WritableDirectory(MutableMapping):
                 "fBasketSeek": b.member("fBasketSeek").copy(),
                 "arrays_write_start": b.member("fWriteBasket"),
                 "arrays_write_stop": b.member("fWriteBasket"),
-                "metadata_start": (
-                    # find by searching for fBasketSize + fEntryOffsetLen + fWriteBasket pattern
-                    raw.find(
-                        _struct.pack(
-                            ">iii",
-                            b.member("fBasketSize"),
-                            b.member("fEntryOffsetLen"),
-                            b.member("fWriteBasket"),
-                        ),
-                        b.cursor.index,
-                    )
-                    - 4  # -4 for fCompress field before fBasketSize
-                ),
-                "basket_metadata_start": _find_basket_metadata_start(
-                    raw, b.cursor.index
-                ),
-                "tleaf_reference_number": (
-                    refs_list[2 + branch_idx * 4]
-                    if 2 + branch_idx * 4 < len(refs_list)
-                    else 0
-                ),
+                # filled in below by casc._build_out()
+                "metadata_start": None,
+                "basket_metadata_start": None,
+                "tleaf_reference_number": 0,
                 "tleaf_maximum_value": (
                     int(b.member("fLeaves")[0].member("fMaximum"))
                     if b.member("fLeaves")
@@ -1295,7 +1247,23 @@ class WritableDirectory(MutableMapping):
                 if counter_bd is not None:
                     bd["counter"] = counter_bd
 
-        fWriteBasket = branches[0].member("fWriteBasket") if branches else 0
+        # fWriteBasket/fMaxBaskets are only tracked once per tree (not per
+        # branch) by this cascade, but nothing guarantees every branch in a
+        # preexisting tree agrees on either -- ROOT commonly flushes a basket
+        # once a branch's accumulated data exceeds fBasketSize, so branches
+        # with different per-entry sizes accumulate baskets at different
+        # rates even when filled together from the start. Detect that here
+        # so extend()/add_branches() can refuse rather than silently use one
+        # branch's basket bookkeeping for all of them.
+        _supported_branches = [b for b in branches if b.classname == "TBranch"]
+        _write_basket_values = {b.member("fWriteBasket") for b in _supported_branches}
+        _max_basket_values = {b.member("fMaxBaskets") for b in _supported_branches}
+        has_divergent_baskets = (
+            len(_write_basket_values) > 1 or len(_max_basket_values) > 1
+        )
+        fWriteBasket = (
+            _supported_branches[0].member("fWriteBasket") if _supported_branches else 0
+        )
         metadata = {
             k: tree.member(k)
             for k in [
@@ -1329,17 +1297,24 @@ class WritableDirectory(MutableMapping):
         casc._branch_data = branch_data
         casc._branch_lookup = branch_lookup
         casc._has_unsupported_branches = len(branch_data) != len(branches)
+        casc._has_divergent_baskets = has_divergent_baskets
         casc._basket_capacity = (
-            next(iter(branches)).member("fMaxBaskets") if branches else 10
+            _supported_branches[0].member("fMaxBaskets") if _supported_branches else 10
         )
         casc._resize_factor = 10.0
         casc._counter_name = lambda counted: "n" + counted
         casc._field_name = None
-        casc._metadata_start = metadata_start
         casc._num_baskets = fWriteBasket
         casc._num_entries = fEntries
         casc._metadata = metadata
         casc._key = dir_key
+
+        # recovers casc._metadata_start and each branch's metadata_start /
+        # basket_metadata_start / tleaf_reference_number by walking the same
+        # layout write_anew would emit for this tree, rather than searching the
+        # blob for byte patterns; the returned chunks are discarded, nothing is
+        # written to the file
+        casc._build_out()
 
         path = (*self._path, name)
         writable_tree = WritableTree(path, self._file, casc)
@@ -2223,6 +2198,18 @@ class WritableTree:
                 "add_branches for files with TBranchElement (or other non-TBranch) "
                 "branches is not yet supported via the cascade approach"
             )
+        if casc._has_divergent_baskets:
+            # this cascade tracks one fWriteBasket/fMaxBaskets pair per tree, not
+            # per branch, but nothing guarantees every branch in a preexisting
+            # tree agrees on either (e.g. a ROOT-written tree whose branches
+            # have different per-entry sizes, and so flush baskets at different
+            # rates); rewriting the branch listing would apply one branch's
+            # basket bookkeeping to every branch, corrupting the others
+            raise NotImplementedError(
+                "add_branches for a TTree whose branches do not all have the same "
+                "number of baskets / basket capacity is not yet supported via the "
+                "cascade approach"
+            )
 
         # add new branch dicts to cascade
         compression = casc._freesegments.fileheader.compression
@@ -2319,6 +2306,20 @@ class WritableTree:
             raise NotImplementedError(
                 "extend for files with TBranchElement (or other non-TBranch) "
                 "branches is not yet supported via the cascade approach"
+            )
+        if self._cascading._has_divergent_baskets:
+            # this cascade tracks one fWriteBasket/fMaxBaskets pair per tree, not
+            # per branch, but nothing guarantees every branch in a preexisting
+            # tree agrees on either (e.g. a ROOT-written tree whose branches
+            # have different per-entry sizes, and so flush baskets at different
+            # rates); extend() would write every branch's new basket at an
+            # offset computed from one branch's basket count, corrupting the
+            # others (or crash outright if that count exceeds another
+            # branch's actual basket capacity)
+            raise NotImplementedError(
+                "extend for a TTree whose branches do not all have the same "
+                "number of baskets / basket capacity is not yet supported via "
+                "the cascade approach"
             )
         # validate branches
         # get user-facing branch names (exclude auto-generated counter and record parent branches)

@@ -97,6 +97,7 @@ class Tree:
         self._basket_capacity = initial_basket_capacity
         self._resize_factor = resize_factor
         self._has_unsupported_branches = False
+        self._has_divergent_baskets = False
 
         if isinstance(branch_types, dict):
             branch_types_items = branch_types.items()
@@ -823,7 +824,24 @@ class Tree:
 
         self.write_updates(sink)
 
-    def write_anew(self, sink):
+    def _build_out(self):
+        """
+        Serializes this TTree's metadata blob (TTree + TBranches + TLeaves,
+        everything but the TBaskets themselves) into a list of byte chunks,
+        exactly as ``write_anew`` writes it.
+
+        As a side effect, this sets ``self._metadata_start`` and, for every
+        branch, ``datum["metadata_start"]``, ``datum["basket_metadata_start"]``,
+        and ``datum["tleaf_reference_number"]`` — the byte offsets (relative to
+        this blob) that ``write_updates`` writes at directly, without going
+        through ``write_anew`` again. This is the single source of truth for
+        that layout: computing it any other way (e.g. searching a decompressed
+        blob for the current value of a field) risks disagreeing with it,
+        especially when that field's current value is 0 and matches unrelated
+        bytes. ``uproot.writing.writable.WritableDirectory._load_existing_ttree``
+        calls this once, on a freshly reconstructed cascade, purely to recover
+        these offsets — the returned ``out`` is discarded, nothing is written.
+        """
         key_num_bytes = uproot.reading._key_format_big.size + 6
         name_asbytes = self._name.encode(errors="surrogateescape")
         title_asbytes = self._title.encode(errors="surrogateescape")
@@ -1201,6 +1219,10 @@ class Tree:
 
         self._metadata_start = sum(len(x) for x in out[:metadata_out_index])
 
+        return out
+
+    def write_anew(self, sink):
+        out = self._build_out()
         raw_data = b"".join(out)
         self._key = self._directory.add_object(
             sink,
