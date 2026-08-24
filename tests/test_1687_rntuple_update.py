@@ -351,6 +351,37 @@ def test_ntuple_add_field_and_extend_same_session(tmp_path):
         assert vals == pytest.approx([1.0, 2.0, 3.0, 4.0, 5.0])
 
 
+def test_ntuple_add_field_and_extend_in_subdirectory(tmp_path):
+    """add_fields()/extend() on an RNTuple that lives in a subdirectory, not the root.
+
+    Regression test: both methods resolved their own key by looking it up
+    directly in the file's root directory using only the last path component
+    (self._path[-1]), ignoring any subdirectory prefix. For an RNTuple in a
+    subdirectory, that lookup found no such key at the root and returned
+    None, and the next attribute access on it (key.seek_location) raised
+    AttributeError -- even though the write that triggered the reload had
+    already completed successfully, making it a spurious exception.
+    """
+    path = os.path.join(tmp_path, "test.root")
+    with uproot.recreate(path) as f:
+        f.mkdir("sub")
+        f["sub/mytuple"] = {"x": np.array([1, 2, 3], dtype=np.float32)}
+
+    with uproot.update(path) as f:
+        f["sub/mytuple"].add_fields({"y": np.int32})
+        f["sub/mytuple"].extend(
+            {
+                "x": np.array([4, 5], dtype=np.float32),
+                "y": np.array([40, 50], dtype=np.int32),
+            }
+        )
+
+    with uproot.open(path) as f:
+        nt = f["sub/mytuple"]
+        assert ak.all(nt["x"].array() == np.array([1, 2, 3, 4, 5], dtype=np.float32))
+        assert ak.all(nt["y"].array() == np.array([0, 0, 0, 40, 50], dtype=np.int32))
+
+
 def test_ntuple_multiple_add_fields_same_session(tmp_path):
     """Repeated add_fields() calls within a single uproot.update() session.
 

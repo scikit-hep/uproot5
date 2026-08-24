@@ -2287,6 +2287,27 @@ class WritableNTuple:
             repr("/" + "/".join(self._path)), id(self)
         )
 
+    def _existing_key(self):
+        """
+        Resolves this RNTuple's :doc:`uproot.writing._cascade.Key` by walking
+        down to its containing directory (not always the file's root
+        directory — this RNTuple may live in a subdirectory) and looking up
+        its name there, at whatever is currently its latest cycle.
+        """
+        directory = self._file.root_directory
+        for part in self._path[:-1]:
+            directory = directory[part]
+        key = directory._cascading.data.get_key(self._path[-1])
+        if key is None:
+            raise uproot.KeyInFileError(
+                self._path[-1],
+                cycle="any",
+                keys=directory._cascading.data.key_names,
+                file_path=self.file_path,
+                object_path=self.object_path,
+            )
+        return directory, key
+
     @property
     def path(self):
         """
@@ -2418,8 +2439,8 @@ class WritableNTuple:
         if len(self._cascading._column_counts) > len(
             self._cascading._header._column_keys
         ):
-            key = self._file.root_directory._cascading.data.get_key(self._path[-1], 1)
-            reloaded = self._file.root_directory._load_existing_ntuple(key)
+            directory, key = self._existing_key()
+            reloaded = directory._load_existing_ntuple(key)
             self._cascading = reloaded._cascading
 
         if isinstance(data, dict):
@@ -2443,10 +2464,8 @@ class WritableNTuple:
                         for k in new_field_names
                     }
                 )
-                key = self._file.root_directory._cascading.data.get_key(
-                    self._path[-1], 1
-                )
-                reloaded = self._file.root_directory._load_existing_ntuple(key)
+                directory, key = self._existing_key()
+                reloaded = directory._load_existing_ntuple(key)
                 self._cascading = reloaded._cascading
 
         self._cascading.extend(self._file, self._file.sink, data)
@@ -2682,7 +2701,7 @@ class WritableNTuple:
         )
         _readforupdate_reload.options = dict(uproot.reading.open.defaults)
 
-        _ntuple_key = self._file._cascading.rootdirectory.data.get_key(self._path[-1])
+        _, _ntuple_key = self._existing_key()
         _raw_reload = self._file.sink.read(
             _ntuple_key.seek_location,
             _ntuple_key.num_bytes + _ntuple_key.compressed_bytes,
