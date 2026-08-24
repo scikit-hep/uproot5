@@ -1257,8 +1257,16 @@ class WritableDirectory(MutableMapping):
             ple = existing_page_list_envelopes[cg_idx]
             if not column_counts:
                 column_counts = [0] * num_columns
-            for col_idx, col_pages in enumerate(ple.pagelinklist[0]):
-                column_counts[col_idx] += sum(p.num_elements for p in col_pages.pages)
+            # a cluster group can hold more than one cluster (e.g. a ROOT-written
+            # file); summing only pagelinklist[0] would silently undercount every
+            # column's element offset for any cluster after the first, corrupting
+            # the next page written for that column (uproot currently only ever
+            # writes one cluster per group, so this hasn't been reachable yet)
+            for cluster_col_pages in ple.pagelinklist:
+                for col_idx, col_pages in enumerate(cluster_col_pages):
+                    column_counts[col_idx] += sum(
+                        p.num_elements for p in col_pages.pages
+                    )
         if not column_counts:
             column_counts = [num_entries] * num_columns
         ntuple_cascading._column_counts = numpy.array(column_counts, dtype=int)
