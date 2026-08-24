@@ -474,6 +474,32 @@ class WritableFile(uproot.reading.CommonFileMethods):
         self._trees[newloc] = tree
 
 
+# the fixed 25-byte "empty TObjArray" that uproot.writing._cascadetree.Tree.write_anew
+# writes twice per branch: once for the (always empty) TObjArray of sub-branches, and
+# once for the TObjArray of embedded fBaskets, immediately before that branch's
+# fBasketBytes/fBasketEntry/fBasketSeek arrays
+_EMPTY_TOBJARRAY_BYTES = (
+    b"@\x00\x00\x15\x00\x03\x00\x01\x00\x00\x00\x00\x03"
+    b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+)
+
+
+def _find_basket_metadata_start(raw, start):
+    """
+    Locates the byte offset immediately after a branch's second
+    ``_EMPTY_TOBJARRAY_BYTES`` marker, i.e. where its
+    fBasketBytes/fBasketEntry/fBasketSeek arrays begin.
+
+    This can't be found by searching for the contents of fBasketSeek[0]
+    (as a previous implementation did) because that value is 0 for any
+    branch that has never had a basket written, and a search for eight
+    zero bytes matches arbitrary unrelated data, corrupting the file.
+    """
+    first = raw.find(_EMPTY_TOBJARRAY_BYTES, start)
+    second = raw.find(_EMPTY_TOBJARRAY_BYTES, first + len(_EMPTY_TOBJARRAY_BYTES))
+    return second + len(_EMPTY_TOBJARRAY_BYTES)
+
+
 class WritableDirectory(MutableMapping):
     """
     Args:
@@ -1137,16 +1163,23 @@ class WritableDirectory(MutableMapping):
         raw = bytearray(_rkey_chunk.raw_data.tobytes())
 
         fEntries = tree.member("fEntries")
-        fTotBytes = tree.member("fTotBytes")
-        fZipBytes_val = tree.member("fZipBytes")
-        seq = (
-            _struct.pack(">q", fEntries)
-            + _struct.pack(">q", fTotBytes)
-            + _struct.pack(">q", fZipBytes_val)
+
+        # the fixed TAttLine v2 + TAttFill v2 + TAttMarker v2 block that
+        # uproot.writing._cascadetree.Tree.write_anew writes immediately before a
+        # TTree's fEntries/fTotBytes/fZipBytes metadata. Searching for this literal
+        # (rather than the *values* of fEntries/fTotBytes/fZipBytes, as a previous
+        # implementation did) is required because those values are all 0 for a
+        # freshly mktree'd tree with no entries, and a search for 24 zero bytes
+        # matches arbitrary unrelated data, corrupting the file.
+        _attline_attfill_attmarker = (
+            b"@\x00\x00\x08\x00\x02\x02Z\x00\x01\x00\x01"
+            b"@\x00\x00\x06\x00\x02\x00\x00\x03\xe9"
+            b"@\x00\x00\n\x00\x02\x00\x01\x00\x01?\x80\x00\x00"
         )
-        metadata_start = raw.find(seq)
-        if metadata_start == -1:
+        _attmarker_end = raw.find(_attline_attfill_attmarker)
+        if _attmarker_end == -1:
             raise RuntimeError(f"Could not find TTree metadata position in {name!r}")
+        metadata_start = _attmarker_end + len(_attline_attfill_attmarker)
 
         branch_data = []
         branch_lookup = {}
@@ -1211,20 +1244,8 @@ class WritableDirectory(MutableMapping):
                     )
                     - 4  # -4 for fCompress field before fBasketSize
                 ),
-                "basket_metadata_start": (
-                    # fBasketSeek[0] is preceded by:
-                    # speedbump(1) + fBasketBytes(fMaxBaskets*4) + speedbump(1) + fBasketEntry(fMaxBaskets*8) + speedbump(1)
-                    raw.find(
-                        _struct.pack(">q", b.member("fBasketSeek")[0]),
-                        b.cursor.index,
-                    )
-                    - (
-                        1
-                        + b.member("fMaxBaskets") * 4
-                        + 1
-                        + b.member("fMaxBaskets") * 8
-                        + 1
-                    )
+                "basket_metadata_start": _find_basket_metadata_start(
+                    raw, b.cursor.index
                 ),
                 "tleaf_reference_number": (
                     refs_list[2 + branch_idx * 4]

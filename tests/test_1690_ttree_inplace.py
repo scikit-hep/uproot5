@@ -187,6 +187,34 @@ def test_extend_preserves_existing(tmp_path):
         assert np.all(arr[100:] == np.arange(100, dtype=np.float32) + 100)
 
 
+def test_extend_zero_basket_tree(tmp_path):
+    """Extending a freshly-mktree'd tree (no baskets written yet) via uproot.update().
+
+    Regression test: _load_existing_ttree used to locate the TTree's own
+    fEntries/fTotBytes/fZipBytes metadata, and each branch's
+    fBasketBytes/fBasketEntry/fBasketSeek arrays, by searching for the raw
+    bytes of their current (0, for a just-created tree) values. A search for
+    a run of zero bytes matches arbitrary unrelated data elsewhere in the
+    tree, corrupting the rewritten file instead of raising.
+    """
+    path = os.path.join(tmp_path, "test.root")
+    with uproot.recreate(path) as f:
+        f.mktree("tree", {"x": np.float32, "y": np.int32})
+
+    with uproot.update(path) as f:
+        f["tree"].extend(
+            {
+                "x": np.arange(10, dtype=np.float32),
+                "y": np.arange(10, dtype=np.int32) * 2,
+            }
+        )
+
+    with uproot.open(path) as f:
+        assert f["tree"].num_entries == 10
+        assert f["tree"]["x"].array().tolist() == list(range(10))
+        assert f["tree"]["y"].array().tolist() == [i * 2 for i in range(10)]
+
+
 def test_extend_missing_branch(tmp_path):
     with uproot.recreate(os.path.join(tmp_path, "test.root")) as f:
         f.mktree("tree", {"x": np.float32, "y": np.int32})
