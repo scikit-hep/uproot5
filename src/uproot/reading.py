@@ -90,8 +90,9 @@ def open(
       If None, deduced from input file type.
     * timeout (float for HTTP, int for XRootD; default defined by source implementation): The time in seconds
       to wait before giving up on the connection. Ignored for non-internet sources like local file paths.
-    * max_num_elements (None or int; None): The maximum number of elements to be requested in a single vector
-      read, when using XRootD.
+    * max_num_elements (None or int; None): The maximum number of byte ranges requested in a single XRootD
+      vector read. This does not limit the number of TTree or RNTuple entries read; pass ``entry_stop`` to
+      ``arrays``, ``uproot.iterate``, or ``uproot.concatenate`` instead.
     * num_workers (int; 1): Number of tasks to spawn for reading, only used by some source types
     * use_threads (bool; False on the emscripten platform (i.e. in a web browser), else True):
       Use multi-threading when spawning workers.
@@ -101,7 +102,6 @@ def open(
       to read in bytes.
     * minimal_ttree_metadata (bool; True): Skip rarely used metadata and defer reading of embedded TBaskets
     * http_max_header_bytes (int; 21784): Maximum size of HTTP packet in bytes when the source is http
-
 
     Any object derived from a ROOT file is a context manager (works in Python's
     ``with`` statement) that closes the file when exiting the ``with`` block.
@@ -546,8 +546,9 @@ class ReadOnlyFile(CommonFileMethods):
       If None, deduced from input file type.
     * timeout (float for HTTP, int for XRootD; default defined by source implementation): The time in seconds
       to wait before giving up on the connection. Ignored for non-internet sources like local file paths.
-    * max_num_elements (None or int; None): The maximum number of elements to be requested in a single vector
-      read, when using XRootD.
+    * max_num_elements (None or int; None): The maximum number of byte ranges requested in a single XRootD
+      vector read. This does not limit the number of TTree or RNTuple entries read; pass ``entry_stop`` to
+      ``arrays``, ``uproot.iterate``, or ``uproot.concatenate`` instead.
     * num_workers (int; 1): Number of tasks to spawn for reading, only used by some source types
     * use_threads (bool; False on the emscripten platform (i.e. in a web browser), else True):
       Use multi-threading when spawning workers.
