@@ -2650,7 +2650,16 @@ class WritableNTuple:
 
         # update in-memory state without full reload
         # update field records and column counts directly from what we just wrote
-        self._cascading._existing_field_records = list(existing_field_records) + list(
+        #
+        # footer.extension_field_record_frames is cumulative across every add_fields()
+        # call in this session (it's rewritten to disk in full each time, so it must
+        # hold every extension field ever added, not just the ones from this call).
+        # header._field_records is fixed at load time (the schema's fields before any
+        # add_fields call in this session). Recombining those two — rather than the
+        # already-updated `existing_field_records` from the start of this call, which
+        # itself already contains earlier extension fields — avoids double-counting
+        # every field added by a previous call.
+        self._cascading._existing_field_records = list(header._field_records) + list(
             footer.extension_field_record_frames
         )
         self._cascading._column_counts = numpy.append(

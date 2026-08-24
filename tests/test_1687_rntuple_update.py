@@ -351,6 +351,63 @@ def test_ntuple_add_field_and_extend_same_session(tmp_path):
         assert vals == pytest.approx([1.0, 2.0, 3.0, 4.0, 5.0])
 
 
+def test_ntuple_multiple_add_fields_same_session(tmp_path):
+    """Repeated add_fields() calls within a single uproot.update() session.
+
+    Regression test: the in-memory field-record refresh at the end of
+    add_fields() concatenated the *already-updated* existing_field_records
+    (which, from the second call on, already includes every field added by
+    a previous call in this session) with footer.extension_field_record_frames
+    (which is itself cumulative across the whole session, since the footer is
+    rewritten from scratch each time). That double-counted every previously
+    added field: 'a' would appear twice after the second call, next_field_id
+    would be inflated, and the ids assigned to a third call's new field would
+    exceed the number of fields actually on disk, corrupting the file (a
+    third add_fields raised IndexError on reopen, at
+    uproot.models.RNTuple.py's Model_RNTuple_Field.parent, and the file
+    became unreadable).
+    """
+    path = os.path.join(tmp_path, "test.root")
+    with uproot.recreate(path) as f:
+        f["mytuple"] = {"x": np.array([1, 2, 3, 4, 5], dtype=np.float32)}
+
+    with uproot.update(path) as f:
+        nt = f["mytuple"]
+        nt.add_fields({"a": np.float32})
+        assert [fr.field_name for fr in nt._cascading._existing_field_records] == [
+            "x",
+            "a",
+        ]
+
+        nt.add_fields({"b": np.float32})
+        assert [fr.field_name for fr in nt._cascading._existing_field_records] == [
+            "x",
+            "a",
+            "b",
+        ]
+
+        nt.add_fields({"c": np.float32})
+        assert [fr.field_name for fr in nt._cascading._existing_field_records] == [
+            "x",
+            "a",
+            "b",
+            "c",
+        ]
+
+    with uproot.open(path) as f:
+        nt = f["mytuple"]
+        assert nt.keys() == ["x", "a", "b", "c"]
+        arrays = nt.arrays()
+        assert ak.all(arrays["x"] == np.array([1, 2, 3, 4, 5], dtype=np.float32))
+        assert ak.all(arrays["a"] == np.zeros(5, dtype=np.float32))
+        assert ak.all(arrays["b"] == np.zeros(5, dtype=np.float32))
+        assert ak.all(arrays["c"] == np.zeros(5, dtype=np.float32))
+
+    if has_root and hasattr(ROOT, "RNTupleReader"):
+        reader = ROOT.RNTupleReader.Open("mytuple", path)
+        assert reader.GetNEntries() == 5
+
+
 def test_ntuple_accept_new_fields(tmp_path):
     with uproot.recreate(os.path.join(tmp_path, "test.root")) as f:
         f["mytuple"] = {"x": np.array([1, 2, 3], dtype=np.float32)}
