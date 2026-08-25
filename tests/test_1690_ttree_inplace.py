@@ -401,6 +401,33 @@ def test_add_branch_does_not_leak_stale_trees_cache_entries(tmp_path):
         assert f["tree"].arrays().fields == ["x", "a", "b", "c"]
 
 
+def test_add_branch_does_not_reload_tree_from_disk(tmp_path):
+    """add_branches() should reuse self._cascading, not re-read the tree from disk.
+
+    Efficiency regression test: add_branches() used to unconditionally call
+    _load_existing_ttree() again, re-reading and re-parsing every branch's
+    metadata from disk even though self._cascading was already current
+    (extend() itself already trusts self._cascading without reloading it).
+    """
+    path = os.path.join(tmp_path, "test.root")
+    with uproot.recreate(path) as f:
+        f.mktree("tree", {"x": np.float32})
+        f["tree"].extend({"x": np.ones(100, dtype=np.float32)})
+
+    with uproot.update(path) as f:
+        tree = f["tree"]
+        calls = []
+        original = type(f)._load_existing_ttree
+        type(f)._load_existing_ttree = lambda self, key: (
+            calls.append(1) or original(self, key)
+        )
+        try:
+            tree.add_branches({"a": np.ones(100, dtype=np.float32)})
+        finally:
+            type(f)._load_existing_ttree = original
+        assert calls == []
+
+
 def test_add_branch_after_multiple_extends(tmp_path):
     """add_branches() on a tree that already has more than one basket.
 

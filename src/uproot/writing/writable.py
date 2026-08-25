@@ -2195,9 +2195,16 @@ class WritableTree:
         for part in self._path[:-1]:
             directory = directory[part]
 
-        # validate all branches have same length as existing tree
-        key = directory._cascading.data.get_key(source)
-        casc = directory._load_existing_ttree(key)._cascading
+        # validate all branches have same length as existing tree; self._cascading
+        # is already fully flushed and current on disk by the end of every
+        # extend()/add_branches() call (the same trust extend() itself places in
+        # it), so there's no need to re-read and re-parse the whole tree from
+        # disk here
+        if self._cascading is None:
+            raise RuntimeError(
+                "_cascading is None — this should not happen; please report this bug"
+            )
+        casc = self._cascading
         num_entries = casc._num_entries
 
         for branch_name, branch_data in branches.items():
