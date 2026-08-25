@@ -1066,6 +1066,56 @@ class WritableDirectory(MutableMapping):
 
             return readonlykey.get()
 
+    def _read_ntuple_envelope(self, key):
+        """
+        Deserializes the RNTuple envelope object at `key`, using
+        :doc:`uproot.writing._cascade._ReadForUpdate` to avoid loading the
+        entire file into memory, and using the key's absolute file position
+        (rather than 0) as the chunk/cursor origin, since RNTuple's own
+        internal envelope offsets (e.g. anchor_location) are threaded through
+        in absolute terms.
+
+        Shared by :ref:`_load_existing_ntuple` (the first read of an RNTuple
+        reopened via ``uproot.update()``) and by
+        :ref:`uproot.writing.writable.WritableNTuple.add_fields`'s reload of
+        the footer/page-list state it just wrote — both need exactly this,
+        so this factors out what used to be two copies of the same ~25 lines.
+
+        Args:
+            key: The ROOT key object pointing to the RNTuple in the file.
+
+        Returns:
+            The deserialized ``Model_RNTuple`` (read-side) object.
+        """
+        self._file.sink.flush()
+
+        def _get_chunk(start, stop):
+            raw_bytes = self._file.sink.read(start, stop - start)
+            return uproot.source.chunk.Chunk.wrap(readforupdate, raw_bytes, start=start)
+
+        readforupdate = uproot.writing._cascade._ReadForUpdate(
+            self._file.file_path,
+            self._file.uuid,
+            _get_chunk,
+            self._file._cascading.tlist_of_streamers,
+        )
+        readforupdate.options = dict(uproot.reading.open.defaults)
+
+        raw_bytes = self._file.sink.read(
+            key.seek_location,
+            key.num_bytes + key.compressed_bytes,
+        )
+        chunk = uproot.source.chunk.Chunk.wrap(
+            readforupdate, raw_bytes, start=key.seek_location
+        )
+        cursor = uproot.source.cursor.Cursor(key.seek_location, origin=key.num_bytes)
+        readonlykey = uproot.reading.ReadOnlyKey(
+            chunk, cursor, {}, readforupdate, self, read_strings=True
+        )
+        existing = readonlykey.get()
+        _ = existing.keys()
+        return existing
+
     def _load_existing_ntuple(self, key):
         """
         Loads an existing RNTuple from disk and reconstructs a writable
@@ -1094,38 +1144,8 @@ class WritableDirectory(MutableMapping):
                 "uproot.update() on a file-like object does not support accessing "
                 "existing RNTuples; use uproot.update() with a file path instead."
             )
-        # use _ReadForUpdate to avoid loading entire file into memory
-        self._file.sink.flush()
 
-        def _get_chunk_rn(start, stop):
-            raw_bytes = self._file.sink.read(start, stop - start)
-            return uproot.source.chunk.Chunk.wrap(
-                _readforupdate_rn, raw_bytes, start=start
-            )
-
-        _readforupdate_rn = uproot.writing._cascade._ReadForUpdate(
-            self._file.file_path,
-            self._file.uuid,
-            _get_chunk_rn,
-            self._file._cascading.tlist_of_streamers,
-        )
-        _readforupdate_rn.options = dict(uproot.reading.open.defaults)
-
-        _raw_bytes_rn = self._file.sink.read(
-            key.seek_location,
-            key.num_bytes + key.compressed_bytes,
-        )
-        _chunk_rn = uproot.source.chunk.Chunk.wrap(
-            _readforupdate_rn, _raw_bytes_rn, start=key.seek_location
-        )
-        _cursor_rn = uproot.source.cursor.Cursor(
-            key.seek_location, origin=key.num_bytes
-        )
-        _readonlykey_rn = uproot.reading.ReadOnlyKey(
-            _chunk_rn, _cursor_rn, {}, _readforupdate_rn, self, read_strings=True
-        )
-        existing = _readonlykey_rn.get()
-        _ = existing.keys()
+        existing = self._read_ntuple_envelope(key)
         full_akform, _ = existing.to_akform()
         am = existing._ntuple.all_members
         anchor_location = key.seek_location + key.num_bytes
@@ -2754,43 +2774,8 @@ class WritableNTuple:
             self._cascading._column_counts, numpy.zeros(len(new_fields), dtype=int)
         )
         # reload footer, page list envelopes and akform using _ReadForUpdate
-        self._file.sink.flush()
-
-        def _get_chunk_reload(start, stop):
-            raw_bytes = self._file.sink.read(start, stop - start)
-            return uproot.source.chunk.Chunk.wrap(
-                _readforupdate_reload, raw_bytes, start=start
-            )
-
-        _readforupdate_reload = uproot.writing._cascade._ReadForUpdate(
-            self._file.file_path,
-            self._file.uuid,
-            _get_chunk_reload,
-            self._file._cascading.tlist_of_streamers,
-        )
-        _readforupdate_reload.options = dict(uproot.reading.open.defaults)
-
-        _, _ntuple_key = self._existing_key()
-        _raw_reload = self._file.sink.read(
-            _ntuple_key.seek_location,
-            _ntuple_key.num_bytes + _ntuple_key.compressed_bytes,
-        )
-        _chunk_reload = uproot.source.chunk.Chunk.wrap(
-            _readforupdate_reload, _raw_reload, start=_ntuple_key.seek_location
-        )
-        _cursor_reload = uproot.source.cursor.Cursor(
-            _ntuple_key.seek_location, origin=_ntuple_key.num_bytes
-        )
-        _key_reload = uproot.reading.ReadOnlyKey(
-            _chunk_reload,
-            _cursor_reload,
-            {},
-            _readforupdate_reload,
-            self,
-            read_strings=True,
-        )
-        existing_reload = _key_reload.get()
-        _ = existing_reload.keys()
+        directory, _ntuple_key = self._existing_key()
+        existing_reload = directory._read_ntuple_envelope(_ntuple_key)
         self._cascading._existing_footer = existing_reload._footer
         self._cascading._existing_page_list_envelopes = (
             existing_reload.page_list_envelopes
