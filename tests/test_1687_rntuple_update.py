@@ -651,22 +651,48 @@ def test_ntuple_add_subfield_nonexistent_parent(tmp_path):
 
 
 def test_ntuple_add_subfield_typed_parent(tmp_path):
-    # structs written by ROOT have C++ typenames and cannot have subfields added
+    # structs written by ROOT have C++ typenames and cannot have subfields added.
+    # This fixture also uses column encodings Uproot doesn't write (confirmed by
+    # test_add_fields_rejects_root_written_column_encoding-style ValueError), and
+    # that check now runs first (see below), so every add_fields call on it -- on
+    # any field -- raises the encoding error rather than a per-field typed-struct
+    # message. This is intentional: telling the user "this parent is a typed
+    # struct" is pointless when the whole file can't be extended regardless.
     src = skhep_testdata.data_path("test_nested_structs_rntuple_v1-0-0-0.root")
     shutil.copy(src, os.path.join(tmp_path, "test.root"))
 
     with uproot.update(os.path.join(tmp_path, "test.root")) as f:
-        # my_struct has typename TopStruct
-        with pytest.raises(ValueError, match="TopStruct"):
-            f["ntuple"].add_fields({"my_struct.new_field": np.float32})
+        for dotted_name in (
+            "my_struct.new_field",
+            "sub_struct.new_field",
+            "sub_sub_struct.new_field",
+        ):
+            with pytest.raises(ValueError, match="column encodings"):
+                f["ntuple"].add_fields({dotted_name: np.float32})
 
-        # sub_struct has typename SubStruct
-        with pytest.raises(ValueError, match="SubStruct"):
-            f["ntuple"].add_fields({"sub_struct.new_field": np.float32})
 
-        # sub_sub_struct has typename SubSubSruct
-        with pytest.raises(ValueError, match="SubSubSruct"):
-            f["ntuple"].add_fields({"sub_sub_struct.new_field": np.float32})
+def test_ntuple_add_fields_encoding_error_checked_before_field_resolution(tmp_path):
+    """The column-encoding check must run before any per-field work, like extend().
+
+    Regression test: add_fields() used to check self._column_encoding_error
+    only inside the per-field loop, after already resolving the dotted-path
+    parent (which can itself raise a ValueError, e.g. "has type ... and cannot
+    be extended") and after appending the new field description to the
+    shared, persistent footer.extension_field_record_frames list. That let a
+    more specific but less fundamental error mask the real one, and left
+    orphan field-description objects in memory on every failed call.
+    """
+    src = skhep_testdata.data_path("test_nested_structs_rntuple_v1-0-0-0.root")
+    path = os.path.join(tmp_path, "test.root")
+    shutil.copy(src, path)
+
+    with uproot.update(path) as f:
+        nt = f["ntuple"]
+        before = len(nt._cascading._footer.extension_field_record_frames)
+        with pytest.raises(ValueError, match="column encodings"):
+            nt.add_fields({"my_struct.new_field": np.float32})
+        after = len(nt._cascading._footer.extension_field_record_frames)
+        assert after == before
 
 
 def test_ntuple_add_subfield_to_collection(tmp_path):
@@ -811,6 +837,85 @@ def test_ntuple_add_subfield_correct_parent(tmp_path):
         keys = list(f["mytuple"].keys())
         assert "p2.track.phi" in keys
         assert "p1.track.phi" not in keys
+
+
+def test_ntuple_add_subfield_ambiguous_name_raises(tmp_path):
+    """A single-level dotted path ("parent.field") must not silently pick
+
+    whichever same-named field happens to come first when the name exists at
+    more than one nesting level.
+
+    Regression test: the single-level branch matched a parent by bare name
+    only, breaking on the first match in existing_field_records (a flat,
+    depth-mixed, preorder-DFS list) -- with no check that the match was
+    unambiguous. Given a top-level record "a" and an unrelated nested record
+    "b.a", add_fields({"a.newsub": ...}) could silently attach "newsub" under
+    "b.a" instead of top-level "a", with no exception.
+    """
+    with uproot.recreate(os.path.join(tmp_path, "test.root")) as f:
+        f["mytuple"] = ak.Array([{"a": {"x": 1.0}, "b": {"a": {"y": 2.0}}}])
+
+    with uproot.update(os.path.join(tmp_path, "test.root")) as f:
+        with pytest.raises(ValueError, match="ambiguous"):
+            f["mytuple"].add_fields({"a.newsub": np.float32})
+
+        # fully-qualified path still works to disambiguate
+        f["mytuple"].add_fields({"b.a.newsub": np.float32})
+
+    with uproot.open(os.path.join(tmp_path, "test.root")) as f:
+        keys = f["mytuple"].keys()
+        assert "b.a.newsub" in keys
+        assert "a.newsub" not in keys
+
+
+def test_ntuple_add_subfield_root_field_at_deeper_index(tmp_path):
+    """Multi-level dotted-path resolution must not misidentify a non-root field as root.
+
+    Regression test: is_root_field was computed as
+    `fr.parent_field_id == 0 or fr.parent_field_id == i`. The `== 0` half is
+    not a valid root signal on its own -- a field is top-level iff it's its
+    own parent (self-referential), and any non-root field whose real parent
+    happens to sit at index 0 (e.g. the second field of the very first
+    top-level record) satisfies `parent_field_id == 0` too, without being
+    root. Given top-level record "a" containing nested record "inner", and a
+    separate, later, genuinely top-level record also named "inner" containing
+    "child", resolving "inner.child.newsub" incorrectly matched the nested
+    "inner" first and then failed to find "child" under it, raising a
+    confusing "not found" error for a legitimate path.
+    """
+    with uproot.recreate(os.path.join(tmp_path, "test.root")) as f:
+        f["mytuple"] = ak.Array(
+            [{"a": {"inner": {"z": 1.0}}, "inner": {"child": {"y": 1.0}}}]
+        )
+
+    with uproot.update(os.path.join(tmp_path, "test.root")) as f:
+        f["mytuple"].add_fields({"inner.child.newsub": np.float32})
+
+    with uproot.open(os.path.join(tmp_path, "test.root")) as f:
+        keys = f["mytuple"].keys()
+        assert "inner.child.newsub" in keys
+        assert "a.inner.newsub" not in keys
+
+
+def test_ntuple_add_field_duplicate_check_ignores_nested_names(tmp_path):
+    """add_fields()'s duplicate-name check must only compare against top-level fields.
+
+    Regression test: the check compared a new (always top-level) field name
+    against every existing field's bare name, including nested ones. Adding a
+    genuinely new top-level field "pt" was incorrectly rejected as "already
+    exists" whenever any unrelated nested field also happened to be named
+    "pt" (e.g. "particle.pt").
+    """
+    with uproot.recreate(os.path.join(tmp_path, "test.root")) as f:
+        f["mytuple"] = ak.Array([{"particle": {"pt": 1.0}}])
+
+    with uproot.update(os.path.join(tmp_path, "test.root")) as f:
+        f["mytuple"].add_fields({"pt": np.float32})
+
+    with uproot.open(os.path.join(tmp_path, "test.root")) as f:
+        keys = f["mytuple"].keys()
+        assert "pt" in keys
+        assert "particle.pt" in keys
 
 
 def test_ntuple_update_root_written_file_opens(tmp_path):

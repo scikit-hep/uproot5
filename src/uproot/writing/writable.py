@@ -2528,6 +2528,8 @@ class WritableNTuple:
             reopening a file only work reliably on RNTuples that Uproot itself
             wrote.
         """
+        if self._column_encoding_error is not None:
+            raise ValueError(self._column_encoding_error)
 
         import uproot.writing._cascadentuple as cnt
 
@@ -2553,9 +2555,21 @@ class WritableNTuple:
 
         next_field_id = len(existing_field_records)
 
-        existing_field_names = {fr.field_name for fr in existing_field_records}
+        # a plain (non-dotted) new field always becomes a top-level field (see
+        # the "else" branch below), so only collisions against other top-level
+        # fields are real duplicates. Checking every field's bare name,
+        # including nested ones, rejected legitimate top-level fields whenever
+        # their name happened to match some unrelated nested field's name.
+        # a field is top-level iff it's its own parent (self-referential); see
+        # NTuple_Header._build_field_col_records, which sets parent_fid = the
+        # field's own id when it's called without an explicit parent
+        existing_root_field_names = {
+            fr.field_name
+            for i, fr in enumerate(existing_field_records)
+            if fr.parent_field_id == i
+        }
         for field_name in new_fields:
-            if field_name in existing_field_names:
+            if "." not in field_name and field_name in existing_root_field_names:
                 raise ValueError(f"Field {field_name!r} already exists in this RNTuple")
 
         for field_name, field_dtype_raw in new_fields.items():
@@ -2572,31 +2586,45 @@ class WritableNTuple:
             if "." in field_name:
                 parts = field_name.split(".")
                 actual_field_name = parts[-1]
-                parent_field_id = None
-                # walk the full dotted path against the parent-id chain
-                # for single-level paths (e.g. "parent.field"), match by name only
-                # for multi-level paths (e.g. "p2.track.field"), walk full chain
                 if len(parts) == 2:
-                    # single-level: match immediate parent by name only (backward compat)
-                    parent_field_id = None
-                    for i, fr in enumerate(existing_field_records):
-                        if fr.field_name == parts[0]:
-                            parent_field_id = i
-                            break
-                    if parent_field_id is None:
+                    # single-level ("parent.field"): match the immediate parent
+                    # by bare name, at any nesting depth (backward compat) --
+                    # but only when that name is unambiguous. Matching the
+                    # first same-named field regardless of ambiguity used to
+                    # silently misattach a field whenever two records shared a
+                    # bare name at different nesting levels (e.g. a nested
+                    # "b.a" and an unrelated top-level "a"), with no error.
+                    matches = [
+                        (i, fr)
+                        for i, fr in enumerate(existing_field_records)
+                        if fr.field_name == parts[0]
+                    ]
+                    if len(matches) == 0:
                         raise ValueError(
                             f"Field {parts[0]!r} not found in this RNTuple"
                         )
-                    fr = existing_field_records[parent_field_id]
+                    if len(matches) > 1:
+                        raise ValueError(
+                            f"Field {parts[0]!r} is ambiguous: {len(matches)} fields "
+                            f"in this RNTuple have that name at different nesting "
+                            f"levels. Use a fully-qualified dotted path (e.g. "
+                            f"'grandparent.{parts[0]}.{parts[1]}') to disambiguate."
+                        )
+                    parent_field_id, fr = matches[0]
                 else:
-                    # multi-level: walk full dotted path using parent-id chain
+                    # multi-level: walk the full dotted path using the parent-id
+                    # chain, one segment at a time
                     current_parent_id = None  # None means root
                     for part_idx, part in enumerate(parts[:-1]):
                         found = None
                         for i, fr in enumerate(existing_field_records):
-                            is_root_field = (
-                                fr.parent_field_id == 0 or fr.parent_field_id == i
-                            )
+                            # a field is top-level iff it's its own parent
+                            # (self-referential); "parent_field_id == 0" alone
+                            # is not a valid root signal -- it also matches any
+                            # non-root field whose real parent happens to be at
+                            # index 0, e.g. the second field of the first
+                            # top-level record
+                            is_root_field = fr.parent_field_id == i
                             if fr.field_name == part:
                                 if current_parent_id is None and is_root_field:
                                     found = (i, fr)
@@ -2634,8 +2662,6 @@ class WritableNTuple:
                 type_name,
             )
             footer.extension_field_record_frames.append(new_field)
-            if self._column_encoding_error is not None:
-                raise ValueError(self._column_encoding_error)
             # use deferred column — first_element_index marks where new data starts
             new_col = cnt.NTuple_Column_Description(
                 type_num,
