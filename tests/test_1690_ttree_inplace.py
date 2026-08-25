@@ -98,6 +98,18 @@ def test_add_branch_tbranchelement(tmp_path):
             f["events"].add_branches({"new_branch": np.ones(2421, dtype=np.float32)})
 
 
+def test_add_branches_docstring_does_not_claim_tbranchelement_support():
+    """add_branches()'s docstring must not claim TBranchElement support it doesn't have.
+
+    Regression test: the docstring said "Works with both simple TBranch and
+    TBranchElement files," directly contradicted by the NotImplementedError
+    add_branches() raises for exactly that case (see
+    test_add_branch_tbranchelement above).
+    """
+    doc = uproot.writing.writable.WritableTree.add_branches.__doc__
+    assert "Works with both simple TBranch and TBranchElement files" not in doc
+
+
 def test_tbranchelement_access_does_not_crash(tmp_path):
     """Merely accessing (not mutating) a TBranchElement tree under uproot.update().
 

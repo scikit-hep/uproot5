@@ -2157,12 +2157,20 @@ class WritableTree:
 
         Adds new branches to this TTree in-place. Only the new branch data and
         an updated TTree header are written; existing data is never touched.
-        Works with both simple TBranch and TBranchElement files.
 
         .. code-block:: python
 
             with uproot.update("file.root") as f:
                 f["tree"].add_branches({"new_branch": np.ones(100, dtype=np.float32)})
+
+        .. note::
+
+            Only trees whose branches are all plain ``TBranch`` (not
+            ``TBranchElement``, e.g. split objects) are supported. Rewriting
+            the branch listing for a tree with ``TBranchElement`` branches
+            would silently drop them, so this raises ``NotImplementedError``
+            for such trees instead. This mirrors the same restriction on
+            :ref:`uproot.writing.writable.WritableTree.extend`.
         """
         if self._file.sink.closed:
             raise ValueError("cannot modify a TTree in a closed file")
@@ -2316,6 +2324,17 @@ class WritableTree:
         .. warning::
 
             **As a word of warning,** be sure that each call to :ref:`uproot.writing.writable.WritableTree.extend` includes at least 100 kB per branch/array. (NumPy and Awkward Arrays have an `nbytes <https://numpy.org/doc/stable/reference/generated/numpy.ndarray.nbytes.html>`__ property; you want at least ``100000`` per array.) If you ask Uproot to write very small TBaskets, it will spend more time working on TBasket overhead than actually writing data. The absolute worst case is one-entry-per-:ref:`uproot.writing.writable.WritableTree.extend`. See `#428 (comment) <https://github.com/scikit-hep/uproot5/pull/428#issuecomment-908703486>`__.
+
+        .. note::
+
+            On a tree reopened with :doc:`uproot.writing.writable.WritableDirectory.update`,
+            only trees whose branches are all plain ``TBranch`` (not
+            ``TBranchElement``, e.g. split objects) are supported, and only
+            trees whose branches all agree on basket count/capacity (true by
+            construction for a tree Uproot itself wrote and has not touched
+            with :ref:`uproot.writing.writable.WritableTree.add_branches`
+            since). Either case raises ``NotImplementedError`` rather than
+            desynchronizing or corrupting the tree's branches.
         """
         if self._cascading is None:
             raise RuntimeError(
