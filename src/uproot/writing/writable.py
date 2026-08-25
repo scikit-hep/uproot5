@@ -1238,8 +1238,21 @@ class WritableDirectory(MutableMapping):
             branch_lookup[b.name] = len(branch_data) - 1
 
         # fix counter references for jagged branches
+        #
+        # fEntryOffsetLen > 0 alone isn't a reliable signal that a branch is
+        # jagged-with-a-counter: a string branch also gets fEntryOffsetLen > 0
+        # once it has data (its basket-internal offset table), but strings are
+        # never counted by a separate branch. Without the dtype check, a string
+        # branch could be wrongly paired with an unrelated same-named "n"+name
+        # branch (e.g. string branch "id" and an unrelated int branch "nid"),
+        # making extend()'s counter/no-counter branch treat it as jagged
+        # numeric instead of a string.
         for bd in branch_data:
-            if bd.get("fEntryOffsetLen", 0) > 0 and bd["counter"] is None:
+            if (
+                bd.get("fEntryOffsetLen", 0) > 0
+                and bd["counter"] is None
+                and bd.get("dtype") != ">U0"
+            ):
                 counter_nm = "n" + bd["fName"]
                 counter_bd = next(
                     (x for x in branch_data if x["fName"] == counter_nm), None

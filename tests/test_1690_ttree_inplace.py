@@ -570,6 +570,37 @@ def test_extend_string_branch_zero_basket(tmp_path):
         assert f["tree"]["x"].array().tolist() == [1.0, 2.0]
 
 
+def test_extend_string_branch_with_coincidentally_named_counter(tmp_path):
+    """A string branch must not be misattributed a counter from an unrelated same-named branch.
+
+    Regression test: the counter-branch inference in _load_existing_ttree
+    matched any branch with fEntryOffsetLen > 0 to a same-named "n"+branch,
+    without checking the branch was actually jagged-content (numeric). A
+    string branch also gets fEntryOffsetLen > 0 once it has data (its
+    basket-internal offset table), so a string branch named "id" alongside
+    an unrelated int branch named "nid" got "nid" wrongly attached as its
+    counter -- making extend() treat "id" via the jagged/counted code path
+    (which expects an Awkward array with a .layout) instead of the string
+    path, raising a confusing AttributeError on the very next extend().
+    """
+    path = os.path.join(tmp_path, "test.root")
+    with uproot.recreate(path) as f:
+        f.mktree("tree", {"id": "string", "nid": np.int32})
+        f["tree"].extend(
+            {"id": ["aaa", "bb"], "nid": np.array([10, 20], dtype=np.int32)}
+        )
+
+    with uproot.update(path) as f:
+        t = f["tree"]
+        id_bd = next(bd for bd in t._cascading._branch_data if bd["fName"] == "id")
+        assert id_bd["counter"] is None
+        t.extend({"id": ["ccc"], "nid": np.array([30], dtype=np.int32)})
+
+    with uproot.open(path) as f:
+        assert f["tree"]["id"].array().tolist() == ["aaa", "bb", "ccc"]
+        assert f["tree"]["nid"].array().tolist() == [10, 20, 30]
+
+
 def test_access_fixed_size_array_branch(tmp_path):
     """Accessing a real ROOT-written tree with fixed-size array branches (e.g. "bool[3]").
 
