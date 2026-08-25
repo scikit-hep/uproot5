@@ -2247,8 +2247,15 @@ class WritableTree:
             casc._branch_data.append(new_bd)
             casc._branch_lookup[branch_name] = len(casc._branch_data) - 1
 
-        # rewrite TTree metadata blob with new branches included
+        # rewrite TTree metadata blob with new branches included -- this relocates
+        # the tree (frees its old space, allocates new space for the larger
+        # blob), so the WritableFile._trees cache needs to move with it, the same
+        # way extend()'s own basket-capacity-expansion relocation does via
+        # file._move_tree(); otherwise a stale entry at the old location lingers
+        # in that cache indefinitely
+        oldloc = casc._key.seek_location
         casc.write_anew(self._file.sink)
+        self._file._move_tree(oldloc, casc._key.seek_location)
 
         # write one basket per new branch
         old_num_baskets = casc._num_baskets

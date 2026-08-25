@@ -374,6 +374,33 @@ def test_add_branch_sequential(tmp_path):
         assert np.all(f["tree"]["branch_b"].array() == 3)
 
 
+def test_add_branch_does_not_leak_stale_trees_cache_entries(tmp_path):
+    """add_branches() must not leave stale entries in WritableFile._trees behind.
+
+    Regression test: add_branches() calls write_anew(), which relocates the
+    tree (frees its old space, allocates new space for the larger blob), the
+    same way extend()'s basket-capacity-expansion path does -- but unlike
+    that path, add_branches() never called file._move_tree() to move the
+    WritableFile._trees cache entry to the new location, so the entry at the
+    old (now-freed) location was never cleaned up. Every add_branches() call
+    in a session left one more stale entry behind.
+    """
+    path = os.path.join(tmp_path, "test.root")
+    with uproot.recreate(path) as f:
+        f.mktree("tree", {"x": np.float32})
+        f["tree"].extend({"x": np.ones(100, dtype=np.float32)})
+
+    with uproot.update(path) as f:
+        before = len(f._file._trees)
+        f["tree"].add_branches({"a": np.ones(100, dtype=np.float32)})
+        f["tree"].add_branches({"b": np.ones(100, dtype=np.float32)})
+        f["tree"].add_branches({"c": np.ones(100, dtype=np.float32)})
+        assert len(f._file._trees) == before + 1
+
+    with uproot.open(path) as f:
+        assert f["tree"].arrays().fields == ["x", "a", "b", "c"]
+
+
 def test_add_branch_after_multiple_extends(tmp_path):
     """add_branches() on a tree that already has more than one basket.
 
