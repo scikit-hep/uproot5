@@ -201,6 +201,9 @@ Thanks especially to the gracious help of Uproot contributors (including the [or
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/Yokubas"><img src="https://avatars.githubusercontent.com/u/183698357?v=4?s=100" width="100px;" alt="Yokubas"/><br /><sub><b>Yokubas</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot5/commits?author=Yokubas" title="Code">💻</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://tomeichlersmith.codeberg.page/"><img src="https://avatars.githubusercontent.com/u/31970302?v=4?s=100" width="100px;" alt="Tom Eichlersmith"/><br /><sub><b>Tom Eichlersmith</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot5/commits?author=tomeichlersmith" title="Documentation">📖</a></td>
     </tr>
+    <tr>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/sapunyangkut"><img src="https://avatars.githubusercontent.com/u/302607731?v=4?s=100" width="100px;" alt="sapunyangkut"/><br /><sub><b>sapunyangkut</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot5/commits?author=sapunyangkut" title="Documentation">📖</a></td>
+    </tr>
   </tbody>
 </table>
 
