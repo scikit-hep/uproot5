@@ -2756,8 +2756,8 @@ class WritableNTuple:
         self._cascading._freesegments.write(self._file.sink)
         self._file.sink.flush()
 
-        # update in-memory state without full reload
-        # update field records and column counts directly from what we just wrote
+        # _existing_field_records and _column_counts are updated directly from what
+        # we just wrote, without going back to disk for them specifically.
         #
         # footer.extension_field_record_frames is cumulative across every add_fields()
         # call in this session (it's rewritten to disk in full each time, so it must
@@ -2773,7 +2773,15 @@ class WritableNTuple:
         self._cascading._column_counts = numpy.append(
             self._cascading._column_counts, numpy.zeros(len(new_fields), dtype=int)
         )
-        # reload footer, page list envelopes and akform using _ReadForUpdate
+        # _existing_footer, _existing_page_list_envelopes, and _header._akform,
+        # by contrast, DO require a full read back from disk here: they need to
+        # be read-side model objects (Model_RNTuple_Footer, page-list envelopes),
+        # not the write-side NTuple_Footer/etc. objects already held in this
+        # method's local variables, and there's no cheaper way to produce those
+        # without re-implementing a write-to-read-model adapter. This makes every
+        # add_fields() call pay for re-parsing the whole footer and page-list
+        # state, scaling with how much has already been written -- a real but
+        # unoptimized cost, not a correctness issue.
         directory, _ntuple_key = self._existing_key()
         existing_reload = directory._read_ntuple_envelope(_ntuple_key)
         self._cascading._existing_footer = existing_reload._footer
