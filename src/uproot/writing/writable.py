@@ -2252,6 +2252,29 @@ class WritableTree:
 
         casc._num_baskets = old_num_baskets
         casc.write_updates(self._file.sink)
+
+        # write_updates() stamps every branch's fWriteBasket with the tree-wide
+        # casc._num_baskets (old_num_baskets) -- correct for the pre-existing
+        # branches, which really do have that many baskets, but wrong for the
+        # brand-new branches just written above: add_branches always writes
+        # exactly one basket per new branch (indexed 0 above), so their real
+        # fWriteBasket is 1, not old_num_baskets. Left uncorrected, the file
+        # claims baskets the new branch never wrote, and reading it back later
+        # fails to account for the true number of entries.
+        base = casc._key.seek_location + casc._key.num_bytes
+        for branch_name in branches:
+            datum = casc._branch_data[casc._branch_lookup[branch_name]]
+            self._file.sink.write(
+                base + datum["metadata_start"],
+                uproot.models.TBranch._tbranch13_format1.pack(
+                    0,  # fCompress (write_updates also always writes 0 here; see its comment)
+                    datum["fBasketSize"],
+                    datum["fEntryOffsetLen"],
+                    1,  # fWriteBasket -- this branch has exactly one basket
+                    casc._num_entries,  # fEntryNumber
+                ),
+            )
+
         self._file.sink.flush()
 
         # update in-memory directory cache

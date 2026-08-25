@@ -362,6 +362,53 @@ def test_add_branch_sequential(tmp_path):
         assert np.all(f["tree"]["branch_b"].array() == 3)
 
 
+def test_add_branch_after_multiple_extends(tmp_path):
+    """add_branches() on a tree that already has more than one basket.
+
+    Regression test: write_updates() stamps every branch's fWriteBasket with
+    the tree-wide casc._num_baskets, correct for the pre-existing branches
+    (which really do have that many baskets) but wrong for a brand-new
+    branch, which add_branches() always writes exactly one basket for. Left
+    uncorrected, the new branch's fWriteBasket claimed as many baskets as the
+    rest of the tree even though only basket 0 held real data. That alone
+    doesn't crash a plain read (this file's new_branch reads back correctly
+    below), but it makes fWriteBasket agree with the older branches' basket
+    count despite the real per-branch layout being divergent -- which let a
+    follow-up extend() sail past the divergent-basket-count guard (since
+    that guard trusts fWriteBasket) and write another basket for new_branch
+    indexed as if it were basket 2, when only basket 0 was ever real. Reading
+    it back then failed with a ValueError about basket/entry counts not
+    adding up. Every existing add_branches test happened to extend() exactly
+    once first, so old_num_baskets was coincidentally always 1 and this
+    never surfaced. With fWriteBasket corrected, the guard now sees the true
+    divergence and rejects the follow-up extend() cleanly instead.
+    """
+    path = os.path.join(tmp_path, "test.root")
+    with uproot.recreate(path) as f:
+        f.mktree("tree", {"x": np.float32})
+        f["tree"].extend({"x": np.full(100, 1.0, dtype=np.float32)})
+        f["tree"].extend({"x": np.full(100, 2.0, dtype=np.float32)})
+
+    with uproot.update(path) as f:
+        f["tree"].add_branches({"new_branch": np.full(200, 9.0, dtype=np.float32)})
+
+    with uproot.open(path) as f:
+        assert f["tree"].num_entries == 200
+        assert np.all(f["tree"]["new_branch"].array() == 9.0)
+        x = f["tree"]["x"].array()
+        assert np.all(x[:100] == 1.0)
+        assert np.all(x[100:] == 2.0)
+
+    with uproot.update(path) as f:
+        with pytest.raises(NotImplementedError):
+            f["tree"].extend(
+                {
+                    "x": np.full(50, 3.0, dtype=np.float32),
+                    "new_branch": np.full(50, 8.0, dtype=np.float32),
+                }
+            )
+
+
 def test_add_branch_then_extend_same_session(tmp_path):
     with uproot.recreate(os.path.join(tmp_path, "test.root")) as f:
         f.mktree("tree", {"x": np.float32})
