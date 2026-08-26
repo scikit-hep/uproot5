@@ -428,26 +428,21 @@ def test_add_branch_does_not_reload_tree_from_disk(tmp_path):
         assert calls == []
 
 
-def test_add_branch_after_multiple_extends(tmp_path):
-    """add_branches() on a tree that already has more than one basket.
+def test_add_branch_after_multiple_extends_raises(tmp_path):
+    """add_branches() on a tree that already has more than one basket must refuse up front.
 
-    Regression test: write_updates() stamps every branch's fWriteBasket with
-    the tree-wide casc._num_baskets, correct for the pre-existing branches
-    (which really do have that many baskets) but wrong for a brand-new
-    branch, which add_branches() always writes exactly one basket for. Left
-    uncorrected, the new branch's fWriteBasket claimed as many baskets as the
-    rest of the tree even though only basket 0 held real data. That alone
-    doesn't crash a plain read (this file's new_branch reads back correctly
-    below), but it makes fWriteBasket agree with the older branches' basket
-    count despite the real per-branch layout being divergent -- which let a
-    follow-up extend() sail past the divergent-basket-count guard (since
-    that guard trusts fWriteBasket) and write another basket for new_branch
-    indexed as if it were basket 2, when only basket 0 was ever real. Reading
-    it back then failed with a ValueError about basket/entry counts not
-    adding up. Every existing add_branches test happened to extend() exactly
-    once first, so old_num_baskets was coincidentally always 1 and this
-    never surfaced. With fWriteBasket corrected, the guard now sees the true
-    divergence and rejects the follow-up extend() cleanly instead.
+    Regression test: add_branches() always back-fills a new branch with
+    exactly one basket spanning every existing entry, regardless of how many
+    baskets the tree's other branches already have. On a tree with only one
+    basket that coincidentally matches (fWriteBasket needed correcting to 1
+    for the new branch -- see test_add_branch_then_extend_same_session, which
+    covers exactly that case and a follow-up extend() succeeding). But on any
+    tree with more than one basket, silently proceeding would create the
+    exact divergent-basket-count state the extend()-side guard exists to
+    reject -- turning every future extend() on this tree into a permanent
+    NotImplementedError, with no warning at add_branches() time. Every
+    existing add_branches test happened to extend() exactly once first, so
+    this never surfaced. Now add_branches() itself refuses up front instead.
     """
     path = os.path.join(tmp_path, "test.root")
     with uproot.recreate(path) as f:
@@ -456,23 +451,15 @@ def test_add_branch_after_multiple_extends(tmp_path):
         f["tree"].extend({"x": np.full(100, 2.0, dtype=np.float32)})
 
     with uproot.update(path) as f:
-        f["tree"].add_branches({"new_branch": np.full(200, 9.0, dtype=np.float32)})
+        with pytest.raises(NotImplementedError):
+            f["tree"].add_branches({"new_branch": np.full(200, 9.0, dtype=np.float32)})
 
+    # the rejected call must not have corrupted the existing branch
     with uproot.open(path) as f:
         assert f["tree"].num_entries == 200
-        assert np.all(f["tree"]["new_branch"].array() == 9.0)
         x = f["tree"]["x"].array()
         assert np.all(x[:100] == 1.0)
         assert np.all(x[100:] == 2.0)
-
-    with uproot.update(path) as f:
-        with pytest.raises(NotImplementedError):
-            f["tree"].extend(
-                {
-                    "x": np.full(50, 3.0, dtype=np.float32),
-                    "new_branch": np.full(50, 8.0, dtype=np.float32),
-                }
-            )
 
 
 def test_extend_root_written_tree(tmp_path):

@@ -2248,6 +2248,22 @@ class WritableTree:
                 "number of baskets / basket capacity is not yet supported via the "
                 "cascade approach"
             )
+        if casc._num_baskets > 1:
+            # add_branches always back-fills a new branch with exactly one
+            # basket spanning every existing entry (see below), regardless of
+            # how many baskets the tree's other branches already have. On a
+            # tree with only one basket that coincidentally matches, but on
+            # any tree with more, it would silently create the very
+            # divergent-basket-count state the guard above exists to reject
+            # -- turning every future extend() on this tree into a permanent
+            # NotImplementedError, with no warning at add_branches() time.
+            raise NotImplementedError(
+                "add_branches for a TTree that already has more than one basket "
+                "is not yet supported via the cascade approach: the new branch "
+                "would only ever get one basket, permanently diverging from the "
+                "other branches' basket counts and blocking any future extend() "
+                "on this tree"
+            )
 
         # add new branch dicts to cascade
         compression = casc._freesegments.fileheader.compression
