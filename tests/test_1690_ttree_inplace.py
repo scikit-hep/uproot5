@@ -475,6 +475,62 @@ def test_add_branch_after_multiple_extends(tmp_path):
             )
 
 
+def test_extend_root_written_tree(tmp_path):
+    """extend() on a genuinely ROOT-written tree must not corrupt the file.
+
+    Regression test: metadata_start/basket_metadata_start are derived
+    structurally (see _build_out()), which assumes the tree is laid out the
+    way Uproot's own writer lays one out. A ROOT-written tree can have a
+    byte-for-byte different (but semantically equivalent) layout, so
+    write_updates() -- which extend() uses for every call except capacity
+    growth -- patched the wrong bytes with no exception raised at write
+    time, corrupting an existing basket's compressed data badly enough that
+    reading it back raised a zlib decompression error. add_branches()
+    already always calls write_anew() and so never hit this; extend() now
+    does the same once, on the first call after loading a preexisting tree,
+    establishing Uproot's own canonical layout before ever trusting a
+    write_updates() patch.
+    """
+    path = os.path.join(tmp_path, "test.root")
+    shutil.copy(data_path("uproot-foriter.root"), path)
+
+    with uproot.open(path) as f:
+        before = f["foriter"]["data"].array().tolist()
+
+    with uproot.update(path) as f:
+        f["foriter"].extend({"data": np.arange(2, dtype=np.int32)})
+
+    with uproot.open(path) as f:
+        after = f["foriter"]["data"].array().tolist()
+        assert after == before + [0, 1]
+
+
+def test_extend_root_written_tree_multiple_branches(tmp_path):
+    """extend() on a genuinely ROOT-written tree with many branches, twice in a row."""
+    path = os.path.join(tmp_path, "test.root")
+    shutil.copy(data_path("uproot-Zmumu.root"), path)
+
+    with uproot.open(path) as f:
+        before = f["events"].arrays()
+
+    with uproot.update(path) as f:
+        data = {name: np.asarray(before[name][:3]) for name in before.fields}
+        f["events"].extend(data)
+
+    with uproot.update(path) as f:
+        data = {name: np.asarray(before[name][3:5]) for name in before.fields}
+        f["events"].extend(data)
+
+    with uproot.open(path) as f:
+        after = f["events"].arrays()
+        assert len(after) == len(before) + 5
+        assert np.allclose(after["px1"][: len(before)], before["px1"])
+        assert np.allclose(
+            after["px1"][len(before) : len(before) + 3], before["px1"][:3]
+        )
+        assert np.allclose(after["px1"][len(before) + 3 :], before["px1"][3:5])
+
+
 def test_add_branch_then_extend_same_session(tmp_path):
     with uproot.recreate(os.path.join(tmp_path, "test.root")) as f:
         f.mktree("tree", {"x": np.float32})

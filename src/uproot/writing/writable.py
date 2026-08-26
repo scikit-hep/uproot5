@@ -1311,6 +1311,16 @@ class WritableDirectory(MutableMapping):
         casc._branch_lookup = branch_lookup
         casc._has_unsupported_branches = len(branch_data) != len(branches)
         casc._has_divergent_baskets = has_divergent_baskets
+        # metadata_start/basket_metadata_start were just derived structurally,
+        # assuming this tree is laid out the way Uproot's own writer lays one
+        # out. That's only actually true once Uproot itself has written this
+        # tree at least once; a preexisting tree may be ROOT-written, with a
+        # different byte layout write_updates() would patch at the wrong
+        # offsets. extend() checks this and does one full write_anew() before
+        # its first incremental patch to establish Uproot's own layout for
+        # real. add_branches() already always calls write_anew() regardless,
+        # so it clears this flag itself once it does.
+        casc._needs_relocation_before_extend = True
         casc._basket_capacity = (
             _supported_branches[0].member("fMaxBaskets") if _supported_branches else 10
         )
@@ -2263,6 +2273,10 @@ class WritableTree:
         oldloc = casc._key.seek_location
         casc.write_anew(self._file.sink)
         self._file._move_tree(oldloc, casc._key.seek_location)
+        # this write_anew() just established Uproot's own canonical layout for
+        # real, so a subsequent extend() on this same cascade doesn't need to
+        # redundantly do it again
+        casc._needs_relocation_before_extend = False
 
         # write one basket per new branch
         old_num_baskets = casc._num_baskets
