@@ -2445,9 +2445,22 @@ class WritableTree:
             for bd in self._cascading._branch_data
             if bd.get("kind") == "counter" and "fName" in bd
         ]
-        # check if data looks like a flat dict of branch arrays (not a record/awkward array)
+        # check if data looks like a flat dict of branch arrays (branch name ->
+        # array), as opposed to e.g. a single top-level record array. Every
+        # awkward Array has a `.fields` attribute regardless of its type --
+        # it's just empty for a non-record (flat or jagged) array -- so
+        # `hasattr(v, "fields")` alone can't tell a record apart from a plain
+        # jagged/flat awkward Array value; checking that `.fields` is
+        # non-empty is what actually means "this value is itself a record".
+        # Getting this wrong skipped the new-field detection and
+        # accept_new_fields auto-add logic below entirely whenever any value
+        # in data happened to be an awkward Array, jagged or not -- new
+        # awkward-typed fields fell straight through to the low-level
+        # extend(), which doesn't know about accept_new_fields and raised a
+        # confusing "does not correspond to any branch" naming its
+        # auto-generated counter branch instead.
         _data_is_flat_dict = isinstance(data, dict) and all(
-            not hasattr(v, "fields") for v in data.values()
+            not (hasattr(v, "fields") and v.fields) for v in data.values()
         )
         if isinstance(data, dict) and _data_is_flat_dict:
             existing_names = _user_branch_names
@@ -2483,6 +2496,28 @@ class WritableTree:
                     raise ValueError(
                         "'extend' was given data that do not correspond to any branch: "
                         + repr(next(iter(new_fields)))
+                    )
+                # add_branches() (used below to back-fill zeros for new fields)
+                # only creates simple scalar TBranch, with no counter-branch
+                # support -- it cannot create a new jagged branch. Left
+                # unchecked, numpy.asarray(v) below raises a confusing,
+                # awkward-internal "cannot convert to RegularArray" error for
+                # any jagged new field, instead of saying plainly that this
+                # isn't supported.
+                _jagged_new_fields = [
+                    k
+                    for k, v in new_fields.items()
+                    if isinstance(v, awkward.Array)
+                    and v.ndim > 1
+                    and not v.layout.purelist_isregular
+                ]
+                if _jagged_new_fields:
+                    raise NotImplementedError(
+                        f"accept_new_fields does not yet support jagged (variable-length) "
+                        f"new fields: {_jagged_new_fields}. Call add_branches() with a "
+                        f"scalar zero-filled backfill for this field first (which itself "
+                        f"does not yet support jagged branches either), or restructure the "
+                        f"data to not introduce a jagged field via extend()."
                     )
                 zeros = {
                     k: numpy.zeros(

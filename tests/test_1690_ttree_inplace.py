@@ -338,6 +338,65 @@ def test_extend_new_fields_error_without_flag(tmp_path):
             )
 
 
+def test_extend_accept_new_fields_flat_awkward_value(tmp_path):
+    """accept_new_fields must work when the new field's value is an awkward Array.
+
+    Regression test: _data_is_flat_dict checked `not hasattr(v, "fields")` to
+    decide whether `data` is a plain dict of branch arrays, but every awkward
+    Array has a `.fields` attribute regardless of type -- it's just empty for
+    a non-record (flat or jagged) array. That check being always False for
+    any awkward-Array value skipped the new-field detection and
+    accept_new_fields auto-add logic entirely, so a new field's data being a
+    plain (non-jagged) awkward Array fell straight through to the low-level
+    extend(), which doesn't know about accept_new_fields and raised "does not
+    correspond to any branch" even though accept_new_fields=True was passed.
+    """
+    ak = pytest.importorskip("awkward")
+    path = os.path.join(tmp_path, "test.root")
+    with uproot.recreate(path) as f:
+        f.mktree("tree", {"x": np.float32})
+        f["tree"].extend({"x": np.ones(3, dtype=np.float32)})
+
+    with uproot.update(path) as f:
+        f["tree"].extend(
+            {"x": np.ones(2, dtype=np.float32), "y": ak.Array([9.0, 8.0])},
+            accept_new_fields=True,
+        )
+
+    with uproot.open(path) as f:
+        assert f["tree"]["x"].array().tolist() == [1.0, 1.0, 1.0, 1.0, 1.0]
+        assert f["tree"]["y"].array().tolist() == [0.0, 0.0, 0.0, 9.0, 8.0]
+
+
+def test_extend_accept_new_fields_jagged_raises_clearly(tmp_path):
+    """accept_new_fields with a jagged new field must raise a clear error, not crash confusingly.
+
+    Regression test: add_branches() (used to back-fill zeros for a new
+    field) only creates simple scalar TBranch, with no counter-branch
+    support, so it cannot create a jagged branch. Left unchecked, this
+    reached numpy.asarray(jagged_awkward_array), which raises an
+    awkward-internal "cannot convert to RegularArray" ValueError -- or, before
+    the _data_is_flat_dict fix above, an unrelated low-level "'nj', 'j' do
+    not correspond to any branch" naming an auto-generated counter branch the
+    user never passed.
+    """
+    ak = pytest.importorskip("awkward")
+    path = os.path.join(tmp_path, "test.root")
+    with uproot.recreate(path) as f:
+        f.mktree("tree", {"x": np.float32})
+        f["tree"].extend({"x": np.ones(3, dtype=np.float32)})
+
+    with uproot.update(path) as f:
+        with pytest.raises(NotImplementedError, match="jagged"):
+            f["tree"].extend(
+                {
+                    "x": np.ones(2, dtype=np.float32),
+                    "j": ak.Array([[1.0, 2.0], [3.0]]),
+                },
+                accept_new_fields=True,
+            )
+
+
 @skip_no_root
 def test_extend_root_readable(tmp_path):
     with uproot.recreate(os.path.join(tmp_path, "test.root")) as f:
