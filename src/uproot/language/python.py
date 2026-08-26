@@ -68,6 +68,18 @@ def _walk_ast_yield_symbols(node, keys, aliases, functions, getter):
                 f"found {ast.dump(node.args)}"
             )
 
+    elif (
+        isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Name)
+        and node.func.id in functions
+    ):
+        # A name in function-call position resolves to the function, so don't
+        # treat it as a branch symbol even if a branch shares the name.
+        for x in node.args:
+            yield from _walk_ast_yield_symbols(x, keys, aliases, functions, getter)
+        for x in node.keywords:
+            yield from _walk_ast_yield_symbols(x, keys, aliases, functions, getter)
+
     elif isinstance(node, ast.Name):
         if node.id in keys or node.id in aliases:
             yield node.id
@@ -111,6 +123,35 @@ def _ast_as_branch_expression(node, keys, aliases, functions, getter):
         and isinstance(node.args[0].value, str)
     ):
         return node
+
+    elif (
+        isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Name)
+        and node.func.id in functions
+    ):
+        # A name in function-call position resolves to the function, even when a
+        # branch happens to share the name (e.g. a branch literally named
+        # "sqrt"). Warn about the shadowing so the conflict is visible.
+        if node.func.id in keys or node.func.id in aliases:
+            warnings.warn(
+                f"{node.func.id!r} is both a branch name and a function; "
+                "using the function in call position",
+                uproot.exceptions.NameConflictWarning,
+                stacklevel=1,
+            )
+        new_func = ast.parse(f"function[{node.func.id!r}]").body[0].value
+        new_args = [
+            _ast_as_branch_expression(x, keys, aliases, functions, getter)
+            for x in node.args
+        ]
+        new_keywords = [
+            _ast_as_branch_expression(x, keys, aliases, functions, getter)
+            for x in node.keywords
+        ]
+        new_node = ast.Call(new_func, new_args, new_keywords)
+        new_node.lineno = getattr(node, "lineno", 1)
+        new_node.col_offset = getattr(node, "col_offset", 0)
+        return new_node
 
     elif isinstance(node, ast.Name):
         if node.id in keys or node.id in aliases:

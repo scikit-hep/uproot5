@@ -36,7 +36,7 @@ class LRUCache(MutableMapping):
     iterating, listing keys, values, and items.
 
     This cache is insensitive to the size of the objects it stores, and hence
-    is a better ``object_cache`` than an ``array_cache``.
+    is a better ``object_cache`` than an ``array_cache``  (cf. :doc:`uproot.cache.LRUArrayCache`).
     """
 
     @classmethod
@@ -49,7 +49,6 @@ class LRUCache(MutableMapping):
     def __init__(self, limit):
         self._limit = limit
         self._current = 0
-        self._order = []
         self._data = {}
         self._lock = threading.Lock()
 
@@ -61,7 +60,6 @@ class LRUCache(MutableMapping):
     def __setstate__(self, state):
         self._limit = state["_limit"]
         self._current = 0
-        self._order = []
         self._data = {}
         self._lock = threading.Lock()
 
@@ -99,7 +97,7 @@ class LRUCache(MutableMapping):
         (Calling this method does not change the order.)
         """
         with self._lock:
-            return list(self._order)
+            return list(self._data)
 
     def values(self):
         """
@@ -113,7 +111,7 @@ class LRUCache(MutableMapping):
         (Calling this method does not change the order.)
         """
         with self._lock:
-            return [self._data[where] for where in self._order]
+            return list(self._data.values())
 
     def items(self):
         """
@@ -127,43 +125,43 @@ class LRUCache(MutableMapping):
         (Calling this method does not change the order.)
         """
         with self._lock:
-            return [(where, self._data[where]) for where in self._order]
+            return list(self._data.items())
 
     def __getitem__(self, where):
         with self._lock:
             out = self._data[where]
-            self._order.remove(where)
-            self._order.append(where)
+            # Move to end (most-recently used)
+            self._data[where] = self._data.pop(where)
             return out
 
     def __setitem__(self, where, what):
         with self._lock:
             if where in self._data:
-                self._order.remove(where)
-            self._order.append(where)
+                # Remove old entry so re-insert puts it at the end
+                self._current -= self.sizeof(self._data.pop(where))
             self._data[where] = what
             self._current += self.sizeof(what)
 
             if self._limit is not None:
-                while self._current > self._limit and len(self._order) > 0:
-                    key = self._order.pop(0)
-                    self._current -= self.sizeof(self._data[key])
+                while self._current > self._limit and self._data:
+                    # Evict least-recently used (first item)
+                    key, val = next(iter(self._data.items()))
+                    self._current -= self.sizeof(val)
                     del self._data[key]
 
     def __delitem__(self, where):
         with self._lock:
             self._current -= self.sizeof(self._data[where])
             del self._data[where]
-            self._order.remove(where)
 
     def __iter__(self):
         with self._lock:
-            order = list(self._order)
-        yield from order
+            keys = list(self._data)
+        yield from keys
 
     def __len__(self):
         with self._lock:
-            return len(self._order)
+            return len(self._data)
 
 
 class LRUArrayCache(LRUCache):
@@ -187,7 +185,7 @@ class LRUArrayCache(LRUCache):
 
     This cache is sensitive to the size of the objects it stores, but only if
     those objects have meaningful ``nbytes``. It is therefore a better
-    ``array_cache`` than an ``array_cache``.
+    ``array_cache`` than an ``object_cache``.
     """
 
     default_nbytes = 1024

@@ -1,3 +1,5 @@
+# BSD 3-Clause License; see https://github.com/scikit-hep/uproot5/blob/main/LICENSE
+
 """Read coalescing algorithms
 
 Inspired in part by https://github.com/cms-sw/cmssw/blob/master/IOPool/TFileAdaptor/src/ReadRepacker.h
@@ -106,7 +108,7 @@ def _coalesce(ranges: list[RangeRequest], config: CoalesceConfig):
     first_request = True
     for cluster in _merge_adjacent(ranges, config):
         if clusters and (
-            len(clusters) + 1 >= config.max_request_ranges
+            len(clusters) >= config.max_request_ranges
             or request_bytes + len(cluster) >= config.max_request_bytes
             or (first_request and request_bytes >= config.min_first_request_bytes)
         ):

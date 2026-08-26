@@ -168,10 +168,10 @@ class AsBinary(uproot.interpretation.Interpretation):
         elif library.name == "np":
             if counts is not None:
                 assert (
-                    numpy.unique(counts[1:] - counts[:-1]).size == 1
+                    numpy.unique(counts).size <= 1
                 ), "The byte offsets must be uniform for NumPy arrays."
 
-                bytes_per_event = counts[0]
+                bytes_per_event = counts[0] if counts.size != 0 else 0
                 return data.reshape(-1, bytes_per_event)
             else:
                 fSize = branch.streamer.member("fSize")

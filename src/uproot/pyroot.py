@@ -257,4 +257,4 @@ class _PyROOTWritable:
         else:
             obj = self._obj.Clone(name)
 
-        return uproot._util.tobytes(pyroot_to_buffer(obj)[len(self.classname) + 9 :])
+        return pyroot_to_buffer(obj)[len(self.classname) + 9 :].tobytes()

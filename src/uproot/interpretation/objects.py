@@ -319,7 +319,6 @@ class AsObjects(uproot.interpretation.Interpretation):
         )
         context["forth"].vm.stack_push(len(byte_offsets) - 1)
         context["forth"].vm.resume()
-        container = {}
         container = context["forth"].vm.outputs
         output = awkward.from_buffers(self._form, len(byte_offsets) - 1, container)
 
@@ -480,12 +479,12 @@ input stream
                 local_stop = stop - start
                 to_append = basket_arrays[basket_num][local_start:local_stop]
 
-            elif start <= entry_stop <= stop:
+            elif start < entry_stop <= stop:
                 local_start = 0
                 local_stop = entry_stop - start
                 to_append = basket_arrays[basket_num][local_start:local_stop]
 
-            elif entry_start < stop and start <= entry_stop:
+            elif entry_start < stop and start < entry_stop:
                 to_append = basket_arrays[basket_num]
 
             if to_append is not None and has_any_awkward_types:
@@ -522,18 +521,16 @@ input stream
 
         # If *some* of the baskets are Awkward and *some* are not,
         # convert the ones that are not, individually.
-        if any(
-            uproot._util.from_module(x, "awkward") for x in basket_arrays.values()
-        ) and isinstance(
+        if has_any_awkward_types and isinstance(
             library,
             (
                 uproot.interpretation.library.Awkward,
                 uproot.interpretation.library.Pandas,
             ),
         ):
+            form = json.loads(self.awkward_form(branch.file).to_json())
             for k, v in basket_arrays.items():
                 if not uproot._util.from_module(v, "awkward"):
-                    form = json.loads(self.awkward_form(branch.file).to_json())
                     basket_arrays[k] = (
                         uproot.interpretation.library._object_to_awkward_array(
                             awkward, form, v
@@ -741,22 +738,28 @@ class AsStridedObjects(uproot.interpretation.numerical.AsDtype):
     """
 
     def __init__(self, model, members, original=None):
-        all_headers_prepended = False
-
+        # Skip the leading run of ``(None, None)`` header markers.
+        first_value_loc = 0
         for first_value_loc in range(len(members)):
             if members[first_value_loc] != (None, None):
                 break
 
-        for i in range(first_value_loc, len(members)):
-            member, _value = members[i]
-            if member is not None and not all_headers_prepended:
-                all_headers_prepended = True
-            if (member is None and all_headers_prepended) or len(members) == 1:
+        # Drop any ``(None, None)`` header markers that appear after the value
+        # members have begun (e.g. from multiple base classes), keeping the
+        # actual members.  ``all_headers_prepended`` is True when the kept
+        # members end with a value (headers prepended), and False when a
+        # trailing header marker was removed.
+        all_headers_prepended = False
+        kept_members = []
+        for member, value in members[first_value_loc:]:
+            if member is None and value is None:
                 all_headers_prepended = False
-                del members[i]
+            else:
+                all_headers_prepended = True
+                kept_members.append((member, value))
 
         self._model = model
-        self._members = members[first_value_loc:]
+        self._members = kept_members
         self._original = original
         self._all_headers_prepended = all_headers_prepended
         super().__init__(_unravel_members(self._members))
@@ -834,6 +837,111 @@ class AsStridedObjects(uproot.interpretation.numerical.AsDtype):
     def _wrap_almost_finalized(self, array):
         return StridedObjectArray(self, array)
 
+    def final_array(
+        self,
+        basket_arrays,
+        entry_start,
+        entry_stop,
+        entry_offsets,
+        library,
+        branch,
+        options,
+    ):
+        self.hook_before_final_array(
+            basket_arrays=basket_arrays,
+            entry_start=entry_start,
+            entry_stop=entry_stop,
+            entry_offsets=entry_offsets,
+            library=library,
+            branch=branch,
+        )
+
+        # The per-basket ``basket_array`` may prepend an ``@headers`` field to
+        # the dtype (see ``basket_array`` below). Derive the output dtype from
+        # the actual basket arrays rather than from a mutated ``self._to_dtype``
+        # so that the interpretation object can be safely shared across threads.
+        to_dtype = self._to_dtype
+        for basket_array in basket_arrays.values():
+            if basket_array.dtype.names is not None and "@headers" in (
+                basket_array.dtype.names
+            ):
+                to_dtype = basket_array.dtype
+                break
+
+        if entry_start >= entry_stop:
+            output = library.empty((0,), to_dtype)
+
+        else:
+            length = 0
+            start = entry_offsets[0]
+            for _, stop in enumerate(entry_offsets[1:]):
+                if start <= entry_start and entry_stop <= stop:
+                    length += entry_stop - entry_start
+                elif start <= entry_start < stop:
+                    length += stop - entry_start
+                elif start <= entry_stop <= stop:
+                    length += entry_stop - start
+                elif entry_start < stop and start <= entry_stop:
+                    length += stop - start
+                start = stop
+
+            output = library.empty((length,), to_dtype)
+
+            start = entry_offsets[0]
+            for basket_num, stop in enumerate(entry_offsets[1:]):
+                if start <= entry_start and entry_stop <= stop:
+                    local_start = entry_start - start
+                    local_stop = entry_stop - start
+                    basket_array = basket_arrays[basket_num]
+                    output[:] = basket_array[local_start:local_stop]
+
+                elif start <= entry_start < stop:
+                    local_start = entry_start - start
+                    local_stop = stop - start
+                    basket_array = basket_arrays[basket_num]
+                    output[: stop - entry_start] = basket_array[local_start:local_stop]
+
+                elif start <= entry_stop <= stop:
+                    local_start = 0
+                    local_stop = entry_stop - start
+                    basket_array = basket_arrays[basket_num]
+                    output[start - entry_start :] = basket_array[local_start:local_stop]
+
+                elif entry_start < stop and start <= entry_stop:
+                    basket_array = basket_arrays[basket_num]
+                    output[start - entry_start : stop - entry_start] = basket_array
+
+                start = stop
+
+        output = output.view(output.dtype.newbyteorder("="))
+        self.hook_before_library_finalize(
+            basket_arrays=basket_arrays,
+            entry_start=entry_start,
+            entry_stop=entry_stop,
+            entry_offsets=entry_offsets,
+            library=library,
+            branch=branch,
+            output=output,
+        )
+
+        output = self._wrap_almost_finalized(output)
+
+        output = library.finalize(
+            output, branch, self, entry_start, entry_stop, options
+        )
+
+        self.hook_after_final_array(
+            basket_arrays=basket_arrays,
+            entry_start=entry_start,
+            entry_stop=entry_stop,
+            entry_offsets=entry_offsets,
+            library=library,
+            branch=branch,
+            output=output,
+        )
+
+        return output
+
     def basket_array(
         self,
         data,
@@ -863,13 +971,19 @@ class AsStridedObjects(uproot.interpretation.numerical.AsDtype):
             and dtype.itemsize != byte_offsets[1] - byte_offsets[0]
             and self.all_headers_prepended
         ):
-            dtype = [
-                ("@headers", "u1", byte_offsets[1] - byte_offsets[0] - dtype.itemsize)
-            ] + [
-                (x, str(y[0]))
-                for x, y in sorted(dtype.fields.items(), key=lambda k: k[1])
-            ]
-            self._to_dtype = numpy.dtype(dtype)
+            dtype = numpy.dtype(
+                [
+                    (
+                        "@headers",
+                        "u1",
+                        byte_offsets[1] - byte_offsets[0] - dtype.itemsize,
+                    )
+                ]
+                + [
+                    (x, str(y[0]))
+                    for x, y in sorted(dtype.fields.items(), key=lambda k: k[1])
+                ]
+            )
         try:
             output = data.view(dtype).reshape((-1, *shape))
 

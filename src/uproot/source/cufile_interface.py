@@ -1,3 +1,5 @@
+# BSD 3-Clause License; see https://github.com/scikit-hep/uproot5/blob/main/LICENSE
+
 from __future__ import annotations
 
 import uproot
@@ -32,7 +34,7 @@ class CuFileSource:
     def pread(
         self,
         buffer,
-        size: int | None = None,
+        size: int,
         file_offset: int = 0,
         task_size: int | None = None,
     ):

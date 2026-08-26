@@ -14,6 +14,8 @@ import atexit
 import importlib.metadata
 import os
 
+import packaging.version
+
 from uproot._util import parse_version
 
 
@@ -95,7 +97,7 @@ def older_xrootd(min_version):
     else:
         try:
             return parse_version(version) < parse_version(min_version)
-        except TypeError:
+        except (TypeError, packaging.version.InvalidVersion):
             return False
 
 

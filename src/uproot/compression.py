@@ -557,6 +557,16 @@ def compress(data: bytes, compression: Compression) -> bytes:
         else:
             checksum = b""
 
+        # An incompressible block can compress to *more* than the input (zlib
+        # adds ~5 bytes/16 KiB, lz4 adds a header plus an 8-byte checksum). If
+        # the compressed size doesn't fit in the 3-byte header field, the
+        # high byte would be silently truncated, corrupting the block. ROOT
+        # decides whether to compress on a whole-buffer basis, so we fall back
+        # to storing ``data`` uncompressed (as the final guard below does) when
+        # any block fails to shrink or would overflow the 3-byte size field.
+        if len_compressed >= len(block) or len_compressed > _3BYTE_MAX:
+            return data
+
         uncompressed_size = _4byte.pack(len(block))[:-1]
         compressed_size = _4byte.pack(len_compressed)[:-1]
 

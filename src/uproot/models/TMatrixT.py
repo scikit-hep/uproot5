@@ -1,7 +1,7 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot5/blob/main/LICENSE
 
 """
-This module defines versioned models for ``TLeaf`` and its subclasses.
+This module defines versioned models for ``TMatrixT``.
 """
 
 from __future__ import annotations

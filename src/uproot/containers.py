@@ -11,7 +11,8 @@ from __future__ import annotations
 
 import struct
 import types
-from collections.abc import KeysView, Mapping, Sequence, Set, ValuesView
+from collections.abc import KeysView, Mapping, Sequence, ValuesView
+from collections.abc import Set as AbstractSet
 
 import awkward
 import numpy
@@ -1150,8 +1151,23 @@ class AsBitSet(AsVectorLike):
 
     _specialpathitem_name = "bitset"
 
+    def __init__(self, header, keys):
+        super().__init__(header, keys)
+        # ``std::bitset<N>`` is parameterized by its number of bits, which the
+        # shared base class discards (it stores a bool dtype for the items).
+        self._num_bits = keys if isinstance(keys, int) else None
+
+    @property
+    def num_bits(self):
+        """
+        The number of bits in the ``std::bitset``, or None if unknown.
+        """
+        return self._num_bits
+
     @property
     def typename(self):
+        if self._num_bits is not None:
+            return f"std::bitset<{self._num_bits}>"
         return f"std::bitset<{_content_typename(self.keys)}>"
 
     @property
@@ -1498,7 +1514,7 @@ class ROOTRVec(Container, Sequence):
     def __init__(self, values):
         if isinstance(values, types.GeneratorType):
             values = numpy.asarray(list(values))
-        elif isinstance(values, Set):
+        elif isinstance(values, AbstractSet):
             values = numpy.asarray(list(values))
         elif isinstance(values, (list, tuple)):
             values = numpy.asarray(values)
@@ -1557,7 +1573,7 @@ class STLList(Container, Sequence):
     def __init__(self, values):
         if isinstance(values, types.GeneratorType):
             values = numpy.asarray(list(values))
-        elif isinstance(values, Set):
+        elif isinstance(values, AbstractSet):
             values = numpy.asarray(list(values))
         elif isinstance(values, (list, tuple)):
             values = numpy.asarray(values)
@@ -1613,7 +1629,7 @@ class STLVector(Container, Sequence):
     def __init__(self, values):
         if isinstance(values, types.GeneratorType):
             values = numpy.asarray(list(values))
-        elif isinstance(values, Set):
+        elif isinstance(values, AbstractSet):
             values = numpy.asarray(list(values))
         elif isinstance(values, (list, tuple)):
             values = numpy.asarray(values)
@@ -1674,7 +1690,7 @@ class STLBitSet(Container, Sequence):
 
     def __str__(self, limit=85):
         def tostring(i):
-            return _tostring(self._values[i])
+            return _tostring(self._numbytes[i])
 
         return _str_with_ellipsis(tostring, len(self), "[", "]", limit)
 
@@ -1685,7 +1701,7 @@ class STLBitSet(Container, Sequence):
         return self._numbytes[where]
 
     def __len__(self):
-        return self._numbytes
+        return len(self._numbytes)
 
     def __iter__(self):
         return iter(self._numbytes)
@@ -1704,7 +1720,7 @@ class STLBitSet(Container, Sequence):
         ]
 
 
-class STLSet(Container, Set):
+class STLSet(Container, AbstractSet):
     """
     Args:
         keys (``numpy.ndarray`` or iterable): Contents of the ``std::set``.
@@ -1715,7 +1731,7 @@ class STLSet(Container, Set):
     def __init__(self, keys):
         if isinstance(keys, types.GeneratorType):
             keys = numpy.asarray(list(keys))
-        elif isinstance(keys, Set):
+        elif isinstance(keys, AbstractSet):
             keys = numpy.asarray(list(keys))
         else:
             keys = numpy.asarray(keys)
@@ -1748,7 +1764,7 @@ class STLSet(Container, Set):
             return False
 
     def __eq__(self, other):
-        if isinstance(other, Set):
+        if isinstance(other, AbstractSet):
             if not isinstance(other, STLSet):
                 other = STLSet(other)
         else:
@@ -1792,16 +1808,16 @@ class STLMap(Container, Mapping):
         return STLMap(mapping.keys(), mapping.values())
 
     def __init__(self, keys, values):
-        if KeysView is not None and isinstance(keys, KeysView):
+        if isinstance(keys, KeysView):
             keys = numpy.asarray(list(keys))
         elif isinstance(keys, types.GeneratorType):
             keys = numpy.asarray(list(keys))
-        elif isinstance(keys, Set):
+        elif isinstance(keys, AbstractSet):
             keys = numpy.asarray(list(keys))
         else:
             keys = numpy.asarray(keys)
 
-        if ValuesView is not None and isinstance(values, ValuesView):
+        if isinstance(values, ValuesView):
             values = numpy.asarray(list(values))
         elif isinstance(values, types.GeneratorType):
             values = numpy.asarray(list(values))

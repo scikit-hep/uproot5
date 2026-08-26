@@ -36,6 +36,7 @@ class FileSink:
     def __init__(self, urlpath_or_file_like: str | IO, **storage_options):
         self._open_file = None
         self._file = None
+        self._closed = False
 
         if uproot._util.is_file_like(
             urlpath_or_file_like, readable=False, writable=False, seekable=False
@@ -99,6 +100,9 @@ class FileSink:
         Opens the file if it is not already open.
         Sets the file's position to the beginning.
         """
+        if self._closed:
+            raise OSError(f"file sink is closed{self.in_path}")
+
         if not self._file:
             self._file = self._open_file.open()
 
@@ -130,19 +134,20 @@ class FileSink:
     @property
     def closed(self) -> bool:
         """
-        True if the file is closed; False otherwise.
+        True if the file has been closed; False otherwise.
         """
-        return self._file is None
+        return self._closed
 
     def close(self):
         """
-        Closes the file (calls ``close`` if it has such a method) and sets it to
-        None so that closure is permanent.
+        Closes the file (calls ``close`` if it has such a method) and marks the
+        sink as closed so that closure is permanent: subsequent reads or writes
+        raise instead of silently reopening the file.
         """
-        if self._file is not None:
-            if hasattr(self._file, "close"):
-                self._file.close()
-            self._file = None
+        if self._file is not None and hasattr(self._file, "close"):
+            self._file.close()
+        self._file = None
+        self._closed = True
 
     def __enter__(self):
         return self

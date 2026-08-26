@@ -85,7 +85,7 @@ class Source:
         """
 
     def chunks(
-        self, ranges: list[(int, int)], notifications: queue.Queue
+        self, ranges: list[tuple[int, int]], notifications: queue.Queue
     ) -> list[Chunk]:
         """
         Args:
@@ -200,7 +200,7 @@ class MultithreadedSource(Source):
         return chunk
 
     def chunks(
-        self, ranges: list[(int, int)], notifications: queue.Queue
+        self, ranges: list[tuple[int, int]], notifications: queue.Queue
     ) -> list[Chunk]:
         self._num_requests += 1
         self._num_requested_chunks += len(ranges)
@@ -438,7 +438,7 @@ for file path {self._source.file_path}""")
         :ref:`uproot.source.chunk.Chunk.future` completes), if it isn't
         already.
         """
-        if (start, stop) in self:
+        if self._start <= start and stop <= self._stop:
             self.wait(insist=stop)
             local_start = start - self._start
             local_stop = stop - self._start

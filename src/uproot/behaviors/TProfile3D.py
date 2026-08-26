@@ -40,16 +40,20 @@ class TProfile3D(uproot.behaviors.TProfile.Profile):
     @property
     def weighted(self):
         fBinSumw2 = self.member("fBinSumw2", none_if_missing=True)
-        return fBinSumw2 is None or len(fBinSumw2) != len(self.member("fNcells"))
+        return fBinSumw2 is not None and len(fBinSumw2) == self.member("fNcells")
 
     def counts(self, flow=False):
-        fBinEntries = numpy.asarray(self.member("fBinEntries"))
+        xaxis_fNbins = self.member("fXaxis").member("fNbins")
+        yaxis_fNbins = self.member("fYaxis").member("fNbins")
+        zaxis_fNbins = self.member("fZaxis").member("fNbins")
         out = uproot.behaviors.TProfile._effective_counts_1d(
-            fBinEntries.reshape(-1),
+            numpy.asarray(self.member("fBinEntries")).reshape(-1),
             numpy.asarray(self.member("fBinSumw2")).reshape(-1),
             self.member("fNcells"),
         )
-        out = out.reshape(fBinEntries.shape)
+        out = numpy.transpose(
+            out.reshape(zaxis_fNbins + 2, yaxis_fNbins + 2, xaxis_fNbins + 2)
+        )
         if flow:
             return out
         else:

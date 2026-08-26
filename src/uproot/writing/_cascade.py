@@ -1025,7 +1025,7 @@ class TListOfStreamers(CascadeNode):
                 rawstreamers.append(
                     RawStreamerInfo(
                         location + start,
-                        uproot._util.tobytes(uncompressed.raw_data[start:stop]),
+                        uncompressed.raw_data[start:stop].tobytes(),
                         streamer.name,
                         streamer.class_version,
                     )
@@ -1035,7 +1035,7 @@ class TListOfStreamers(CascadeNode):
                 rawstreamers.append(
                     RawTListOfStrings(
                         location + start,
-                        uproot._util.tobytes(uncompressed.raw_data[start:stop]),
+                        uncompressed.raw_data[start:stop].tobytes(),
                     )
                 )
 
@@ -2145,7 +2145,7 @@ class FileHeader(CascadeLeaf):
         assert compression_code >= 0
         assert info_location >= 0
         assert info_num_bytes >= 0
-        assert uuid_version == 1
+        assert uuid_version <= 8
 
         out = FileHeader(
             end,

@@ -94,6 +94,8 @@ def iterate(
             ``list``, and ``dict``. Note that the container *type itself*
             must be passed as ``how``, not an instance of that type (i.e.
             ``how=tuple``, not ``how=()``).
+            For ``library="ak"``, passing ``how="zip"`` applies ``ak.zip`` to
+            interleave data from compatible branches.
         report (bool): If True, this generator yields
             (arrays, :doc:`uproot.behaviors.TBranch.Report`) pairs; if False,
             it only yields arrays. The report has data about the ``TFile``,
@@ -138,17 +140,29 @@ def iterate(
     * already-open RNTuple objects.
     * iterables of the above.
 
-    Options (type; default): (Not implemented yet.)
+    ..
+      Future Dev Note: These shared reading options are manually copied across multiple files
+      so they appear in `help` output of Python interpreter and the online documentation
+      for the functions where they are used.
 
-    * handler (:doc:`uproot.source.chunk.Source` class; None)
-    * timeout (float for HTTP, int for XRootD; 30)
-    * max_num_elements (None or int; None)
-        The maximum number of elements to be requested in a single vector read, when using XRootD.
-    * num_workers (int; 1)
-    * use_threads (bool; False on the emscripten platform (i.e. in a web browser), else True)
-    * num_fallback_workers (int; 10)
-    * begin_chunk_size (memory_size; 403, the smallest a ROOT file can be)
-    * minimal_ttree_metadata (bool; True)
+    Options (type; default):
+
+    * handler (:doc:`uproot.source.chunk.Source` class; None): Class implementing reading from the data source.
+      If None, deduced from input file type.
+    * timeout (float for HTTP, int for XRootD; default defined by source implementation): The time in seconds
+      to wait before giving up on the connection. Ignored for non-internet sources like local file paths.
+    * max_num_elements (None or int; None): The maximum number of byte ranges requested in a single XRootD
+      vector read. This does not limit the number of TTree or RNTuple entries read; pass ``entry_stop`` to
+      ``arrays``, ``uproot.iterate``, or ``uproot.concatenate`` instead.
+    * num_workers (int; 1): Number of tasks to spawn for reading, only used by some source types
+    * use_threads (bool; False on the emscripten platform (i.e. in a web browser), else True):
+      Use multi-threading when spawning workers.
+    * num_fallback_workers (int; 10): Number of tasks to spawn for reading in fallback mode
+      (for example, multi-threading requests instead of a multipart GET for an http source)
+    * begin_chunk_size (memory_size; 403, the smallest a ROOT file can be): Size of first chunk that we attempt
+      to read in bytes.
+    * minimal_ttree_metadata (bool; True): Skip rarely used metadata and defer reading of embedded TBaskets
+    * http_max_header_bytes (int; 21784): Maximum size of HTTP packet in bytes when the source is http
 
     See also :ref:`uproot.behaviors.RNTuple.HasFields.iterate` to iterate
     within a single file.
@@ -165,6 +179,7 @@ def iterate(
     files = uproot._util.regularize_files(files, steps_allowed=False, **options)
     library = uproot.interpretation.library._regularize_library(library)
 
+    global_offset = 0
     for file_path, object_path in files:
         hasfields = uproot._util.regularize_object_path(
             file_path, object_path, None, allow_missing, options
@@ -173,7 +188,7 @@ def iterate(
         if hasfields is not None:
             with hasfields:
                 try:
-                    yield from hasfields.iterate(
+                    for item in hasfields.iterate(
                         expressions=expressions,
                         cut=cut,
                         filter_name=filter_name,
@@ -189,13 +204,28 @@ def iterate(
                         report=report,
                         filter_branch=filter_branch,
                         interpretation_executor=interpretation_executor,
-                    )
+                    ):
+                        if report:
+                            arrays, rep = item
+                            arrays = library.global_index(arrays, global_offset)
+                            rep = rep.to_global(global_offset)
+                            popper = [arrays]
+                            del arrays
+                            del item
+                            yield popper.pop(), rep
+
+                        else:
+                            popper = [library.global_index(item, global_offset)]
+                            del item
+                            yield popper.pop()
 
                 except uproot.exceptions.KeyInFileError:
                     if allow_missing:
                         continue
                     else:
                         raise
+
+                global_offset += hasfields.num_entries
 
 
 def concatenate(
@@ -267,6 +297,8 @@ def concatenate(
             ``list``, and ``dict``. Note that the container *type itself*
             must be passed as ``how``, not an instance of that type (i.e.
             ``how=tuple``, not ``how=()``).
+            For ``library="ak"``, passing ``how="zip"`` applies ``ak.zip`` to
+            interleave data from compatible branches.
         report (bool): If True, this generator yields
             (arrays, :doc:`uproot.behaviors.TBranch.Report`) pairs; if False,
             it only yields arrays. The report has data about the ``TFile``,
@@ -313,17 +345,29 @@ def concatenate(
     * already-open RNTuple objects.
     * iterables of the above.
 
-    Options (type; default): (Not implemented yet.)
+    ..
+      Future Dev Note: These shared reading options are manually copied across multiple files
+      so they appear in `help` output of Python interpreter and the online documentation
+      for the functions where they are used.
 
-    * handler (:doc:`uproot.source.chunk.Source` class; None)
-    * timeout (float for HTTP, int for XRootD; 30)
-    * max_num_elements (None or int; None)
-        The maximum number of elements to be requested in a single vector read, when using XRootD.
-    * num_workers (int; 1)
-    * use_threads (bool; False on the emscripten platform (i.e. in a web browser), else True)
-    * num_fallback_workers (int; 10)
-    * begin_chunk_size (memory_size; 403, the smallest a ROOT file can be)
-    * minimal_ttree_metadata (bool; True)
+    Options (type; default):
+
+    * handler (:doc:`uproot.source.chunk.Source` class; None): Class implementing reading from the data source.
+      If None, deduced from input file type.
+    * timeout (float for HTTP, int for XRootD; default defined by source implementation): The time in seconds
+      to wait before giving up on the connection. Ignored for non-internet sources like local file paths.
+    * max_num_elements (None or int; None): The maximum number of byte ranges requested in a single XRootD
+      vector read. This does not limit the number of TTree or RNTuple entries read; pass ``entry_stop`` to
+      ``arrays``, ``uproot.iterate``, or ``uproot.concatenate`` instead.
+    * num_workers (int; 1): Number of tasks to spawn for reading, only used by some source types
+    * use_threads (bool; False on the emscripten platform (i.e. in a web browser), else True):
+      Use multi-threading when spawning workers.
+    * num_fallback_workers (int; 10): Number of tasks to spawn for reading in fallback mode
+      (for example, multi-threading requests instead of a multipart GET for an http source)
+    * begin_chunk_size (memory_size; 403, the smallest a ROOT file can be): Size of first chunk that we attempt
+      to read in bytes.
+    * minimal_ttree_metadata (bool; True): Skip rarely used metadata and defer reading of embedded TBaskets
+    * http_max_header_bytes (int; 21784): Maximum size of HTTP packet in bytes when the source is http
 
     Other file entry points:
 
@@ -400,6 +444,7 @@ def concatenate(
                 arrays = library.global_index(arrays, global_start)
             except uproot.exceptions.KeyInFileError:
                 if allow_missing:
+                    global_start = global_stop
                     continue
                 else:
                     raise
@@ -682,6 +727,8 @@ class HasFields(Mapping):
                 ``list``, and ``dict``. Note that the container *type itself*
                 must be passed as ``how``, not an instance of that type (i.e.
                 ``how=tuple``, not ``how=()``).
+                For ``library="ak"``, passing ``how="zip"`` applies ``ak.zip``
+                to interleave data from compatible branches.
             virtual (bool): If True, return virtual Awkward arrays, meaning that the data will not be
                 loaded into memory until it is accessed.
             access_log (None or object with a ``__iadd__`` method): If an access_log is
@@ -970,6 +1017,8 @@ class HasFields(Mapping):
                 ``list``, and ``dict``. Note that the container *type itself*
                 must be passed as ``how``, not an instance of that type (i.e.
                 ``how=tuple``, not ``how=()``).
+                For ``library="ak"``, passing ``how="zip"`` applies ``ak.zip``
+                to interleave data from compatible branches.
             report (bool): If True, this generator yields
                 (arrays, :doc:`uproot.behaviors.TBranch.Report`) pairs; if False,
                 it only yields arrays. The report has data about the ``TFile``,
@@ -1030,7 +1079,7 @@ class HasFields(Mapping):
                 filter_typename=filter_typename,
                 filter_field=filter_field,
                 entry_start=start,
-                entry_stop=start + step_size,
+                entry_stop=min(start + step_size, entry_stop),
                 library=library,
                 backend=backend,
                 interpreter=interpreter,
@@ -1601,8 +1650,8 @@ class HasFields(Mapping):
             raise uproot.KeyInFileError(
                 original_where,
                 keys=self.keys(recursive=recursive),
-                file_path=self._file.file_path,
-                object_path=self.object_path,
+                file_path=self.ntuple.parent._file.file_path,
+                object_path=self.path,
             )
 
     def __iter__(self):

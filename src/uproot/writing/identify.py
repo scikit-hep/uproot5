@@ -502,9 +502,7 @@ def to_writable(obj):
 
             fNbins = len(edges) - 1
             fXmin, fXmax = edges[0], edges[-1]
-            if numpy.allclose(
-                edges, numpy.linspace(fXmin, fXmax, len(edges), edges.dtype)
-            ):
+            if numpy.allclose(edges, numpy.linspace(fXmin, fXmax, len(edges))):
                 edges = numpy.array([], dtype=">f8")
             else:
                 edges = edges.astype(">f8")
@@ -551,18 +549,14 @@ def to_writable(obj):
 
             fXaxis_fNbins = len(xedges) - 1
             fXmin, fXmax = xedges[0], xedges[-1]
-            if numpy.allclose(
-                xedges, numpy.linspace(fXmin, fXmax, len(xedges), xedges.dtype)
-            ):
+            if numpy.allclose(xedges, numpy.linspace(fXmin, fXmax, len(xedges))):
                 xedges = numpy.array([], dtype=">f8")
             else:
                 xedges = xedges.astype(">f8")
 
             fYaxis_fNbins = len(yedges) - 1
             fYmin, fYmax = yedges[0], yedges[-1]
-            if numpy.allclose(
-                yedges, numpy.linspace(fYmin, fYmax, len(yedges), yedges.dtype)
-            ):
+            if numpy.allclose(yedges, numpy.linspace(fYmin, fYmax, len(yedges))):
                 yedges = numpy.array([], dtype=">f8")
             else:
                 yedges = yedges.astype(">f8")
@@ -625,27 +619,21 @@ def to_writable(obj):
 
             fXaxis_fNbins = len(xedges) - 1
             fXmin, fXmax = xedges[0], xedges[-1]
-            if numpy.allclose(
-                xedges, numpy.linspace(fXmin, fXmax, len(xedges), xedges.dtype)
-            ):
+            if numpy.allclose(xedges, numpy.linspace(fXmin, fXmax, len(xedges))):
                 xedges = numpy.array([], dtype=">f8")
             else:
                 xedges = xedges.astype(">f8")
 
             fYaxis_fNbins = len(yedges) - 1
             fYmin, fYmax = yedges[0], yedges[-1]
-            if numpy.allclose(
-                yedges, numpy.linspace(fYmin, fYmax, len(yedges), yedges.dtype)
-            ):
+            if numpy.allclose(yedges, numpy.linspace(fYmin, fYmax, len(yedges))):
                 yedges = numpy.array([], dtype=">f8")
             else:
                 yedges = yedges.astype(">f8")
 
             fZaxis_fNbins = len(zedges) - 1
             fZmin, fZmax = zedges[0], zedges[-1]
-            if numpy.allclose(
-                zedges, numpy.linspace(fZmin, fZmax, len(zedges), zedges.dtype)
-            ):
+            if numpy.allclose(zedges, numpy.linspace(fZmin, fZmax, len(zedges))):
                 zedges = numpy.array([], dtype=">f8")
             else:
                 zedges = zedges.astype(">f8")
@@ -703,7 +691,7 @@ def _fXbins_maybe_regular(axis, boost_histogram):
     if boost_histogram is None:
         edges = axis.edges
         fXmin, fXmax = edges[0], edges[-1]
-        if numpy.allclose(edges, numpy.linspace(fXmin, fXmax, len(edges), edges.dtype)):
+        if numpy.allclose(edges, numpy.linspace(fXmin, fXmax, len(edges))):
             return numpy.array([], dtype=">f8")
         else:
             return edges.astype(">f8")

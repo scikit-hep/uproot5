@@ -1016,7 +1016,7 @@ in file {self.file.file_path}"""
         out.append(self._format2.pack(self._members["fBufferSize"]))
         if self._speedbump1 is not None:
             out.append(self._speedbump1)
-        out.append(uproot._util.tobytes(self._members["fBuffer"]))
+        out.append(self._members["fBuffer"].tobytes())
         out.append(
             self._format3.pack(
                 self._members["fBinStatErrOpt"],

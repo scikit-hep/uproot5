@@ -22,34 +22,26 @@ class Model_TTime_v2(uproot.model.VersionedModel):
 
         forth_obj = uproot._awkwardforth.get_forth_obj(context)
         if forth_obj is not None:
-            forth_obj = forth_obj.get_gen_obj()
-            content = {}
-        if forth_obj is not None:
-            key = forth_obj.get_keys(1)
-            form_key = f"node{key}-data"
-            forth_obj.add_to_header(f"output node{key}-data int64\n")
-            content["fMilliSec"] = {
-                "class": "NumpyArray",
-                "primitive": "int64",
-                "inner_shape": [],
-                "parameters": {},
-                "form_key": f"node{key}",
-            }
-            forth_obj.add_to_pre(f"stream !q-> node{key}-data\n")
-            if forth_obj.should_add_form():
-                forth_obj.add_form_key(form_key)
-        self._members["fMilliSec"] = cursor.field(chunk, self._format0, context)
-        if forth_obj is not None:
-            if forth_obj.should_add_form():
-                forth_obj.add_form(
-                    {
-                        "class": "RecordArray",
-                        "contents": content,
-                        "parameters": {"__record__": "TTime"},
+            key = uproot._awkwardforth.get_first_key_number(context)
+            forth_stash = uproot._awkwardforth.Node(
+                f"node{key} TTime :prebuilt",
+                form_details={
+                    "class": "RecordArray",
+                    "contents": {
+                        "fMilliSec": {
+                            "class": "NumpyArray",
+                            "primitive": "int64",
+                            "form_key": f"node{key}",
+                        }
                     },
-                    len(content),
-                )
-            forth_obj.add_node("dynamic", forth_obj.get_attrs(), "i64", 0, None)
+                    "parameters": {"__record__": "TTime"},
+                },
+            )
+            forth_stash.header_code.append(f"output node{key}-data int64\n")
+            forth_stash.pre_code.append(f"stream !q-> node{key}-data\n")
+            forth_obj.add_node(forth_stash)
+            forth_obj.set_active_node(forth_stash)
+        self._members["fMilliSec"] = cursor.field(chunk, self._format0, context)
 
     def read_member_n(self, chunk, cursor, context, file, member_index):
         if member_index == 0:

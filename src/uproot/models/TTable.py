@@ -1,10 +1,7 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot5/blob/main/LICENSE
 
 """
-This module defines versioned models for ``TTree``.
-
-See :doc:`uproot.behaviors.TBranch` for definitions of ``TTree``-reading
-functions.
+This module defines versioned models for ``TTable``.
 """
 
 from __future__ import annotations
@@ -80,19 +77,6 @@ class EColumnType(Enum):
     kPtr = 11
     kBool = 12
 
-
-format = {
-    EColumnType.kFloat: struct.Struct(">f"),
-    EColumnType.kInt: struct.Struct(">i"),
-    EColumnType.kLong: struct.Struct(">q"),
-    EColumnType.kShort: struct.Struct(">h"),
-    EColumnType.kDouble: struct.Struct(">d"),
-    EColumnType.kUInt: struct.Struct(">I"),
-    EColumnType.kULong: struct.Struct(">Q"),
-    EColumnType.kUShort: struct.Struct(">H"),
-    EColumnType.kChar: struct.Struct("c"),
-    EColumnType.kBool: struct.Struct("?"),
-}
 
 _dtype = {
     EColumnType.kFloat: numpy.dtype(">f4"),

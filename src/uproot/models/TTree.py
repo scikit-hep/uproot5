@@ -453,7 +453,7 @@ in file {self.file.file_path}"""
             )
 
     @property
-    def member_values(self):
+    def member_names(self):
         minimal = [
             "fEntries",
             "fTotBytes",

@@ -126,6 +126,8 @@ def iterate(
             ``list``, and ``dict``. Note that the container *type itself*
             must be passed as ``how``, not an instance of that type (i.e.
             ``how=tuple``, not ``how=()``).
+            For ``library="ak"``, passing ``how="zip"`` applies ``ak.zip`` to
+            interleave data from compatible branches.
         report (bool): If True, this generator yields
             (arrays, :doc:`uproot.behaviors.TBranch.Report`) pairs; if False,
             it only yields arrays. The report has data about the ``TFile``,
@@ -163,17 +165,29 @@ def iterate(
     * already-open TTree objects.
     * iterables of the above.
 
+    ..
+      Future Dev Note: These shared reading options are manually copied across multiple files
+      so they appear in `help` output of Python interpreter and the online documentation
+      for the functions where they are used.
+
     Options (type; default):
 
-    * handler (:doc:`uproot.source.chunk.Source` class; None)
-    * timeout (float for HTTP, int for XRootD; 30)
-    * max_num_elements (None or int; None)
-        The maximum number of elements to be requested in a single vector read, when using XRootD.
-    * num_workers (int; 1)
-    * use_threads (bool; False on the emscripten platform (i.e. in a web browser), else True)
-    * num_fallback_workers (int; 10)
-    * begin_chunk_size (memory_size; 403, the smallest a ROOT file can be)
-    * minimal_ttree_metadata (bool; True)
+    * handler (:doc:`uproot.source.chunk.Source` class; None): Class implementing reading from the data source.
+      If None, deduced from input file type.
+    * timeout (float for HTTP, int for XRootD; default defined by source implementation): The time in seconds
+      to wait before giving up on the connection. Ignored for non-internet sources like local file paths.
+    * max_num_elements (None or int; None): The maximum number of byte ranges requested in a single XRootD
+      vector read. This does not limit the number of TTree or RNTuple entries read; pass ``entry_stop`` to
+      ``arrays``, ``uproot.iterate``, or ``uproot.concatenate`` instead.
+    * num_workers (int; 1): Number of tasks to spawn for reading, only used by some source types
+    * use_threads (bool; False on the emscripten platform (i.e. in a web browser), else True):
+      Use multi-threading when spawning workers.
+    * num_fallback_workers (int; 10): Number of tasks to spawn for reading in fallback mode
+      (for example, multi-threading requests instead of a multipart GET for an http source)
+    * begin_chunk_size (memory_size; 403, the smallest a ROOT file can be): Size of first chunk that we attempt
+      to read in bytes.
+    * minimal_ttree_metadata (bool; True): Skip rarely used metadata and defer reading of embedded TBaskets
+    * http_max_header_bytes (int; 21784): Maximum size of HTTP packet in bytes when the source is http
 
     See also :ref:`uproot.behaviors.TBranch.HasBranches.iterate` to iterate
     within a single file.
@@ -229,13 +243,13 @@ def iterate(
                         report=report,
                     ):
                         if report:
-                            arrays, report = item
+                            arrays, rep = item
                             arrays = library.global_index(arrays, global_offset)
-                            report = report.to_global(global_offset)
+                            rep = rep.to_global(global_offset)
                             popper = [arrays]
                             del arrays
                             del item
-                            yield popper.pop(), report
+                            yield popper.pop(), rep
 
                         else:
                             popper = [library.global_index(item, global_offset)]
@@ -330,6 +344,8 @@ def concatenate(
             ``list``, and ``dict``. Note that the container *type itself*
             must be passed as ``how``, not an instance of that type (i.e.
             ``how=tuple``, not ``how=()``).
+            For ``library="ak"``, passing ``how="zip"`` applies ``ak.zip`` to
+            interleave data from compatible branches.
         custom_classes (None or dict): If a dict, override the classes from
             the :doc:`uproot.reading.ReadOnlyFile` or ``uproot.classes``.
         allow_missing (bool): If True, skip over any files that do not contain
@@ -365,17 +381,29 @@ def concatenate(
     * already-open TTree objects.
     * iterables of the above.
 
+    ..
+      Future Dev Note: These shared reading options are manually copied across multiple files
+      so they appear in `help` output of Python interpreter and the online documentation
+      for the functions where they are used.
+
     Options (type; default):
 
-    * handler (:doc:`uproot.source.chunk.Source` class; None)
-    * timeout (float for HTTP, int for XRootD; 30)
-    * max_num_elements (None or int; None)
-        The maximum number of elements to be requested in a single vector read, when using XRootD.
-    * num_workers (int; 1)
-    * use_threads (bool; False on the emscripten platform (i.e. in a web browser), else True)
-    * num_fallback_workers (int; 10)
-    * begin_chunk_size (memory_size; 403, the smallest a ROOT file can be)
-    * minimal_ttree_metadata (bool; True)
+    * handler (:doc:`uproot.source.chunk.Source` class; None): Class implementing reading from the data source.
+      If None, deduced from input file type.
+    * timeout (float for HTTP, int for XRootD; default defined by source implementation): The time in seconds
+      to wait before giving up on the connection. Ignored for non-internet sources like local file paths.
+    * max_num_elements (None or int; None): The maximum number of byte ranges requested in a single XRootD
+      vector read. This does not limit the number of TTree or RNTuple entries read; pass ``entry_stop`` to
+      ``arrays``, ``uproot.iterate``, or ``uproot.concatenate`` instead.
+    * num_workers (int; 1): Number of tasks to spawn for reading, only used by some source types
+    * use_threads (bool; False on the emscripten platform (i.e. in a web browser), else True):
+      Use multi-threading when spawning workers.
+    * num_fallback_workers (int; 10): Number of tasks to spawn for reading in fallback mode
+      (for example, multi-threading requests instead of a multipart GET for an http source)
+    * begin_chunk_size (memory_size; 403, the smallest a ROOT file can be): Size of first chunk that we attempt
+      to read in bytes.
+    * minimal_ttree_metadata (bool; True): Skip rarely used metadata and defer reading of embedded TBaskets
+    * http_max_header_bytes (int; 21784): Maximum size of HTTP packet in bytes when the source is http
 
     Other file entry points:
 
@@ -462,6 +490,7 @@ def concatenate(
                 arrays = library.global_index(arrays, global_start)
             except uproot.exceptions.KeyInFileError:
                 if allow_missing:
+                    global_start = global_stop
                     continue
                 else:
                     raise
@@ -840,6 +869,8 @@ class HasBranches(Mapping):
                 ``list``, and ``dict``. Note that the container *type itself*
                 must be passed as ``how``, not an instance of that type (i.e.
                 ``how=tuple``, not ``how=()``).
+                For ``library="ak"``, passing ``how="zip"`` applies ``ak.zip``
+                to interleave data from compatible branches.
             virtual (bool): If True, return virtual arrays that compute their
                 data on demand; if False, return fully realized arrays.
             access_log (None or object with a ``__iadd__`` method): If an access_log is
@@ -1196,6 +1227,8 @@ class HasBranches(Mapping):
                 ``list``, and ``dict``. Note that the container *type itself*
                 must be passed as ``how``, not an instance of that type (i.e.
                 ``how=tuple``, not ``how=()``).
+                For ``library="ak"``, passing ``how="zip"`` applies ``ak.zip``
+                to interleave data from compatible branches.
 
         Returns a group of arrays from the ``TTree``.
 
@@ -1231,6 +1264,7 @@ class HasBranches(Mapping):
                 interpretation_executor=interpretation_executor,
                 array_cache=array_cache,
                 library=library,
+                ak_add_doc=ak_add_doc,
                 how=how,
             )
 
@@ -1268,9 +1302,15 @@ class HasBranches(Mapping):
         checked = set()
         for _, context in expression_context:
             for branch in context["branches"]:
-                if branch.cache_key not in checked and not isinstance(
-                    branchid_interpretation[branch.cache_key],
-                    uproot.interpretation.grouped.AsGrouped,
+                if (
+                    branch.cache_key not in checked
+                    # branches already satisfied from the array cache are present
+                    # in arrays; don't re-read and re-decompress their baskets
+                    and branch.cache_key not in arrays
+                    and not isinstance(
+                        branchid_interpretation[branch.cache_key],
+                        uproot.interpretation.grouped.AsGrouped,
+                    )
                 ):
                     checked.add(branch.cache_key)
                     for (
@@ -1313,8 +1353,7 @@ class HasBranches(Mapping):
                     if branch.cache_key not in checked:
                         checked.add(branch.cache_key)
                         interpretation = branchid_interpretation[branch.cache_key]
-                        if branch is not None:
-                            cache_key = f"{self.cache_key}:{expression}:{interpretation.cache_key}:{entry_start}-{entry_stop}:{library.name}"
+                        cache_key = f"{self.cache_key}:{expression}:{interpretation.cache_key}:{entry_start}-{entry_stop}:{library.name}"
                         array_cache[cache_key] = arrays[branch.cache_key]
 
         output = language.compute_expressions(
@@ -1414,6 +1453,8 @@ class HasBranches(Mapping):
                 ``list``, and ``dict``. Note that the container *type itself*
                 must be passed as ``how``, not an instance of that type (i.e.
                 ``how=tuple``, not ``how=()``).
+                For ``library="ak"``, passing ``how="zip"`` applies ``ak.zip``
+                to interleave data from compatible branches.
             report (bool): If True, this generator yields
                 (arrays, :doc:`uproot.behaviors.TBranch.Report`) pairs; if False,
                 it only yields arrays. The report has data about the ``TFile``,
@@ -1452,6 +1493,7 @@ class HasBranches(Mapping):
                 decompression_executor=decompression_executor,
                 interpretation_executor=interpretation_executor,
                 library=library,
+                ak_add_doc=ak_add_doc,
                 how=how,
                 report=report,
             )
@@ -2003,10 +2045,11 @@ class HasBranches(Mapping):
         already-loaded ``TTree``; it only needs ``language`` to parse the
         expressions, not to evaluate them.
 
-        In addition, the estimate is based on compressed ``TBasket`` sizes
-        (the amount of data that would have to be read), not uncompressed
-        ``TBasket`` sizes (the amount of data that the final arrays would use
-        in memory, without considering ``cuts``).
+        In addition, the estimate is based on uncompressed ``TBasket`` sizes
+        (approximately the amount of data that the final arrays would use in
+        memory, without considering ``cuts``), not compressed ``TBasket`` sizes
+        (the amount of data that would have to be read). Only the ``TBasket``
+        ``TKeys`` are read to obtain these sizes, not the ``TBasket`` data.
 
         This is the algorithm that
         :ref:`uproot.behaviors.TBranch.HasBranches.iterate` uses to convert a
@@ -2786,10 +2829,19 @@ in file {self._file.file_path}"""
         ``TKey``, which are small, but may be slow for remote connections because
         of the latency of round-trip requests.
         """
-        if 0 <= basket_num < self.num_baskets:
+        if 0 <= basket_num < self._num_normal_baskets:
+            # Reading only the TKey (instead of the whole TBasket) is enough to
+            # determine the uncompressed size; add fKeylen to match the header-
+            # inclusive value reported by Model_TBasket.uncompressed_bytes.
+            key = self.basket_key(basket_num)
+            return key.data_uncompressed_bytes + key.fKeylen
+        elif 0 <= basket_num < self.num_baskets:
             return self.basket(basket_num).uncompressed_bytes
         else:
-            return self.basket_key(basket_num).data_uncompressed_bytes
+            raise IndexError(
+                f"""branch {self.name!r} has {self.num_baskets} baskets; cannot get basket {basket_num}
+in file {self._file.file_path}"""
+            )
 
     def basket_key(self, basket_num):
         """
@@ -2860,7 +2912,9 @@ in file {self._file.file_path}"""
         out = []
         start = entry_offsets[0]
         for basket_num, stop in enumerate(entry_offsets[1:]):
-            if entry_start < stop and start <= entry_stop:
+            if entry_start < stop and (
+                start < entry_stop or entry_start == entry_stop == start
+            ):
                 if 0 <= basket_num < self._num_normal_baskets:
                     byte_start = self.member("fBasketSeek")[basket_num]
                     byte_stop = byte_start + self.basket_compressed_bytes(basket_num)
@@ -3634,8 +3688,8 @@ def _ranges_or_baskets_to_arrays(
             original_index = range_original_index[(chunk.start, chunk.stop)]
             if update_ranges_or_baskets:
                 replace(ranges_or_baskets, original_index, basket)
-        except Exception:
-            notifications.put(sys.exc_info())
+        except Exception as err:
+            notifications.put(err)
         else:
             notifications.put(basket)
 
@@ -3689,8 +3743,8 @@ def _ranges_or_baskets_to_arrays(
                     # no longer needed, save memory
                     basket_arrays.clear()
 
-        except Exception:
-            notifications.put(sys.exc_info())
+        except Exception as err:
+            notifications.put(err)
         else:
             notifications.put(None)
 
@@ -3714,11 +3768,8 @@ def _ranges_or_baskets_to_arrays(
         elif obj is None:
             pass
 
-        elif isinstance(obj, tuple) and len(obj) == 3:
-            uproot.source.futures.delayed_raise(*obj)
-
         else:
-            raise AssertionError(obj)
+            raise obj
 
         obj = None  # release before blocking
 
@@ -3763,7 +3814,9 @@ def _hasbranches_num_entries_for(
             entry_offsets = branch.entry_offsets
             start = entry_offsets[0]
             for basket_num, stop in enumerate(entry_offsets[1:]):
-                if entry_start < stop and start <= entry_stop:
+                if entry_start < stop and (
+                    start < entry_stop or entry_start == entry_stop == start
+                ):
                     total_bytes += branch.basket_uncompressed_bytes(basket_num)
                 start = stop
 
@@ -3791,29 +3844,3 @@ def _regularize_step_size(
     return _hasbranches_num_entries_for(
         hasbranches, target_num_bytes, entry_start, entry_stop, branchid_interpretation
     )
-
-
-class _WrapDict(MutableMapping):
-    def __init__(self, dict):
-        self.dict = dict
-
-    def __str__(self):
-        return str(self.dict)
-
-    def __repr__(self):
-        return repr(self.dict)
-
-    def __getitem__(self, where):
-        return self.dict[where]
-
-    def __setitem__(self, where, what):
-        self.dict[where] = what
-
-    def __delitem__(self, where):
-        del self.dict[where]
-
-    def __iter__(self):
-        yield from self.dict
-
-    def __len__(self):
-        return len(self.dict)

@@ -400,7 +400,7 @@ in file {self.file.file_path}"""
             out.insert(where, uproot.serialization.numbytes_version(num_bytes, version))
 
     base_names_versions = []
-    member_names = ["fMarkerColor", "fMarkerStyle", "fMarkserSize"]
+    member_names = ["fMarkerColor", "fMarkerStyle", "fMarkerSize"]
     class_flags = {}
     class_code = None
 

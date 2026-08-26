@@ -79,17 +79,29 @@ def open(
     :doc:`uproot.reading.ReadOnlyDirectory` but not a
     :doc:`uproot.reading.ReadOnlyFile`.
 
+    ..
+      Future Dev Note: These shared reading options are manually copied across multiple files
+      so they appear in `help` output of Python interpreter and the online documentation
+      for the functions where they are used.
+
     Options (type; default):
 
-    * handler (:doc:`uproot.source.chunk.Source` class; None)
-    * timeout (float for HTTP, int for XRootD; 30)
-    * max_num_elements (None or int; None)
-        The maximum number of elements to be requested in a single vector read, when using XRootD.
-    * num_workers (int; 1)
-    * use_threads (bool; False on the emscripten platform (i.e. in a web browser), else True)
-    * num_fallback_workers (int; 10)
-    * begin_chunk_size (memory_size; 403, the smallest a ROOT file can be)
-    * minimal_ttree_metadata (bool; True)
+    * handler (:doc:`uproot.source.chunk.Source` class; None): Class implementing reading from the data source.
+      If None, deduced from input file type.
+    * timeout (float for HTTP, int for XRootD; default defined by source implementation): The time in seconds
+      to wait before giving up on the connection. Ignored for non-internet sources like local file paths.
+    * max_num_elements (None or int; None): The maximum number of byte ranges requested in a single XRootD
+      vector read. This does not limit the number of TTree or RNTuple entries read; pass ``entry_stop`` to
+      ``arrays``, ``uproot.iterate``, or ``uproot.concatenate`` instead.
+    * num_workers (int; 1): Number of tasks to spawn for reading, only used by some source types
+    * use_threads (bool; False on the emscripten platform (i.e. in a web browser), else True):
+      Use multi-threading when spawning workers.
+    * num_fallback_workers (int; 10): Number of tasks to spawn for reading in fallback mode
+      (for example, multi-threading requests instead of a multipart GET for an http source)
+    * begin_chunk_size (memory_size; 403, the smallest a ROOT file can be): Size of first chunk that we attempt
+      to read in bytes.
+    * minimal_ttree_metadata (bool; True): Skip rarely used metadata and defer reading of embedded TBaskets
+    * http_max_header_bytes (int; 21784): Maximum size of HTTP packet in bytes when the source is http
 
     Any object derived from a ROOT file is a context manager (works in Python's
     ``with`` statement) that closes the file when exiting the ``with`` block.
@@ -523,17 +535,29 @@ class ReadOnlyFile(CommonFileMethods):
     :doc:`uproot.reading.open` returns a :doc:`uproot.reading.ReadOnlyDirectory`
     and not a :doc:`uproot.reading.ReadOnlyFile`.
 
+    ..
+      Future Dev Note: These shared reading options are manually copied across multiple files
+      so they appear in `help` output of Python interpreter and the online documentation
+      for the functions where they are used.
+
     Options (type; default):
 
-    * handler (:doc:`uproot.source.chunk.Source` class; None)
-    * timeout (float for HTTP, int for XRootD; 30)
-    * max_num_elements (None or int; None)
-       The maximum number of elements to be requested in a single vector read, when using XRootD.
-    * num_workers (int; 1)
-    * use_threads (bool; False on the emscripten platform (i.e. in a web browser), else True)
-    * num_fallback_workers (int; 10)
-    * begin_chunk_size (memory_size; 403, the smallest a ROOT file can be)
-    * minimal_ttree_metadata (bool; True)
+    * handler (:doc:`uproot.source.chunk.Source` class; None): Class implementing reading from the data source.
+      If None, deduced from input file type.
+    * timeout (float for HTTP, int for XRootD; default defined by source implementation): The time in seconds
+      to wait before giving up on the connection. Ignored for non-internet sources like local file paths.
+    * max_num_elements (None or int; None): The maximum number of byte ranges requested in a single XRootD
+      vector read. This does not limit the number of TTree or RNTuple entries read; pass ``entry_stop`` to
+      ``arrays``, ``uproot.iterate``, or ``uproot.concatenate`` instead.
+    * num_workers (int; 1): Number of tasks to spawn for reading, only used by some source types
+    * use_threads (bool; False on the emscripten platform (i.e. in a web browser), else True):
+      Use multi-threading when spawning workers.
+    * num_fallback_workers (int; 10): Number of tasks to spawn for reading in fallback mode
+      (for example, multi-threading requests instead of a multipart GET for an http source)
+    * begin_chunk_size (memory_size; 403, the smallest a ROOT file can be): Size of first chunk that we attempt
+      to read in bytes.
+    * minimal_ttree_metadata (bool; True): Skip rarely used metadata and defer reading of embedded TBaskets
+    * http_max_header_bytes (int; 21784): Maximum size of HTTP packet in bytes when the source is http
 
     See the `ROOT TFile documentation <https://root.cern.ch/doc/master/classTFile.html>`__
     for a specification of ``TFile`` header fields.
@@ -656,12 +680,15 @@ in file {file_path}""")
         :ref:`uproot.reading.ReadOnlyFile.object_cache` would still be
         accessible.
         """
-        if hasattr(self, "_source") and hasattr(self._source, "close"):
-            self._source.close()
-        if hasattr(self._decompression_executor, "shutdown"):
-            self._decompression_executor.shutdown()
-        if hasattr(self._interpretation_executor, "shutdown"):
-            self._interpretation_executor.shutdown()
+        source = getattr(self, "_source", None)
+        if hasattr(source, "close"):
+            source.close()
+        decompression_executor = getattr(self, "_decompression_executor", None)
+        if hasattr(decompression_executor, "shutdown"):
+            decompression_executor.shutdown()
+        interpretation_executor = getattr(self, "_interpretation_executor", None)
+        if hasattr(interpretation_executor, "shutdown"):
+            interpretation_executor.shutdown()
 
     def __del__(self):
         self.close()
@@ -688,12 +715,7 @@ in file {file_path}""")
         return self
 
     def __exit__(self, exception_type, exception_value, traceback):
-        if hasattr(self, "_source") and hasattr(self._source, "__exit__"):
-            self._source.__exit__(exception_type, exception_value, traceback)
-        if hasattr(self._decompression_executor, "shutdown"):
-            self._decompression_executor.shutdown()
-        if hasattr(self._interpretation_executor, "shutdown"):
-            self._interpretation_executor.shutdown()
+        self.close()
 
     @property
     def source(self):
@@ -822,12 +844,12 @@ in file {file_path}""")
             names = self.streamer_dependencies(classname, version=version)
         first = True
         for name, version in names:
-            for v, streamer in self.streamers[name].items():
-                if v == version:
-                    if not first:
-                        stream.write("\n")
-                    streamer.show(stream=stream)
-                    first = False
+            streamer = self.streamers[name].get(version)
+            if streamer is not None:
+                if not first:
+                    stream.write("\n")
+                streamer.show(stream=stream)
+                first = False
 
     @property
     def streamers(self):
@@ -1744,6 +1766,31 @@ class ReadOnlyDirectory(Mapping):
 
         Note that this does not read any data from the file.
         """
+        yield from self._iter(
+            "keys",
+            recursive=recursive,
+            cycle=cycle,
+            filter_name=filter_name,
+            filter_classname=filter_classname,
+        )
+
+    def _iter(
+        self,
+        what,
+        *,
+        recursive=True,
+        cycle=True,
+        filter_name=no_filter,
+        filter_classname=no_filter,
+    ):
+        """
+        Private generator shared by :ref:`uproot.reading.ReadOnlyDirectory.iterkeys`,
+        :ref:`uproot.reading.ReadOnlyDirectory.iteritems`, and
+        :ref:`uproot.reading.ReadOnlyDirectory.iterclassnames`. The ``what``
+        argument selects what is yielded: ``"keys"`` yields names (str),
+        ``"items"`` yields (name, object) pairs, and ``"classnames"`` yields
+        (name, classname) pairs.
+        """
         filter_name = uproot._util.regularize_filter(filter_name)
         filter_classname = uproot._util.regularize_filter(filter_classname)
         seen = set()
@@ -1753,21 +1800,34 @@ class ReadOnlyDirectory(Mapping):
             ):
                 out = key.name(cycle=cycle)
                 if out not in seen:
-                    yield out
+                    if what == "keys":
+                        yield out
+                    elif what == "items":
+                        yield out, key.get()
+                    else:
+                        yield out, key.fClassName
                 seen.add(out)
 
             if recursive and key.fClassName in ("TDirectory", "TDirectoryFile"):
-                for k1 in key.get().iterkeys(
+                for sub in key.get()._iter(
+                    what,
                     recursive=recursive,
                     cycle=cycle,
                     filter_name=no_filter,
                     filter_classname=filter_classname,
                 ):
+                    if what == "keys":
+                        k1 = sub
+                    else:
+                        k1, v = sub
                     k2 = f"{key.name(cycle=False)}/{k1}"
                     k3 = k2[: k2.index(";")] if ";" in k2 else k2
                     if filter_name is no_filter or filter_name(k3):
                         if k2 not in seen:
-                            yield k2
+                            if what == "keys":
+                                yield k2
+                            else:
+                                yield k2, v
                         seen.add(k2)
 
     def itervalues(
@@ -1826,31 +1886,13 @@ class ReadOnlyDirectory(Mapping):
         Note that this reads all objects that are selected by ``filter_name``
         and ``filter_classname``.
         """
-        filter_name = uproot._util.regularize_filter(filter_name)
-        filter_classname = uproot._util.regularize_filter(filter_classname)
-        seen = set()
-        for key in self._keys:
-            if (filter_name is no_filter or filter_name(key.fName)) and (
-                filter_classname is no_filter or filter_classname(key.fClassName)
-            ):
-                out = key.name(cycle=cycle)
-                if out not in seen:
-                    yield out, key.get()
-                seen.add(out)
-
-            if recursive and key.fClassName in ("TDirectory", "TDirectoryFile"):
-                for k1, v in key.get().iteritems(
-                    recursive=recursive,
-                    cycle=cycle,
-                    filter_name=no_filter,
-                    filter_classname=filter_classname,
-                ):
-                    k2 = f"{key.name(cycle=False)}/{k1}"
-                    k3 = k2[: k2.index(";")] if ";" in k2 else k2
-                    if filter_name is no_filter or filter_name(k3):
-                        if k2 not in seen:
-                            yield k2, v
-                        seen.add(k2)
+        yield from self._iter(
+            "items",
+            recursive=recursive,
+            cycle=cycle,
+            filter_name=filter_name,
+            filter_classname=filter_classname,
+        )
 
     def iterclassnames(
         self,
@@ -1876,31 +1918,13 @@ class ReadOnlyDirectory(Mapping):
 
         Note that this does not read any data from the file.
         """
-        filter_name = uproot._util.regularize_filter(filter_name)
-        filter_classname = uproot._util.regularize_filter(filter_classname)
-        seen = set()
-        for key in self._keys:
-            if (filter_name is no_filter or filter_name(key.fName)) and (
-                filter_classname is no_filter or filter_classname(key.fClassName)
-            ):
-                out = key.name(cycle=cycle)
-                if out not in seen:
-                    yield out, key.fClassName
-                seen.add(out)
-
-            if recursive and key.fClassName in ("TDirectory", "TDirectoryFile"):
-                for k1, v in key.get().iterclassnames(
-                    recursive=recursive,
-                    cycle=cycle,
-                    filter_name=no_filter,
-                    filter_classname=filter_classname,
-                ):
-                    k2 = f"{key.name(cycle=False)}/{k1}"
-                    k3 = k2[: k2.index(";")] if ";" in k2 else k2
-                    if filter_name is no_filter or filter_name(k3):
-                        if k2 not in seen:
-                            yield k2, v
-                        seen.add(k2)
+        yield from self._iter(
+            "classnames",
+            recursive=recursive,
+            cycle=cycle,
+            filter_name=filter_name,
+            filter_classname=filter_classname,
+        )
 
     def _ipython_key_completions_(self):
         """
@@ -2248,6 +2272,8 @@ class ReadOnlyDirectory(Mapping):
 _key_format_small = struct.Struct(">ihiIhhii")
 _key_format_big = struct.Struct(">ihiIhhqq")
 
+_string_classname = re.compile(r"(std\s*::\s*)?string\s*$")
+
 
 class ReadOnlyKey:
     """
@@ -2525,7 +2551,7 @@ class ReadOnlyKey:
             start_cursor = cursor.copy()
             context = {"breadcrumbs": (), "TKey": self}
 
-            if re.match(r"(std\s*::\s*)?string", self._fClassName):
+            if _string_classname.match(self._fClassName):
                 return cursor.string(chunk, context)
 
             cls = self._file.class_named(self._fClassName)

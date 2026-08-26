@@ -56,18 +56,24 @@ def create(file_path: str | Path | IO, **options):
 
     Returns a :doc:`uproot.writing.writable.WritableDirectory`.
 
+    ..
+      Future Dev Note: These shared writing options are manually copied across
+      multiple docstrings to make them available in `help` and online.
+
     Options (type; default):
 
-    * initial_directory_bytes (int; 256)
-    * initial_streamers_bytes (int; 1024)
-    * uuid_function (callable; ``uuid.uuid1``)
-    * compression (:doc:`uproot.compression.Compression` or None): Compression algorithm
-    and level for new objects added to the file. Can be updated after creating
-    the :doc:`uproot.writing.writable.WritableFile`. Default is ``uproot.ZLIB(1)``.
+    * initial_directory_bytes (int; 256): The number of bytes to allocate for new directories so that
+      TKeys can be added to them without needing immediate rewriting of the block.
+    * initial_streamers_bytes (int; 1024): The number of bytes to allocate for a new list of streamers
+      so that streamers can be added to it without needing immediate rewriting
+    * uuid_function (callable; ``uuid.uuid1``): Function to create the file's UUID and/or any directory's UUID.
+    * compression (:doc:`uproot.compression.Compression` or None; ``uproot.ZLIB(1)``): Compression algorithm
+      and level for new objects added to the file. Can be updated after creating
+      the :doc:`uproot.writing.writable.WritableFile`.
 
     See :doc:`uproot.writing.writable.WritableFile` for details on these options.
 
-    Additional options are passed to as ``storage_options`` to the fsspec filesystem
+    Additional options are passed as ``storage_options`` to the fsspec filesystem
     """
     file_path = uproot._util.regularize_path(file_path)
     storage_options = {
@@ -95,18 +101,24 @@ def recreate(file_path: str | Path | IO, **options):
 
     Returns a :doc:`uproot.writing.writable.WritableDirectory`.
 
+    ..
+      Future Dev Note: These shared writing options are manually copied across
+      multiple docstrings to make them available in `help` and online.
+
     Options (type; default):
 
-    * initial_directory_bytes (int; 256)
-    * initial_streamers_bytes (int; 1024)
-    * uuid_function (callable; ``uuid.uuid1``)
-    * compression (:doc:`uproot.compression.Compression` or None): Compression algorithm
-    and level for new objects added to the file. Can be updated after creating
-    the :doc:`uproot.writing.writable.WritableFile`. Default is ``uproot.ZLIB(1)``.
+    * initial_directory_bytes (int; 256): The number of bytes to allocate for new directories so that
+      TKeys can be added to them without needing immediate rewriting of the block.
+    * initial_streamers_bytes (int; 1024): The number of bytes to allocate for a new list of streamers
+      so that streamers can be added to it without needing immediate rewriting
+    * uuid_function (callable; ``uuid.uuid1``): Function to create the file's UUID and/or any directory's UUID.
+    * compression (:doc:`uproot.compression.Compression` or None; ``uproot.ZLIB(1)``): Compression algorithm
+      and level for new objects added to the file. Can be updated after creating
+      the :doc:`uproot.writing.writable.WritableFile`.
 
     See :doc:`uproot.writing.writable.WritableFile` for details on these options.
 
-    Additional options are passed to as ``storage_options`` to the fsspec filesystem.
+    Additional options are passed as ``storage_options`` to the fsspec filesystem
     """
 
     file_path = uproot._util.regularize_path(file_path)
@@ -154,14 +166,19 @@ def update(file_path: str | Path | IO, **options):
 
     Returns a :doc:`uproot.writing.writable.WritableDirectory`.
 
+    ..
+      Future Dev Note: These shared writing options are manually copied across
+      multiple docstrings to make them available in `help` and online.
+
     Options (type; default):
 
-    * initial_directory_bytes (int; 256)
-    * uuid_function (callable; ``uuid.uuid1``)
+    * initial_directory_bytes (int; 256): The number of bytes to allocate for new directories so that
+      TKeys can be added to them without needing immediate rewriting of the block.
+    * uuid_function (callable; ``uuid.uuid1``): Function to create the file's UUID and/or any directory's UUID.
 
     See :doc:`uproot.writing.writable.WritableFile` for details on these options.
 
-    Additional options are passed to as ``storage_options`` to the fsspec filesystem
+    Additional options are passed as ``storage_options`` to the fsspec filesystem
     """
 
     file_path = uproot._util.regularize_path(file_path)
@@ -1056,6 +1073,14 @@ class WritableDirectory(MutableMapping):
 
     def _del(self, name, cycle):
         key = self._cascading.data.get_key(name, cycle)
+        if key is None:
+            raise uproot.exceptions.KeyInFileError(
+                name,
+                cycle="any" if cycle is None else cycle,
+                keys=self._cascading.data.key_names,
+                file_path=self.file_path,
+                object_path=self.object_path,
+            )
         start = key.seek_location
         stop = start + key.num_bytes + key.compressed_bytes
         self._cascading.freesegments.release(start, stop)
@@ -1574,7 +1599,7 @@ in file {source.file_path} in directory {source.path}"""
             chunk = notifications.get()
             assert isinstance(chunk, uproot.source.chunk.Chunk)
 
-            raw_data = uproot._util.tobytes(chunk.raw_data)
+            raw_data = chunk.raw_data.tobytes()
 
             new_name, old_key = ranges[chunk.start, chunk.stop]
             path = new_name.strip("/").split("/")
@@ -2127,72 +2152,18 @@ class WritableNTuple:
     def compression(self):
         """
         Compression algorithm and level (:doc:`uproot.compression.Compression` or None)
-        for new blobs added to the RNTuple.
+        used when writing pages to this RNTuple.
 
-        This property can be changed and doesn't have to be the same as the compression
-        of the file, which allows you to write different objects with different
-        compression settings.
-
-        The following are equivalent:
-
-        .. code-block:: python
-
-            my_directory["tree"]["branch1"].compression = uproot.ZLIB(1)
-            my_directory["tree"]["branch2"].compression = uproot.LZMA(9)
-
-        and
-
-        .. code-block:: python
-
-            my_directory["tree"].compression = {"branch1": uproot.ZLIB(1),
-                                                "branch2": uproot.LZMA(9)}
+        RNTuple compression is file-wide and is taken from the file header; individual
+        per-column compression is not yet supported.
         """
-        out = {}
-        last = None
-        for datum in self._cascading._branch_data:
-            if datum["kind"] != "record":
-                last = out[datum["fName"]] = datum["compression"]
-        if all(x == last for x in out.values()):
-            return last
-        else:
-            return out
+        return self._cascading._freesegments.fileheader.compression
 
     @compression.setter
     def compression(self, value):
-        if value is None or isinstance(value, uproot.compression.Compression):
-            for datum in self._cascading._branch_data:
-                if datum["kind"] != "record":
-                    datum["compression"] = value
-
-        elif (
-            isinstance(value, Mapping)
-            and all(
-                isinstance(k, str)
-                and (v is None or isinstance(v, uproot.compression.Compression))
-                for k, v in value.items()
-            )
-            and all(
-                datum["fName"] in value
-                for datum in self._cascading._branch_data
-                if datum["kind"] != "record"
-            )
-            and len(value)
-            == len(
-                [
-                    datum
-                    for datum in self._cascading._branch_data
-                    if datum["kind"] != "record"
-                ]
-            )
-        ):
-            for datum in self._cascading._branch_data:
-                if datum["kind"] != "record":
-                    datum["compression"] = value[datum["fName"]]
-
-        else:
-            raise TypeError(
-                "compression must be None, a uproot.compression.Compression object, like uproot.ZLIB(4) or uproot.ZSTD(0), or a mapping of branch names to such objects"
-            )
+        raise NotImplementedError(
+            "per-RNTuple compression is not yet supported; set compression on the file instead"
+        )
 
     @property
     def num_entries(self) -> int:

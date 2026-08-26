@@ -6,18 +6,9 @@ import socket
 import time
 from collections.abc import Callable, Iterable, Mapping
 from concurrent.futures import Executor
+from typing import TYPE_CHECKING, Any, Final, NamedTuple, Protocol, TypeVar
 
 import awkward
-
-from uproot.source.chunk import SourcePerformanceCounters
-
-try:
-    from typing import TYPE_CHECKING, Final, NamedTuple
-
-    from typing_extensions import Any, Protocol, TypeVar
-except ImportError:
-    from typing import TYPE_CHECKING, Any, Final, Protocol, TypeVar
-
 import numpy
 
 import uproot
@@ -27,6 +18,7 @@ from uproot.behaviors.RNTuple import (
     _regularize_step_size as _RNTuple_regularize_step_size,
 )
 from uproot.behaviors.TBranch import HasBranches, TBranch, _regularize_step_size
+from uproot.source.chunk import SourcePerformanceCounters
 
 if TYPE_CHECKING:
     from awkward._nplikes.typetracer import TypeTracerReport
@@ -192,17 +184,29 @@ def dask(
     * already-open TTree objects.
     * iterables of the above.
 
+    ..
+      Future Dev Note: These shared reading options are manually copied across multiple files
+      so they appear in `help` output of Python interpreter and the online documentation
+      for the functions where they are used.
+
     Options (type; default):
 
-    * handler (:doc:`uproot.source.chunk.Source` class; None)
-    * timeout (float for HTTP, int for XRootD; 30)
-    * max_num_elements (None or int; None)
-        The maximum number of elements to be requested in a single vector read, when using XRootD.
-    * num_workers (int; 1)
-    * use_threads (bool; False on the emscripten platform (i.e. in a web browser), else True)
-    * num_fallback_workers (int; 10)
-    * begin_chunk_size (memory_size; 403, the smallest a ROOT file can be)
-    * minimal_ttree_metadata (bool; True)
+    * handler (:doc:`uproot.source.chunk.Source` class; None): Class implementing reading from the data source.
+      If None, deduced from input file type.
+    * timeout (float for HTTP, int for XRootD; default defined by source implementation): The time in seconds
+      to wait before giving up on the connection. Ignored for non-internet sources like local file paths.
+    * max_num_elements (None or int; None): The maximum number of byte ranges requested in a single XRootD
+      vector read. This does not limit the number of TTree or RNTuple entries read; pass ``entry_stop`` to
+      ``arrays``, ``uproot.iterate``, or ``uproot.concatenate`` instead.
+    * num_workers (int; 1): Number of tasks to spawn for reading, only used by some source types
+    * use_threads (bool; False on the emscripten platform (i.e. in a web browser), else True):
+      Use multi-threading when spawning workers.
+    * num_fallback_workers (int; 10): Number of tasks to spawn for reading in fallback mode
+      (for example, multi-threading requests instead of a multipart GET for an http source)
+    * begin_chunk_size (memory_size; 403, the smallest a ROOT file can be): Size of first chunk that we attempt
+      to read in bytes.
+    * minimal_ttree_metadata (bool; True): Skip rarely used metadata and defer reading of embedded TBaskets
+    * http_max_header_bytes (int; 21784): Maximum size of HTTP packet in bytes when the source is http
 
     Other file entry points:
 
@@ -667,6 +671,16 @@ def _get_dask_array(
                 new_keys = set(new_keys)
                 common_keys = [key for key in common_keys if key in new_keys]
 
+    if count == 0:
+        raise ValueError(
+            "allow_missing=True and no TTrees found in\n\n    {}".format(
+                "\n    ".join(
+                    f"{{{f.file_path if isinstance(f, HasBranches) else f!r}: {f.object_path if isinstance(f, HasBranches) else o!r}}}"
+                    for f, o, *_ in files
+                )
+            )
+        )
+
     # this is the earliest time we can deal with an unset step_size
     if step_size is unset:
         assert steps_per_file is not unset  # either assigned or assumed to be 1
@@ -674,22 +688,12 @@ def _get_dask_array(
         total_entries = sum(ttree.num_entries for ttree in ttrees)
         step_size = max(1, math.ceil(total_entries / (total_files * steps_per_file)))
 
-    if count == 0:
-        raise ValueError(
-            "allow_missing=True and no TTrees found in\n\n    {}".format(
-                "\n    ".join(
-                    f"{{{f.file_path if isinstance(f, HasBranches) else f!r}: {f.object_path if isinstance(f, HasBranches) else o!r}}}"
-                    for f, o in files
-                )
-            )
-        )
-
     if len(common_keys) == 0 or not (all(is_self) or not any(is_self)):
         raise ValueError(
             "TTrees in\n\n    {}\n\nhave no TBranches in common".format(
                 "\n    ".join(
                     f"{{{f.file_path if isinstance(f, HasBranches) else f!r}: {f.object_path if isinstance(f, HasBranches) else o!r}}}"
-                    for f, o in files
+                    for f, o, *_ in files
                 )
             )
         )
@@ -1063,7 +1067,7 @@ class FormMappingInfoWithVirtualArrays(TrivialFormMappingInfo):
             return _generator
 
         container = {}
-        for buffer_key, _ in self._form.expected_from_buffers().items():
+        for buffer_key in self._form.expected_from_buffers():
             container[buffer_key] = generator(tree, buffer_key)
 
         return container
@@ -1642,6 +1646,16 @@ def _get_dak_array(
                 new_keys = set(new_keys)
                 common_keys = [key for key in common_keys if key in new_keys]
 
+    if count == 0:
+        raise ValueError(
+            "allow_missing=True and no TTrees found in\n\n    {}".format(
+                "\n    ".join(
+                    f"{{{f.file_path if isinstance(f, HasBranches) else f!r}: {f.object_path if isinstance(f, HasBranches) else o!r}}}"
+                    for f, o, *_ in files
+                )
+            )
+        )
+
     # this is the earliest time we can deal with an unset step_size
     if step_size is unset:
         assert steps_per_file is not unset  # either assigned or assumed to be 1
@@ -1649,22 +1663,12 @@ def _get_dak_array(
         total_entries = sum(ttree.num_entries for ttree in ttrees)
         step_size = max(1, math.ceil(total_entries / (total_files * steps_per_file)))
 
-    if count == 0:
-        raise ValueError(
-            "allow_missing=True and no TTrees found in\n\n    {}".format(
-                "\n    ".join(
-                    f"{{{f.file_path if isinstance(f, HasBranches) else f!r}: {f.object_path if isinstance(f, HasBranches) else o!r}}}"
-                    for f, o in files
-                )
-            )
-        )
-
     if len(common_keys) == 0 or not (all(is_self) or not any(is_self)):
         raise ValueError(
             "TTrees in\n\n    {}\n\nhave no TBranches in common".format(
                 "\n    ".join(
                     f"{{{f.file_path if isinstance(f, HasBranches) else f!r}: {f.object_path if isinstance(f, HasBranches) else o!r}}}"
-                    for f, o in files
+                    for f, o, *_ in files
                 )
             )
         )

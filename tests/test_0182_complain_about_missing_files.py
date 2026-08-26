@@ -15,7 +15,7 @@ def test():
 
     assert len(list(uproot.iterate([one, two], step_size="1 TB", library="np"))) == 2
 
-    with pytest.raises(uproot._util._FileNotFoundError):
+    with pytest.raises(FileNotFoundError):
         list(uproot.iterate([one, two, bad], library="np"))
 
     assert (
