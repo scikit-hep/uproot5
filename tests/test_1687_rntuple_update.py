@@ -839,6 +839,63 @@ def test_ntuple_add_subfield_correct_parent(tmp_path):
         assert "p1.track.phi" not in keys
 
 
+def test_ntuple_add_subfield_duplicate_name_raises(tmp_path):
+    """add_fields() with a dotted path naming an already-existing sibling must raise, not corrupt.
+
+    Regression test (reported after the initial round of fixes): the
+    duplicate-field-name check only compared a new field's name against
+    existing *top-level* fields, and a dotted path like "particle.pt" was
+    never checked against "particle"'s existing children at all -- so
+    add_fields({"particle.pt": ...}) when "particle.pt" already existed
+    silently wrote a second field record with the same (parent_field_id,
+    field_name). That's not just a harmless duplicate: it corrupts the
+    RNTuple's field/ancestor bookkeeping badly enough that even a plain read
+    of the file afterwards raised IndexError -- and since the footer had
+    already reached disk by the time that surfaced, the file was left
+    permanently unreadable (same failure class as the double-counting bug
+    fixed in test_ntuple_multiple_add_fields_same_session).
+    """
+    path = os.path.join(tmp_path, "test.root")
+    with uproot.recreate(path) as f:
+        f["mytuple"] = ak.Array([{"particle": {"pt": 1.0}}] * 2)
+
+    with uproot.update(path) as f:
+        with pytest.raises(ValueError, match="already exists"):
+            f["mytuple"].add_fields({"particle.pt": np.float32})
+
+        # the file must still be usable after the rejected call
+        f["mytuple"].add_fields({"particle.eta": np.float32})
+
+    with uproot.open(path) as f:
+        keys = f["mytuple"].keys()
+        assert "particle.pt" in keys
+        assert "particle.eta" in keys
+        arrays = f["mytuple"].arrays()
+        assert ak.all(arrays["particle", "pt"] == 1.0)
+        assert ak.all(arrays["particle", "eta"] == 0.0)
+
+
+def test_ntuple_add_subfield_duplicate_multilevel_name_raises(tmp_path):
+    """The dotted-path duplicate check must also apply at 3+ levels of nesting."""
+    path = os.path.join(tmp_path, "test.root")
+    with uproot.recreate(path) as f:
+        f["mytuple"] = ak.Array(
+            [{"p1": {"track": {"pt": 1.0}}, "p2": {"track": {"pt": 2.0}}}] * 2
+        )
+
+    with uproot.update(path) as f:
+        with pytest.raises(ValueError, match="already exists"):
+            f["mytuple"].add_fields({"p2.track.pt": np.float32})
+
+        # a legitimate new subfield under the same (correct) parent still works
+        f["mytuple"].add_fields({"p2.track.phi": np.float32})
+
+    with uproot.open(path) as f:
+        keys = f["mytuple"].keys()
+        assert "p2.track.phi" in keys
+        assert "p1.track.phi" not in keys
+
+
 def test_ntuple_add_subfield_ambiguous_name_raises(tmp_path):
     """A single-level dotted path ("parent.field") must not silently pick
 

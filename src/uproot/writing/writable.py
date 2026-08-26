@@ -2671,6 +2671,24 @@ class WritableNTuple:
                     raise ValueError(
                         f"Field {'.'.join(parts[:-1])!r} is not a record and cannot have subfields added."
                     )
+                # the top-level duplicate check above only looks at root fields
+                # and never matches a dotted key against a bare name, so a
+                # subfield with the same name as an existing sibling under the
+                # same parent went undetected -- silently writing a second
+                # field record with the same (parent_field_id, field_name).
+                # That duplicate isn't just cosmetic: it corrupts the RNTuple's
+                # field/ancestor bookkeeping badly enough that even a plain
+                # read of the file afterwards raises IndexError, and since the
+                # footer already reached disk by the time that surfaces, the
+                # file is left permanently unreadable.
+                if any(
+                    other.field_name == actual_field_name
+                    and other.parent_field_id == parent_field_id
+                    for other in existing_field_records
+                ):
+                    raise ValueError(
+                        f"Field {field_name!r} already exists in this RNTuple"
+                    )
             else:
                 actual_field_name = field_name
                 parent_field_id = next_field_id
