@@ -862,14 +862,13 @@ class NTuple(CascadeNode):
         # awkward Form equality does not consider field order for a RecordArray,
         # only the set of fields and their types, so the check above can pass
         # even when data's fields are physically ordered differently than
-        # self._header._akform's. The column buffers below are looked up by
-        # positional node-index (self._header._column_keys, built by walking
-        # self._header._akform in its field order) -- if data isn't reordered
-        # to match, a column's bytes silently get written under a different
-        # column's key, corrupting every field from the first mismatch onward.
-        header_fields = list(self._header._akform.fields)
-        if data.fields != header_fields:
-            data = data[header_fields]
+        # self._header._akform's -- at any level of nesting, not just the top.
+        # The column buffers below are looked up by positional node-index
+        # (self._header._column_keys, built by walking self._header._akform in
+        # its field order) -- if data isn't reordered to match, a column's
+        # bytes silently get written under a different column's key,
+        # corrupting every field from the first mismatch onward.
+        data = _reorder_fields_to_match_form(data, self._header._akform)
 
         # 1. Write pages
         # We write a single page for each column for now
@@ -1213,6 +1212,42 @@ def _to_packed(layout):
         case _:
             msg = f"Array type {type(layout)} cannot be written. If you believe this should be supported, please let the Uproot developers know."
             raise NotImplementedError(msg)
+
+
+def _reorder_fields_to_match_form(layout, form):
+    """
+    Recursively reorders record fields in `layout` to match `form`'s field
+    order, at every level of nesting (not just the top level). `layout` and
+    `form` are assumed to already be form-compatible (same set of fields and
+    types at every level, just possibly differently ordered within a record)
+    -- see the caller, which only reaches this after that comparison passes.
+
+    This mirrors the node types NTuple_Header._build_field_col_records knows
+    how to walk: NumpyForm (no children), ListOffsetForm/RegularForm/
+    IndexedOptionForm/UnmaskedForm (one child, via `.content`), RecordForm
+    (named children, via `.fields`/`.contents`), and UnionForm (positional
+    children, via `.contents`).
+    """
+    if isinstance(form, awkward.forms.RecordForm):
+        target_fields = list(form.fields)
+        if list(layout.fields) != target_fields:
+            layout = layout[target_fields]
+        new_contents = [
+            _reorder_fields_to_match_form(layout.content(f), form.content(f))
+            for f in target_fields
+        ]
+        return layout.copy(contents=new_contents)
+    elif isinstance(form, awkward.forms.UnionForm):
+        new_contents = [
+            _reorder_fields_to_match_form(layout.content(i), form.content(i))
+            for i in range(len(form.contents))
+        ]
+        return layout.copy(contents=new_contents)
+    elif hasattr(form, "content"):
+        return layout.copy(
+            content=_reorder_fields_to_match_form(layout.content, form.content)
+        )
+    return layout
 
 
 def _regularize_input_type_to_awkward(obj):

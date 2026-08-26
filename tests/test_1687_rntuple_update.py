@@ -555,6 +555,38 @@ def test_ntuple_extend_after_add_fields_column_order(tmp_path):
         assert bs == pytest.approx([0.0, 0.0, 0.0, 400.0, 500.0])
 
 
+def test_ntuple_extend_nested_field_order(tmp_path):
+    """extend() must reorder nested record fields to match the header, not just top-level ones.
+
+    Regression test: the fix for the top-level version of this bug
+    (test_ntuple_extend_after_add_fields_column_order) only reordered
+    top-level fields. A nested record whose fields are physically ordered
+    differently than the header's form -- reachable directly via extend(),
+    with no add_fields() involved -- still had its column buffers crossed,
+    since awkward Form equality ignores field order at every level of
+    nesting, not just the top. Manually confirmed independently against
+    ROOT's own RNTupleReader (via RNTupleReader.GetView, which isn't used
+    here because its cppyy binding has an unrelated interpreter-teardown
+    crash in this environment).
+    """
+    path = os.path.join(tmp_path, "test.root")
+    with uproot.recreate(path) as f:
+        f["mytuple"] = ak.Array([{"p": {"a": 1.0, "b": 2.0}}])
+
+    # nested record with fields in swapped physical order (b before a)
+    inner = ak.zip({"b": np.array([4.0]), "a": np.array([3.0])})
+    data = ak.zip({"p": inner}, depth_limit=1)
+    assert data["p"].fields == ["b", "a"]
+
+    with uproot.update(path) as f:
+        f["mytuple"].extend(data)
+
+    with uproot.open(path) as f:
+        arrays = f["mytuple"].arrays()
+        assert ak.all(arrays["p", "a"] == np.array([1.0, 3.0]))
+        assert ak.all(arrays["p", "b"] == np.array([2.0, 4.0]))
+
+
 def test_ntuple_accept_new_fields(tmp_path):
     with uproot.recreate(os.path.join(tmp_path, "test.root")) as f:
         f["mytuple"] = {"x": np.array([1, 2, 3], dtype=np.float32)}
