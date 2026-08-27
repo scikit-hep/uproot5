@@ -754,8 +754,26 @@ def test_ntuple_add_subfield_to_variant(tmp_path):
         )
 
     with uproot.update(os.path.join(tmp_path, "test.root")) as f:
-        with pytest.raises((ValueError, AssertionError)):
+        with pytest.raises(NotImplementedError, match="variant"):
             f["mytuple"].add_fields({"variant.jet.eta": np.float32})
+
+
+def test_ntuple_access_variant_field_raises_clearly(tmp_path):
+    with uproot.recreate(os.path.join(tmp_path, "test.root")) as f:
+        f["mytuple"] = ak.Array(
+            {"variant": ak.Array([{"jet": {"pt": 1.0, "eta": 2.0}}, 2])}
+        )
+
+    with uproot.update(os.path.join(tmp_path, "test.root")) as f:
+        with pytest.raises(NotImplementedError, match="variant"):
+            f["mytuple"]
+
+    # reading it back with uproot.open() (rather than uproot.update()) works fine
+    with uproot.open(os.path.join(tmp_path, "test.root")) as f:
+        assert f["mytuple"].arrays().tolist() == [
+            {"variant": {"jet": {"pt": 1.0, "eta": 2.0}}},
+            {"variant": 2},
+        ]
 
 
 def test_ntuple_num_entries(tmp_path):

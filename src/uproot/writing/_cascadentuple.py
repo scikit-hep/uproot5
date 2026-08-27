@@ -118,6 +118,30 @@ def _cpp_typename(akform, subcall=False):
     return typename
 
 
+def _form_contains_union(akform):
+    """
+    Recursively checks whether `akform` contains a UnionForm (variant field)
+    anywhere in its structure.
+
+    Used to detect and reject RNTuple variant fields early and clearly when
+    reloading a preexisting RNTuple, rather than letting the reload path
+    crash deep inside `_cpp_typename` with a generic "please report this"
+    assertion. Reconstructing a variant field's on-disk form reintroduces a
+    reserved "null" tag as an explicit ``EmptyForm``-backed union content --
+    something a freshly constructed union never has, and that neither
+    `_cpp_typename` nor `NTuple_Header._build_field_col_records` know how to
+    handle.
+    """
+    if isinstance(akform, awkward.forms.UnionForm):
+        return True
+    if isinstance(akform, awkward.forms.RecordForm):
+        return any(_form_contains_union(c) for c in akform.contents)
+    content = getattr(akform, "content", None)
+    if content is not None:
+        return _form_contains_union(content)
+    return False
+
+
 class RBlob_Key(Key):
     def __init__(
         self,

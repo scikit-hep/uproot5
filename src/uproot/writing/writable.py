@@ -1147,6 +1147,13 @@ class WritableDirectory(MutableMapping):
 
         existing = self._read_ntuple_envelope(key)
         full_akform, _ = existing.to_akform()
+        if cnt._form_contains_union(full_akform):
+            raise NotImplementedError(
+                f"RNTuple {name!r} has a variant (union-typed) field, which "
+                "uproot.update() does not currently support accessing at all "
+                "(neither reading nor writing); use uproot.open() instead to "
+                "read it"
+            )
         am = existing._ntuple.all_members
         anchor_location = key.seek_location + key.num_bytes
         num_entries = existing.num_entries
