@@ -164,7 +164,7 @@ def test_add_branch_nonexistent_tree(tmp_path):
         f["tree"].extend({"x": np.ones(100, dtype=np.float32)})
 
     with uproot.update(os.path.join(tmp_path, "test.root")) as f:
-        with pytest.raises(Exception):
+        with pytest.raises(uproot.exceptions.KeyInFileError):
             f["nonexistent"].add_branches(
                 {"new_branch": np.ones(100, dtype=np.float32)}
             )
