@@ -757,6 +757,25 @@ class HasFields(Mapping):
         the array in contiguous ranges of entries.
         """
 
+        if virtual:
+            # some kwargs can't be used with virtual arrays
+            err = "'{}' cannot be used with 'virtual=True'".format
+            if how is not None:
+                raise ValueError(err("how"))
+            if library != "ak":
+                raise ValueError(err("library"))
+            if expressions is not None:
+                raise ValueError(err("expressions"))
+            if cut is not None:
+                raise ValueError(err("cut"))
+            if aliases is not None:
+                raise ValueError(err("aliases"))
+        else:
+            # some kwargs can't be used with eager arrays
+            err = "'{}' cannot be used with 'virtual=False'".format
+            if access_log is not None:
+                raise ValueError(err("access_log"))
+
         parsed_expressions = {}
         parsed_cut = None
 
@@ -792,41 +811,6 @@ class HasFields(Mapping):
             if filter_name == no_filter and expressions is not None:
                 filter_name = list(required_fields)
 
-            else:
-                # Fallback for environments without 'formulate' installed
-                if cut is not None or aliases is not None:
-                    raise ImportError(
-                        "The 'formulate' package is required to use 'cut' or 'aliases'. "
-                        "Install it with: pip install formulate"
-                    )
-                if expressions is not None:
-                    # Legacy behavior: treat expressions as filter_name
-                    if filter_name == no_filter:
-                        filter_name = expressions
-                    else:
-                        raise ValueError(
-                            "Expressions are not supported yet without the 'formulate' package. "
-                            "They are currently equivalent to filter_name."
-                        )
-
-        if virtual:
-            # some kwargs can't be used with virtual arrays
-            err = "'{}' cannot be used with 'virtual=True'".format
-            if how is not None:
-                raise ValueError(err("how"))
-            if library != "ak":
-                raise ValueError(err("library"))
-            if expressions is not None:
-                raise ValueError(err("expressions"))
-            if cut is not None:
-                raise ValueError(err("cut"))
-            if aliases is not None:
-                raise ValueError(err("aliases"))
-        else:
-            # some kwargs can't be used with eager arrays
-            err = "'{}' cannot be used with 'virtual=False'".format
-            if access_log is not None:
-                raise ValueError(err("access_log"))
 
         entry_start, entry_stop = (
             uproot.behaviors.TBranch._regularize_entries_start_stop(
@@ -964,9 +948,13 @@ class HasFields(Mapping):
             if parsed_expressions:
                 out_dict = {}
                 for expr, numexpr_str in parsed_expressions.items():
-                    out_dict[expr] = ak.numexpr.evaluate(
-                        numexpr_str, local_dict=local_dict
-                    )
+                    # Bypass numexpr for simple column reads
+                    if expr in arrays.fields and numexpr_str == expr:
+                        out_dict[expr] = arrays[expr]
+                    else:
+                        out_dict[expr] = ak.numexpr.evaluate(
+                            numexpr_str, local_dict=local_dict
+                        )
                 arrays = ak.zip(out_dict, depth_limit=1)
 
         expression_context = [(f, None) for f in arrays.fields]
