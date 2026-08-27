@@ -338,6 +338,51 @@ def test_extend_new_fields_error_without_flag(tmp_path):
             )
 
 
+def test_extend_nested_record_same_shape_after_reopen(tmp_path):
+    """extend() must accept the same nested-dict shape in update mode as at creation.
+
+    Regression test: mktree({"m": {"a": ..., "b": ...}}) creates a "record"
+    kind entry in _branch_data purely as an in-memory convenience for
+    extend() to un-nest a dict-shaped value for "m" into its flattened leaf
+    branches "m_a"/"m_b" -- that grouping is never written to disk, only the
+    already-flattened leaf branches are. _load_existing_ttree only ever
+    reconstructs "counter"/"normal" branches, so a tree reopened via
+    uproot.update() has no "record" entry for "m" at all, and
+    extend({"m": {...}}) raised "missing: ['m_a', 'm_b']" even though the
+    identical call worked in the creating session -- forcing the user to
+    flatten "m" by hand only after reopening the file. Fixed by
+    opportunistically flattening a dict-shaped value under an unrecognized
+    key using the default field_name convention ("outer_inner"), but only
+    when doing so exactly matches real existing branches, so a genuinely
+    unrelated key or a partial/mismatched record still raises the same clear
+    error as before.
+    """
+    path = os.path.join(tmp_path, "test.root")
+    with uproot.recreate(path) as f:
+        f.mktree("tree", {"m": {"a": np.float64, "b": np.int32}})
+        f["tree"].extend(
+            {"m": {"a": np.array([1.0]), "b": np.array([2], dtype=np.int32)}}
+        )
+
+    with uproot.update(path) as f:
+        # the same nested-dict shape that worked at creation must still work
+        f["tree"].extend(
+            {"m": {"a": np.array([3.0]), "b": np.array([4], dtype=np.int32)}}
+        )
+        # the already-flattened form must still work too
+        f["tree"].extend({"m_a": np.array([5.0]), "m_b": np.array([6], dtype=np.int32)})
+
+    with uproot.open(path) as f:
+        assert f["tree"]["m_a"].array().tolist() == [1.0, 3.0, 5.0]
+        assert f["tree"]["m_b"].array().tolist() == [2, 4, 6]
+
+    with uproot.update(path) as f:
+        # a genuinely unrelated dict-valued key must still raise clearly,
+        # not be silently (mis)expanded
+        with pytest.raises(ValueError, match="missing"):
+            f["tree"].extend({"nonexistent": {"x": np.array([1.0])}})
+
+
 def test_extend_accept_new_fields_flat_awkward_value(tmp_path):
     """accept_new_fields must work when the new field's value is an awkward Array.
 

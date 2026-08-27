@@ -2463,6 +2463,35 @@ class WritableTree:
             not (hasattr(v, "fields") and v.fields) for v in data.values()
         )
         if isinstance(data, dict) and _data_is_flat_dict:
+            # opportunistically flatten a nested-record-shaped value under a
+            # key that isn't a recognized branch/record-parent/counter name,
+            # mirroring mktree's default field_name convention ("outer_inner").
+            # A tree reopened via uproot.update() has no persisted
+            # record-parent metadata to recognize: _load_existing_ttree only
+            # ever reconstructs "counter"/"normal" branches, because the
+            # grouping itself was never written to disk -- only the
+            # already-flattened leaf branches were -- so there is nothing on
+            # disk to reconstruct it *from* (and field_name is user-
+            # customizable besides, so branch names alone can't reveal it
+            # reliably). Rather than guess at the file's original structure,
+            # expand a dict-valued key only when doing so lines up exactly
+            # with real existing branches -- this makes the common
+            # (default-separator) case round-trip the same way extend()
+            # behaves in the same creation session, without ever silently
+            # misinterpreting an unrelated key.
+            _known_top_level = (
+                set(_user_branch_names) | _record_names | set(_counter_branch_names)
+            )
+            for _k in list(data.keys()):
+                if _k in _known_top_level:
+                    continue
+                _v = data[_k]
+                if isinstance(_v, Mapping):
+                    _flattened = {f"{_k}_{_sub}": _subv for _sub, _subv in _v.items()}
+                    if _flattened and set(_flattened) <= set(_user_branch_names):
+                        data = {**data, **_flattened}
+                        del data[_k]
+
             existing_names = _user_branch_names
             # also get record parent names that the user passes as dicts
             _record_parent_names = {
