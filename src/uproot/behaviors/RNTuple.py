@@ -794,7 +794,7 @@ class HasFields(Mapping):
                     resolved_expr = expr
                     for alias_k, alias_v in aliases.items():
                         resolved_expr = resolved_expr.replace(alias_k, f"({alias_v})")
-                        
+
                     ast = formulate.from_root(resolved_expr)
                     required_fields.update(ast.variables)
                     parsed_expressions[expr] = ast.to_numexpr()
@@ -803,14 +803,13 @@ class HasFields(Mapping):
                 resolved_cut = cut
                 for alias_k, alias_v in aliases.items():
                     resolved_cut = resolved_cut.replace(alias_k, f"({alias_v})")
-                    
+
                 cut_ast = formulate.from_root(resolved_cut)
                 required_fields.update(cut_ast.variables)
                 parsed_cut = cut_ast.to_numexpr()
 
             if filter_name == no_filter and expressions is not None:
                 filter_name = list(required_fields)
-
 
         entry_start, entry_stop = (
             uproot.behaviors.TBranch._regularize_entries_start_stop(
