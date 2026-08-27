@@ -757,15 +757,6 @@ class HasFields(Mapping):
         the array in contiguous ranges of entries.
         """
 
-        # This temporarily provides basic functionality while expressions are properly implemented
-        if expressions is not None:
-            if filter_name == no_filter:
-                filter_name = expressions
-            else:
-                raise ValueError(
-                    "Expressions are not supported yet. They are currently equivalent to filter_name."
-                )
-
         if virtual:
             # some kwargs can't be used with virtual arrays
             err = "'{}' cannot be used with 'virtual=True'".format
@@ -784,6 +775,41 @@ class HasFields(Mapping):
             err = "'{}' cannot be used with 'virtual=False'".format
             if access_log is not None:
                 raise ValueError(err("access_log"))
+
+        parsed_expressions = {}
+        parsed_cut = None
+
+        if expressions is not None or cut is not None:
+            import formulate
+
+            if aliases is None:
+                aliases = {}
+
+            required_fields = set()
+
+            if expressions is not None:
+                if isinstance(expressions, str):
+                    expressions = [expressions]
+                for expr in expressions:
+                    resolved_expr = expr
+                    for alias_k, alias_v in aliases.items():
+                        resolved_expr = resolved_expr.replace(alias_k, f"({alias_v})")
+
+                    ast = formulate.from_root(resolved_expr)
+                    required_fields.update(ast.variables)
+                    parsed_expressions[expr] = ast.to_numexpr()
+
+            if cut is not None:
+                resolved_cut = cut
+                for alias_k, alias_v in aliases.items():
+                    resolved_cut = resolved_cut.replace(alias_k, f"({alias_v})")
+
+                cut_ast = formulate.from_root(resolved_cut)
+                required_fields.update(cut_ast.variables)
+                parsed_cut = cut_ast.to_numexpr()
+
+            if filter_name == no_filter and expressions is not None:
+                filter_name = list(required_fields)
 
         entry_start, entry_stop = (
             uproot.behaviors.TBranch._regularize_entries_start_stop(
@@ -898,6 +924,7 @@ class HasFields(Mapping):
                 if field in arrays.fields:
                     arrays = arrays[field]
                 # tuples are a trickier since indices no longer match
+
                 else:
                     if field.isdigit() and arrays.fields == ["0"]:
                         arrays = arrays["0"]
@@ -905,6 +932,29 @@ class HasFields(Mapping):
                         raise AssertionError(
                             "The array was not constructed correctly. Please report this issue."
                         )
+
+        # Evaluate expressions, cuts, and aliases using Awkward and Numexpr
+        if parsed_expressions or (parsed_cut is not None):
+            local_dict = {field: arrays[field] for field in arrays.fields}
+
+            # 1. Apply cut mask if cut was provided
+            if parsed_cut is not None:
+                cut_mask = ak.numexpr.evaluate(parsed_cut, local_dict=local_dict)
+                arrays = arrays[cut_mask]
+                local_dict = {field: arrays[field] for field in arrays.fields}
+
+            # 2. Compute expressions
+            if parsed_expressions:
+                out_dict = {}
+                for expr, numexpr_str in parsed_expressions.items():
+                    # Bypass numexpr for simple column reads
+                    if expr in arrays.fields and numexpr_str == expr:
+                        out_dict[expr] = arrays[expr]
+                    else:
+                        out_dict[expr] = ak.numexpr.evaluate(
+                            numexpr_str, local_dict=local_dict
+                        )
+                arrays = ak.zip(out_dict, depth_limit=1)
 
         expression_context = [(f, None) for f in arrays.fields]
 
