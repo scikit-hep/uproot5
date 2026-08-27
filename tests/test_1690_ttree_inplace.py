@@ -299,7 +299,7 @@ def test_extend_nonexistent_branch(tmp_path):
         f["tree"].extend({"x": np.ones(100, dtype=np.float32)})
 
     with uproot.update(os.path.join(tmp_path, "test.root")) as f:
-        with pytest.raises(Exception):
+        with pytest.raises(ValueError, match="missing"):
             f["tree"].extend({"nonexistent": np.ones(100, dtype=np.float32)})
 
 
