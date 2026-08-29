@@ -1279,14 +1279,17 @@ class DispatchByVersion:
             return versioned_cls
 
         else:
-            unknown_cls = uproot.unknown_classes.get(classname)
+            # key on the encoded name, which carries the version and so keeps
+            # distinct versions (and the versionless UnknownClass) apart
+            encoded_classname = classname_encode(classname, version, unknown=True)
+            unknown_cls = uproot.unknown_classes.get(encoded_classname)
             if unknown_cls is None:
                 unknown_cls = uproot._util.new_class(
-                    classname_encode(classname, version, unknown=True),
+                    encoded_classname,
                     (UnknownClassVersion,),
                     {},
                 )
-                uproot.unknown_classes[classname] = unknown_cls
+                uproot.unknown_classes[encoded_classname] = unknown_cls
             return unknown_cls
 
     @classmethod
