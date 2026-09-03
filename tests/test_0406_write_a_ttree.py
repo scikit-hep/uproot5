@@ -342,9 +342,6 @@ def test_writable_vs_readable_tree(tmp_path):
     b2 = [0.0, 1.1, 2.2, 3.3, 4.4, 5.5, 6.6, 7.7, 8.8, 9.9]
 
     with uproot.update(newfile) as fin:
-        with pytest.raises(TypeError):
-            oldtree = fin["t1"]
-
         fin.mktree("t2", {"b1": np.int32, "b2": np.float64}, "title")
 
         for _ in range(5):
