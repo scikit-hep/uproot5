@@ -57,3 +57,24 @@ def test_bare_expression_falls_back_to_source_columns(tmp_path):
     assert set(back.fields) == {"x", "y"}  # source columns, not the (nameless) sum
     assert ak.array_equal(back["x"], ref.x)
     assert ak.array_equal(back["y"], ref.y)
+
+
+def test_syntactic_read_list_witness_no_starve(tmp_path):
+    """Witness that the read list is the SYNTACTIC ``_evaluation_columns``, not the finer
+    ``necessary_columns`` buffer projection (§6.4f). ``zip({"a": g.x, "b": g.y})[["a"]]`` keeps only
+    field ``a`` (=x) in the OUTPUT, so ``necessary_columns`` = {x} — but the ``zip`` node
+    syntactically REPLAYS a read of ``y``, so evaluation needs {x, y}. With ``necessary_columns`` the
+    worker would read only x and ``evaluate_ir`` would STARVE (the awkward backend raises
+    ``no field named 'y'``); ``_evaluation_columns`` = {x, y} feeds it. This PASSES today and would
+    fail if ``graphed_write`` used ``necessary_columns`` (demonstrated in the m51 attempts log)."""
+    src = _src(tmp_path)
+    g = uproot.graphed(src, library="ak")
+    rec = gak.zip({"a": g.x, "b": g.y})[["a"]]
+    outdir = os.path.join(tmp_path, "out")
+
+    paths = uproot.graphed_write(rec, outdir, steps_per_file=2, tree_name="events", executor="thread")
+
+    back = ak.concatenate([uproot.open(p + ":events").arrays() for p in paths])
+    ref = uproot.open(src).arrays(["x"])
+    assert set(back.fields) == {"a"}
+    assert ak.array_equal(back["a"], ref.x)
