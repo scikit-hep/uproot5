@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import functools
 import os
+from typing import Any
 
 import uproot
 
@@ -64,6 +65,7 @@ def _write_partition(
     if resolved.entry_stop <= resolved.entry_start:
         return []  # fewer entries than steps: skip, never write an empty part file
     chunk = uproot.read_graphed_partition(partition, columns, tree=tree)
+    evaluated: Any  # a backend array (awkward/numpy); evaluate_ir is typed list[object]
     (evaluated,) = evaluate_ir(compiled, backend, {source_name: chunk})
     # a record graph yields named fields (the derived columns); a bare (non-record) expression
     # yields a fieldless array with no branch name to write it under — fall back to the source
