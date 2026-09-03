@@ -6,7 +6,7 @@ name: graphed
 # not collide with uproot's own build-test matrix (which runs on main / PRs).
 on:
   push:
-    branches: [graphed-mvp]
+    branches: [graphed-mvp, m51-vary]
   workflow_dispatch:
 
 concurrency:
@@ -46,6 +46,13 @@ jobs:
           # uproot + its full test environment (PEP 735 'dev' group = 'extra' + 'test':
           # dask-awkward, hist, boost_histogram, skhep_testdata, rangehttpserver, pytest, ...)
           python -m pip install -e . --group dev
+      - name: Frozen acceptance (gated pipeline)
+        # The fork's frozen acceptance trees (tests/frozen/<Mx>), run in isolation for an explicit
+        # green signal. --noconftest skips the ROOT tests/conftest.py, whose top-level
+        # `from RangeHTTPServer import ...` is an HTTP-test dependency unrelated to these trees (the
+        # frozen tests use only tmp_path + importorskip); the full-suite step below still exercises
+        # that conftest and its HTTP tests, so both stay green.
+        run: python -m pytest -vv tests/frozen --noconftest
       - name: Run the full uproot suite + the graphed tests
         # The whole tests/ dir (uproot + graphed), excluding only the 'xrootd' marker: those tests
         # need a running XRootD server, which this lightweight job does not provision (upstream

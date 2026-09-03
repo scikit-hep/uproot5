@@ -44,12 +44,19 @@ def _recreate_kwargs(compression, compression_level):
 # ---- module-level so a spawned ProcessPoolExecutor worker can pickle/import it ----------------------
 def _write_partition(
     partition, resources, *, destination, prefix, columns, tree_name, compression,
-    compression_level, bases,
+    compression_level, bases, compiled, backend, source_name,
 ):
-    """Read this blind partition's chunk via uproot (file opened once per worker) and write it to
-    its own part file, REPORTING the written path. ``N`` = the file's base + this partition's
-    blind step, derived here from the partition alone (``graphed.write.blind_part_index`` — only
-    the O(#files) base table travels with the task). An empty resolved step writes nothing."""
+    """Read this blind partition's chunk via uproot (file opened once per worker), EVALUATE the
+    recorded graph over it, and write the evaluated record's fields to its own part file, REPORTING
+    the written path. ``N`` = the file's base + this partition's blind step, derived here from the
+    partition alone (``graphed.write.blind_part_index`` — only the O(#files) base table travels
+    with the task). An empty resolved step writes nothing.
+
+    The read copies branches no longer: ``compiled`` (the driver-compiled IR) is evaluated per
+    partition with the raw chunk bound to the source, so a DERIVED column (a field computed from an
+    expression, absent from the source branches) is materialized and written — mirroring the
+    read-side ``uproot._graphed.graphed_head`` pattern."""
+    from graphed import evaluate_ir
     from graphed import write as gwrite
 
     tree = resources.open_once(partition.uri, uproot.open)[partition.tree]
@@ -57,7 +64,12 @@ def _write_partition(
     if resolved.entry_stop <= resolved.entry_start:
         return []  # fewer entries than steps: skip, never write an empty part file
     chunk = uproot.read_graphed_partition(partition, columns, tree=tree)
-    record = {name: chunk[name] for name in chunk.fields}
+    (evaluated,) = evaluate_ir(compiled, backend, {source_name: chunk})
+    # a record graph yields named fields (the derived columns); a bare (non-record) expression
+    # yields a fieldless array with no branch name to write it under — fall back to the source
+    # columns it reads, the pre-m51 projection behavior
+    out_rec = evaluated if evaluated.fields else chunk
+    record = {name: out_rec[name] for name in out_rec.fields}
     idx = gwrite.blind_part_index(partition, dict(bases))
     path = gwrite.part_path(destination, idx, prefix=prefix or "part", suffix=".root")
     with uproot.recreate(path, **_recreate_kwargs(compression, compression_level)) as out:
@@ -108,12 +120,13 @@ def graphed_write(
     Produces one ROOT file per partition, mirroring :doc:`uproot.writing._dask_write.dask_write`,
     as a specialization of the ``graphed.write`` partitioned-write base.
     """
+    from graphed import compile_ir
     from graphed import write as gwrite
 
     if not _is_graphed_array(array):
         raise TypeError("graphed_write expects a uproot.graphed Array")
 
-    from uproot._graphed import _GraphedTTreeSource, necessary_columns
+    from uproot._graphed import _evaluation_columns, _GraphedTTreeSource
 
     session = array.session
     uproot_sources = [
@@ -130,10 +143,12 @@ def graphed_write(
         )
     (nid, source) = uproot_sources[0]
 
-    # write only the branches the recorded array actually carries (its necessary columns); a bare
-    # source read projects to every common key, reproducing the old behavior
-    projected = necessary_columns(array).get(session.source_name(nid), frozenset())
-    columns = tuple(k for k in source._common_keys if k in projected) or tuple(source._common_keys)
+    # Each worker EVALUATES the recorded graph (below), which replays every node the graph accesses
+    # — including field reads whose buffers the output never touches — so the read list is the
+    # SYNTACTIC evaluation columns (as on the read side), not the finer buffer projection which
+    # under-supplies evaluation. Compile once in the driver; evaluate per partition in the worker.
+    columns = _evaluation_columns(array, nid, source._common_keys)
+    compiled = compile_ir(session, array)
     os.makedirs(destination, exist_ok=True)
 
     # the graphed.write base: blind partitions (no driver file opens) + the O(#files) base table
@@ -149,6 +164,9 @@ def graphed_write(
         compression=compression,
         compression_level=compression_level,
         bases=tuple(bases.items()),
+        compiled=compiled,
+        backend=session.backend,
+        source_name=session.source_name(nid),
     )
     plan = gwrite.write_plan(partitions, process)
 
