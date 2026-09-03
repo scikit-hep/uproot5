@@ -105,3 +105,16 @@ boundary). Now: `Success: no issues found in 5 source files`.
 - frozen: still 4/4; `git diff freeze-m51 -- tests/frozen/` EMPTY (frozen untouched).
 - graphed.yml: valid YAML; adds the mypy + diff-coverage steps and `fetch-depth: 0` (the gate needs
   `origin/graphed-mvp` to diff against).
+
+## R1 fix — starve witness (fork review MED)
+
+Review MED: the §6.4f choice of the SYNTACTIC `_evaluation_columns` read list over `necessary_columns`
+buffer projection was load-bearing but unwitnessed — the mutation lens swapped it back to
+`necessary_columns` and ZERO tests caught it (the two computed the same set for every fixture).
+Fix (tests/extra only, frozen untouched): `test_syntactic_read_list_witness_no_starve` writes
+`gak.zip({"a": g.x, "b": g.y})[["a"]]` (output field `a` only, so `necessary_columns` = {x}, but the
+`zip` syntactically reads y → `_evaluation_columns` = {x, y}; probed and confirmed) and asserts the
+round-trip output fields == {a}. NON-VACUITY demonstrated: temporarily pointing the driver read list
+at `necessary_columns` made this test FAIL — workers raised `AttributeError: no field named 'y'` (the
+starve, re-raised intact via M6) on the graph's `field 'y'` node; reverting to `_evaluation_columns`
+passes. Source reverted to the committed state (unchanged by this fix).
