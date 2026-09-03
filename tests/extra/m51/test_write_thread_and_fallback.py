@@ -1,0 +1,59 @@
+# BSD 3-Clause License; see https://github.com/scikit-hep/uproot5/blob/main/LICENSE
+"""Extra (non-frozen) m51 coverage: drive ``_write_partition`` in-process via the THREAD executor
+so plain coverage sees the worker body (the frozen suite runs it in spawn ProcessPool children,
+invisible to a non-subprocess coverage run), and exercise the bare-expression fallback branch the
+frozen suite never reaches (frozen writes only records).
+
+Both are real behavioral assertions, not coverage no-ops."""
+import os
+
+import awkward as ak
+import numpy as np
+import pytest
+
+import uproot
+
+pytest.importorskip("graphed_executors.local")
+pytest.importorskip("graphed.awkward")
+
+from graphed.awkward import gak  # noqa: E402
+
+
+def _src(tmp_path, n=12):
+    p = os.path.join(tmp_path, "in.root")
+    with uproot.recreate(p) as f:
+        f["events"] = {"x": np.arange(n, dtype="f8"), "y": np.arange(n, dtype="f8") * 2.0}
+    return p + ":events"
+
+
+def test_derived_record_thread_executor(tmp_path):
+    """Record path (``evaluated.fields`` truthy) via ``executor="thread"`` — same derived-column
+    write as the frozen suite, but in-process so the worker body is covered without subprocess
+    coverage."""
+    g = uproot.graphed(_src(tmp_path), library="ak")
+    rec = gak.zip({"x": g.x, "doubled": g.x * 2.0 + 1.0})
+    outdir = os.path.join(tmp_path, "out")
+
+    paths = uproot.graphed_write(rec, outdir, steps_per_file=3, tree_name="events", executor="thread")
+
+    back = ak.concatenate([uproot.open(p + ":events").arrays() for p in paths])
+    ref = uproot.open(_src(tmp_path)).arrays(["x"])
+    assert set(back.fields) == {"x", "doubled"}
+    assert ak.array_equal(back["doubled"], ref.x * 2.0 + 1.0)
+
+
+def test_bare_expression_falls_back_to_source_columns(tmp_path):
+    """Fallback branch (``evaluated.fields`` empty → source columns): a bare non-record expression
+    ``g.x + g.y`` has no field to name, so the write falls back to the projected source columns
+    (pre-m51 behavior). Thread executor keeps it in-process for coverage."""
+    src = _src(tmp_path)
+    g = uproot.graphed(src, library="ak")
+    outdir = os.path.join(tmp_path, "out")
+
+    paths = uproot.graphed_write(g.x + g.y, outdir, steps_per_file=2, tree_name="events", executor="thread")
+
+    back = ak.concatenate([uproot.open(p + ":events").arrays() for p in paths])
+    ref = uproot.open(src).arrays()
+    assert set(back.fields) == {"x", "y"}  # source columns, not the (nameless) sum
+    assert ak.array_equal(back["x"], ref.x)
+    assert ak.array_equal(back["y"], ref.y)

@@ -55,3 +55,53 @@ full suite still exercises that conftest.
   structural errors on uproot's untyped public API). cov/mypy CI config is the plan's "ride this
   PR" fork infra, out of R1 source scope.
 - non-varied scope confirmed: no manifest / per-universe / varied-write code; derived-columns-only.
+
+## R1 follow-up — §10 fork-gates (wire the fork's first gated-pipeline CI gates)
+
+The §10 fork-gates ride THIS fork PR (the fork's first frozen tree), so they land now rather than
+as deferred infra. Separate commit from the R1 source (cleaner for three-lens review).
+
+### (a) Coverage gate — DIFF-scoped, real
+
+Whole-module coverage of `_graphed_write.py` from the frozen suite is 79% — dragged down by
+PRE-EXISTING untested paths (the `except ImportError`, `compression is None`, empty-step skip,
+`_select_executor` passthrough, the two `raise TypeError`s, the `compute=False` return) that are not
+m51's concern — so a whole-module `--cov-fail-under=90` is unachievable honestly and a diff-scoped
+gate is the correct one. `scripts/diff_coverage_gate.py` (stdlib only, no `diff-cover` dep) diffs the
+source against `origin/graphed-mvp` and requires ≥90% line+branch coverage on the CHANGED lines.
+Result: 9/9 changed lines = 100%. Non-vacuity PROVEN: the identical gate over the FROZEN suite ALONE
+returns 55.6% and FAILS (exit 1) — the frozen suite runs `_write_partition` in spawn ProcessPool
+children, invisible to a non-subprocess coverage run. `tests/extra/m51/` drives the same worker body
+(and the bare-expr fallback branch frozen never reaches) via `executor="thread"`, in-process, so the
+100% is genuine coverage of exercised code, not a subprocess-coverage trick.
+
+### (b) mypy — scoped, meaningful, non-vacuous
+
+`[tool.mypy]` (pyproject) scopes to `_graphed_write.py` + `tests/frozen/m51` + `tests/extra/m51`:
+`check_untyped_defs=true` (bodies ARE checked — non-vacuous) with `ignore_missing_imports=true`
+(the untyped uproot/graphed/awkward boundary is Any; not fork-wide `--strict`, which is neither
+achievable nor the goal on untyped upstream). `python_version="3.12"` pins analysis identically on
+both CI Pythons. Non-vacuity witness: the SAME config reported 3 real errors (`evaluate_ir` is typed
+`list[object]`; `object` has no `.fields`) BEFORE the one-line fix (`evaluated: Any` at the backend
+boundary). Now: `Success: no issues found in 5 source files`.
+
+### (c) DoD matrix + trigger — ACCEPTED REDUCED SCOPE
+
+- CI matrix: `graphed.yml` runs ubuntu-latest × CPython {3.11, 3.12}. The full §A.5 matrix
+  (Linux/macOS/Windows × x86_64/arm64 × 3.11–3.14 + 3.14t) is NOT provisioned here; the reduced
+  ubuntu/3.11–3.12 matrix is recorded as accepted scope for the fork (§10(c)-style reduced-scope
+  allowance) — the fork is an integration harness over uproot, not a §A.5 wheel-shipping package.
+- Trigger: DONE is keyed on a BRANCH PUSH (`graphed.yml` `on: push: [graphed-mvp, m51-vary]`).
+  `pull_request` is deliberately NOT added — the workflow runs only on the graphed branches so it
+  does not collide with uproot's own build-test matrix (which runs on main/PRs), per the file's
+  header comment.
+
+### Gate results (follow-up)
+
+- diff-coverage gate: 9/9 = 100% (≥90); PROVEN to fail (55.6%) without the extra suite.
+- mypy: clean (5 files); witnessed non-vacuous by the pre-fix 3 errors.
+- ruff: clean on all changed/new (`_graphed_write.py`, `tests/extra/m51/`, `scripts/*` — a
+  `scripts/*` T20 per-file-ignore, mirroring `dev/*`, also cleans the pre-existing `graphed_advance.py`).
+- frozen: still 4/4; `git diff freeze-m51 -- tests/frozen/` EMPTY (frozen untouched).
+- graphed.yml: valid YAML; adds the mypy + diff-coverage steps and `fetch-depth: 0` (the gate needs
+  `origin/graphed-mvp` to diff against).

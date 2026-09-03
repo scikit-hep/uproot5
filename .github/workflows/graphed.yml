@@ -32,6 +32,8 @@ jobs:
         python: ["3.11", "3.12"]
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # the diff-coverage gate diffs the m51 source against origin/graphed-mvp
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python }}
@@ -53,6 +55,24 @@ jobs:
         # frozen tests use only tmp_path + importorskip); the full-suite step below still exercises
         # that conftest and its HTTP tests, so both stay green.
         run: python -m pytest -vv tests/frozen --noconftest
+      - name: Type-check the m51 graphed-integration source (mypy)
+        # Scoped [tool.mypy] (pyproject): the new source + its m51 test trees, treating the untyped
+        # uproot/graphed/awkward boundary as Any. Meaningful (bodies checked), not fork-wide --strict.
+        run: |
+          python -m pip install mypy
+          python -m mypy
+      - name: Diff-coverage gate (>=90% on the m51 source, from the frozen + extra suite)
+        # Whole-module coverage is dragged down by pre-existing untested paths that are not m51's
+        # concern, so the gate is DIFF-scoped: >=90% line+branch on the lines this branch changed in
+        # _graphed_write.py. The frozen suite runs _write_partition in spawn workers (invisible to a
+        # non-subprocess coverage run); the extra thread-executor test drives the same body in-process
+        # so the coverage is honest. Fails if a changed line loses coverage (proven non-vacuous).
+        run: |
+          git fetch --no-tags origin graphed-mvp:refs/remotes/origin/graphed-mvp
+          python -m coverage run --branch -m pytest tests/frozen/m51 tests/extra/m51 --noconftest
+          python -m coverage json -o coverage.json
+          python scripts/diff_coverage_gate.py origin/graphed-mvp coverage.json \
+            src/uproot/writing/_graphed_write.py
       - name: Run the full uproot suite + the graphed tests
         # The whole tests/ dir (uproot + graphed), excluding only the 'xrootd' marker: those tests
         # need a running XRootD server, which this lightweight job does not provision (upstream

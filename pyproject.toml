@@ -198,6 +198,7 @@ isort.required-imports = ["from __future__ import annotations"]
 
 [tool.ruff.lint.per-file-ignores]
 "dev/*" = ["T20", "T201"]
+"scripts/*" = ["T20", "T201"]  # CLI helpers legitimately print
 "src/uproot/*/file.py" = ["SIM115"]
 
 [tool.setuptools_scm]
@@ -206,3 +207,14 @@ write_to = "src/uproot/_version.py"
 [tool.uv]
 exclude-newer = "7 days"
 exclude-newer-package = {awkward = false, awkward-cpp = false, scikit-hep-testdata = false}
+
+# Scoped to the graphed-integration surface (m51). uproot's own modules are untyped, so a fork-wide
+# --strict run is neither achievable nor the goal; this MEANINGFULLY checks the new source (bodies
+# checked via check_untyped_defs) while treating the untyped uproot/graphed/awkward boundary as Any
+# (ignore_missing_imports). python_version pinned so the 3.11 and 3.12 CI jobs analyze identically.
+[tool.mypy]
+python_version = "3.12"
+files = ["src/uproot/writing/_graphed_write.py", "tests/frozen/m51", "tests/extra/m51"]
+ignore_missing_imports = true
+check_untyped_defs = true
+warn_unused_ignores = true
