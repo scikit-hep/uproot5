@@ -75,11 +75,13 @@ jobs:
           python scripts/diff_coverage_gate.py origin/graphed-mvp coverage.json \
             src/uproot/writing/_graphed_write.py
       - name: Run the full uproot suite + the graphed tests
-        # The whole tests/ dir (uproot + graphed), excluding only the 'xrootd' marker: those tests
-        # need a running XRootD server, which this lightweight job does not provision (upstream
-        # installs it via micromamba in a dedicated job). Everything else — readers, writers,
-        # dask-awkward, and the graphed integration — runs, so graphed regressions are caught.
+        # The whole tests/ dir (uproot + graphed), excluding only external-infra tests this
+        # lightweight job cannot provision: 'xrootd' needs a running XRootD server (upstream runs it
+        # via micromamba in a dedicated job), and the s3 tests fetch a public S3 object
+        # (pivarski-princeton/…picoDst.root) that is unreachable here — both are unrelated to
+        # graphed. Local-http tests stay (with reruns for transient network flakes). Everything else
+        # — readers, writers, dask-awkward, the graphed integration — runs, so regressions are caught.
         run: |
-          python -m pytest -vv tests -m "not xrootd" -k "not xrootd" \
+          python -m pytest -vv tests -m "not xrootd" -k "not xrootd and not s3" \
             --reruns 10 --reruns-delay 30 \
             --only-rerun "(?i)http|ssl|timeout|expired|connection|socket"
