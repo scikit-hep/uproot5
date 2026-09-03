@@ -62,6 +62,13 @@ jobs:
           python -m pip install mypy
           python -m mypy
       - name: Diff-coverage gate (>=90% on the m51 source, from the frozen + extra suite)
+        # PR-branch gate only. It diffs the m51 source against the graphed-mvp baseline, so it is
+        # meaningful on a feature branch (e.g. m51-vary vs graphed-mvp) but has an EMPTY diff on
+        # graphed-mvp itself once m51 merged (those lines ARE the baseline now) — the gate's own
+        # empty-diff guard then false-fails every push to the integration branch. The frozen suite +
+        # mypy + full-suite steps still run on graphed-mvp, so it stays protected; already-merged
+        # coverage only changes via a new feature branch, where this gate runs against graphed-mvp again.
+        if: github.ref_name != 'graphed-mvp'
         # Whole-module coverage is dragged down by pre-existing untested paths that are not m51's
         # concern, so the gate is DIFF-scoped: >=90% line+branch on the lines this branch changed in
         # _graphed_write.py. The frozen suite runs _write_partition in spawn workers (invisible to a
