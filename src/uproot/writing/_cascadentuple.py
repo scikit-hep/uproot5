@@ -36,6 +36,7 @@ from uproot.models.RNTuple import (
     _rntuple_envlink_size_format,
     _rntuple_feature_flag_format,
     _rntuple_field_description_format,
+    _rntuple_first_element_index_format,
     _rntuple_frame_num_items_format,
     _rntuple_frame_size_format,
     _rntuple_locator_offset_format,
@@ -115,6 +116,30 @@ def _cpp_typename(akform, subcall=False):
     if not subcall and "UntypedRecord" in typename:
         typename = ""  # empty types for anything that contains UntypedRecord
     return typename
+
+
+def _form_contains_union(akform):
+    """
+    Recursively checks whether `akform` contains a UnionForm (variant field)
+    anywhere in its structure.
+
+    Used to detect and reject RNTuple variant fields early and clearly when
+    reloading a preexisting RNTuple, rather than letting the reload path
+    crash deep inside `_cpp_typename` with a generic "please report this"
+    assertion. Reconstructing a variant field's on-disk form reintroduces a
+    reserved "null" tag as an explicit ``EmptyForm``-backed union content --
+    something a freshly constructed union never has, and that neither
+    `_cpp_typename` nor `NTuple_Header._build_field_col_records` know how to
+    handle.
+    """
+    if isinstance(akform, awkward.forms.UnionForm):
+        return True
+    if isinstance(akform, awkward.forms.RecordForm):
+        return any(_form_contains_union(c) for c in akform.contents)
+    content = getattr(akform, "content", None)
+    if content is not None:
+        return _form_contains_union(content)
+    return False
 
 
 class RBlob_Key(Key):
@@ -242,21 +267,33 @@ class NTuple_Field_Description:
 
 # https://github.com/root-project/root/blob/master/tree/ntuple/v7/doc/specifications.md#column-description
 class NTuple_Column_Description:
-    def __init__(self, type_num, bits_on_disk, field_id, flags, repr_index):
+    def __init__(
+        self, type_num, bits_on_disk, field_id, flags, repr_index, first_element_index=0
+    ):
         self.type_num = type_num
         self.bits_on_disk = bits_on_disk
         self.field_id = field_id
         self.flags = flags
         self.repr_index = repr_index
+        self.first_element_index = first_element_index
 
     def serialize(self):
+        import uproot.const
+
+        flags = self.flags
+        if self.first_element_index > 0:
+            flags = flags | uproot.const.RNTupleColumnFlags.DEFERRED
         header_bytes = _rntuple_column_record_format.pack(
             self.type_num,
             self.bits_on_disk,
             self.field_id,
-            self.flags,
+            int(flags),
             self.repr_index,
         )
+        if self.first_element_index > 0:
+            header_bytes += _rntuple_first_element_index_format.pack(
+                int(self.first_element_index)
+            )
         return header_bytes
 
 
@@ -846,6 +883,17 @@ class NTuple(CascadeNode):
             msg = f"Data is not compatible with this RNTuple. Expected {self._header._akform}, got {data.form}"
             raise ValueError(msg)
 
+        # awkward Form equality does not consider field order for a RecordArray,
+        # only the set of fields and their types, so the check above can pass
+        # even when data's fields are physically ordered differently than
+        # self._header._akform's -- at any level of nesting, not just the top.
+        # The column buffers below are looked up by positional node-index
+        # (self._header._column_keys, built by walking self._header._akform in
+        # its field order) -- if data isn't reordered to match, a column's
+        # bytes silently get written under a different column's key,
+        # corrupting every field from the first mismatch onward.
+        data = _reorder_fields_to_match_form(data, self._header._akform)
+
         # 1. Write pages
         # We write a single page for each column for now
 
@@ -1188,6 +1236,42 @@ def _to_packed(layout):
         case _:
             msg = f"Array type {type(layout)} cannot be written. If you believe this should be supported, please let the Uproot developers know."
             raise NotImplementedError(msg)
+
+
+def _reorder_fields_to_match_form(layout, form):
+    """
+    Recursively reorders record fields in `layout` to match `form`'s field
+    order, at every level of nesting (not just the top level). `layout` and
+    `form` are assumed to already be form-compatible (same set of fields and
+    types at every level, just possibly differently ordered within a record)
+    -- see the caller, which only reaches this after that comparison passes.
+
+    This mirrors the node types NTuple_Header._build_field_col_records knows
+    how to walk: NumpyForm (no children), ListOffsetForm/RegularForm/
+    IndexedOptionForm/UnmaskedForm (one child, via `.content`), RecordForm
+    (named children, via `.fields`/`.contents`), and UnionForm (positional
+    children, via `.contents`).
+    """
+    if isinstance(form, awkward.forms.RecordForm):
+        target_fields = list(form.fields)
+        if list(layout.fields) != target_fields:
+            layout = layout[target_fields]
+        new_contents = [
+            _reorder_fields_to_match_form(layout.content(f), form.content(f))
+            for f in target_fields
+        ]
+        return layout.copy(contents=new_contents)
+    elif isinstance(form, awkward.forms.UnionForm):
+        new_contents = [
+            _reorder_fields_to_match_form(layout.content(i), form.content(i))
+            for i in range(len(form.contents))
+        ]
+        return layout.copy(contents=new_contents)
+    elif hasattr(form, "content"):
+        return layout.copy(
+            content=_reorder_fields_to_match_form(layout.content, form.content)
+        )
+    return layout
 
 
 def _regularize_input_type_to_awkward(obj):

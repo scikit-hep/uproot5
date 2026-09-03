@@ -1059,6 +1059,7 @@ class _ReadForUpdate:
         self._get_chunk = get_chunk
         self._tlist_of_streamers = tlist_of_streamers
         self._custom_classes = None
+        self.source = self
 
     @property
     def detached(self):
@@ -2145,7 +2146,7 @@ class FileHeader(CascadeLeaf):
         assert compression_code >= 0
         assert info_location >= 0
         assert info_num_bytes >= 0
-        assert uuid_version <= 8
+        assert 0 <= uuid_version <= 8
 
         out = FileHeader(
             end,

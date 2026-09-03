@@ -140,7 +140,6 @@ def recreate(file_path: str | Path | IO, **options):
             "unrecognized options for uproot.create or uproot.recreate: "
             + ", ".join(repr(x) for x in options)
         )
-
     cascading = uproot.writing._cascade.create_empty(
         sink,
         compression,
@@ -196,7 +195,6 @@ def update(file_path: str | Path | IO, **options):
             "unrecognized options for uproot.update: "
             + ", ".join(repr(x) for x in options)
         )
-
     cascading = uproot.writing._cascade.update_existing(
         sink,
         initial_directory_bytes,
@@ -979,7 +977,6 @@ class WritableDirectory(MutableMapping):
                             keys=last._cascading.data.key_names,
                             file_path=self.file_path,
                         )
-
             return step
 
         else:
@@ -1037,9 +1034,7 @@ class WritableDirectory(MutableMapping):
             if self._file._has_ntuple(key.seek_location):
                 return self._file._get_ntuple(key.seek_location)
             else:
-                raise TypeError(
-                    "WritableDirectory cannot view preexisting RNTuple; open the file with uproot.open instead of uproot.recreate or uproot.update"
-                )
+                return self._load_existing_ntuple(key)
 
         else:
 
@@ -1343,6 +1338,247 @@ class WritableDirectory(MutableMapping):
         writable_tree = WritableTree(path, self._file, casc)
         self._file._trees[key.seek_location] = writable_tree
         return writable_tree
+
+    def _read_ntuple_envelope(self, key):
+        """
+        Deserializes the RNTuple envelope object at `key`, using
+        :doc:`uproot.writing._cascade._ReadForUpdate` to avoid loading the
+        entire file into memory, and using the key's absolute file position
+        (rather than 0) as the chunk/cursor origin, since RNTuple's own
+        internal envelope offsets (e.g. anchor_location) are threaded through
+        in absolute terms.
+
+        Shared by :ref:`_load_existing_ntuple` (the first read of an RNTuple
+        reopened via ``uproot.update()``) and by
+        :ref:`uproot.writing.writable.WritableNTuple.add_fields`'s reload of
+        the footer/page-list state it just wrote — both need exactly this,
+        so this factors out what used to be two copies of the same ~25 lines.
+
+        Args:
+            key: The ROOT key object pointing to the RNTuple in the file.
+
+        Returns:
+            The deserialized ``Model_RNTuple`` (read-side) object.
+        """
+        self._file.sink.flush()
+
+        def _get_chunk(start, stop):
+            raw_bytes = self._file.sink.read(start, stop - start)
+            return uproot.source.chunk.Chunk.wrap(readforupdate, raw_bytes, start=start)
+
+        readforupdate = uproot.writing._cascade._ReadForUpdate(
+            self._file.file_path,
+            self._file.uuid,
+            _get_chunk,
+            self._file._cascading.tlist_of_streamers,
+        )
+        readforupdate.options = dict(uproot.reading.open.defaults)
+
+        raw_bytes = self._file.sink.read(
+            key.seek_location,
+            key.num_bytes + key.compressed_bytes,
+        )
+        chunk = uproot.source.chunk.Chunk.wrap(
+            readforupdate, raw_bytes, start=key.seek_location
+        )
+        cursor = uproot.source.cursor.Cursor(key.seek_location, origin=key.num_bytes)
+        readonlykey = uproot.reading.ReadOnlyKey(
+            chunk, cursor, {}, readforupdate, self, read_strings=True
+        )
+        existing = readonlykey.get()
+        _ = existing.keys()
+        return existing
+
+    def _load_existing_ntuple(self, key):
+        """
+        Loads an existing RNTuple from disk and reconstructs a writable
+        :doc:`uproot.writing.writable.WritableNTuple` object from it.
+
+        This is called when accessing a preexisting RNTuple via
+        ``f["name"]`` in update mode. Reads the existing metadata
+        (anchor, header, footer, page lists) and sets up the in-memory
+        state needed for subsequent ``extend`` or ``add_fields`` calls.
+
+        Args:
+            key: The ROOT key object pointing to the RNTuple in the file.
+
+        Returns:
+            :doc:`uproot.writing.writable.WritableNTuple`
+        """
+
+        import uproot.writing._cascade as casc
+        import uproot.writing._cascadentuple as cnt
+
+        _rblob_key_size = uproot.reading._key_format_big.size + 8
+
+        name = key.name.string
+        if self.file_path is None:
+            raise TypeError(
+                "uproot.update() on a file-like object does not support accessing "
+                "existing RNTuples; use uproot.update() with a file path instead."
+            )
+
+        existing = self._read_ntuple_envelope(key)
+        full_akform, _ = existing.to_akform()
+        if cnt._form_contains_union(full_akform):
+            raise NotImplementedError(
+                f"RNTuple {name!r} has a variant (union-typed) field, which "
+                "uproot.update() does not currently support accessing at all "
+                "(neither reading nor writing); use uproot.open() instead to "
+                "read it"
+            )
+        am = existing._ntuple.all_members
+        anchor_location = key.seek_location + key.num_bytes
+        num_entries = existing.num_entries
+        existing_footer = existing._footer
+        existing_page_list_envelopes = existing.page_list_envelopes
+        existing_field_records = existing._ntuple.field_records
+
+        header = cnt.NTuple_Header(
+            None, existing.name, existing._header.ntuple_description, full_akform
+        )
+        header._checksum = existing._header.checksum
+
+        # check column records match existing — store mismatch for later error
+        # (e.g. ROOT writes split-encoded columns, uproot writes unsplit)
+        existing_col_records = existing.column_records
+        new_col_records = header._column_records
+        _column_encoding_error = None
+        if len(existing_col_records) != len(new_col_records):
+            _column_encoding_error = (
+                f"cannot extend: existing RNTuple has {len(existing_col_records)} columns "
+                f"but reconstructed header has {len(new_col_records)}; "
+                f"schema mismatch — this RNTuple may use column encodings uproot cannot write"
+            )
+        else:
+            for i, (existing_cr, new_cr) in enumerate(
+                zip(existing_col_records, new_col_records, strict=False)
+            ):
+                if (
+                    existing_cr.type != new_cr.type_num
+                    or existing_cr.nbits != new_cr.bits_on_disk
+                    or existing_cr.field_id != new_cr.field_id
+                ):
+                    _column_encoding_error = (
+                        f"cannot extend: column {i} type mismatch — "
+                        f"existing column has type={existing_cr.type}, nbits={existing_cr.nbits} "
+                        f"but uproot would write type={new_cr.type_num}, nbits={new_cr.bits_on_disk}. "
+                        f"This RNTuple uses column encodings (e.g. split encoding) that uproot cannot write."
+                    )
+                    break
+
+        footer = cnt.NTuple_Footer(None, header._checksum)
+
+        for cg in existing_footer.cluster_group_records:
+            locator = cnt.NTuple_Locator(
+                cg.page_list_link.locator.num_bytes, cg.page_list_link.locator.offset
+            )
+            envlink = cnt.NTuple_EnvLink(cg.page_list_link.env_uncomp_size, locator)
+            footer.cluster_group_record_frames.append(
+                cnt.NTuple_ClusterGroupRecord(
+                    cg.min_entry_num, cg.entry_span, cg.num_clusters, envlink
+                )
+            )
+        # copy extension field and column records from existing footer
+        for fr in existing_footer.extension_links.field_records:
+            new_field = cnt.NTuple_Field_Description(
+                fr.parent_field_id,
+                fr.struct_role,
+                fr.field_name,
+                fr.type_name,
+                field_description=fr.field_desc,
+            )
+            footer.extension_field_record_frames.append(new_field)
+        for cr in existing_footer.extension_links.column_records:
+            new_col = cnt.NTuple_Column_Description(
+                cr.type,
+                cr.nbits,
+                cr.field_id,
+                int(cr.flags),
+                cr.repr_idx,
+                first_element_index=cr.first_element_index,
+            )
+            footer.extension_column_record_frames.append(new_col)
+        anchor = cnt.NTuple_Anchor(
+            anchor_location,
+            am["fVersionEpoch"],
+            am["fVersionMajor"],
+            am["fVersionMinor"],
+            am["fVersionPatch"],
+            am["fSeekHeader"],
+            am["fNBytesHeader"],
+            am["fLenHeader"],
+            am["fSeekFooter"],
+            am["fNBytesFooter"],
+            am["fLenFooter"],
+            am["fMaxKeySize"],
+        )
+        ntuple_cascading = cnt.NTuple(
+            self._cascading,
+            full_akform,
+            self._cascading._freesegments,
+            header,
+            footer,
+            [],
+            anchor,
+        )
+        ntuple_cascading._header_key = casc.Key(
+            am["fSeekHeader"] - _rblob_key_size,
+            am["fLenHeader"],
+            am["fNBytesHeader"],
+            casc.String(None, "RBlob"),
+            casc.String(None, ""),
+            casc.String(None, ""),
+            1,
+            100,
+            am["fSeekHeader"],
+            big=True,
+        )
+        ntuple_cascading._footer_key = casc.Key(
+            am["fSeekFooter"] - _rblob_key_size,
+            am["fLenFooter"],
+            am["fNBytesFooter"],
+            casc.String(None, "RBlob"),
+            casc.String(None, ""),
+            casc.String(None, ""),
+            1,
+            100,
+            am["fSeekFooter"],
+            big=True,
+        )
+        ntuple_cascading._num_entries = num_entries
+        num_columns = len(existing._header.column_records) + len(
+            existing._footer.extension_links.column_records
+        )
+        # recover per-column element counts from existing page lists
+        # for jagged fields, data columns advance by elements not entries
+        column_counts = []
+        for cg_idx, _cg in enumerate(existing_footer.cluster_group_records):
+            ple = existing_page_list_envelopes[cg_idx]
+            if not column_counts:
+                column_counts = [0] * num_columns
+            # a cluster group can hold more than one cluster (e.g. a ROOT-written
+            # file); summing only pagelinklist[0] would silently undercount every
+            # column's element offset for any cluster after the first, corrupting
+            # the next page written for that column (uproot currently only ever
+            # writes one cluster per group, so this hasn't been reachable yet)
+            for cluster_col_pages in ple.pagelinklist:
+                for col_idx, col_pages in enumerate(cluster_col_pages):
+                    column_counts[col_idx] += sum(
+                        p.num_elements for p in col_pages.pages
+                    )
+        if not column_counts:
+            column_counts = [num_entries] * num_columns
+        ntuple_cascading._column_counts = numpy.array(column_counts, dtype=int)
+        ntuple_cascading._existing_footer = existing_footer
+        ntuple_cascading._existing_page_list_envelopes = existing_page_list_envelopes
+        ntuple_cascading._existing_field_records = existing_field_records
+
+        path = (*self._path, name)
+        writable_ntuple = WritableNTuple(path, self._file, ntuple_cascading)
+        writable_ntuple._column_encoding_error = _column_encoding_error
+        self._file._ntuples[key.seek_location] = writable_ntuple
+        return writable_ntuple
 
     def _del(self, name, cycle):
         key = self._cascading.data.get_key(name, cycle)
@@ -1899,7 +2135,6 @@ in file {source.file_path} in directory {source.path}"""
         update.
         """
         streamers = []
-
         if pairs is not None:
             if hasattr(pairs, "keys"):
                 all_pairs = itertools.chain(
@@ -1925,7 +2160,6 @@ in file {source.file_path} in directory {source.path}"""
                 directory = directory[item]
 
             uproot.writing.identify.add_to_directory(v, name, directory, streamers)
-
         self._file._cascading.streamers.update_streamers(self._file.sink, streamers)
 
 
@@ -2709,11 +2943,33 @@ class WritableNTuple:
         self._path = path
         self._file = file
         self._cascading = cascading
+        self._column_encoding_error = None
 
     def __repr__(self):
         return "<WritableNTuple {} at 0x{:012x}>".format(
             repr("/" + "/".join(self._path)), id(self)
         )
+
+    def _existing_key(self):
+        """
+        Resolves this RNTuple's :doc:`uproot.writing._cascade.Key` by walking
+        down to its containing directory (not always the file's root
+        directory — this RNTuple may live in a subdirectory) and looking up
+        its name there, at whatever is currently its latest cycle.
+        """
+        directory = self._file.root_directory
+        for part in self._path[:-1]:
+            directory = directory[part]
+        key = directory._cascading.data.get_key(self._path[-1])
+        if key is None:
+            raise uproot.KeyInFileError(
+                self._path[-1],
+                cycle="any",
+                keys=directory._cascading.data.key_names,
+                file_path=self.file_path,
+                object_path=self.object_path,
+            )
+        return directory, key
 
     @property
     def path(self):
@@ -2800,10 +3056,16 @@ class WritableNTuple:
         """
         return self._cascading.num_entries
 
-    def extend(self, data):
+    def extend(self, data, accept_new_fields=False):
         """
         Args:
             data (dict of str \u2192 arrays): More array data to add to the RNTuple.
+            accept_new_fields (bool): If False (default), raises ValueError if
+                data contains fields not already in the RNTuple, forcing the user
+                to call :ref:`uproot.writing.writable.WritableNTuple.add_fields`
+                first. If True, new fields are automatically added back-filled
+                with zeros for existing entries, then extended with the provided
+                values for new entries.
 
         This method adds data to an existing RNTuple, whether it was created through
         assignment or :doc:`uproot.writing.writable.WritableDirectory.mkrntuple`.
@@ -2818,16 +3080,369 @@ class WritableNTuple:
 
         .. code-block:: python
 
-            my_directory.mkrntuple("ntuple6", {"branch1": numpy_dtype, "branch2": awkward_type})
+            with uproot.update("file.root") as f:
+                f["mytuple"].extend({
+                    "x": np.array([4, 5, 6]),
+                    "y": np.array([40, 50, 60]),
+                })
 
-            my_directory["ntuple6"].extend({"branch1": another_numpy_array,
-                                          "branch2": another_awkward_array})
+            # automatically add new field and extend
+            with uproot.update("file.root") as f:
+                f["mytuple"].extend({"x": np.array([7, 8]), "z": np.array([70, 80])},
+                                    accept_new_fields=True)
 
         .. warning::
 
             **As a word of warning,** be sure that each call to :ref:`uproot.writing.writable.WritableNTuple.extend` includes at least 100 kB per branch/array. (NumPy and Awkward Arrays have an `nbytes <https://numpy.org/doc/stable/reference/generated/numpy.ndarray.nbytes.html>`__ property; you want at least ``100000`` per array.) If you ask Uproot to write very small TBaskets, it will spend more time working on TBasket overhead than actually writing data. The absolute worst case is one-entry-per-:ref:`uproot.writing.writable.WritableTree.extend`. See `#428 (comment) <https://github.com/scikit-hep/uproot5/pull/428#issuecomment-908703486>`__.
+
+        .. note::
+
+            Extending an RNTuple opened with :doc:`uproot.writing.writable.WritableDirectory.update`
+            only works if every column uses an encoding Uproot itself writes.
+            RNTuples written by ROOT commonly use column encodings (e.g. split
+            encoding) that Uproot does not yet write, and are rejected with a
+            ``ValueError`` rather than risk writing an inconsistent file. In
+            practice, ``extend``/``add_fields`` after reopening a file only
+            work reliably on RNTuples that Uproot itself wrote.
         """
+        if self._column_encoding_error is not None:
+            raise ValueError(self._column_encoding_error)
+        # if _column_counts has more columns than _column_keys, reload cascading
+        # this happens after add_fields adds extension columns
+        if len(self._cascading._column_counts) > len(
+            self._cascading._header._column_keys
+        ):
+            directory, key = self._existing_key()
+            reloaded = directory._load_existing_ntuple(key)
+            self._cascading = reloaded._cascading
+
+        if isinstance(data, dict):
+            existing_keys = set(self._cascading._header._akform.fields)
+            if hasattr(self._cascading, "_existing_field_records"):
+                existing_keys.update(
+                    fr.field_name for fr in self._cascading._existing_field_records
+                )
+            new_field_names = {k for k in data.keys() if k not in existing_keys}
+            if new_field_names and not accept_new_fields:
+                raise ValueError(
+                    f"Data contains fields not in this RNTuple: {sorted(new_field_names)}. "
+                    f"Call add_fields() first, or pass accept_new_fields=True to add them automatically."
+                )
+            elif new_field_names and accept_new_fields:
+                self.add_fields(
+                    {
+                        k: numpy.asarray(
+                            awkward.flatten(awkward.Array(data[k]), axis=None)
+                        ).dtype
+                        for k in new_field_names
+                    }
+                )
+                directory, key = self._existing_key()
+                reloaded = directory._load_existing_ntuple(key)
+                self._cascading = reloaded._cascading
+
         self._cascading.extend(self._file, self._file.sink, data)
+
+    def add_fields(self, new_fields):
+        """
+        Args:
+            new_fields (dict of str -> numpy dtype): New field names and types.
+                Only scalar numeric types are accepted (e.g. ``np.int32``,
+                ``np.float64``). Variable-length or nested types are not supported.
+
+        Adds new fields to this RNTuple, back-filled with zeros for existing entries.
+        Only top-level fields or subfields of existing untyped record fields are supported.
+
+        Note: when using ``accept_new_fields=True`` in :meth:`extend`, new fields
+        must be flat (scalar) types. Jagged or nested new fields will fail the
+        form compatibility check in ``extend``.
+
+        Raises:
+            TypeError: if a field type is not a simple scalar numeric type.
+            ValueError: if a field already exists, if the subfield parent is not
+                found or is a typed struct (C++ typename), if the file was
+                opened without a file path (file-like objects are not supported),
+                or if the RNTuple uses column encodings Uproot does not write
+                (see the note below).
+
+        For example,
+
+        .. code-block:: python
+
+            with uproot.update("file.root") as f:
+                f["mytuple"].add_fields({"z": np.int32, "w": np.float32})
+
+        .. note::
+
+            Like :ref:`uproot.writing.writable.WritableNTuple.extend`, this only
+            works on an RNTuple opened with :doc:`uproot.writing.writable.WritableDirectory.update`
+            if every column uses an encoding Uproot itself writes. RNTuples
+            written by ROOT commonly use column encodings (e.g. split encoding)
+            that Uproot does not yet write, and are rejected with a
+            ``ValueError``. In practice, ``add_fields``/``extend`` after
+            reopening a file only work reliably on RNTuples that Uproot itself
+            wrote.
+        """
+        if self._column_encoding_error is not None:
+            raise ValueError(self._column_encoding_error)
+
+        import uproot.writing._cascadentuple as cnt
+
+        if not hasattr(self._cascading, "_existing_footer"):
+            # this RNTuple was created in this same session (e.g. via mkrntuple or
+            # directory assignment) rather than loaded from an existing file by
+            # _load_existing_ntuple, so it never got the _existing_* attributes
+            # add_fields needs. Whatever has been written so far is already on
+            # disk (mkrntuple/assignment/extend all flush immediately), so it can
+            # be loaded the same way a preexisting RNTuple opened via
+            # uproot.update() would be.
+            directory, key = self._existing_key()
+            reloaded = directory._load_existing_ntuple(key)
+            self._cascading = reloaded._cascading
+
+        compression = self._cascading._freesegments.fileheader.compression
+        num_entries = self._cascading._num_entries
+        header = self._cascading._header
+        footer = self._cascading._footer
+        existing_footer = self._cascading._existing_footer
+        existing_page_list_envelopes = self._cascading._existing_page_list_envelopes
+        existing_field_records = self._cascading._existing_field_records
+
+        next_field_id = len(existing_field_records)
+
+        # a plain (non-dotted) new field always becomes a top-level field (see
+        # the "else" branch below), so only collisions against other top-level
+        # fields are real duplicates. Checking every field's bare name,
+        # including nested ones, rejected legitimate top-level fields whenever
+        # their name happened to match some unrelated nested field's name.
+        # a field is top-level iff it's its own parent (self-referential); see
+        # NTuple_Header._build_field_col_records, which sets parent_fid = the
+        # field's own id when it's called without an explicit parent
+        existing_root_field_names = {
+            fr.field_name
+            for i, fr in enumerate(existing_field_records)
+            if fr.parent_field_id == i
+        }
+        for field_name in new_fields:
+            if "." not in field_name and field_name in existing_root_field_names:
+                raise ValueError(f"Field {field_name!r} already exists in this RNTuple")
+
+        for field_name, field_dtype_raw in new_fields.items():
+            ak_form = _type_specification_to_awkward_form(field_dtype_raw)
+            if not isinstance(ak_form, awkward.forms.NumpyForm):
+                raise TypeError(
+                    f"add_fields only supports simple numeric types, got {field_dtype_raw!r}"
+                )
+            ak_primitive = ak_form.primitive
+            type_name = cnt._ak_primitive_to_typename_dict[ak_primitive]
+            type_num = cnt._ak_primitive_to_num_dict[ak_primitive]
+            type_size = uproot.const.rntuple_col_num_to_size_dict[type_num]
+
+            if "." in field_name:
+                parts = field_name.split(".")
+                actual_field_name = parts[-1]
+                if len(parts) == 2:
+                    # single-level ("parent.field"): match the immediate parent
+                    # by bare name, at any nesting depth (backward compat) --
+                    # but only when that name is unambiguous. Matching the
+                    # first same-named field regardless of ambiguity used to
+                    # silently misattach a field whenever two records shared a
+                    # bare name at different nesting levels (e.g. a nested
+                    # "b.a" and an unrelated top-level "a"), with no error.
+                    matches = [
+                        (i, fr)
+                        for i, fr in enumerate(existing_field_records)
+                        if fr.field_name == parts[0]
+                    ]
+                    if len(matches) == 0:
+                        raise ValueError(
+                            f"Field {parts[0]!r} not found in this RNTuple"
+                        )
+                    if len(matches) > 1:
+                        raise ValueError(
+                            f"Field {parts[0]!r} is ambiguous: {len(matches)} fields "
+                            f"in this RNTuple have that name at different nesting "
+                            f"levels. Use a fully-qualified dotted path (e.g. "
+                            f"'grandparent.{parts[0]}.{parts[1]}') to disambiguate."
+                        )
+                    parent_field_id, fr = matches[0]
+                else:
+                    # multi-level: walk the full dotted path using the parent-id
+                    # chain, one segment at a time
+                    current_parent_id = None  # None means root
+                    for part_idx, part in enumerate(parts[:-1]):
+                        found = None
+                        for i, fr in enumerate(existing_field_records):
+                            # a field is top-level iff it's its own parent
+                            # (self-referential); "parent_field_id == 0" alone
+                            # is not a valid root signal -- it also matches any
+                            # non-root field whose real parent happens to be at
+                            # index 0, e.g. the second field of the first
+                            # top-level record
+                            is_root_field = fr.parent_field_id == i
+                            if fr.field_name == part:
+                                if current_parent_id is None and is_root_field:
+                                    found = (i, fr)
+                                    break
+                                elif (
+                                    current_parent_id is not None
+                                    and fr.parent_field_id == current_parent_id
+                                ):
+                                    found = (i, fr)
+                                    break
+                        if found is None:
+                            raise ValueError(
+                                f"Field {'.'.join(parts[:part_idx+1])!r} not found in this RNTuple"
+                            )
+                        current_parent_id = found[0]
+                        parent_field_id = found[0]
+                        fr = found[1]
+                if fr.type_name != "":
+                    raise ValueError(
+                        f"Field {'.'.join(parts[:-1])!r} has type {fr.type_name!r} and cannot be extended. "
+                        f"Only untyped records (empty type_name) can have subfields added."
+                    )
+                if fr.struct_role != uproot.const.RNTupleFieldRole.RECORD:
+                    raise ValueError(
+                        f"Field {'.'.join(parts[:-1])!r} is not a record and cannot have subfields added."
+                    )
+                # the top-level duplicate check above only looks at root fields
+                # and never matches a dotted key against a bare name, so a
+                # subfield with the same name as an existing sibling under the
+                # same parent went undetected -- silently writing a second
+                # field record with the same (parent_field_id, field_name).
+                # That duplicate isn't just cosmetic: it corrupts the RNTuple's
+                # field/ancestor bookkeeping badly enough that even a plain
+                # read of the file afterwards raises IndexError, and since the
+                # footer already reached disk by the time that surfaces, the
+                # file is left permanently unreadable.
+                if any(
+                    other.field_name == actual_field_name
+                    and other.parent_field_id == parent_field_id
+                    for other in existing_field_records
+                ):
+                    raise ValueError(
+                        f"Field {field_name!r} already exists in this RNTuple"
+                    )
+            else:
+                actual_field_name = field_name
+                parent_field_id = next_field_id
+
+            new_field = cnt.NTuple_Field_Description(
+                parent_field_id,
+                uproot.const.RNTupleFieldRole.LEAF,
+                actual_field_name,
+                type_name,
+            )
+            footer.extension_field_record_frames.append(new_field)
+            # use deferred column — first_element_index marks where new data starts
+            new_col = cnt.NTuple_Column_Description(
+                type_num,
+                type_size,
+                next_field_id,
+                0,
+                0,
+                first_element_index=num_entries,
+            )
+            footer.extension_column_record_frames.append(new_col)
+            next_field_id += 1
+
+        footer.cluster_group_record_frames = []
+        for cg_idx, cg in enumerate(existing_footer.cluster_group_records):
+            ple = existing_page_list_envelopes[cg_idx]
+            all_cluster_page_data = []
+            for _cluster_idx, cluster_col_pages in enumerate(ple.pagelinklist):
+                new_cluster_page_data = []
+                for col_pages in cluster_col_pages:
+                    existing_pages = [
+                        cnt.NTuple_PageDescription(
+                            p.num_elements,
+                            cnt.NTuple_Locator(p.locator.num_bytes, p.locator.offset),
+                        )
+                        for p in col_pages.pages
+                    ]
+                    new_cluster_page_data.append(
+                        cnt.NTuple_ColumnPageListDescription(
+                            existing_pages, col_pages.element_offset, compression.code
+                        )
+                    )
+                # deferred columns: no pages needed for existing cluster groups
+                all_cluster_page_data.append(new_cluster_page_data)
+            cluster_summaries = [
+                cnt.NTuple_ClusterSummary(s.num_first_entry, s.num_entries)
+                for s in ple.cluster_summaries
+            ]
+            pagelistenv = cnt.NTuple_PageListEnvelope(
+                header._checksum, cluster_summaries, all_cluster_page_data
+            )
+            pagelistenv_raw = pagelistenv.serialize()
+            pagelistenv_key = self._cascading.add_rblob(
+                self._file.sink, pagelistenv_raw, len(pagelistenv_raw)
+            )
+            pagelistenv_locator = cnt.NTuple_Locator(
+                len(pagelistenv_raw),
+                pagelistenv_key.location + pagelistenv_key.allocation,
+            )
+            pagelistenv_envlink = cnt.NTuple_EnvLink(
+                len(pagelistenv_raw), pagelistenv_locator
+            )
+            footer.cluster_group_record_frames.append(
+                cnt.NTuple_ClusterGroupRecord(
+                    cg.min_entry_num,
+                    cg.entry_span,
+                    cg.num_clusters,
+                    pagelistenv_envlink,
+                )
+            )
+
+        footer_raw = footer.serialize()
+        new_footer_key = self._cascading.add_rblob(
+            self._file.sink, footer_raw, len(footer_raw)
+        )
+        self._cascading._anchor.seek_footer = (
+            new_footer_key.location + new_footer_key.allocation
+        )
+        self._cascading._anchor.nbytes_footer = len(footer_raw)
+        self._cascading._anchor.len_footer = len(footer_raw)
+        anchor_raw = self._cascading._anchor.serialize()
+        self._file.sink.write(self._cascading._anchor._location, anchor_raw)
+        self._cascading._freesegments.write(self._file.sink)
+        self._file.sink.flush()
+
+        # _existing_field_records and _column_counts are updated directly from what
+        # we just wrote, without going back to disk for them specifically.
+        #
+        # footer.extension_field_record_frames is cumulative across every add_fields()
+        # call in this session (it's rewritten to disk in full each time, so it must
+        # hold every extension field ever added, not just the ones from this call).
+        # header._field_records is fixed at load time (the schema's fields before any
+        # add_fields call in this session). Recombining those two — rather than the
+        # already-updated `existing_field_records` from the start of this call, which
+        # itself already contains earlier extension fields — avoids double-counting
+        # every field added by a previous call.
+        self._cascading._existing_field_records = list(header._field_records) + list(
+            footer.extension_field_record_frames
+        )
+        self._cascading._column_counts = numpy.append(
+            self._cascading._column_counts, numpy.zeros(len(new_fields), dtype=int)
+        )
+        # _existing_footer, _existing_page_list_envelopes, and _header._akform,
+        # by contrast, DO require a full read back from disk here: they need to
+        # be read-side model objects (Model_RNTuple_Footer, page-list envelopes),
+        # not the write-side NTuple_Footer/etc. objects already held in this
+        # method's local variables, and there's no cheaper way to produce those
+        # without re-implementing a write-to-read-model adapter. This makes every
+        # add_fields() call pay for re-parsing the whole footer and page-list
+        # state, scaling with how much has already been written -- a real but
+        # unoptimized cost, not a correctness issue.
+        directory, _ntuple_key = self._existing_key()
+        existing_reload = directory._read_ntuple_envelope(_ntuple_key)
+        self._cascading._existing_footer = existing_reload._footer
+        self._cascading._existing_page_list_envelopes = (
+            existing_reload.page_list_envelopes
+        )
+        full_akform_reload, _ = existing_reload.to_akform()
+        self._cascading._header._akform = full_akform_reload
 
 
 def _is_type_specification(obj):
