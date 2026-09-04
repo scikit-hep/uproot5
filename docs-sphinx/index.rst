@@ -108,10 +108,6 @@
    :alt: Documentation
    :target: https://uproot.readthedocs.io/
 
-.. image:: https://img.shields.io/badge/chat-online-success
-   :alt: Gitter
-   :target: https://gitter.im/Scikit-HEP/uproot
-
 :raw-html:`</p>`
 
 |br| Uproot is a library for reading and writing ROOT files in pure Python and NumPy.
@@ -160,4 +156,3 @@ Getting help
 - Report bugs, request features, and ask for additional documentation on `GitHub Issues <https://github.com/scikit-hep/uproot5/issues>`__.
 - If you have a "How do I...?" question, start a `GitHub Discussion <https://github.com/scikit-hep/uproot5/discussions>`__ with category "Q&A".
 - Alternatively, ask about it on `StackOverflow with the [uproot] tag <https://stackoverflow.com/questions/tagged/uproot>`__. Be sure to include tags for any other libraries that you use, such as Pandas or PyTorch.
-- To ask questions in real time, try the Gitter `Scikit-HEP/uproot <https://gitter.im/Scikit-HEP/uproot>`__ chat room.

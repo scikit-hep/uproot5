@@ -13,4 +13,3 @@ Here are some links to documentation, to help you in your search.
 
    * [The tutorials site](https://uproot.readthedocs.io/)
    * [StackOverflow: [uproot] tag](https://stackoverflow.com/questions/tagged/uproot)
-   * [Gitter: Scikit-HEP/uproot room](https://gitter.im/Scikit-HEP/uproot)
