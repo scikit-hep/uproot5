@@ -238,6 +238,7 @@ or
             f"Uproot 5.1+ can only be used with dask-awkward 2023.10.0 or newer; you have dask-awkward {dask_awkward.__version__}"
         )
 
+
 def pyarrow():
     """
     Imports and returns ``pyarrow``.
@@ -251,6 +252,7 @@ or
     conda install -c conda-forge pyarrow""") from err
     else:
         return pyarrow
+
 
 def cupy():
     """

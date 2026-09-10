@@ -119,9 +119,15 @@ def test_fixed_width_pandas():
 
         result = tree.arrays("ai4", library="pd")
         assert list(result.columns) == ["ai4"]
-        assert awkward.Array(result["ai4"].tolist())[:, 0].tolist() == list(range(-14, 16))
-        assert awkward.Array(result["ai4"].tolist())[:, 1].tolist() == list(range(-13, 17))
-        assert awkward.Array(result["ai4"].tolist())[:, 2].tolist() == list(range(-12, 18))
+        assert awkward.Array(result["ai4"].tolist())[:, 0].tolist() == list(
+            range(-14, 16)
+        )
+        assert awkward.Array(result["ai4"].tolist())[:, 1].tolist() == list(
+            range(-13, 17)
+        )
+        assert awkward.Array(result["ai4"].tolist())[:, 2].tolist() == list(
+            range(-12, 18)
+        )
 
 
 def test_fixed_width_pandas_2():

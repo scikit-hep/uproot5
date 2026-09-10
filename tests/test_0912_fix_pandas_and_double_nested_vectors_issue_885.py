@@ -49,9 +49,13 @@ def test_pandas_and_double_nested_vectors_issue_885(tmp_path):
         assert isinstance(u["2Dvector"][0], np.ndarray)
         assert isinstance(u["1Dvector"][0], np.ndarray)
         assert isinstance(u["othervector"][0], np.ndarray)
-        assert ak.array_equal(ak.to_list(u["2Dvector"][0]), [[0., 1., 2.], [0., 1., 2., 3., 4.]])
+        assert ak.array_equal(
+            ak.to_list(u["2Dvector"][0]), [[0.0, 1.0, 2.0], [0.0, 1.0, 2.0, 3.0, 4.0]]
+        )
         assert ak.array_equal(ak.to_list(u["1Dvector"][0]), [1, 2, 3, 4])
-        assert ak.array_equal(ak.to_list(u["othervector"][0]), [0, 1, 3, 4, 5, 6, 7, 8, 9])
+        assert ak.array_equal(
+            ak.to_list(u["othervector"][0]), [0, 1, 3, 4, 5, 6, 7, 8, 9]
+        )
 
         branch = fs["2Dvector"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
