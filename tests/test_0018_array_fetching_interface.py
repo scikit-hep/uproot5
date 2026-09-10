@@ -744,8 +744,9 @@ def test_jagged_awkward():
 
 
 def test_jagged_pandas():
+    awkward = pytest.importorskip("awkward")
     pandas = pytest.importorskip("pandas")
-    pytest.importorskip("awkward_pandas")
+    pytest.importorskip("pyarrow")
 
     interpretation = uproot.interpretation.jagged.AsJagged(
         uproot.interpretation.numerical.AsDtype(">i2")
@@ -787,38 +788,41 @@ def test_jagged_pandas():
             28,
             29,
         ]
-        assert result.values.tolist() == [
-            [],
-            [-15],
-            [-15, -13],
-            [-15, -13, -11],
-            [-15, -13, -11, -9],
-            [],
-            [-10],
-            [-10, -8],
-            [-10, -8, -6],
-            [-10, -8, -6, -4],
-            [],
-            [-5],
-            [-5, -3],
-            [-5, -3, -1],
-            [-5, -3, -1, 1],
-            [],
-            [0],
-            [0, 2],
-            [0, 2, 4],
-            [0, 2, 4, 6],
-            [],
-            [5],
-            [5, 7],
-            [5, 7, 9],
-            [5, 7, 9, 11],
-            [],
-            [10],
-            [10, 12],
-            [10, 12, 14],
-            [10, 12, 14, 16],
-        ]
+        assert awkward.array_equal(
+            result.values.tolist(),
+            [
+                [],
+                [-15],
+                [-15, -13],
+                [-15, -13, -11],
+                [-15, -13, -11, -9],
+                [],
+                [-10],
+                [-10, -8],
+                [-10, -8, -6],
+                [-10, -8, -6, -4],
+                [],
+                [-5],
+                [-5, -3],
+                [-5, -3, -1],
+                [-5, -3, -1, 1],
+                [],
+                [0],
+                [0, 2],
+                [0, 2, 4],
+                [0, 2, 4, 6],
+                [],
+                [5],
+                [5, 7],
+                [5, 7, 9],
+                [5, 7, 9, 11],
+                [],
+                [10],
+                [10, 12],
+                [10, 12, 14],
+                [10, 12, 14, 16],
+            ],
+        )
 
 
 def test_stl_vector():

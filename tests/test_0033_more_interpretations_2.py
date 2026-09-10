@@ -3,6 +3,7 @@
 import json
 import sys
 
+import awkward
 import numpy
 import pytest
 import skhep_testdata
@@ -26,7 +27,7 @@ def test_awkward_strings():
 
 def test_pandas_strings():
     pandas = pytest.importorskip("pandas")
-    pytest.importorskip("awkward_pandas")
+    pytest.importorskip("pyarrow")
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
         "tree"
     ] as tree:
@@ -73,13 +74,13 @@ def test_leaflist_awkward():
 
 def test_leaflist_pandas():
     pandas = pytest.importorskip("pandas")
-    pytest.importorskip("awkward_pandas")
+    pytest.importorskip("pyarrow")
     with uproot.open(skhep_testdata.data_path("uproot-leaflist.root"))["tree"] as tree:
         result = tree["leaflist"].array(library="pd")
 
-        assert result.ak["x"].tolist() == [1.1, 2.2, 3.3, 4.0, 5.5]
-        assert result.ak["y"].tolist() == [1, 2, 3, 4, 5]
-        assert result.ak["z"].tolist() == [97, 98, 99, 100, 101]
+        assert awkward.Array(result.tolist())["x"].tolist() == [1.1, 2.2, 3.3, 4.0, 5.5]
+        assert awkward.Array(result.tolist())["y"].tolist() == [1, 2, 3, 4, 5]
+        assert awkward.Array(result.tolist())["z"].tolist() == [97, 98, 99, 100, 101]
 
         result = tree.arrays("leaflist", library="pd")
         assert list(result.columns) == ["leaflist"]
@@ -107,25 +108,31 @@ def test_fixed_width_awkward():
 
 def test_fixed_width_pandas():
     pandas = pytest.importorskip("pandas")
-    pytest.importorskip("awkward_pandas")
+    pytest.importorskip("pyarrow")
     with uproot.open(
         skhep_testdata.data_path("uproot-sample-6.20.04-uncompressed.root")
     )["sample"] as tree:
-        result = tree["ai4"].array(library="pd").ak.array
+        result = awkward.Array(tree["ai4"].array(library="pd").tolist())
         assert result[:, 0].tolist() == list(range(-14, 16))
         assert result[:, 1].tolist() == list(range(-13, 17))
         assert result[:, 2].tolist() == list(range(-12, 18))
 
         result = tree.arrays("ai4", library="pd")
         assert list(result.columns) == ["ai4"]
-        assert result["ai4"].ak.array[:, 0].tolist() == list(range(-14, 16))
-        assert result["ai4"].ak.array[:, 1].tolist() == list(range(-13, 17))
-        assert result["ai4"].ak.array[:, 2].tolist() == list(range(-12, 18))
+        assert awkward.Array(result["ai4"].tolist())[:, 0].tolist() == list(
+            range(-14, 16)
+        )
+        assert awkward.Array(result["ai4"].tolist())[:, 1].tolist() == list(
+            range(-13, 17)
+        )
+        assert awkward.Array(result["ai4"].tolist())[:, 2].tolist() == list(
+            range(-12, 18)
+        )
 
 
 def test_fixed_width_pandas_2():
     pandas = pytest.importorskip("pandas")
-    pytest.importorskip("awkward_pandas")
+    pytest.importorskip("pyarrow")
     with uproot.open(skhep_testdata.data_path("uproot-small-evnt-tree-fullsplit.root"))[
         "tree"
     ] as tree:
