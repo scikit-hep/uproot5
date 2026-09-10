@@ -744,8 +744,9 @@ def test_jagged_awkward():
 
 
 def test_jagged_pandas():
+    awkward = pytest.importorskip("awkward")
     pandas = pytest.importorskip("pandas")
-    pytest.importorskip("awkward_pandas")
+    pytest.importorskip("pyarrow")
 
     interpretation = uproot.interpretation.jagged.AsJagged(
         uproot.interpretation.numerical.AsDtype(">i2")
@@ -787,7 +788,7 @@ def test_jagged_pandas():
             28,
             29,
         ]
-        assert result.values.tolist() == [
+        assert awkward.array_equal(result.values.tolist(), [
             [],
             [-15],
             [-15, -13],
@@ -818,7 +819,7 @@ def test_jagged_pandas():
             [10, 12],
             [10, 12, 14],
             [10, 12, 14, 16],
-        ]
+        ])
 
 
 def test_stl_vector():

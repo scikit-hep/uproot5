@@ -238,21 +238,19 @@ or
             f"Uproot 5.1+ can only be used with dask-awkward 2023.10.0 or newer; you have dask-awkward {dask_awkward.__version__}"
         )
 
-
-def awkward_pandas():
+def pyarrow():
     """
-    Imports and returns ``awkward_pandas``.
+    Imports and returns ``pyarrow``.
     """
     try:
-        import awkward_pandas
+        import pyarrow
     except ModuleNotFoundError as err:
-        raise ModuleNotFoundError("""install the 'awkward-pandas' package with:
-    pip install awkward-pandas
+        raise ModuleNotFoundError("""install the 'pyarrow' package with:
+    pip install pyarrow
 or
-    conda install -c conda-forge awkward-pandas""") from err
+    conda install -c conda-forge pyarrow""") from err
     else:
-        return awkward_pandas
-
+        return pyarrow
 
 def cupy():
     """
