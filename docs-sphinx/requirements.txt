@@ -1,2 +1,3 @@
 sphinx>=2.4.4
 sphinx-rtd-theme
+sphinx-llm

@@ -1,3 +1,7 @@
+.. meta::
+   :description: Uproot reads and writes ROOT files in pure Python and NumPy,
+      independent of the C++ ROOT toolkit.
+
 .. toctree::
     :hidden:
 
