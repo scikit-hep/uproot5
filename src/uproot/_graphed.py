@@ -65,10 +65,10 @@ class _GraphedTTreeSource:
     # ---- graphed.write.PartitionedSource: partition-wise reading -----------------------------
     def partitions(self, steps_per_file=1):
         """BLIND partitions, one per (file x step): planning opens no files."""
-        from graphed.core import Partition
+        graphed = uproot.extras.graphed()
 
         return tuple(
-            Partition.blind(file_path, object_path, s, steps_per_file)
+            graphed.core.Partition.blind(file_path, object_path, s, steps_per_file)
             for (file_path, object_path) in self._file_tree
             for s in range(steps_per_file)
         )
@@ -124,8 +124,8 @@ def graphed(
         )
 
     import awkward
-    from graphed import Session
-    from graphed.awkward import AwkwardBackend, AwkwardForm
+
+    graphed = uproot.extras.graphed()
 
     real_options = options.copy()
     real_options.setdefault("num_workers", 1)
@@ -176,20 +176,22 @@ def graphed(
         record_form.length_zero_array(highlevel=False).to_typetracer(forget_length=True)
     )
 
-    session = Session(AwkwardBackend(behavior=behavior))
+    session = graphed.Session(graphed.awkward.AwkwardBackend(behavior=behavior))
     source = _GraphedTTreeSource(
         file_tree, common_keys, custom_classes, allow_missing, real_options
     )
     name = getattr(first_ttree, "name", None) or "events"
-    return session.source(name, form=AwkwardForm(typetracer), data=source)
+    return session.source(
+        name, form=graphed.awkward.AwkwardForm(typetracer), data=source
+    )
 
 
 def necessary_columns(array, *, on_fail="raise"):
     """The ``TBranches`` each source must read for ``array`` — ``graphed``'s necessary-buffer
     projection (metadata-only). Returns ``{source_name: frozenset(branch_names)}``."""
-    from graphed.awkward.projection import project
+    graphed = uproot.extras.graphed()
 
-    return dict(project(array, on_fail=on_fail).read_columns)
+    return dict(graphed.awkward.projection.project(array, on_fail=on_fail).read_columns)
 
 
 def necessary_buffers(array, *, on_fail="raise"):
@@ -199,11 +201,13 @@ def necessary_buffers(array, *, on_fail="raise"):
     count-only analysis truthfully reports ``{collection: OFFSETS}`` where the column view reports
     the empty set — feed it to :doc:`resolve_read_branches` to serve the count from the jagged
     branch's COUNTER branch without reading the payload baskets."""
-    from graphed.awkward.projection import project_buffers
+    graphed = uproot.extras.graphed()
 
     return {
         name: dict(needs)
-        for name, needs in project_buffers(array, on_fail=on_fail).read_buffers.items()
+        for name, needs in graphed.awkward.projection.project_buffers(
+            array, on_fail=on_fail
+        ).read_buffers.items()
     }
 
 
@@ -216,11 +220,11 @@ def resolve_read_branches(obj, needs):
     without the payload baskets; where no counter exists (or for ``RNTuple``, whose index column is
     not independently addressable through the public API) it falls back to the branch itself.
     Returns ``{branch_to_read: requested_path}``."""
-    from graphed import BufferNeed
+    graphed = uproot.extras.graphed()
 
     out = {}
     for path, need in needs.items():
-        if need is BufferNeed.DATA or str(need) == "data":
+        if need is graphed.BufferNeed.DATA or str(need) == "data":
             out[path] = path
             continue
         counter = None
@@ -262,7 +266,7 @@ def graphed_partitions(
     The chunks feed a ``graphed.core.Plan`` run by ``graphed_executors.local.ProcessPoolExecutor`` /
     ``ThreadExecutor`` — the per-partition, tree-reduced execution that a deferred-array ``.compute()``
     hides."""
-    from graphed.core import Partition, Task
+    graphed = uproot.extras.graphed()
 
     have_step_size = not isinstance(step_size, uproot._util._Unset)
     have_steps_per_file = not isinstance(steps_per_file, uproot._util._Unset)
@@ -290,7 +294,12 @@ def graphed_partitions(
             # resolved against the file's actual entry count at read time
             for step in range(n_steps):
                 tasks.append(
-                    Task(key, Partition.blind(file_path, object_path, step, n_steps))
+                    graphed.core.Task(
+                        key,
+                        graphed.core.Partition.blind(
+                            file_path, object_path, step, n_steps
+                        ),
+                    )
                 )
                 key += 1
             continue
@@ -316,7 +325,12 @@ def graphed_partitions(
         for start, stop in ranges:
             if stop > start:
                 tasks.append(
-                    Task(key, Partition(file_path, object_path, int(start), int(stop)))
+                    graphed.core.Task(
+                        key,
+                        graphed.core.Partition(
+                            file_path, object_path, int(start), int(stop)
+                        ),
+                    )
                 )
                 key += 1
     return tasks
@@ -396,8 +410,7 @@ def graphed_head(array, n=5):
 
     The ``graphed`` analogue of a dask collection's ``head``.
     """
-    from graphed import compile_ir, evaluate_ir
-    from graphed.core import Partition
+    graphed = uproot.extras.graphed()
 
     session = array.session
     uproot_sources = [
@@ -412,7 +425,7 @@ def graphed_head(array, n=5):
         )
     nid, source = uproot_sources[0]
     columns = _evaluation_columns(array, nid, source._common_keys)
-    compiled = compile_ir(session, array)
+    compiled = graphed.compile_ir(session, array)
 
     file_path, object_path = source._file_tree[0]
     obj = uproot._util.regularize_object_path(
@@ -424,7 +437,11 @@ def graphed_head(array, n=5):
     )
     stop = min(int(n), obj.num_entries)
     chunk = read_graphed_partition(
-        Partition(file_path, object_path, 0, stop), list(columns), tree=obj
+        graphed.core.Partition(file_path, object_path, 0, stop),
+        list(columns),
+        tree=obj,
     )
-    (out,) = evaluate_ir(compiled, session.backend, {session.source_name(nid): chunk})
+    (out,) = graphed.evaluate_ir(
+        compiled, session.backend, {session.source_name(nid): chunk}
+    )
     return out

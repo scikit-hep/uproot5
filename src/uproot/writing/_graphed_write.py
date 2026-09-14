@@ -27,14 +27,6 @@ from typing import Any
 import uproot
 
 
-def _is_graphed_array(obj):
-    try:
-        from graphed import Array
-    except ImportError:
-        return False
-    return isinstance(obj, Array)
-
-
 def _recreate_kwargs(compression, compression_level):
     if compression is None:
         return {}
@@ -78,8 +70,7 @@ def _write_partition(
     partition with the raw chunk bound to the source, so a DERIVED column (a field computed from an
     expression, absent from the source branches) is materialized and written — mirroring the
     read-side ``uproot._graphed.graphed_head`` pattern."""
-    from graphed import evaluate_ir
-    from graphed import write as gwrite
+    graphed = uproot.extras.graphed()
 
     tree = resources.open_once(partition.uri, uproot.open)[partition.tree]
     resolved = partition.resolve(tree.num_entries)
@@ -87,14 +78,16 @@ def _write_partition(
         return []  # fewer entries than steps: skip, never write an empty part file
     chunk = uproot.read_graphed_partition(partition, columns, tree=tree)
     evaluated: Any  # a backend array (awkward/numpy); evaluate_ir is typed list[object]
-    (evaluated,) = evaluate_ir(compiled, backend, {source_name: chunk})
+    (evaluated,) = graphed.evaluate_ir(compiled, backend, {source_name: chunk})
     # a record graph yields named fields (the derived columns); a bare (non-record) expression
     # yields a fieldless array with no branch name to write it under — fall back to the source
     # columns it reads
     out_rec = evaluated if evaluated.fields else chunk
     record = {name: out_rec[name] for name in out_rec.fields}
-    idx = gwrite.blind_part_index(partition, dict(bases))
-    path = gwrite.part_path(destination, idx, prefix=prefix or "part", suffix=".root")
+    idx = graphed.write.blind_part_index(partition, dict(bases))
+    path = graphed.write.part_path(
+        destination, idx, prefix=prefix or "part", suffix=".root"
+    )
     with uproot.recreate(
         path, **_recreate_kwargs(compression, compression_level)
     ) as out:
@@ -103,10 +96,13 @@ def _write_partition(
 
 
 def _select_executor(executor):
-    from graphed_executors.local import ProcessPoolExecutor, ThreadExecutor
+    graphed_executors = uproot.extras.graphed_executors()
 
     if isinstance(executor, str):
-        return {"process": ProcessPoolExecutor, "thread": ThreadExecutor}[executor]
+        return {
+            "process": graphed_executors.local.ProcessPoolExecutor,
+            "thread": graphed_executors.local.ThreadExecutor,
+        }[executor]
     return executor  # an executor class/instance passed directly
 
 
@@ -145,10 +141,9 @@ def graphed_write(
     Produces one ROOT file per partition, mirroring :doc:`uproot.writing._dask_write.dask_write`,
     as a specialization of the ``graphed.write`` partitioned-write base.
     """
-    from graphed import compile_ir
-    from graphed import write as gwrite
+    graphed = uproot.extras.graphed()
 
-    if not _is_graphed_array(array):
+    if not isinstance(array, graphed.Array):
         raise TypeError("graphed_write expects a uproot.graphed Array")
 
     from uproot._graphed import _evaluation_columns, _GraphedTTreeSource
@@ -175,12 +170,12 @@ def graphed_write(
     # SYNTACTIC evaluation columns (as on the read side), not the finer buffer projection which
     # under-supplies evaluation. Compile once in the driver; evaluate per partition in the worker.
     columns = _evaluation_columns(array, nid, source._common_keys)
-    compiled = compile_ir(session, array)
+    compiled = graphed.compile_ir(session, array)
     os.makedirs(destination, exist_ok=True)
 
     # the graphed.write base: blind partitions (no driver file opens) + the O(#files) base table
     partitions = source.partitions(steps_per_file)
-    bases = gwrite.file_bases(list(source._file_tree), steps_per_file)
+    bases = graphed.write.file_bases(list(source._file_tree), steps_per_file)
 
     process = functools.partial(
         _write_partition,
@@ -195,7 +190,7 @@ def graphed_write(
         backend=session.backend,
         source_name=session.source_name(nid),
     )
-    plan = gwrite.write_plan(partitions, process)
+    plan = graphed.write.write_plan(partitions, process)
 
     if not compute:
         return plan
