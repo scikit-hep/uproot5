@@ -8,9 +8,6 @@ entry range is resolved against the file's own count when it is read. However th
 the executor's tree-reduced result must equal the single-pass computation.
 """
 
-import os
-import sys
-
 import numpy as np
 import pytest
 import skhep_testdata
@@ -20,10 +17,10 @@ import uproot
 pytest.importorskip("graphed_executors.local")
 pytest.importorskip("graphed.awkward")
 
-sys.path.insert(0, os.path.dirname(__file__))
-import graphed_uproot_analysis as gu
 from graphed.core import Plan
 from graphed_executors.local import ProcessPoolExecutor
+
+from tests.graphed import analysis as gu
 
 
 def _run(tasks):

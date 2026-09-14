@@ -11,9 +11,6 @@ Two complementary graphed preservation models:
     re-recording — "compile once, run on N datasets".
 """
 
-import os
-import sys
-
 import awkward as ak
 import numpy as np
 import pytest
@@ -23,8 +20,6 @@ import uproot
 
 pytest.importorskip("graphed.preserve")
 pytest.importorskip("graphed.awkward")
-
-sys.path.insert(0, os.path.dirname(__file__))
 from graphed import Session
 from graphed.awkward import AwkwardBackend, from_awkward
 from graphed.checkpoint import Store, run_resumable
@@ -141,7 +136,7 @@ def test_self_fingerprinting(tmp_path):
 
 # ---- the preserved plan re-targeted at alternate inputs -----------------------------------------
 def test_preserved_plan_runs_on_an_alternate_file(tmp_path):
-    import graphed_uproot_report as gr
+    from tests.graphed import report as gr
 
     p_a = skhep_testdata.data_path("uproot-Zmumu.root") + ":events"
     p_b = (
@@ -162,7 +157,7 @@ def test_preserved_plan_runs_on_an_alternate_file(tmp_path):
 
 
 def test_preserved_plan_runs_with_a_different_partition_count(tmp_path):
-    import graphed_uproot_report as gr
+    from tests.graphed import report as gr
 
     p = skhep_testdata.data_path("uproot-Zmumu.root") + ":events"
     base = gr.build_plan(

@@ -144,24 +144,20 @@ def test_jagged_integer_array_getitem_over_the_reader(nanoaod_file):
     )
 
 
-def test_capstone_ttree_to_histogram_through_a_process_pool(
-    nanoaod_file, tmp_path, monkeypatch
-):
+def test_capstone_ttree_to_histogram_through_a_process_pool(nanoaod_file, tmp_path):
     gh = pytest.importorskip("graphed_histogram")
     pytest.importorskip("graphed_executors.local")
     import boost_histogram as bh
     from graphed_executors.local import ProcessPoolExecutor
-
-    # spawned workers resolve the backend by IMPORT REF: the ref module lives beside this test,
-    # so put the tests dir on sys.path (spawn children inherit it via the preparation data)
-    monkeypatch.syspath_prepend(os.path.dirname(__file__))
 
     where, raw = nanoaod_file
     g = uproot.graphed(where, library="ak", behavior=BEHAVIOR)
     pt = _muons(g).pt
     h = gh.boost.Histogram(bh.axis.Regular(40, 0.0, 120.0), storage=bh.storage.Int64())
     h.fill(pt)
-    plan = h.plan(steps_per_file=3, backend="vector_backend_ref:make_backend")
+    plan = h.plan(
+        steps_per_file=3, backend="tests.graphed.vector_backend_ref:make_backend"
+    )
     out = ProcessPoolExecutor(max_workers=2).run(plan).value
     eager = bh.Histogram(bh.axis.Regular(40, 0.0, 120.0), storage=bh.storage.Int64())
     eager.fill(ak.flatten(_ref_muons(raw).pt, axis=None))
