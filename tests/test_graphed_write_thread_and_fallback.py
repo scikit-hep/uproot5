@@ -1,10 +1,5 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot5/blob/main/LICENSE
-"""Extra (non-frozen) m51 coverage: drive ``_write_partition`` in-process via the THREAD executor
-so plain coverage sees the worker body (the frozen suite runs it in spawn ProcessPool children,
-invisible to a non-subprocess coverage run), and exercise the bare-expression fallback branch the
-frozen suite never reaches (frozen writes only records).
-
-Both are real behavioral assertions, not coverage no-ops."""
+"""``uproot.graphed_write`` with the in-process THREAD executor, and the bare-expression fallback."""
 import os
 
 import awkward as ak
@@ -27,9 +22,8 @@ def _src(tmp_path, n=12):
 
 
 def test_derived_record_thread_executor(tmp_path):
-    """Record path (``evaluated.fields`` truthy) via ``executor="thread"`` — same derived-column
-    write as the frozen suite, but in-process so the worker body is covered without subprocess
-    coverage."""
+    """Record path (``evaluated.fields`` truthy) via ``executor="thread"``: the derived-column
+    write, run in-process."""
     g = uproot.graphed(_src(tmp_path), library="ak")
     rec = gak.zip({"x": g.x, "doubled": g.x * 2.0 + 1.0})
     outdir = os.path.join(tmp_path, "out")
@@ -43,9 +37,8 @@ def test_derived_record_thread_executor(tmp_path):
 
 
 def test_bare_expression_falls_back_to_source_columns(tmp_path):
-    """Fallback branch (``evaluated.fields`` empty → source columns): a bare non-record expression
-    ``g.x + g.y`` has no field to name, so the write falls back to the projected source columns
-    (pre-m51 behavior). Thread executor keeps it in-process for coverage."""
+    """Fallback branch (``evaluated.fields`` empty -> source columns): a bare non-record expression
+    ``g.x + g.y`` has no field to name, so the write falls back to the projected source columns."""
     src = _src(tmp_path)
     g = uproot.graphed(src, library="ak")
     outdir = os.path.join(tmp_path, "out")
@@ -60,13 +53,11 @@ def test_bare_expression_falls_back_to_source_columns(tmp_path):
 
 
 def test_syntactic_read_list_witness_no_starve(tmp_path):
-    """Witness that the read list is the SYNTACTIC ``_evaluation_columns``, not the finer
-    ``necessary_columns`` buffer projection (§6.4f). ``zip({"a": g.x, "b": g.y})[["a"]]`` keeps only
-    field ``a`` (=x) in the OUTPUT, so ``necessary_columns`` = {x} — but the ``zip`` node
-    syntactically REPLAYS a read of ``y``, so evaluation needs {x, y}. With ``necessary_columns`` the
-    worker would read only x and ``evaluate_ir`` would STARVE (the awkward backend raises
-    ``no field named 'y'``); ``_evaluation_columns`` = {x, y} feeds it. This PASSES today and would
-    fail if ``graphed_write`` used ``necessary_columns`` (demonstrated in the m51 attempts log)."""
+    """The worker reads the SYNTACTIC ``_evaluation_columns``, not the finer ``necessary_columns``
+    buffer projection. ``zip({"a": g.x, "b": g.y})[["a"]]`` keeps only field ``a`` (=x) in the
+    OUTPUT, so ``necessary_columns`` = {x} -- but the ``zip`` node syntactically replays a read of
+    ``y``, so evaluation needs {x, y}. Reading only x would starve ``evaluate_ir`` (the awkward
+    backend raises ``no field named 'y'``)."""
     src = _src(tmp_path)
     g = uproot.graphed(src, library="ak")
     rec = gak.zip({"a": g.x, "b": g.y})[["a"]]
