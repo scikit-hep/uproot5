@@ -21,6 +21,10 @@ extra = [
 test = [
   "aiohttp",
   "deflate",
+  "graphed[awkward,parquet]>=0.0.2; python_version >= '3.11'",
+  "graphed-executors>=0.0.2; python_version >= '3.11'",
+  "graphed-histogram>=0.0.2; python_version >= '3.11'",
+  "vector; python_version >= '3.11'",
   "isal",
   "moto[s3,server]",
   "paramiko",
@@ -205,4 +209,4 @@ write_to = "src/uproot/_version.py"
 
 [tool.uv]
 exclude-newer = "7 days"
-exclude-newer-package = {awkward = false, awkward-cpp = false, scikit-hep-testdata = false}
+exclude-newer-package = {awkward = false, awkward-cpp = false, scikit-hep-testdata = false, graphed = false, graphed-executors = false, graphed-histogram = false}
