@@ -11,6 +11,7 @@ an error budget as a stopping condition.
 
 Every callable is module-level so a ``DurablePlan`` can reference it by import path (``OpSpec.from_ref``).
 """
+
 from __future__ import annotations
 
 import awkward as ak
@@ -25,7 +26,9 @@ BINS, LO, HI = 50, -150.0, 150.0
 
 
 def _counts(values) -> np.ndarray:
-    return np.histogram(ak.to_numpy(values), bins=BINS, range=(LO, HI))[0].astype(np.int64)
+    return np.histogram(ak.to_numpy(values), bins=BINS, range=(LO, HI))[0].astype(
+        np.int64
+    )
 
 
 def process(partition, resources):
@@ -51,7 +54,9 @@ def _ir() -> bytes:
     src = g.add_source("events", {"uri": "uproot://events"})
     px = g.add_op("field", [src], {"field": COLUMN})
     out = g.add_reduction("hist", [px], {"bins": BINS})
-    return g.serialize(outputs=[out])  # [freeze-M22-1: mark_output removed; outputs per request]
+    return g.serialize(
+        outputs=[out]
+    )  # [freeze-M22-1: mark_output removed; outputs per request]
 
 
 def build_plan(partitions, *, error_budget=None) -> DurablePlan:

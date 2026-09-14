@@ -71,7 +71,9 @@ def test_head_clamps_to_the_first_files_entries(tmp_path):
 
 
 def test_head_reads_only_projected_branches(tmp_path):
-    g = uproot.graphed(_hzz(), library="ak", filter_name=["Muon_Px", "Muon_Py", "MET_px"])
+    g = uproot.graphed(
+        _hzz(), library="ak", filter_name=["Muon_Px", "Muon_Py", "MET_px"]
+    )
     got = ak.Array(uproot.graphed_head(g.MET_px + 0.0, 4))
     raw = uproot.open(_hzz()).arrays(["MET_px"])
     assert ak.array_equal(got, (raw.MET_px + 0.0)[:4])
@@ -88,7 +90,9 @@ def test_per_event_reductions_fuse_into_one_stage():
     compiled = compile_ir(g.session, expr)
     nodes = graphed.core.GraphStore.deserialize(compiled.ir).nodes()
     kinds = sorted(n["kind"] for n in nodes)
-    assert "reduction" not in kinds, f"a per-event reduction leaked out as a boundary: {kinds}"
+    assert (
+        "reduction" not in kinds
+    ), f"a per-event reduction leaked out as a boundary: {kinds}"
     # default SingleUse fusion keeps the fanned-out field op as its own stage (the frozen M4
     # diamond pin): source + 2 stages; under maximal fusion the chain is source + ONE stage
     assert kinds == ["source", "stage", "stage"]

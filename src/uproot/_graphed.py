@@ -15,6 +15,7 @@ necessary-columns optimization, expressed through ``graphed``).
 
 ``graphed`` (and its backends) are imported lazily, so importing ``uproot`` does not require them.
 """
+
 from __future__ import annotations
 
 import uproot
@@ -42,12 +43,18 @@ class _GraphedTTreeSource:
     def __call__(self):
         import awkward
 
-        cols = list(self.columns) if self.columns is not None else list(self._common_keys)
+        cols = (
+            list(self.columns) if self.columns is not None else list(self._common_keys)
+        )
         self.last_columns_read = list(cols)
         parts = []
         for file_path, object_path in self._file_tree:
             ttree = uproot._util.regularize_object_path(
-                file_path, object_path, self._custom_classes, self._allow_missing, self._options
+                file_path,
+                object_path,
+                self._custom_classes,
+                self._allow_missing,
+                self._options,
             )
             if ttree is not None:
                 parts.append(ttree.arrays(cols, library="ak"))
@@ -170,7 +177,9 @@ def graphed(
     )
 
     session = Session(AwkwardBackend(behavior=behavior))
-    source = _GraphedTTreeSource(file_tree, common_keys, custom_classes, allow_missing, real_options)
+    source = _GraphedTTreeSource(
+        file_tree, common_keys, custom_classes, allow_missing, real_options
+    )
     name = getattr(first_ttree, "name", None) or "events"
     return session.source(name, form=AwkwardForm(typetracer), data=source)
 
@@ -215,7 +224,9 @@ def resolve_read_branches(obj, needs):
             out[path] = path
             continue
         counter = None
-        if not isinstance(obj, HasFields):  # TTree: jagged branches carry a counter branch
+        if not isinstance(
+            obj, HasFields
+        ):  # TTree: jagged branches carry a counter branch
             try:
                 counter = obj[path].count_branch
             except (KeyError, AttributeError):
@@ -256,9 +267,13 @@ def graphed_partitions(
     have_step_size = not isinstance(step_size, uproot._util._Unset)
     have_steps_per_file = not isinstance(steps_per_file, uproot._util._Unset)
     if have_step_size and not open_files:
-        raise TypeError("step_size cannot be used with open_files=False; use steps_per_file")
+        raise TypeError(
+            "step_size cannot be used with open_files=False; use steps_per_file"
+        )
     if have_step_size and have_steps_per_file:
-        raise TypeError("step_size and steps_per_file are mutually exclusive; set only one")
+        raise TypeError(
+            "step_size and steps_per_file are mutually exclusive; set only one"
+        )
     n_steps = int(steps_per_file) if have_steps_per_file else 1
 
     real_options = options.copy()
@@ -274,7 +289,9 @@ def graphed_partitions(
             # ``Partition.blind`` records (step, n_steps) explicitly — the old negative-entry_stop
             # sentinel is retired) resolved against the file's actual entry count at read time
             for step in range(n_steps):
-                tasks.append(Task(key, Partition.blind(file_path, object_path, step, n_steps)))
+                tasks.append(
+                    Task(key, Partition.blind(file_path, object_path, step, n_steps))
+                )
                 key += 1
             continue
         obj = uproot._util.regularize_object_path(
@@ -284,19 +301,30 @@ def graphed_partitions(
             continue
         n_entries = obj.num_entries
         if have_step_size:
-            per = step_size if isinstance(step_size, int) else obj.num_entries_for(step_size)
+            per = (
+                step_size
+                if isinstance(step_size, int)
+                else obj.num_entries_for(step_size)
+            )
             per = max(1, int(per))
             ranges = [(s, min(s + per, n_entries)) for s in range(0, n_entries, per)]
         else:
-            ranges = [((i * n_entries) // n_steps, ((i + 1) * n_entries) // n_steps) for i in range(n_steps)]
+            ranges = [
+                ((i * n_entries) // n_steps, ((i + 1) * n_entries) // n_steps)
+                for i in range(n_steps)
+            ]
         for start, stop in ranges:
             if stop > start:
-                tasks.append(Task(key, Partition(file_path, object_path, int(start), int(stop))))
+                tasks.append(
+                    Task(key, Partition(file_path, object_path, int(start), int(stop)))
+                )
                 key += 1
     return tasks
 
 
-def read_graphed_partition(partition, columns, *, tree=None, library="ak", **open_options):
+def read_graphed_partition(
+    partition, columns, *, tree=None, library="ak", **open_options
+):
     """Read a ``graphed.core.Partition``'s chunk of ``columns`` from its ROOT file.
 
     Resolves **blind** partitions (``entry_stop < 0`` encodes ``step_index`` / ``n_steps`` from
@@ -308,11 +336,15 @@ def read_graphed_partition(partition, columns, *, tree=None, library="ak", **ope
     if getattr(partition, "is_blind", False):
         partition = partition.resolve(tree.num_entries)
     start, stop = partition.entry_start, partition.entry_stop
-    if stop < 0:  # legacy blind sentinel (pre-M10 serialized plans): step `start` of `-stop` steps
+    if (
+        stop < 0
+    ):  # legacy blind sentinel (pre-M10 serialized plans): step `start` of `-stop` steps
         n_steps, step, n_entries = -stop, start, tree.num_entries
         start = (step * n_entries) // n_steps
         stop = ((step + 1) * n_entries) // n_steps
-    return tree.arrays(list(columns), entry_start=start, entry_stop=stop, library=library)
+    return tree.arrays(
+        list(columns), entry_start=start, entry_stop=stop, library=library
+    )
 
 
 def _evaluation_columns(array, source_node_id, common_keys):
@@ -330,7 +362,10 @@ def _evaluation_columns(array, source_node_id, common_keys):
 
     def on_op(_nid, name, ins, params):
         is_source_input = any(
-            isinstance(x, tuple) and len(x) == 2 and x[0] is sentinel and x[1] == source_node_id
+            isinstance(x, tuple)
+            and len(x) == 2
+            and x[0] is sentinel
+            and x[1] == source_node_id
             for x in ins
         )
         if is_source_input:
@@ -339,11 +374,17 @@ def _evaluation_columns(array, source_node_id, common_keys):
             elif name == "fields":
                 needed.update(f for f in str(params["fields"]).split(",") if f)
             else:
-                needed.update(common_keys)  # a non-field op consumes the whole source record
+                needed.update(
+                    common_keys
+                )  # a non-field op consumes the whole source record
         return None
 
-    array.session.walk(array, source=on_source, op=on_op, external=lambda _n, _f, ins: None)
-    if not needed:  # a bare source read (the array IS the source): every selected branch
+    array.session.walk(
+        array, source=on_source, op=on_op, external=lambda _n, _f, ins: None
+    )
+    if (
+        not needed
+    ):  # a bare source read (the array IS the source): every selected branch
         return tuple(common_keys)
     return tuple(k for k in common_keys if k in needed)
 
@@ -360,20 +401,26 @@ def graphed_head(array, n=5):
 
     session = array.session
     uproot_sources = [
-        (nid, s) for nid, s in session.sources().items() if isinstance(s, _GraphedTTreeSource)
+        (nid, s)
+        for nid, s in session.sources().items()
+        if isinstance(s, _GraphedTTreeSource)
     ]
     if len(uproot_sources) != 1:
         raise TypeError(
             f"graphed_head supports exactly one uproot.graphed source per array; "
             f"this array is backed by {len(uproot_sources)}"
         )
-    (nid, source) = uproot_sources[0]
+    nid, source = uproot_sources[0]
     columns = _evaluation_columns(array, nid, source._common_keys)
     compiled = compile_ir(session, array)
 
     file_path, object_path = source._file_tree[0]
     obj = uproot._util.regularize_object_path(
-        file_path, object_path, source._custom_classes, source._allow_missing, source._options
+        file_path,
+        object_path,
+        source._custom_classes,
+        source._allow_missing,
+        source._options,
     )
     stop = min(int(n), obj.num_entries)
     chunk = read_graphed_partition(

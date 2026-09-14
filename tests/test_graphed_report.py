@@ -46,7 +46,9 @@ def test_bad_file_is_dead_lettered_and_good_partitions_reduce(tmp_path):
     assert res.report.executed == 2
     assert res.report.dead == 1
     (dl,) = res.report.dead_letters
-    assert dl["task_id"] == plan.task_id(_missing(tmp_path))  # reproducible content-addressed id
+    assert dl["task_id"] == plan.task_id(
+        _missing(tmp_path)
+    )  # reproducible content-addressed id
     assert np.array_equal(res.value, gr.single_pass(p1) + gr.single_pass(p2))
 
 
@@ -76,7 +78,9 @@ def test_kill_then_resume_skips_completed_and_matches(tmp_path):
     assert res.report.skipped == 2  # completed work reused, not recomputed
     assert res.report.executed == 2  # only the unfinished partitions run
     assert res.report.did_less_work
-    assert np.array_equal(res.value, gr.single_pass(p1))  # resumed result == single pass
+    assert np.array_equal(
+        res.value, gr.single_pass(p1)
+    )  # resumed result == single pass
 
 
 def test_error_budget_stops_the_run(tmp_path):

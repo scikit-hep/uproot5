@@ -15,6 +15,7 @@ This is the real thread/process-executor path that a deferred-array ``.compute()
 uproot ``graphed`` tests exercise ``ProcessPoolExecutor`` instead of a thin ``materialize`` wrapper. Every
 callable here is module-level so a spawned ``ProcessPoolExecutor`` worker can import it by reference.
 """
+
 from __future__ import annotations
 
 import awkward as ak
@@ -35,7 +36,9 @@ def analysis(events):
 
 
 def _counts(values) -> np.ndarray:
-    return np.histogram(ak.to_numpy(values), bins=BINS, range=(LO, HI))[0].astype(np.int64)
+    return np.histogram(ak.to_numpy(values), bins=BINS, range=(LO, HI))[0].astype(
+        np.int64
+    )
 
 
 _COMPILED = None
@@ -43,7 +46,8 @@ _COMPILED = None
 
 def compiled():
     """The analysis compiled to its reduced serialized IR — once per worker, cached. Recording
-    needs only the source FORM (a one-row stand-in with the branches' dtypes), never event data."""
+    needs only the source FORM (a one-row stand-in with the branches' dtypes), never event data.
+    """
     global _COMPILED
     if _COMPILED is None:
         from graphed import compile_ir
@@ -62,7 +66,9 @@ def process(part: Partition, res: object) -> np.ndarray:
     tree = res.open_once(part.uri, uproot.open)[part.tree]  # type: ignore[attr-defined]
     chunk = uproot.read_graphed_partition(part, COLUMNS, tree=tree)
     (out,) = evaluate_ir(compiled(), AwkwardBackend(), {"events": chunk})
-    return _counts(out)  # evaluate the REDUCED IR on the chunk — no Session, no re-record
+    return _counts(
+        out
+    )  # evaluate the REDUCED IR on the chunk — no Session, no re-record
 
 
 def combine(a: np.ndarray, b: np.ndarray) -> np.ndarray:
