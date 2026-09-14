@@ -58,8 +58,13 @@ def _build(root, path_with_tree):
     events = _events(path_with_tree)
     s, value, weight = _record(events)
     bundle = build_bundle(
-        root, session=s, value=value, weight=weight,
-        datasets={"events": events}, payloads={}, histogram=HIST,
+        root,
+        session=s,
+        value=value,
+        weight=weight,
+        datasets={"events": events},
+        payloads={},
+        histogram=HIST,
     )
     return bundle, events
 
@@ -111,17 +116,26 @@ def test_self_fingerprinting(tmp_path):
     def _bundle(root, ev):
         s, value, weight = _record(ev)
         return build_bundle(
-            root, session=s, value=value, weight=weight,
-            datasets={"events": ev}, payloads={}, histogram=HIST,
+            root,
+            session=s,
+            value=value,
+            weight=weight,
+            datasets={"events": ev},
+            payloads={},
+            histogram=HIST,
         )
 
     same_a = _bundle(tmp_path / "a", events)
     same_b = _bundle(tmp_path / "b", events)
-    assert same_a.fingerprint() == same_b.fingerprint()  # identical input -> identical fingerprint
+    assert (
+        same_a.fingerprint() == same_b.fingerprint()
+    )  # identical input -> identical fingerprint
 
     subset = events[:500]
     different = _bundle(tmp_path / "c", subset)
-    assert different.fingerprint() != same_a.fingerprint()  # different data -> different fingerprint
+    assert (
+        different.fingerprint() != same_a.fingerprint()
+    )  # different data -> different fingerprint
     assert np.array_equal(reproduce(different), _reference(subset))
 
 
@@ -130,9 +144,13 @@ def test_preserved_plan_runs_on_an_alternate_file(tmp_path):
     import graphed_uproot_report as gr
 
     p_a = skhep_testdata.data_path("uproot-Zmumu.root") + ":events"
-    p_b = skhep_testdata.data_path("uproot-Zmumu-uncompressed.root") + ":events"  # a different location
+    p_b = (
+        skhep_testdata.data_path("uproot-Zmumu-uncompressed.root") + ":events"
+    )  # a different location
 
-    base = gr.build_plan([t.partition for t in uproot.graphed_partitions(p_a, steps_per_file=4)])
+    base = gr.build_plan(
+        [t.partition for t in uproot.graphed_partitions(p_a, steps_per_file=4)]
+    )
     # re-target the SAME preserved analysis at a different file — the IR is shared, not re-recorded
     plan_b = base.with_partitions(
         [t.partition for t in uproot.graphed_partitions(p_b, steps_per_file=4)]
@@ -147,7 +165,9 @@ def test_preserved_plan_runs_with_a_different_partition_count(tmp_path):
     import graphed_uproot_report as gr
 
     p = skhep_testdata.data_path("uproot-Zmumu.root") + ":events"
-    base = gr.build_plan([t.partition for t in uproot.graphed_partitions(p, steps_per_file=4)])
+    base = gr.build_plan(
+        [t.partition for t in uproot.graphed_partitions(p, steps_per_file=4)]
+    )
     re_chunked = base.with_partitions(
         [t.partition for t in uproot.graphed_partitions(p, steps_per_file=9)]
     )

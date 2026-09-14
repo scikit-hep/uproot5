@@ -1,5 +1,6 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot5/blob/main/LICENSE
 """``uproot.graphed_write`` with the in-process THREAD executor, and the bare-expression fallback."""
+
 import os
 
 import awkward as ak
@@ -17,7 +18,10 @@ from graphed.awkward import gak  # noqa: E402
 def _src(tmp_path, n=12):
     p = os.path.join(tmp_path, "in.root")
     with uproot.recreate(p) as f:
-        f["events"] = {"x": np.arange(n, dtype="f8"), "y": np.arange(n, dtype="f8") * 2.0}
+        f["events"] = {
+            "x": np.arange(n, dtype="f8"),
+            "y": np.arange(n, dtype="f8") * 2.0,
+        }
     return p + ":events"
 
 
@@ -28,7 +32,9 @@ def test_derived_record_thread_executor(tmp_path):
     rec = gak.zip({"x": g.x, "doubled": g.x * 2.0 + 1.0})
     outdir = os.path.join(tmp_path, "out")
 
-    paths = uproot.graphed_write(rec, outdir, steps_per_file=3, tree_name="events", executor="thread")
+    paths = uproot.graphed_write(
+        rec, outdir, steps_per_file=3, tree_name="events", executor="thread"
+    )
 
     back = ak.concatenate([uproot.open(p + ":events").arrays() for p in paths])
     ref = uproot.open(_src(tmp_path)).arrays(["x"])
@@ -38,12 +44,15 @@ def test_derived_record_thread_executor(tmp_path):
 
 def test_bare_expression_falls_back_to_source_columns(tmp_path):
     """Fallback branch (``evaluated.fields`` empty -> source columns): a bare non-record expression
-    ``g.x + g.y`` has no field to name, so the write falls back to the projected source columns."""
+    ``g.x + g.y`` has no field to name, so the write falls back to the projected source columns.
+    """
     src = _src(tmp_path)
     g = uproot.graphed(src, library="ak")
     outdir = os.path.join(tmp_path, "out")
 
-    paths = uproot.graphed_write(g.x + g.y, outdir, steps_per_file=2, tree_name="events", executor="thread")
+    paths = uproot.graphed_write(
+        g.x + g.y, outdir, steps_per_file=2, tree_name="events", executor="thread"
+    )
 
     back = ak.concatenate([uproot.open(p + ":events").arrays() for p in paths])
     ref = uproot.open(src).arrays()
@@ -63,7 +72,9 @@ def test_syntactic_read_list_witness_no_starve(tmp_path):
     rec = gak.zip({"a": g.x, "b": g.y})[["a"]]
     outdir = os.path.join(tmp_path, "out")
 
-    paths = uproot.graphed_write(rec, outdir, steps_per_file=2, tree_name="events", executor="thread")
+    paths = uproot.graphed_write(
+        rec, outdir, steps_per_file=2, tree_name="events", executor="thread"
+    )
 
     back = ak.concatenate([uproot.open(p + ":events").arrays() for p in paths])
     ref = uproot.open(src).arrays(["x"])

@@ -44,7 +44,9 @@ def test_uproot_graphed_via_executor_matches_single_pass(Executor):
 
     result = Executor(max_workers=4).run(_plan(path, n_chunks=6))
 
-    assert np.array_equal(result.value, full), f"{Executor.__name__}: chunked != single pass"
+    assert np.array_equal(
+        result.value, full
+    ), f"{Executor.__name__}: chunked != single pass"
     assert result.n_combines == 5  # 6 chunks -> 5 tree-reduce combines
 
 
@@ -53,7 +55,9 @@ def test_process_executor_result_is_invariant_to_partition_count():
     full = gu.single_pass(path)
     for n_chunks in (1, 4, 13):
         result = ProcessPoolExecutor(max_workers=4).run(_plan(path, n_chunks))
-        assert np.array_equal(result.value, full), f"{n_chunks} chunks changed the histogram"
+        assert np.array_equal(
+            result.value, full
+        ), f"{n_chunks} chunks changed the histogram"
 
 
 def test_executor_histogram_is_non_vacuous():

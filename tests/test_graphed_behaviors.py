@@ -51,7 +51,9 @@ def _vectors(g):
 def _reference(cols):
     """The SAME vector computation, eagerly — exact down to the ULP (hand formulas are not)."""
     return ak.Array(
-        ak.zip({k: cols[k] for k in ("px", "py", "pz", "E")}, with_name="Momentum4D").layout,
+        ak.zip(
+            {k: cols[k] for k in ("px", "py", "pz", "E")}, with_name="Momentum4D"
+        ).layout,
         behavior=BEHAVIOR,
     )
 
@@ -64,7 +66,9 @@ def test_behavior_properties_record_and_evaluate(kinematics_file):
     assert g.session.form(pt).is_typetracer  # inferred at record time, metadata only
     ref = _reference(cols)
     got = ak.Array(g.session.materialize(pt))
-    assert ak.array_equal(got, ref.pt)  # exact: the reference IS vector's own computation
+    assert ak.array_equal(
+        got, ref.pt
+    )  # exact: the reference IS vector's own computation
     mass = ak.Array(g.session.materialize(v.mass))
     assert ak.array_equal(mass, ref.mass, equal_nan=True)
 
@@ -101,7 +105,9 @@ def test_behavior_flows_through_the_generic_to_parquet(kinematics_file, tmp_path
     # process workers cannot pickle vector's behavior dict (it contains lambdas): pass an
     # IMPORTABLE module:attr reference, resolved in each worker (the OpSpec pattern)
     paths = gio.to_parquet(
-        pt, os.path.join(tmp_path, "pt"), steps_per_file=2,
+        pt,
+        os.path.join(tmp_path, "pt"),
+        steps_per_file=2,
         behavior="vector.backends.awkward:behavior",
         executor=ProcessPoolExecutor(max_workers=2),
     )

@@ -64,21 +64,33 @@ def test_partitions_are_blind_and_disabled_plan_equals_enabled_run(tmp_path):
 
     enabled = gio.to_parquet(expr, os.path.join(tmp_path, "en"), steps_per_file=2)
 
-    plan = gio.to_parquet(expr, os.path.join(tmp_path, "dis"), steps_per_file=2, compute=False)
+    plan = gio.to_parquet(
+        expr, os.path.join(tmp_path, "dis"), steps_per_file=2, compute=False
+    )
     assert isinstance(plan, Plan)
-    assert all(t.partition.is_blind for t in plan.tasks)  # planning opened no files (R7.9)
+    assert all(
+        t.partition.is_blind for t in plan.tasks
+    )  # planning opened no files (R7.9)
     assert not os.path.exists(os.path.join(tmp_path, "dis"))  # nothing written yet
-    later = ProcessPoolExecutor(max_workers=2).run(plan).value  # any R7 executor runs the same plan
+    later = (
+        ProcessPoolExecutor(max_workers=2).run(plan).value
+    )  # any R7 executor runs the same plan
 
-    assert [os.path.basename(p) for p in later] == [os.path.basename(p) for p in enabled]
+    assert [os.path.basename(p) for p in later] == [
+        os.path.basename(p) for p in enabled
+    ]
     for a, b in zip(enabled, later):
-        assert ak.array_equal(ak.from_parquet(a), ak.from_parquet(b))  # bit-for-bit (R15.4)
+        assert ak.array_equal(
+            ak.from_parquet(a), ak.from_parquet(b)
+        )  # bit-for-bit (R15.4)
     assert _source_of(g).last_columns_read is None  # still no whole-dataset read
 
 
 def test_structure_only_needs_read_their_carrier_branch(tmp_path):
     g = uproot.graphed(_hzz(), library="ak", filter_name=["Muon_Px", "MET_px"])
-    expr = gak.num(g.Muon_Px, axis=1) + 0 * g.MET_px  # offsets of Muon_Px + data of MET_px
+    expr = (
+        gak.num(g.Muon_Px, axis=1) + 0 * g.MET_px
+    )  # offsets of Muon_Px + data of MET_px
     plan = gio.to_parquet(expr, os.path.join(tmp_path, "o"), compute=False)
     # syntactic accesses {Muon_Px, MET_px}; on a flat TTree each branch is its own carrier
     assert set(plan.process.columns) == {"Muon_Px", "MET_px"}
@@ -116,7 +128,9 @@ def test_multi_source_arrays_are_rejected(tmp_path):
     s = graphed.Session(AwkwardBackend())
     arrays = []
     for name in ("a", "b"):
-        src = _GraphedTTreeSource([(path, "events")], ["px1"], None, False, {"num_workers": 1})
+        src = _GraphedTTreeSource(
+            [(path, "events")], ["px1"], None, False, {"num_workers": 1}
+        )
         form = AwkwardForm(ak.Array(chunk.layout.to_typetracer(forget_length=True)))
         arrays.append(s.source(name, form=form, data=src))
     with pytest.raises(TypeError, match="exactly one"):

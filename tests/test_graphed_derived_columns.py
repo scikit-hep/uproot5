@@ -5,6 +5,7 @@ The write compiles the recorded graph and evaluates it PER PARTITION, so a field
 expression -- absent from the source ``TBranch``\\ es -- is written and round-trips through a plain
 ``uproot.open``. Non-varied only.
 """
+
 import os
 
 import awkward as ak
@@ -21,7 +22,10 @@ from graphed.awkward import gak  # noqa: E402
 
 def _make_flat_root(path, n=20):
     with uproot.recreate(path) as f:
-        f["events"] = {"x": np.arange(n, dtype="f8"), "y": np.arange(n, dtype="f8") * 3.0}
+        f["events"] = {
+            "x": np.arange(n, dtype="f8"),
+            "y": np.arange(n, dtype="f8") * 3.0,
+        }
     return path + ":events"
 
 
@@ -62,7 +66,9 @@ def test_derived_column_roundtrips(tmp_path):
 
     back = ak.concatenate([uproot.open(p + ":events").arrays() for p in paths])
     ref = uproot.open(src).arrays(["x"])
-    assert "doubled" in back.fields, f"derived column dropped; wrote {sorted(back.fields)}"
+    assert (
+        "doubled" in back.fields
+    ), f"derived column dropped; wrote {sorted(back.fields)}"
     assert ak.array_equal(back["doubled"], ref.x * 2.0 + 1.0)
     # control: a plain-value field written beside the derived one
     assert ak.array_equal(back["x"], ref.x)
@@ -95,6 +101,8 @@ def test_jagged_derived_column_roundtrips(tmp_path):
     paths = uproot.graphed_write(rec, outdir, steps_per_file=1, tree_name="Events")
 
     back = ak.concatenate([uproot.open(p + ":Events").arrays() for p in paths])
-    assert "Jet_pt2" in back.fields, f"derived jagged column dropped; wrote {sorted(back.fields)}"
+    assert (
+        "Jet_pt2" in back.fields
+    ), f"derived jagged column dropped; wrote {sorted(back.fields)}"
     assert ak.array_equal(back["Jet_pt2"], jet * 2.0)
     assert ak.array_equal(back["Jet_pt"], jet)

@@ -27,7 +27,10 @@ from graphed_executors.local import ProcessPoolExecutor
 
 def _make_root(path, n=20):
     with uproot.recreate(path) as f:
-        f["events"] = {"x": np.arange(n, dtype="f8"), "y": np.arange(n, dtype="f8") * 2.0}
+        f["events"] = {
+            "x": np.arange(n, dtype="f8"),
+            "y": np.arange(n, dtype="f8") * 2.0,
+        }
     return path + ":events"
 
 
@@ -40,10 +43,18 @@ def test_writes_one_file_per_partition(tmp_path):
 
     assert len(paths) == 4
     assert sorted(os.listdir(outdir)) == [
-        "part-00000.root", "part-00001.root", "part-00002.root", "part-00003.root"
+        "part-00000.root",
+        "part-00001.root",
+        "part-00002.root",
+        "part-00003.root",
     ]
     pieces = [uproot.open(p + ":events").arrays() for p in paths]
-    assert [len(p) for p in pieces] == [5, 5, 5, 5]  # four contiguous quarters of 20 entries
+    assert [len(p) for p in pieces] == [
+        5,
+        5,
+        5,
+        5,
+    ]  # four contiguous quarters of 20 entries
     back = ak.concatenate(pieces)
     ref = uproot.open(src).arrays()
     assert ak.array_equal(back.x, ref.x) and ak.array_equal(back.y, ref.y)
@@ -64,7 +75,9 @@ def test_compute_false_returns_task_graph_and_writes_nothing(tmp_path):
     g = uproot.graphed(src, library="ak")
     outdir = os.path.join(tmp_path, "out")
 
-    plan = uproot.graphed_write(g, outdir, steps_per_file=3, tree_name="events", compute=False)
+    plan = uproot.graphed_write(
+        g, outdir, steps_per_file=3, tree_name="events", compute=False
+    )
 
     # NOT an array: a task graph of 3 write tasks, and nothing written yet
     assert isinstance(plan, Plan)
@@ -75,9 +88,15 @@ def test_compute_false_returns_task_graph_and_writes_nothing(tmp_path):
     # deterministic combine tree (the graphed.write base's contract)
     result = ProcessPoolExecutor(max_workers=2).run(plan)
     assert [os.path.basename(p) for p in result.value] == [
-        "part-00000.root", "part-00001.root", "part-00002.root"
+        "part-00000.root",
+        "part-00001.root",
+        "part-00002.root",
     ]
-    assert sorted(os.listdir(outdir)) == ["part-00000.root", "part-00001.root", "part-00002.root"]
+    assert sorted(os.listdir(outdir)) == [
+        "part-00000.root",
+        "part-00001.root",
+        "part-00002.root",
+    ]
 
 
 @pytest.mark.parametrize("executor", ["process", "thread"])
@@ -86,7 +105,9 @@ def test_compute_true_executes_via_executor(executor, tmp_path):
     g = uproot.graphed(src, library="ak")
     outdir = os.path.join(tmp_path, f"out-{executor}")
 
-    paths = uproot.graphed_write(g, outdir, steps_per_file=4, tree_name="events", executor=executor)
+    paths = uproot.graphed_write(
+        g, outdir, steps_per_file=4, tree_name="events", executor=executor
+    )
 
     assert len(paths) == 4
     assert all(os.path.exists(p) for p in paths)

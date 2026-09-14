@@ -40,13 +40,17 @@ def test_count_only_analysis_reports_offsets_not_the_empty_set():
     # the column view is empty — feeding it to a reader reads NOTHING (the under-specification)
     assert uproot.necessary_columns(counted) == {"events": frozenset()}
     # the buffer view is truthful: the Muon_Px list STRUCTURE is needed
-    assert uproot.necessary_buffers(counted) == {"events": {"Muon_Px": BufferNeed.OFFSETS}}
+    assert uproot.necessary_buffers(counted) == {
+        "events": {"Muon_Px": BufferNeed.OFFSETS}
+    }
 
 
 def test_offsets_need_is_served_by_the_counter_branch_without_the_payload():
     path = skhep_testdata.data_path("uproot-HZZ.root")
     tree = uproot.open(path)["events"]
-    g = uproot.graphed(path + ":events", library="ak", filter_name=["Muon_Px", "Muon_Py"])
+    g = uproot.graphed(
+        path + ":events", library="ak", filter_name=["Muon_Px", "Muon_Py"]
+    )
     needs = uproot.necessary_buffers(gak.num(g.Muon_Px, axis=1))["events"]
 
     to_read = uproot.resolve_read_branches(tree, needs)
@@ -140,11 +144,15 @@ def test_write_rejects_multi_source_arrays_loudly(tmp_path):
     s = graphed.Session(AwkwardBackend())
     arrays = []
     for name in ("a", "b"):
-        src = _GraphedTTreeSource([(path, "events")], ["px1"], None, False, {"num_workers": 1})
+        src = _GraphedTTreeSource(
+            [(path, "events")], ["px1"], None, False, {"num_workers": 1}
+        )
         form = AwkwardForm(ak.Array(chunk.layout.to_typetracer(forget_length=True)))
         arrays.append(s.source(name, form=form, data=src))
     with pytest.raises(TypeError, match="exactly one uproot.graphed source"):
-        uproot.graphed_write(arrays[0].px1 + arrays[1].px1, os.path.join(tmp_path, "out"))
+        uproot.graphed_write(
+            arrays[0].px1 + arrays[1].px1, os.path.join(tmp_path, "out")
+        )
 
 
 def test_write_of_a_projected_array_writes_only_its_branches(tmp_path):
@@ -157,6 +165,8 @@ def test_write_of_a_projected_array_writes_only_its_branches(tmp_path):
         }
     g = uproot.graphed(src_path + ":events", library="ak")
     outdir = os.path.join(tmp_path, "out")
-    paths = uproot.graphed_write(g.x + g.y, outdir, steps_per_file=2, tree_name="events")
+    paths = uproot.graphed_write(
+        g.x + g.y, outdir, steps_per_file=2, tree_name="events"
+    )
     back = uproot.open(paths[0] + ":events").arrays()
     assert set(back.fields) == {"x", "y"}, "the unused branch z must not be written"

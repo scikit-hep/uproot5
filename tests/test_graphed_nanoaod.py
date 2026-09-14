@@ -47,32 +47,60 @@ def nanoaod_file(tmp_path_factory):
             "mass": ak.unflatten(rng.uniform(0.1, 1.0, tot), counts),
         }
 
-    muon = ak.zip({**kin(nmu, 25.0), "charge": ak.unflatten(rng.choice([-1, 1], int(nmu.sum())), nmu)})
+    muon = ak.zip(
+        {
+            **kin(nmu, 25.0),
+            "charge": ak.unflatten(rng.choice([-1, 1], int(nmu.sum())), nmu),
+        }
+    )
     jet = ak.zip(kin(njet, 40.0))
     path = os.path.join(tmp_path_factory.mktemp("nano"), "nano.root")
     with uproot.recreate(path) as f:
-        f.mktree("Events", {"Muon": muon.type, "Jet": jet.type, "MET_pt": "float64", "MET_phi": "float64"})
-        f["Events"].extend({
-            "Muon": muon, "Jet": jet,
-            "MET_pt": rng.exponential(20.0, N), "MET_phi": rng.uniform(-np.pi, np.pi, N),
-        })
+        f.mktree(
+            "Events",
+            {
+                "Muon": muon.type,
+                "Jet": jet.type,
+                "MET_pt": "float64",
+                "MET_phi": "float64",
+            },
+        )
+        f["Events"].extend(
+            {
+                "Muon": muon,
+                "Jet": jet,
+                "MET_pt": rng.exponential(20.0, N),
+                "MET_phi": rng.uniform(-np.pi, np.pi, N),
+            }
+        )
     raw = uproot.open(path + ":Events").arrays()
     return path + ":Events", raw
 
 
 def _muons(g):
     return gak.zip(
-        {"pt": g.Muon_pt, "eta": g.Muon_eta, "phi": g.Muon_phi,
-         "mass": g.Muon_mass, "charge": g.Muon_charge},
+        {
+            "pt": g.Muon_pt,
+            "eta": g.Muon_eta,
+            "phi": g.Muon_phi,
+            "mass": g.Muon_mass,
+            "charge": g.Muon_charge,
+        },
         with_name="Momentum4D",
     )
 
 
 def _ref_muons(raw):
     return ak.zip(
-        {"pt": raw.Muon_pt, "eta": raw.Muon_eta, "phi": raw.Muon_phi,
-         "mass": raw.Muon_mass, "charge": raw.Muon_charge},
-        with_name="Momentum4D", behavior=BEHAVIOR,
+        {
+            "pt": raw.Muon_pt,
+            "eta": raw.Muon_eta,
+            "phi": raw.Muon_phi,
+            "mass": raw.Muon_mass,
+            "charge": raw.Muon_charge,
+        },
+        with_name="Momentum4D",
+        behavior=BEHAVIOR,
     )
 
 
@@ -86,7 +114,9 @@ def test_counted_jagged_zip_records_evaluates_and_projects_truthfully(nanoaod_fi
     got = ak.Array(g.session.materialize(muons.px))
     assert ak.array_equal(got, _ref_muons(raw).px)
     # truthful projection: px touches ONLY pt/phi even though the zip names five branches
-    assert uproot.necessary_columns(muons.px) == {"Events": frozenset({"Muon_pt", "Muon_phi"})}
+    assert uproot.necessary_columns(muons.px) == {
+        "Events": frozenset({"Muon_pt", "Muon_phi"})
+    }
 
 
 def test_record_arithmetic_four_vector_sums_over_the_reader(nanoaod_file):
@@ -114,7 +144,9 @@ def test_jagged_integer_array_getitem_over_the_reader(nanoaod_file):
     )
 
 
-def test_capstone_ttree_to_histogram_through_a_process_pool(nanoaod_file, tmp_path, monkeypatch):
+def test_capstone_ttree_to_histogram_through_a_process_pool(
+    nanoaod_file, tmp_path, monkeypatch
+):
     gh = pytest.importorskip("graphed_histogram")
     pytest.importorskip("graphed_executors.local")
     import boost_histogram as bh

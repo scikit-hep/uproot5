@@ -17,6 +17,7 @@ empty part files are written (part numbering may then have gaps in that corner c
 ``graphed`` / ``graphed.core`` / ``graphed_executors.local`` are imported lazily, so importing ``uproot``
 does not require them.
 """
+
 from __future__ import annotations
 
 import functools
@@ -37,15 +38,35 @@ def _is_graphed_array(obj):
 def _recreate_kwargs(compression, compression_level):
     if compression is None:
         return {}
-    codes = {"zlib": uproot.ZLIB, "lzma": uproot.LZMA, "lz4": uproot.LZ4, "zstd": uproot.ZSTD}
-    resolved = codes[compression](compression_level) if isinstance(compression, str) else compression
+    codes = {
+        "zlib": uproot.ZLIB,
+        "lzma": uproot.LZMA,
+        "lz4": uproot.LZ4,
+        "zstd": uproot.ZSTD,
+    }
+    resolved = (
+        codes[compression](compression_level)
+        if isinstance(compression, str)
+        else compression
+    )
     return {"compression": resolved}
 
 
 # ---- module-level so a spawned ProcessPoolExecutor worker can pickle/import it ----------------------
 def _write_partition(
-    partition, resources, *, destination, prefix, columns, tree_name, compression,
-    compression_level, bases, compiled, backend, source_name,
+    partition,
+    resources,
+    *,
+    destination,
+    prefix,
+    columns,
+    tree_name,
+    compression,
+    compression_level,
+    bases,
+    compiled,
+    backend,
+    source_name,
 ):
     """Read this blind partition's chunk via uproot (file opened once per worker), EVALUATE the
     recorded graph over it, and write the evaluated record's fields to its own part file, REPORTING
@@ -74,7 +95,9 @@ def _write_partition(
     record = {name: out_rec[name] for name in out_rec.fields}
     idx = gwrite.blind_part_index(partition, dict(bases))
     path = gwrite.part_path(destination, idx, prefix=prefix or "part", suffix=".root")
-    with uproot.recreate(path, **_recreate_kwargs(compression, compression_level)) as out:
+    with uproot.recreate(
+        path, **_recreate_kwargs(compression, compression_level)
+    ) as out:
         out[tree_name] = record
     return [path]
 
@@ -137,13 +160,15 @@ def graphed_write(
         if isinstance(s, _GraphedTTreeSource)
     ]
     if not uproot_sources:
-        raise TypeError("graphed_write: the array is not backed by a uproot.graphed source")
+        raise TypeError(
+            "graphed_write: the array is not backed by a uproot.graphed source"
+        )
     if len(uproot_sources) > 1:
         raise TypeError(
             f"graphed_write supports exactly one uproot.graphed source per array; "
             f"this array is backed by {len(uproot_sources)}"
         )
-    (nid, source) = uproot_sources[0]
+    nid, source = uproot_sources[0]
 
     # Each worker EVALUATES the recorded graph (below), which replays every node the graph accesses
     # — including field reads whose buffers the output never touches — so the read list is the
