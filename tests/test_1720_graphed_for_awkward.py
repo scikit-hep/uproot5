@@ -1,7 +1,7 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot5/blob/main/LICENSE
 """Construction-time behaviour of ``uproot.graphed`` (metadata only).
 
-Actually *running* a graphed analysis is covered in ``test_graphed_executor.py`` — through the real
+Actually *running* a graphed analysis is covered in ``test_1720_graphed_executor.py`` — through the real
 ``graphed-executors`` executors, not a ``materialize`` shortcut.
 """
 

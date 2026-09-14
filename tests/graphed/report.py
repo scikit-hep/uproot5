@@ -60,9 +60,9 @@ def _ir() -> bytes:
 def build_plan(partitions, *, error_budget=None) -> DurablePlan:
     return DurablePlan(
         ir=_ir(),
-        process=OpSpec.from_ref("graphed_uproot_report:process"),
-        combine=OpSpec.from_ref("graphed_uproot_report:hist_add"),
-        empty=OpSpec.from_ref("graphed_uproot_report:hist_zero"),
+        process=OpSpec.from_ref("tests.graphed.report:process"),
+        combine=OpSpec.from_ref("tests.graphed.report:hist_add"),
+        empty=OpSpec.from_ref("tests.graphed.report:hist_zero"),
         partitions=tuple(partitions),
         read_columns=(COLUMN,),
         stopping={} if error_budget is None else {"error_budget": int(error_budget)},

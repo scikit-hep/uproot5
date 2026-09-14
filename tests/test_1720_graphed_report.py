@@ -6,9 +6,6 @@ content-addressed dead-letter set while the good partitions still reduce; the sa
 (skip completed, no double-count) and an error budget as a stopping condition.
 """
 
-import os
-import sys
-
 import numpy as np
 import pytest
 import skhep_testdata
@@ -18,11 +15,11 @@ import uproot
 pytest.importorskip("graphed.checkpoint")
 pytest.importorskip("graphed.awkward")
 
-sys.path.insert(0, os.path.dirname(__file__))
-import graphed_uproot_report as gr
 from graphed.checkpoint import Store, run_resumable
 from graphed.checkpoint.runner import _SimulatedInterrupt
 from graphed.core import Partition
+
+from tests.graphed import report as gr
 
 
 def _whole_file(path_with_tree):

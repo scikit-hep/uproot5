@@ -6,9 +6,6 @@ process/thread-executor path that a deferred-array ``.compute()`` hides — and 
 the single-pass plain-uproot computation bit-for-bit, regardless of how the events are chunked.
 """
 
-import os
-import sys
-
 import numpy as np
 import pytest
 import skhep_testdata
@@ -18,12 +15,10 @@ import uproot  # noqa: F401  (registers uproot.graphed_partitions used by the he
 pytest.importorskip("graphed_executors.local")
 pytest.importorskip("graphed.awkward")
 
-# make the picklable helper importable both here and in spawned ProcessPoolExecutor workers
-# (multiprocessing 'spawn' inherits this sys.path)
-sys.path.insert(0, os.path.dirname(__file__))
-import graphed_uproot_analysis as gu
 from graphed.core import Plan
 from graphed_executors.local import ProcessPoolExecutor, ThreadExecutor
+
+from tests.graphed import analysis as gu
 
 ZMUMU = "uproot-Zmumu.root:events"
 

@@ -1,11 +1,8 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot5/blob/main/LICENSE
 """Necessary-buffer (column) projection for ``uproot.graphed`` — the dask-awkward column-projection
-analogue. Projection is metadata-only; the executor (``test_graphed_executor.py``) then reads only the
+analogue. Projection is metadata-only; the executor (``test_1720_graphed_executor.py``) then reads only the
 projected ``TBranches`` per partition.
 """
-
-import os
-import sys
 
 import pytest
 import skhep_testdata
@@ -13,8 +10,6 @@ import skhep_testdata
 import uproot
 
 graphed_awkward = pytest.importorskip("graphed.awkward")
-
-sys.path.insert(0, os.path.dirname(__file__))
 
 
 def test_necessary_columns_are_minimal():
@@ -26,9 +21,10 @@ def test_necessary_columns_are_minimal():
 
 
 def test_executor_reads_exactly_the_projected_columns():
-    # the over-touching guard: the columns the executor reads per partition (graphed_uproot_analysis.
-    # COLUMNS) are exactly the necessary buffers of that analysis — nothing more.
-    import graphed_uproot_analysis as gu
+    # the over-touching guard: the columns the executor reads per partition
+    # (tests.graphed.analysis.COLUMNS) are exactly the necessary buffers of that analysis
+    # — nothing more.
+    from tests.graphed import analysis as gu
 
     test_path = skhep_testdata.data_path("uproot-Zmumu.root") + ":events"
     g_array = uproot.graphed(test_path, library="ak")
