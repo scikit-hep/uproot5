@@ -7,8 +7,8 @@ requires = [
 
 [dependency-groups]
 dev = [
-  { include-group = "extra" },
-  { include-group = "test" }
+  {include-group = "extra"},
+  {include-group = "test"}
 ]
 extra = [
   "boost_histogram>=0.13",
@@ -24,7 +24,6 @@ test = [
   "graphed[awkward,parquet]>=0.0.2; python_version >= '3.11'",
   "graphed-executors>=0.0.2; python_version >= '3.11'",
   "graphed-histogram>=0.0.2; python_version >= '3.11'",
-  "vector; python_version >= '3.11'",
   "isal",
   "moto[s3,server]",
   "paramiko",
@@ -32,7 +31,8 @@ test = [
   "rangehttpserver",
   "requests",
   "s3fs",
-  { include-group = "test-core" }
+  "vector; python_version >= '3.11'",
+  {include-group = "test-core"}
 ]
 test-core = [
   "pytest-timeout",
@@ -42,25 +42,25 @@ test-core = [
 test-gpu-cu12 = [
   "kvikio-cu12",
   "nvidia-nvcomp-cu12",
-  { include-group = "test-core" }
+  {include-group = "test-core"}
 ]
 test-gpu-cu13 = [
   "kvikio-cu13",
   "nvidia-nvcomp-cu13",
-  { include-group = "test-core" }
+  {include-group = "test-core"}
 ]
 test-pyodide = [
   "pytest-pyodide; python_version >='3.11'",
-  { include-group = "test-core" }
+  {include-group = "test-core"}
 ]
 test-xrootd = [
   "fsspec-xrootd>=0.5.0",
-  { include-group = "test-core" }
+  {include-group = "test-core"}
 ]
 
 [project]
 authors = [
-  { name = "Jim Pivarski", email = "jpivarski@gmail.com" }
+  {name = "Jim Pivarski", email = "jpivarski@gmail.com"}
 ]
 classifiers = [
   "Development Status :: 5 - Production/Stable",
@@ -189,7 +189,6 @@ ignore = [
   "SIM114",  # combine `if` branches using logical `or` operator
   "SIM118"  # key in dict, broken since uproot doesn't behave like a dict
 ]
-isort.required-imports = ["from __future__ import annotations"]
 # Ruff 0.16 greatly expanded the implicit default rule set; pin it to the previous
 # default so that the rules we opt into are the ones listed in extend-select above.
 # Deliberately not adopted from the 0.16 defaults:
@@ -199,6 +198,7 @@ isort.required-imports = ["from __future__ import annotations"]
 # S102: exec is how models are generated from TStreamerInfo
 # TRY002/TRY004: changing which exception types are raised is a user-visible change
 select = ["E4", "E7", "E9", "F"]
+isort.required-imports = ["from __future__ import annotations"]
 
 [tool.ruff.lint.per-file-ignores]
 "dev/*" = ["T20", "T201"]
@@ -209,4 +209,4 @@ write_to = "src/uproot/_version.py"
 
 [tool.uv]
 exclude-newer = "7 days"
-exclude-newer-package = { awkward = false, awkward-cpp = false, scikit-hep-testdata = false, graphed = false, graphed-executors = false, graphed-histogram = false }
+exclude-newer-package = {awkward = false, awkward-cpp = false, scikit-hep-testdata = false, graphed = false, graphed-executors = false, graphed-histogram = false}
