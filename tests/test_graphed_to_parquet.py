@@ -1,5 +1,5 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot5/blob/main/LICENSE
-"""ROOT -> parquet through the GENERIC writer (P3.6 revision; supersedes uproot.graphed_to_parquet).
+"""ROOT -> parquet through the GENERIC writer.
 
 ``graphed.awkward.io.to_parquet(uproot.graphed(...), ...)`` writes a recorded analysis over each
 blind ROOT partition through the compiled IR: the uproot source implements
@@ -68,21 +68,17 @@ def test_partitions_are_blind_and_disabled_plan_equals_enabled_run(tmp_path):
         expr, os.path.join(tmp_path, "dis"), steps_per_file=2, compute=False
     )
     assert isinstance(plan, Plan)
-    assert all(
-        t.partition.is_blind for t in plan.tasks
-    )  # planning opened no files (R7.9)
+    assert all(t.partition.is_blind for t in plan.tasks)  # planning opened no files
     assert not os.path.exists(os.path.join(tmp_path, "dis"))  # nothing written yet
     later = (
         ProcessPoolExecutor(max_workers=2).run(plan).value
-    )  # any R7 executor runs the same plan
+    )  # any executor runs the same plan
 
     assert [os.path.basename(p) for p in later] == [
         os.path.basename(p) for p in enabled
     ]
     for a, b in zip(enabled, later):
-        assert ak.array_equal(
-            ak.from_parquet(a), ak.from_parquet(b)
-        )  # bit-for-bit (R15.4)
+        assert ak.array_equal(ak.from_parquet(a), ak.from_parquet(b))  # bit-for-bit
     assert _source_of(g).last_columns_read is None  # still no whole-dataset read
 
 
@@ -118,7 +114,7 @@ def test_custom_column_name_and_explicit_executor(tmp_path):
 
 
 def test_multi_source_arrays_are_rejected(tmp_path):
-    # two uproot sources in ONE session (the construction test_graphed_m10 pins for graphed_write)
+    # two uproot sources in ONE session (the construction graphed_write rejects)
     import graphed
     from graphed.awkward import AwkwardBackend, AwkwardForm
     from uproot._graphed import _GraphedTTreeSource

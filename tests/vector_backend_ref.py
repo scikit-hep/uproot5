@@ -1,4 +1,4 @@
-"""Importable backend factory for process workers (P0.2 capstone): vector behaviors travel by
+"""Importable backend factory for process workers: vector behaviors travel by
 IMPORT REF — never by pickling the behavior dict (it contains lambdas)."""
 
 from __future__ import annotations

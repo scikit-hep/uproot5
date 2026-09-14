@@ -1,5 +1,5 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot5/blob/main/LICENSE
-"""graphed M10 remediations exercised through uproot (mvp-shortcomings findings A.2, A.3, C.9).
+"""Buffer-level projection, compiled-IR reads and blind partitions, exercised through uproot.
 
 - buffer-level projection: a count-only analysis reports ``{branch: OFFSETS}`` (NON-empty, where
   ``necessary_columns`` reports the empty set) and ``resolve_read_branches`` serves it from the
@@ -120,7 +120,7 @@ def test_blind_partitions_are_first_class_and_resolve_exactly_once():
 
 
 def test_legacy_sentinel_partitions_still_read_correctly():
-    # pre-M10 serialized plans carry the negative-entry_stop encoding; the reader honors them
+    # older serialized plans carry the negative-entry_stop encoding; the reader honors them
     from graphed.core import Partition
 
     path = skhep_testdata.data_path("uproot-Zmumu.root")

@@ -1,5 +1,5 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot5/blob/main/LICENSE
-"""Awkward behaviors over real TTrees (graphed parity follow-up, item P1.2 / graphed M18).
+"""Awkward behaviors over real TTrees.
 
 ``uproot.graphed(..., behavior=...)`` forwards a behavior dict to the recording backend, so
 ``gak.zip`` + ``gak.with_name`` give four-vector PROPERTIES (vector's ``Momentum4D`` — the coffea

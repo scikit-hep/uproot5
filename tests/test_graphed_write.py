@@ -5,8 +5,7 @@
 REPORTING its part path — the ``graphed.write`` base's contract) without writing; ``compute=True``
 runs it through a ``graphed-executors`` executor (``ProcessPoolExecutor`` by default).
 
-[freeze-UPROOT-2, user-authorized amendments 2026-06-10: part names follow the base's
-``part_path`` (``part-00000.root``); write tasks report their paths instead of returning None.]
+Part names follow the base's ``part_path`` (``part-00000.root``).
 """
 
 import os

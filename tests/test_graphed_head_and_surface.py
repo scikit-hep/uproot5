@@ -1,12 +1,12 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot5/blob/main/LICENSE
-"""Partitioned peeking + the inherited graphed surface over real TTrees (items P2.3-P2.5).
+"""Partitioned peeking + the inherited graphed surface over real TTrees.
 
 - ``uproot.graphed_head`` evaluates the recorded analysis over ONLY the first file's leading
   entries (witnessed: corrupting every later file does not disturb it; a whole-dataset
   materialize does fail).
-- The M16 structural rule fuses per-event (axis=1) reductions into stages — witnessed by the
+- The structural rule that fuses per-event (axis=1) reductions into stages — witnessed by the
   compiled IR's node count, so the fusion gain cannot silently regress on the path that ships.
-- The M11-M19 user surface (record subsets, axis-0 slices, the full ufunc tier, structure ops)
+- The inherited user surface (record subsets, axis-0 slices, the full ufunc tier, structure ops)
   is pinned over uproot sources, where a regression would actually reach users.
 """
 
@@ -32,7 +32,7 @@ def _hzz():
     return skhep_testdata.data_path("uproot-HZZ.root") + ":events"
 
 
-# ---- partitioned head (P2.3) -------------------------------------------------------------------
+# ---- partitioned head -----------------------------------------------------------------------
 def test_head_matches_the_whole_computation(tmp_path):
     g = uproot.graphed(_zmumu(), library="ak", filter_name=["px1", "py1"])
     expr = g.px1 + g.py1
@@ -79,13 +79,13 @@ def test_head_reads_only_projected_branches(tmp_path):
     assert ak.array_equal(got, (raw.MET_px + 0.0)[:4])
 
 
-# ---- the M16 fusion witness (P2.4) ---------------------------------------------------------------
+# ---- the per-event reduction fusion witness ---------------------------------------------------
 def test_per_event_reductions_fuse_into_one_stage():
     import graphed.core
     from graphed import compile_ir
 
     g = uproot.graphed(_hzz(), library="ak", filter_name=["Muon_Px"])
-    # pre-M16 each axis=1 reduction was a stage BOUNDARY; now they live INSIDE stages
+    # an axis=1 reduction lives INSIDE a stage, never at a stage BOUNDARY
     expr = gak.sum(g.Muon_Px + 1.0, axis=1) * 2.0 + gak.num(g.Muon_Px, axis=1)
     compiled = compile_ir(g.session, expr)
     nodes = graphed.core.GraphStore.deserialize(compiled.ir).nodes()
@@ -93,15 +93,15 @@ def test_per_event_reductions_fuse_into_one_stage():
     assert (
         "reduction" not in kinds
     ), f"a per-event reduction leaked out as a boundary: {kinds}"
-    # default SingleUse fusion keeps the fanned-out field op as its own stage (the frozen M4
-    # diamond pin): source + 2 stages; under maximal fusion the chain is source + ONE stage
+    # default SingleUse fusion keeps the fanned-out field op as its own stage (the diamond
+    # case): source + 2 stages; under maximal fusion the chain is source + ONE stage
     assert kinds == ["source", "stage", "stage"]
     maximal = compile_ir(g.session, expr, maximal_fusion=True)
     nodes_max = graphed.core.GraphStore.deserialize(maximal.ir).nodes()
     assert sorted(n["kind"] for n in nodes_max) == ["source", "stage"]
 
 
-# ---- the inherited M11-M19 surface over uproot sources (P2.5) ------------------------------------
+# ---- the inherited graphed surface over uproot sources ----------------------------------------
 def test_record_subset_getitem_narrows_the_projection():
     g = uproot.graphed(_zmumu(), library="ak", filter_name=["px1", "py1", "pz1", "E1"])
     sub = g[["px1", "py1"]]

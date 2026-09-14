@@ -2,12 +2,12 @@
 """
 This module defines :doc:`uproot.writing._graphed_write.graphed_write`, the ``graphed`` analogue of
 :doc:`uproot.writing._dask_write.dask_write` — and a SPECIALIZATION of the ``graphed.write``
-partitioned-write base (P3.6 revision; freeze-UPROOT-2, user-authorized frozen amendments).
+partitioned-write base.
 
 Like ``dask_write``, it produces **one output ROOT file per input partition**. The partitions are
-BLIND (the driver opens no files — each worker resolves its entry range against its own file,
-R7.9); each write task writes ``{prefix}-{N:05d}.root`` and **reports its part path** up the
-plan's deterministic combine tree (the base's contract — previously the tasks returned nothing);
+BLIND (the driver opens no files — each worker resolves its entry range against its own file);
+each write task writes ``{prefix}-{N:05d}.root`` and **reports its part path** up the plan's
+deterministic combine tree (the base's contract: a write task returns the paths it wrote);
 a step that resolves EMPTY (a file with fewer entries than ``steps_per_file``) is skipped, so no
 empty part files are written (part numbering may then have gaps in that corner case). With
 ``compute=False`` the Plan (the write task graph) is returned without running; with
@@ -90,7 +90,7 @@ def _write_partition(
     (evaluated,) = evaluate_ir(compiled, backend, {source_name: chunk})
     # a record graph yields named fields (the derived columns); a bare (non-record) expression
     # yields a fieldless array with no branch name to write it under — fall back to the source
-    # columns it reads, the pre-m51 projection behavior
+    # columns it reads
     out_rec = evaluated if evaluated.fields else chunk
     record = {name: out_rec[name] for name in out_rec.fields}
     idx = gwrite.blind_part_index(partition, dict(bases))
@@ -156,7 +156,7 @@ def graphed_write(
     session = array.session
     uproot_sources = [
         (nid, s)
-        for nid, s in session.sources().items()  # the public accessor (graphed M10) — no internals
+        for nid, s in session.sources().items()  # the public accessor — no internals
         if isinstance(s, _GraphedTTreeSource)
     ]
     if not uproot_sources:

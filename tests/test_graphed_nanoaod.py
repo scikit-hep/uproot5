@@ -1,5 +1,5 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot5/blob/main/LICENSE
-"""NanoAOD witnesses (ADL-port P0.2): the porting idiom over counted jagged TTree branches.
+"""NanoAOD witnesses: the porting idiom over counted jagged TTree branches.
 
 The ADL queries zip exactly the columns they need, name them, and lean on vector behaviors —
 no schema layer. These witnesses pin that idiom over a REAL NanoAOD-style file (counted jagged

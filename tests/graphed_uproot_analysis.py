@@ -1,13 +1,13 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot5/blob/main/LICENSE
 """Picklable glue to run a uproot-read ``graphed`` analysis through the ``graphed-executors``
-executors (the M7 ``adl.py`` pattern, but reading from a real ROOT file).
+executors, reading from a real ROOT file.
 
 A ``Partition`` is a ``(file, tree, entry_start, entry_stop)`` chunk. ``process`` opens the file
 **once per worker** (``open_once``), reads only the ``TBranches`` the analysis needs for that entry
-range, and evaluates the COMPILED, REDUCED IR on the chunk (graphed M10 ``compile_ir`` /
+range, and evaluates the COMPILED, REDUCED IR on the chunk (``compile_ir`` /
 ``evaluate_ir``: the analysis is recorded and optimized ONCE per worker — cached at module level —
 then each partition costs one backend dispatch per reduced node, with no per-partition Session and
-no re-recording; the dask #2/#6/#7 failure mode this project exists to avoid). The executor
+no re-recording). The executor
 tree-reduces the per-chunk histograms across worker processes into one histogram that must match
 the single-pass plain-uproot result bit-for-bit.
 

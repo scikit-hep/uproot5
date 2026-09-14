@@ -69,8 +69,7 @@ def test_graphed_blind_steps(step_size, steps_per_file, open_files):
 def test_blind_partitions_do_not_open_the_file():
     # open_files=False must build partitions without reading entry counts: blind chunks are
     # FIRST-CLASS graphed.core blind partitions carrying (step, n_steps) explicitly, resolved only
-    # at read time. (freeze-UPROOT-1 amendment: this previously pinned the negative-entry_stop
-    # sentinel encoding, which graphed-core M10 retired — same intent, honest representation.)
+    # at read time.
     test_path = skhep_testdata.data_path("uproot-Zmumu.root") + ":events"
     tasks = uproot.graphed_partitions(test_path, steps_per_file=5, open_files=False)
     assert len(tasks) == 5

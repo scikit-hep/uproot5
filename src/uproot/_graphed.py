@@ -1,11 +1,11 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot5/blob/main/LICENSE
 """
 This module defines :doc:`uproot._graphed.graphed`, which reads ``TTrees`` into a deferred
-`graphed <https://github.com/graphed-org/graphed-project-mvp>`__ array — the analogue of
-:doc:`uproot._dask.dask` for the ``graphed`` task-graph system (MVP).
+`graphed <https://github.com/graphed-org/graphed>`__ array — the analogue of
+:doc:`uproot._dask.dask` for the ``graphed`` task-graph system.
 
 ``uproot.graphed(files, library="ak")`` returns a deferred ``graphed`` ``Array`` (recorded on the
-``graphed-awkward`` backend); construction reads only metadata (the ``TTree`` form). ``graphed`` does
+``graphed.awkward`` backend); construction reads only metadata (the ``TTree`` form). ``graphed`` does
 not impersonate a deferred-array ``.compute()`` — instead, a recorded analysis is executed the way one
 actually runs a task graph: per partition through the ``graphed-executors`` executors
 (``ProcessPoolExecutor`` / ``ThreadExecutor``) and tree-reduced. :doc:`uproot._graphed.graphed_partitions`
@@ -62,9 +62,9 @@ class _GraphedTTreeSource:
             return awkward.Array([])
         return parts[0] if len(parts) == 1 else awkward.concatenate(parts)
 
-    # ---- graphed.write.PartitionedSource (P3.6 revision): partition-wise reading -------------
+    # ---- graphed.write.PartitionedSource: partition-wise reading -----------------------------
     def partitions(self, steps_per_file=1):
-        """BLIND partitions, one per (file x step): planning opens no files (R7.9)."""
+        """BLIND partitions, one per (file x step): planning opens no files."""
         from graphed.core import Partition
 
         return tuple(
@@ -106,7 +106,7 @@ def graphed(
             ``"pd"`` raise ``NotImplementedError``.
         ak_add_doc, custom_classes, allow_missing: As in :doc:`uproot._dask.dask`.
         behavior (dict or None): An awkward behavior dict (e.g. ``vector``'s) registered on the
-            recording backend (graphed M18): with ``gak.with_name``, behavior PROPERTIES
+            recording backend: with ``gak.with_name``, behavior PROPERTIES
             (``.pt``, ``.mass``) work through plain attribute access — typetracer forms at record
             time, projectable down to exactly the branches a property reads.
         options: Passed through to file opening.
@@ -193,7 +193,7 @@ def necessary_columns(array, *, on_fail="raise"):
 
 
 def necessary_buffers(array, *, on_fail="raise"):
-    """Buffer-granular projection (graphed M10): per source, each needed column with its
+    """Buffer-granular projection: per source, each needed column with its
     :class:`graphed.BufferNeed` (``DATA`` — the leaf values are read; ``OFFSETS`` — only the list
     STRUCTURE is needed, e.g. a multiplicity). Strictly finer than :doc:`necessary_columns`: a
     count-only analysis truthfully reports ``{collection: OFFSETS}`` where the column view reports
@@ -285,9 +285,9 @@ def graphed_partitions(
     for ftuple in resolved:
         file_path, object_path = ftuple[0], ftuple[1]
         if not open_files:
-            # BLIND: do not open the file; emit first-class blind chunks (graphed.core M10:
-            # ``Partition.blind`` records (step, n_steps) explicitly — the old negative-entry_stop
-            # sentinel is retired) resolved against the file's actual entry count at read time
+            # BLIND: do not open the file; emit first-class blind chunks
+            # (``graphed.core.Partition.blind`` records (step, n_steps) explicitly),
+            # resolved against the file's actual entry count at read time
             for step in range(n_steps):
                 tasks.append(
                     Task(key, Partition.blind(file_path, object_path, step, n_steps))
@@ -338,7 +338,7 @@ def read_graphed_partition(
     start, stop = partition.entry_start, partition.entry_stop
     if (
         stop < 0
-    ):  # legacy blind sentinel (pre-M10 serialized plans): step `start` of `-stop` steps
+    ):  # legacy blind sentinel in older serialized plans: step `start` of `-stop` steps
         n_steps, step, n_entries = -stop, start, tree.num_entries
         start = (step * n_entries) // n_steps
         stop = ((step + 1) * n_entries) // n_steps
