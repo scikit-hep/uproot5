@@ -3,10 +3,10 @@
 at alternate inputs.
 
 Two complementary graphed preservation models:
-  * a **Bundle** (M9) embeds the input data + canonical IR so ``reproduce`` recomputes the histogram
+  * a **Bundle** embeds the input data + canonical IR so ``reproduce`` recomputes the histogram
     bit-for-bit from references alone (clean machine, no original files), and ``inspect`` renders it
     without executing;
-  * a **DurablePlan** (M8) preserves just the analysis graph (canonical IR), so ``with_partitions``
+  * a **DurablePlan** preserves just the analysis graph (canonical IR), so ``with_partitions``
     re-targets it at a different file location or a different number of partitions without
     re-recording — "compile once, run on N datasets".
 """
