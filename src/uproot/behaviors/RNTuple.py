@@ -471,42 +471,29 @@ def _akform_prefix_set(keys):
     return prefixes
 
 
-def _prune_akform(form, prefix, keep, exact):
+def _prune_akform(form, prefix, keep):
     """Cut a form down to the branches named in ``keep``.
 
-    ``keep`` holds requested keys and their ancestors, so a record field is
-    retained exactly when its own path appears there. ``exact`` holds only the
-    requested keys themselves. Wrappers (lists, options, masks) pass the prefix
-    through unchanged, because the name was consumed by the record level above.
-
-    Returns None when nothing under this node survives.
+    ``keep`` holds the requested keys and every ancestor of them, so a record
+    field is retained exactly when its own path appears there. Wrappers (lists,
+    options, masks) pass the prefix through unchanged, because the name was
+    consumed by the record level above.
     """
     if isinstance(form, ak.forms.RecordForm):
         names = []
         contents = []
         for name, content in zip(form.fields, form.contents, strict=True):
             child = f"{prefix}.{name}" if prefix else name
-            if child not in keep:
-                continue
-            pruned = _prune_akform(content, child, keep, exact)
-            if pruned is not None:
+            if child in keep:
                 names.append(name)
-                contents.append(pruned)
-        if not contents:
-            # A record named directly in the selection, none of whose subfields
-            # were selected, is kept rather than dropped. Rebuilding produces a
-            # *tuple* here rather than an empty record, because ``all(...)``
-            # over no field names is vacuously true and collapses namelist to
-            # None. Reproduced exactly so the two paths agree.
-            if prefix and prefix in exact:
-                return ak.forms.RecordForm(
-                    [], None, form_key=form.form_key, parameters=form.parameters
-                )
-            return None
-        if form.is_tuple:
+                contents.append(_prune_akform(content, child, keep))
+        if form.is_tuple or not contents:
             # ``fields`` on a tuple is positional ("0", "1", ...) rather than
             # None, so tuple-ness has to be carried across explicitly or the
-            # record comes back named.
+            # record comes back named. A record named in the selection without
+            # any of its subfields comes back the same way, because rebuilding
+            # it collapses ``namelist`` to None -- ``all(...)`` over no field
+            # names is vacuously true.
             return ak.forms.RecordForm(
                 contents, None, form_key=form.form_key, parameters=form.parameters
             )
@@ -514,10 +501,7 @@ def _prune_akform(form, prefix, keep, exact):
 
     content = getattr(form, "content", None)
     if isinstance(content, ak.forms.Form):
-        pruned = _prune_akform(content, prefix, keep, exact)
-        if pruned is None:
-            return None
-        return form.copy(content=pruned)
+        return form.copy(content=_prune_akform(content, prefix, keep))
 
     return form
 
@@ -676,16 +660,16 @@ class HasFields(Mapping):
         )
 
         if self is rntuple:
-            pruned = _prune_akform(cached, "", _akform_prefix_set(keys), set(keys))
-            if pruned is None:
-                pruned = ak.forms.RecordForm([], [], form_key="toplevel")
-            return (pruned, None)
+            if not keys:
+                # nothing selected; pruning has nothing to walk
+                return (ak.forms.RecordForm([], [], form_key="toplevel"), None)
+            return (_prune_akform(cached, "", _akform_prefix_set(keys)), None)
 
-        # A subfield. The original wraps either the field itself or its nearest
-        # enclosing collection, and reports the path relative to that wrapper;
-        # both are reproduced here, with the form taken from the cache instead
-        # of rebuilt. This is the path coffea actually uses -- it asks for one
-        # field at a time rather than filtering the whole RNTuple.
+        # A subfield. The original wraps either the field itself or the
+        # outermost collection on its path, and reports the path relative to
+        # that wrapper; both are reproduced here, with the form taken from the
+        # cache instead of rebuilt. This is the path coffea actually uses -- it
+        # asks for one field at a time rather than filtering the whole RNTuple.
         path_keys = self.path.split(".")
         top_collection = None
         tmp_field = rntuple
@@ -714,7 +698,7 @@ class HasFields(Mapping):
                 filter_branch=filter_branch,
             )
 
-        pruned = _prune_akform(node, target_path, _akform_prefix_set(keys), set(keys))
+        pruned = _prune_akform(node, target_path, _akform_prefix_set(keys))
         form = ak.forms.RecordForm(
             [pruned], [target_name], form_key="toplevel", parameters=None
         )
