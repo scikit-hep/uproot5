@@ -455,6 +455,95 @@ def concatenate(
     return library.concatenate(all_arrays)
 
 
+def _akform_prefix_set(keys):
+    """Every key plus every ancestor prefix of every key."""
+    prefixes = set(keys)
+    for key in keys:
+        path = key
+        cut = path.rfind(".")
+        while cut > 0:
+            parent = path[:cut]
+            if parent in prefixes:
+                break
+            prefixes.add(parent)
+            path = parent
+            cut = path.rfind(".")
+    return prefixes
+
+
+def _prune_akform(form, prefix, keep, exact):
+    """Cut a form down to the branches named in ``keep``.
+
+    ``keep`` holds requested keys and their ancestors, so a record field is
+    retained exactly when its own path appears there. ``exact`` holds only the
+    requested keys themselves. Wrappers (lists, options, masks) pass the prefix
+    through unchanged, because the name was consumed by the record level above.
+
+    Returns None when nothing under this node survives.
+    """
+    if isinstance(form, ak.forms.RecordForm):
+        names = []
+        contents = []
+        for name, content in zip(form.fields, form.contents, strict=True):
+            child = f"{prefix}.{name}" if prefix else name
+            if child not in keep:
+                continue
+            pruned = _prune_akform(content, child, keep, exact)
+            if pruned is not None:
+                names.append(name)
+                contents.append(pruned)
+        if not contents:
+            # A record named directly in the selection, none of whose subfields
+            # were selected, is kept rather than dropped. Rebuilding produces a
+            # *tuple* here rather than an empty record, because ``all(...)``
+            # over no field names is vacuously true and collapses namelist to
+            # None. Reproduced exactly so the two paths agree.
+            if prefix and prefix in exact:
+                return ak.forms.RecordForm(
+                    [], None, form_key=form.form_key, parameters=form.parameters
+                )
+            return None
+        if form.is_tuple:
+            # ``fields`` on a tuple is positional ("0", "1", ...) rather than
+            # None, so tuple-ness has to be carried across explicitly or the
+            # record comes back named.
+            return ak.forms.RecordForm(
+                contents, None, form_key=form.form_key, parameters=form.parameters
+            )
+        return form.copy(contents=contents, fields=names)
+
+    content = getattr(form, "content", None)
+    if isinstance(content, ak.forms.Form):
+        pruned = _prune_akform(content, prefix, keep, exact)
+        if pruned is None:
+            return None
+        return form.copy(content=pruned)
+
+    return form
+
+
+def _navigate_akform(form, path_keys):
+    """Descend a form along a dotted field path.
+
+    Wrappers are stepped through without consuming a name, since a list or
+    option carries the name of the record above it.
+    """
+    node = form
+    for name in path_keys:
+        while True:
+            if isinstance(node, ak.forms.RecordForm) and node.fields is not None:
+                if name not in node.fields:
+                    return None
+                node = node.contents[node.fields.index(name)]
+                break
+            content = getattr(node, "content", None)
+            if isinstance(content, ak.forms.Form):
+                node = content
+                continue
+            return None
+    return node
+
+
 class HasFields(Mapping):
     """
     Abstract class of behaviors for anything that "has fields," namely
@@ -548,6 +637,90 @@ class HasFields(Mapping):
         return self._path
 
     def to_akform(
+        self,
+        *,
+        filter_name=no_filter,
+        filter_typename=no_filter,
+        filter_field=no_filter,
+        ak_add_doc=False,
+        filter_branch=unset,
+    ):
+        """
+        Same contract as :meth:`_to_akform_full`, which this delegates to.
+
+        For a plain filtered read of a whole ``RNTuple`` the result is derived
+        from a cached unfiltered form rather than rebuilt, which is what makes
+        reading many columns one at a time affordable. Anything else -- a
+        subfield, or ``ak_add_doc`` -- takes the original path.
+        """
+        rntuple = self.ntuple
+        if ak_add_doc:
+            return self._to_akform_full(
+                filter_name=filter_name,
+                filter_typename=filter_typename,
+                filter_field=filter_field,
+                ak_add_doc=ak_add_doc,
+                filter_branch=filter_branch,
+            )
+
+        cached = getattr(rntuple, "_default_akform_cache", None)
+        if cached is None:
+            cached = rntuple._to_akform_full()[0]
+            rntuple._default_akform_cache = cached
+
+        keys = self.keys(
+            filter_name=filter_name,
+            filter_typename=filter_typename,
+            filter_field=filter_field,
+            filter_branch=filter_branch,
+        )
+
+        if self is rntuple:
+            pruned = _prune_akform(cached, "", _akform_prefix_set(keys), set(keys))
+            if pruned is None:
+                pruned = ak.forms.RecordForm([], [], form_key="toplevel")
+            return (pruned, None)
+
+        # A subfield. The original wraps either the field itself or its nearest
+        # enclosing collection, and reports the path relative to that wrapper;
+        # both are reproduced here, with the form taken from the cache instead
+        # of rebuilt. This is the path coffea actually uses -- it asks for one
+        # field at a time rather than filtering the whole RNTuple.
+        path_keys = self.path.split(".")
+        top_collection = None
+        tmp_field = rntuple
+        field_path = [self.name]
+        for i, key in enumerate(path_keys):
+            tmp_field = tmp_field[key]
+            if tmp_field.record.struct_role == uproot.const.RNTupleFieldRole.COLLECTION:
+                top_collection = tmp_field
+                field_path = path_keys[i:]
+                break
+
+        keys = [self.path] + [f"{self.path}.{k}" for k in keys]
+        if top_collection is None:
+            target_path, target_name = self.path, self.name
+        else:
+            keys += [top_collection.path]
+            target_path, target_name = top_collection.path, top_collection.name
+
+        node = _navigate_akform(cached, target_path.split("."))
+        if node is None:
+            return self._to_akform_full(
+                filter_name=filter_name,
+                filter_typename=filter_typename,
+                filter_field=filter_field,
+                ak_add_doc=ak_add_doc,
+                filter_branch=filter_branch,
+            )
+
+        pruned = _prune_akform(node, target_path, _akform_prefix_set(keys), set(keys))
+        form = ak.forms.RecordForm(
+            [pruned], [target_name], form_key="toplevel", parameters=None
+        )
+        return (form, field_path)
+
+    def _to_akform_full(
         self,
         *,
         filter_name=no_filter,
