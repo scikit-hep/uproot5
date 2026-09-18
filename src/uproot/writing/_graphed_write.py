@@ -103,7 +103,7 @@ def _select_executor(executor):
             "process": graphed_executors.local.ProcessPoolExecutor,
             "thread": graphed_executors.local.ThreadExecutor,
         }[executor]
-    return executor  # an executor class/instance passed directly
+    return executor  # an executor class passed directly (instantiated by the caller)
 
 
 def graphed_write(
@@ -128,13 +128,16 @@ def graphed_write(
             partitions (blind — resolved by each worker; the driver opens no files).
         prefix (str or None): Part files are named by ``graphed.write.part_path``:
             ``f"{prefix or 'part'}-{N:05d}.root"``.
-        tree_name (str): Name of the ``TTree`` written into each part file. Default ``"tree"``.
+        tree_name (str): Name the data is assigned to in each part file (a dict assignment, so
+            an ``RNTuple`` since Uproot 5.7). Default ``"tree"``.
         compute (bool): If ``True`` (default), execute the write task graph now via a
             ``graphed-executors`` executor and return the written paths (REPORTED BY THE WORKERS,
             in deterministic key order). If ``False``, return the ``graphed.core.Plan`` (the write
             task graph) **without writing** — run it later with an executor.
-        executor (str or executor): ``"process"`` (default, ``ProcessPoolExecutor``) or ``"thread"``
-            (``ThreadExecutor``); an executor class/instance may also be passed.
+        executor (str or executor class): ``"process"`` (default, ``ProcessPoolExecutor``) or
+            ``"thread"`` (``ThreadExecutor``); an executor **class** may also be passed — it is
+            called as ``executor(max_workers=max_workers)``, so an already-built instance is not
+            accepted.
         max_workers (int or None): Worker count for the executor.
         compression, compression_level: ROOT compression for the part files (as in ``dask_write``).
 

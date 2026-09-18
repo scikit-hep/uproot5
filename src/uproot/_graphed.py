@@ -47,19 +47,18 @@ class _GraphedTTreeSource:
             list(self.columns) if self.columns is not None else list(self._common_keys)
         )
         self.last_columns_read = list(cols)
-        parts = []
-        for file_path, object_path in self._file_tree:
-            ttree = uproot._util.regularize_object_path(
+        # _file_tree holds only what resolved when ``graphed`` built it; as in uproot._dask,
+        # the read expects it to resolve again
+        parts = [
+            uproot._util.regularize_object_path(
                 file_path,
                 object_path,
                 self._custom_classes,
                 self._allow_missing,
                 self._options,
-            )
-            if ttree is not None:
-                parts.append(ttree.arrays(cols, library="ak"))
-        if not parts:
-            return awkward.Array([])
+            ).arrays(cols, library="ak")
+            for file_path, object_path in self._file_tree
+        ]
         return parts[0] if len(parts) == 1 else awkward.concatenate(parts)
 
     # ---- graphed.write.PartitionedSource: partition-wise reading -----------------------------
