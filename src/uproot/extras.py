@@ -239,6 +239,45 @@ or
         )
 
 
+def graphed():
+    """
+    Imports and returns ``graphed`` (with the submodules Uproot uses).
+    """
+    try:
+        import graphed
+        import graphed.awkward
+        import graphed.awkward.projection
+        import graphed.core
+        import graphed.provenance
+        import graphed.write
+
+        # a recorded op's provenance is the analyst's line, not the Uproot frame that recorded it
+        graphed.provenance.register_internal("uproot")
+    except (ModuleNotFoundError, AttributeError) as err:
+        raise ModuleNotFoundError(
+            """for uproot.graphed, install the 'graphed' package (0.0.3 or later) with:
+    pip install graphed --upgrade"""
+        ) from err
+    else:
+        return graphed
+
+
+def graphed_executors():
+    """
+    Imports and returns ``graphed_executors`` (with the submodules Uproot uses).
+    """
+    try:
+        import graphed_executors
+        import graphed_executors.local
+    except ModuleNotFoundError as err:
+        raise ModuleNotFoundError(
+            """for uproot.graphed_write, install the 'graphed-executors' package with:
+    pip install graphed-executors"""
+        ) from err
+    else:
+        return graphed_executors
+
+
 def awkward_pandas():
     """
     Imports and returns ``awkward_pandas``.
