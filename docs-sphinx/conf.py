@@ -25,7 +25,7 @@ author = "Jim Pivarski"
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named "sphinx.ext.*") or your custom
 # ones.
-extensions = ["sphinx.ext.autodoc", "sphinx.ext.napoleon"]
+extensions = ["sphinx.ext.autodoc", "sphinx.ext.napoleon", "sphinx_llm.txt"]
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]
@@ -34,6 +34,14 @@ templates_path = ["_templates"]
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
+
+# -- Options for LLM-friendly output -----------------------------------------
+
+# The default is the full README, which is too long for the summary block
+llms_txt_description = (
+    "Uproot is a library for reading and writing ROOT files in pure Python and"
+    " NumPy, without a dependency on C++ ROOT."
+)
 
 # -- Options for HTML output -------------------------------------------------
 
