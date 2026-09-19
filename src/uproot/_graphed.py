@@ -338,11 +338,7 @@ def graphed(
             raise ValueError("uproot.graphed: no TTrees found in the given files")
         if not common_keys:
             raise ValueError("uproot.graphed: the TTrees have no TBranches in common")
-        # RNTuples (HasFields) expose the awkward form directly; TTrees build it from branch interpretations
-        if isinstance(first_ttree, HasFields):
-            record_form = first_ttree.to_akform(filter_name=common_keys)[0]
-        else:
-            record_form = _get_ttree_form(awkward, first_ttree, common_keys, ak_add_doc)
+        record_form = _get_ttree_form(awkward, first_ttree, common_keys, ak_add_doc)
         # as in uproot._dask, a mapping may read the branch typenames off the base form
         if form_mapping is not None:
             record_form.parameters["typenames"] = first_ttree.typenames()
