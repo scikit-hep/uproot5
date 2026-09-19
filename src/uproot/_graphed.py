@@ -13,6 +13,11 @@ builds the ``graphed.core.Task`` chunks; :doc:`uproot._graphed.necessary_columns
 projection (so each chunk reads only the ``TBranches`` the analysis touches — the dask-awkward
 necessary-columns optimization, expressed through ``graphed``).
 
+With a ``form_mapping`` (coffea's ``NanoEventsFactory`` is the archetype) the source reads through
+the mapping instead: each chunk is assembled by the mapping's ``load_buffers`` and
+``awkward.from_buffers``, and because the graph's field names are then the MAPPED form's, the
+source DECLARES its read list in ``TBranch`` names rather than letting a driver guess them.
+
 ``graphed`` (and its backends) are imported lazily, so importing ``uproot`` does not require them.
 """
 
@@ -81,12 +86,24 @@ class _GraphedTTreeSource:
         )
 
     def read_partition(self, partition, columns, resources):
-        """Read one partition's branches (file opened once per worker via ``resources``)."""
-        tree = resources.open_once(partition.uri, uproot.open)[partition.tree]
-        cols = list(columns) if columns else list(self._common_keys)
+        """Read one partition's branches. The file is opened once per worker (via ``resources``)
+        with the options ``uproot.graphed`` was given, so ``decompression_executor`` /
+        ``interpretation_executor`` reach the read the way they do on any other uproot read.
+        """
+        tree = resources.open_once(
+            partition.uri, lambda uri: uproot.open(uri, **self._options)
+        )[partition.tree]
         return self.read_range(
-            tree, cols, *_partition_range(partition, tree.num_entries)
+            tree,
+            self._read_columns(columns),
+            *_partition_range(partition, tree.num_entries),
         )
+
+    def _read_columns(self, columns):
+        """The branches one partition reads. This source declares no read list, so an empty one
+        means the driver's syntactic walk named no branch (a whole-record read), not a request to
+        read nothing: fall back to every selected branch."""
+        return list(columns) if columns else list(self._common_keys)
 
 
 class _MappedGraphedTTreeSource(_GraphedTTreeSource):
@@ -132,15 +149,24 @@ class _MappedGraphedTTreeSource(_GraphedTTreeSource):
             buffer_key=info.buffer_key,
         )
 
+    def _read_columns(self, columns):
+        """This source DECLARES its read list, so the declaration is honoured verbatim — an empty
+        one included. Every buffer outside it is a placeholder and the chunk's length comes from
+        the partition's entry range, so an output that needs only a length
+        (``gak.num(events, axis=0)``) reads no ``TBranch`` at all. Only ``None`` (nothing declared)
+        falls back to every selected branch."""
+        return list(columns) if columns is not None else list(self._common_keys)
+
     def projected_columns(self, outputs, *, on_fail="pass"):
         """The ``TBranches`` this source declares for ``outputs``, asked driver-side through
         ``graphed.write.declared_columns``.
 
         ``graphed``'s buffer projection answers in the mapped form's dotted paths, so each is
         walked back to the buffer keys it needs — a list's structure is a buffer of its own — and
-        those go to the mapping's ``keys_for_buffer_keys``. ``on_fail="pass"`` because refusing to
-        see through an opaque node would leave the source with no read list at all; its inputs are
-        read, as ``uproot.dask`` does."""
+        those go to the mapping's ``keys_for_buffer_keys``. ``on_fail="pass"`` keeps an opaque node
+        (a user callable ``graphed`` cannot see through) from raising: the node is treated as
+        needing everything its inputs carry, so the read list stays a superset of what is needed.
+        Refusing instead would leave this source with no read list at all."""
         graphed = uproot.extras.graphed()
 
         info = self._form_mapping_info
@@ -177,6 +203,14 @@ def _mapped_buffer_keys(form, path, data, buffer_key):
             form = form.content
     keys.update(form.expected_from_buffers(buffer_key=buffer_key, recursive=data))
     return keys
+
+
+def _name_from_object_path(file_tree):
+    """The ``TTree``'s name when no file was opened to ask it (``known_base_form=``): the object
+    path the caller gave, without its ``TDirectory`` prefix or ``;cycle`` suffix — the same name
+    the opened ``TTree`` reports, so a source keeps its identity either way."""
+    object_path = file_tree[0][1] if file_tree else None
+    return (object_path or "").rpartition("/")[2].partition(";")[0] or "events"
 
 
 def graphed(
@@ -217,14 +251,16 @@ def graphed(
             The recorded array then has the MAPPED form, the mapping info's ``behavior`` is
             registered on the backend, and the source declares its read list in ``TBranch`` names
             (see :doc:`uproot._graphed.necessary_columns`).
-        known_base_form (awkward.forms.Form or None): Record against this form instead of opening
-            a file to read one — as in :doc:`uproot._dask.dask`, whose ``open_files=False`` takes
-            the same argument. No file is opened at all.
+        known_base_form (awkward.forms.Form | None): If not none use this form instead of opening
+            one file to determine the dataset's form, as in :doc:`uproot._dask.dask`. No file is
+            opened at all; the ``TTree``'s name then comes from the object path in ``files``.
         backend (graphed Backend or None): The ``graphed`` backend **instance** the session
             records on, in place of the default ``graphed.awkward.AwkwardBackend`` — the route for
             a caller's own ``Array`` subclass. Its behavior (and, with ``form_mapping``, the
             mapping info's) is then the caller's business, so ``behavior=`` is refused beside it.
-        options: Passed through to file opening.
+        options: Passed through to file opening — including ``decompression_executor`` and
+            ``interpretation_executor``, which every read here takes from the file it opened
+            (``TTree.arrays`` falls back to the file's), so they need no parameter of their own.
 
     Returns a deferred ``graphed`` ``Array`` for the selected ``TTree``(s). Construction reads only
     metadata; computing the expression (e.g. via :doc:`uproot._graphed.compute`) triggers the read,
@@ -302,7 +338,7 @@ def graphed(
         if form_mapping is not None:
             record_form.parameters["typenames"] = first_ttree.typenames()
 
-    name = getattr(first_ttree, "name", None) or "events"
+    name = getattr(first_ttree, "name", None) or _name_from_object_path(file_tree)
     args = (file_tree, common_keys, custom_classes, allow_missing, real_options)
     if form_mapping is None:
         typetracer = awkward.Array(

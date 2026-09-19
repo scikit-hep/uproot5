@@ -21,7 +21,7 @@ extra = [
 test = [
   "aiohttp",
   "deflate",
-  "graphed[awkward,parquet]>=0.0.2; python_version >= '3.11'",
+  "graphed[awkward,parquet]>=0.0.3; python_version >= '3.11'",
   "graphed-executors>=0.0.2; python_version >= '3.11'",
   "graphed-histogram>=0.0.2; python_version >= '3.11'",
   "isal",

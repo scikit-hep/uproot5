@@ -15,6 +15,7 @@ order = [
     "uproot.writing",
     "uproot.behaviors",
     "uproot._dask",
+    "uproot._graphed",
     "uproot.behavior",
     "uproot.model",
     "uproot.streamers",
@@ -99,9 +100,13 @@ def ensure(filename, content):
         sys.stderr.write(filename + "\n")
 
 
+# private modules that are nonetheless public interface, and so get a documentation page
+documented_private = {"_dask", "_dask_write", "_graphed", "_graphed_write"}
+
+
 def handle_module(modulename, module):
     if any(x.startswith("_") for x in modulename.split(".")) and not any(
-        x == "_dask" or x == "_dask_write" for x in modulename.split(".")
+        x in documented_private for x in modulename.split(".")
     ):
         return
 
@@ -117,8 +122,7 @@ def handle_module(modulename, module):
         toctree2.write("    " + modulename + " (module) <" + modulename + ">\n")
 
     if modulename != "uproot" and all(
-        not x.startswith("_") or x == "_dask" or x == "_dask_write"
-        for x in modulename.split(".")
+        not x.startswith("_") or x in documented_private for x in modulename.split(".")
     ):
 
         def good(obj):
