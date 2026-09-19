@@ -54,6 +54,19 @@ def _good_and_treeless(tmp_path):
     return good, other
 
 
+# ---- the whole-dataset loader ---------------------------------------------------------------
+def test_the_whole_dataset_loader_concatenates_every_file(tmp_path):
+    files = []
+    for i in range(2):
+        path = os.path.join(tmp_path, f"part{i}.root")
+        with uproot.recreate(path) as f:
+            f["events"] = {"x": np.arange(3.0) + 10 * i}
+        files.append(path + ":events")
+    g = uproot.graphed(files, library="ak")
+    got = ak.Array(g.session.materialize(g.x))
+    assert got.to_list() == [0.0, 1.0, 2.0, 10.0, 11.0, 12.0]
+
+
 # ---- allow_missing --------------------------------------------------------------------------
 def test_allow_missing_skips_a_file_without_the_tree(tmp_path):
     good, other = _good_and_treeless(tmp_path)
@@ -222,8 +235,8 @@ def _dir_tree(tmp_path):
     with uproot.recreate(path) as f:
         f.mkdir("dir")
         f["dir/Events"] = {"x": np.arange(10.0)}
-    tree = uproot.open(f"{path}:dir/Events")
-    return path, _get_ttree_form(ak, tree, tree.keys(), False)
+    with uproot.open(f"{path}:dir/Events") as tree:
+        return path, _get_ttree_form(ak, tree, tree.keys(), False)
 
 
 @pytest.mark.parametrize("object_path", ["Events", "dir/Events", "dir/Events;1"])

@@ -8,10 +8,14 @@ This module defines :doc:`uproot._graphed.graphed`, which reads ``TTrees`` into 
 ``graphed.awkward`` backend); construction reads only metadata (the ``TTree`` form). ``graphed`` does
 not impersonate a deferred-array ``.compute()`` — instead, a recorded analysis is executed the way one
 actually runs a task graph: per partition through the ``graphed-executors`` executors
-(``ProcessPoolExecutor`` / ``ThreadExecutor``) and tree-reduced. :doc:`uproot._graphed.graphed_partitions`
-builds the ``graphed.core.Task`` chunks; :doc:`uproot._graphed.necessary_columns` reports the column
-projection (so each chunk reads only the ``TBranches`` the analysis touches — the dask-awkward
-necessary-columns optimization, expressed through ``graphed``).
+(``ProcessPoolExecutor`` / ``ThreadExecutor``) and tree-reduced. The array's source is a
+``graphed`` partitioned source: ``graphed``'s drivers (``graphed.aggregate_plan``,
+``graphed.awkward.to_parquet``, :doc:`uproot.writing._graphed_write.graphed_write`) ask it for its
+partitions and read each one with only the ``TBranches`` the recorded graph touches — the
+dask-awkward necessary-columns optimization, expressed through ``graphed``.
+:doc:`uproot._graphed.necessary_columns` reports that projection without running anything, and
+:doc:`uproot._graphed.graphed_partitions` / :doc:`uproot._graphed.read_graphed_partition` are the
+same chunking for hand-built ``graphed.core.Task`` lists.
 
 With a ``form_mapping`` (coffea's ``NanoEventsFactory`` is the archetype) the source reads through
 the mapping instead: each chunk is assembled by the mapping's ``load_buffers`` and
@@ -214,8 +218,7 @@ def _name_from_object_path(file_tree):
     """The ``TTree``'s name when no file was opened to ask it (``known_base_form=``): the object
     path the caller gave, without its ``TDirectory`` prefix or ``;cycle`` suffix — the same name
     the opened ``TTree`` reports, so a source keeps its identity either way."""
-    object_path = file_tree[0][1] if file_tree else None
-    return (object_path or "").rpartition("/")[2].partition(";")[0] or "events"
+    return (file_tree[0][1] or "").rpartition("/")[2].partition(";")[0] or "events"
 
 
 def graphed(
@@ -268,10 +271,9 @@ def graphed(
             (``TTree.arrays`` falls back to the file's), so they need no parameter of their own.
 
     Returns a deferred ``graphed`` ``Array`` for the selected ``TTree``(s). Construction reads only
-    metadata; running the recorded analysis partition-wise
-    (:doc:`uproot._graphed.graphed_partitions` chunks, read by
-    :doc:`uproot._graphed.read_graphed_partition`) triggers the read, fetching only the
-    ``TBranches`` the recorded graph touches.
+    metadata; running the recorded analysis (``graphed.aggregate_plan``,
+    ``graphed.awkward.to_parquet``, :doc:`uproot.writing._graphed_write.graphed_write`) triggers
+    the read, partition by partition, fetching only the ``TBranches`` the recorded graph touches.
 
     This is the ``graphed`` analogue of :doc:`uproot._dask.dask`.
     """
