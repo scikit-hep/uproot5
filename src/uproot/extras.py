@@ -248,11 +248,15 @@ def graphed():
         import graphed.awkward
         import graphed.awkward.projection
         import graphed.core
+        import graphed.provenance
         import graphed.write
-    except ModuleNotFoundError as err:
+
+        # a recorded op's provenance is the analyst's line, not the Uproot frame that recorded it
+        graphed.provenance.register_internal("uproot")
+    except (ModuleNotFoundError, AttributeError) as err:
         raise ModuleNotFoundError(
-            """for uproot.graphed, install the 'graphed' package with:
-    pip install graphed"""
+            """for uproot.graphed, install the 'graphed' package (0.0.3 or later) with:
+    pip install graphed --upgrade"""
         ) from err
     else:
         return graphed

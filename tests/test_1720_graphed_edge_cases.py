@@ -216,6 +216,18 @@ def test_missing_graphed_reports_how_to_install_it(monkeypatch):
     assert isinstance(info.value.__cause__, ModuleNotFoundError)
 
 
+def test_a_graphed_too_old_to_register_uproot_reports_how_to_upgrade(monkeypatch):
+    monkeypatch.delattr("graphed.provenance.register_internal")
+    with pytest.raises(ModuleNotFoundError, match="0.0.3 or later") as info:
+        uproot.extras.graphed()
+    assert isinstance(info.value.__cause__, AttributeError)
+
+
+def test_a_recorded_source_points_at_the_analysts_line():
+    events = uproot.graphed(_zmumu())
+    assert events.session.provenance(events).filename == __file__
+
+
 def test_missing_graphed_executors_reports_how_to_install_them(monkeypatch):
     monkeypatch.setitem(sys.modules, "graphed_executors", None)
     with pytest.raises(
