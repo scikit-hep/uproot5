@@ -73,7 +73,7 @@ def _write_partition(
     read-side ``uproot._graphed.graphed_head`` pattern."""
     graphed = uproot.extras.graphed()
 
-    tree = resources.open_once(partition.uri, uproot.open)[partition.tree]
+    tree = source.open_tree(partition, resources)
     resolved = partition.resolve(tree.num_entries)
     if resolved.entry_stop <= resolved.entry_start:
         return []  # fewer entries than steps: skip, never write an empty part file

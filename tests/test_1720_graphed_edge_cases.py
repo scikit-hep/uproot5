@@ -10,6 +10,8 @@
 - ``graphed_head`` reads exactly the branches the recorded graph accesses — a field subset reads
   those fields, a whole-record operation reads every selected branch — and refuses an array that
   is not backed by a single ``uproot.graphed`` source;
+- with ``known_base_form=`` (no file opened) the source is named from the object path, whatever
+  ``TDirectory`` prefix or ``;cycle`` suffix it carries, and when it names no object at all;
 - the missing-dependency errors of ``uproot.extras`` carry their install hints.
 """
 
@@ -29,6 +31,7 @@ pytest.importorskip("graphed.awkward")
 from graphed import BufferNeed  # noqa: E402
 from graphed.awkward import AwkwardBackend, AwkwardForm, gak  # noqa: E402
 
+from uproot._dask import _get_ttree_form  # noqa: E402
 from uproot._graphed import _evaluation_columns, _GraphedTTreeSource  # noqa: E402
 
 
@@ -210,3 +213,31 @@ def test_missing_graphed_executors_reports_how_to_install_them(monkeypatch):
         "for uproot.graphed_write, install the 'graphed-executors' package"
     )
     assert isinstance(info.value.__cause__, ModuleNotFoundError)
+
+
+# ---- the TTree's name when no file is opened (known_base_form=) -------------------------------
+def _dir_tree(tmp_path):
+    """A file whose ``TTree`` lives in a ``TDirectory``, plus the base form of that tree."""
+    path = os.path.join(tmp_path, "dirtree.root")
+    with uproot.recreate(path) as f:
+        f.mkdir("dir")
+        f["dir/Events"] = {"x": np.arange(10.0)}
+    tree = uproot.open(f"{path}:dir/Events")
+    return path, _get_ttree_form(ak, tree, tree.keys(), False)
+
+
+@pytest.mark.parametrize("object_path", ["Events", "dir/Events", "dir/Events;1"])
+def test_known_base_form_names_the_tree_from_the_object_path(tmp_path, object_path):
+    # with no file opened the name comes from the object path, which may carry a TDirectory
+    # prefix and a ;cycle suffix that the opened TTree's own name does not
+    path, form = _dir_tree(tmp_path)
+    opened = uproot.graphed(f"{path}:dir/Events", library="ak")
+    blind = uproot.graphed(f"{path}:{object_path}", library="ak", known_base_form=form)
+    assert blind.session.source_name(0) == opened.session.source_name(0) == "Events"
+
+
+def test_known_base_form_falls_back_when_the_files_carry_no_object_path(tmp_path):
+    # `files` need not name an object at all, and a source needs a name regardless
+    path, form = _dir_tree(tmp_path)
+    blind = uproot.graphed(path, library="ak", known_base_form=form)
+    assert blind.session.source_name(0) == "events"

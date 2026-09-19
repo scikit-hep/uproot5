@@ -27,9 +27,12 @@ if not hasattr(graphed_write, "declared_columns"):
         allow_module_level=True,
     )
 
+import graphed  # noqa: E402
 from graphed.awkward import AwkwardBackend, gak  # noqa: E402
+from graphed.core import SequentialRunner  # noqa: E402
 
 from tests.graphed import mini_nanoaod as mini  # noqa: E402
+from uproot.source.futures import TrivialExecutor  # noqa: E402
 
 
 def _nano():
@@ -85,3 +88,47 @@ def test_behavior_is_refused_beside_backend_or_form_mapping(instead):
             behavior=mini.BEHAVIOR,
             **instead,
         )
+
+
+class _MarkExecutor(TrivialExecutor):
+    """A distinguishable executor: its identity is the whole assertion."""
+
+
+def test_open_options_reach_the_reads_on_both_paths(tmp_path):
+    # decompression_executor= is an OPEN option, and TTree.arrays falls back to the file's, so it
+    # reaches a partition read only if that partition's file was opened with the source's options
+    mark = _MarkExecutor()
+    g = uproot.graphed(
+        _nano(),
+        library="ak",
+        filter_name=mini.FILTER,
+        form_mapping=mini.MiniNanoMapping(),
+        decompression_executor=mark,
+    )
+    ((_nid, source),) = g.session.sources().items()
+    saw = []
+    real_read = source.read_range
+    source.read_range = lambda tree, cols, start, stop: (
+        saw.append(tree.file.decompression_executor is mark),
+        real_read(tree, cols, start, stop),
+    )[1]
+    out = gak.zip({"sum_pt": gak.sum(g.Jet.pt, axis=1)})
+
+    plan = graphed.aggregate_plan(  # the read path: _GraphedTTreeSource.read_partition
+        out,
+        reduce=lambda vals: float(ak.sum(vals[0].sum_pt)),
+        combine=lambda a, b: a + b,
+        empty=lambda: 0.0,
+        steps_per_file=2,
+    )
+    SequentialRunner().run(plan)
+    assert saw == [True, True]
+
+    uproot.graphed_write(  # the write path: _write_partition
+        out,
+        os.path.join(tmp_path, "out"),
+        steps_per_file=2,
+        tree_name="events",
+        executor="thread",
+    )
+    assert saw == [True, True, True, True]

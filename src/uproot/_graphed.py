@@ -85,14 +85,19 @@ class _GraphedTTreeSource:
             for s in range(steps_per_file)
         )
 
-    def read_partition(self, partition, columns, resources):
-        """Read one partition's branches. The file is opened once per worker (via ``resources``)
-        with the options ``uproot.graphed`` was given, so ``decompression_executor`` /
+    def open_tree(self, partition, resources):
+        """This partition's ``TTree``, from a file opened once per worker (via ``resources``) with
+        the options ``uproot.graphed`` was given, so ``decompression_executor`` /
         ``interpretation_executor`` reach the read the way they do on any other uproot read.
+        Every partition read — this source's and ``uproot.graphed_write``'s — opens through here.
         """
-        tree = resources.open_once(
+        return resources.open_once(
             partition.uri, lambda uri: uproot.open(uri, **self._options)
         )[partition.tree]
+
+    def read_partition(self, partition, columns, resources):
+        """Read one partition's branches."""
+        tree = self.open_tree(partition, resources)
         return self.read_range(
             tree,
             self._read_columns(columns),
@@ -263,8 +268,10 @@ def graphed(
             (``TTree.arrays`` falls back to the file's), so they need no parameter of their own.
 
     Returns a deferred ``graphed`` ``Array`` for the selected ``TTree``(s). Construction reads only
-    metadata; computing the expression (e.g. via :doc:`uproot._graphed.compute`) triggers the read,
-    fetching only the ``TBranches`` the recorded graph touches.
+    metadata; running the recorded analysis partition-wise
+    (:doc:`uproot._graphed.graphed_partitions` chunks, read by
+    :doc:`uproot._graphed.read_graphed_partition`) triggers the read, fetching only the
+    ``TBranches`` the recorded graph touches.
 
     This is the ``graphed`` analogue of :doc:`uproot._dask.dask`.
     """
@@ -400,10 +407,11 @@ def necessary_columns(array, *, on_fail="raise"):
 def necessary_buffers(array, *, on_fail="raise"):
     """Buffer-granular projection: per source, each needed column with its
     :class:`graphed.BufferNeed` (``DATA`` — the leaf values are read; ``OFFSETS`` — only the list
-    STRUCTURE is needed, e.g. a multiplicity). Strictly finer than :doc:`necessary_columns`: a
-    count-only analysis truthfully reports ``{collection: OFFSETS}`` where the column view reports
-    the empty set — feed it to :doc:`resolve_read_branches` to serve the count from the jagged
-    branch's COUNTER branch without reading the payload baskets.
+    STRUCTURE is needed, e.g. a multiplicity). Strictly finer than
+    :doc:`uproot._graphed.necessary_columns`: a count-only analysis truthfully reports
+    ``{collection: OFFSETS}`` where the column view reports the empty set — feed it to
+    :doc:`uproot._graphed.resolve_read_branches` to serve the count from the jagged branch's
+    COUNTER branch without reading the payload baskets.
 
     Through a ``form_mapping`` the answer is in ``TBranch`` names and every need is ``DATA``: the
     mapping reads whole branches, and there a list's structure IS a branch (its counter).
@@ -426,8 +434,8 @@ def necessary_buffers(array, *, on_fail="raise"):
 
 
 def resolve_read_branches(obj, needs):
-    """Translate buffer needs from :doc:`necessary_buffers` into the concrete branches to read
-    from ``obj`` (an open ``TTree`` or ``RNTuple``).
+    """Translate buffer needs from :doc:`uproot._graphed.necessary_buffers` into the concrete
+    branches to read from ``obj`` (an open ``TTree`` or ``RNTuple``).
 
     ``DATA`` needs read the branch itself. An ``OFFSETS``-only need reads the jagged ``TBranch``'s
     **counter branch** when the file provides one (``TBranch.count_branch``) — the list lengths
