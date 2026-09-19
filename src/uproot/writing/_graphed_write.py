@@ -58,6 +58,7 @@ def _write_partition(
     bases,
     compiled,
     backend,
+    source,
     source_name,
 ):
     """Read this blind partition's chunk via uproot (file opened once per worker), EVALUATE the
@@ -76,7 +77,7 @@ def _write_partition(
     resolved = partition.resolve(tree.num_entries)
     if resolved.entry_stop <= resolved.entry_start:
         return []  # fewer entries than steps: skip, never write an empty part file
-    chunk = uproot.read_graphed_partition(partition, columns, tree=tree)
+    chunk = source.read_range(tree, columns, resolved.entry_start, resolved.entry_stop)
     evaluated: Any  # a backend array (awkward/numpy); evaluate_ir is typed list[object]
     (evaluated,) = graphed.evaluate_ir(compiled, backend, {source_name: chunk})
     # a record graph yields named fields (the derived columns); a bare (non-record) expression
@@ -149,7 +150,7 @@ def graphed_write(
     if not isinstance(array, graphed.Array):
         raise TypeError("graphed_write expects a uproot.graphed Array")
 
-    from uproot._graphed import _evaluation_columns, _GraphedTTreeSource
+    from uproot._graphed import _GraphedTTreeSource, _task_columns
 
     session = array.session
     uproot_sources = [
@@ -171,8 +172,9 @@ def graphed_write(
     # Each worker EVALUATES the recorded graph (below), which replays every node the graph accesses
     # — including field reads whose buffers the output never touches — so the read list is the
     # SYNTACTIC evaluation columns (as on the read side), not the finer buffer projection which
-    # under-supplies evaluation. Compile once in the driver; evaluate per partition in the worker.
-    columns = _evaluation_columns(array, nid, source._common_keys)
+    # under-supplies evaluation; a form-mapped source declares its own instead, in TBranch names.
+    # Compile once in the driver; evaluate per partition in the worker.
+    columns = _task_columns(array, nid, source)
     compiled = graphed.compile_ir(session, array)
     os.makedirs(destination, exist_ok=True)
 
@@ -191,6 +193,7 @@ def graphed_write(
         bases=tuple(bases.items()),
         compiled=compiled,
         backend=session.backend,
+        source=source,
         source_name=session.source_name(nid),
     )
     plan = graphed.write.write_plan(partitions, process)

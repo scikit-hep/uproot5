@@ -40,6 +40,24 @@ class _GraphedTTreeSource:
         self.columns = None  # None -> all common_keys; otherwise the projected subset
         self.last_columns_read = None  # set on each read, for inspection/tests
 
+    def _resolve(self, file_path, object_path):
+        """Re-resolve one ``(file_path, object_path)``: ``_file_tree`` holds only what resolved
+        when ``graphed`` built it; as in uproot._dask, the read expects it to resolve again.
+        """
+        return uproot._util.regularize_object_path(
+            file_path,
+            object_path,
+            self._custom_classes,
+            self._allow_missing,
+            self._options,
+        )
+
+    def read_range(self, tree, columns, start, stop):
+        """Read ``columns`` for entries ``[start, stop)`` from an already-open ``TTree``."""
+        return tree.arrays(
+            list(columns), entry_start=start, entry_stop=stop, library="ak"
+        )
+
     def __call__(self):
         import awkward
 
@@ -47,18 +65,8 @@ class _GraphedTTreeSource:
             list(self.columns) if self.columns is not None else list(self._common_keys)
         )
         self.last_columns_read = list(cols)
-        # _file_tree holds only what resolved when ``graphed`` built it; as in uproot._dask,
-        # the read expects it to resolve again
-        parts = [
-            uproot._util.regularize_object_path(
-                file_path,
-                object_path,
-                self._custom_classes,
-                self._allow_missing,
-                self._options,
-            ).arrays(cols, library="ak")
-            for file_path, object_path in self._file_tree
-        ]
+        trees = [self._resolve(*file_tree) for file_tree in self._file_tree]
+        parts = [self.read_range(tree, cols, 0, tree.num_entries) for tree in trees]
         return parts[0] if len(parts) == 1 else awkward.concatenate(parts)
 
     # ---- graphed.write.PartitionedSource: partition-wise reading -----------------------------
@@ -76,7 +84,99 @@ class _GraphedTTreeSource:
         """Read one partition's branches (file opened once per worker via ``resources``)."""
         tree = resources.open_once(partition.uri, uproot.open)[partition.tree]
         cols = list(columns) if columns else list(self._common_keys)
-        return read_graphed_partition(partition, cols, tree=tree)
+        return self.read_range(
+            tree, cols, *_partition_range(partition, tree.num_entries)
+        )
+
+
+class _MappedGraphedTTreeSource(_GraphedTTreeSource):
+    """A ``_GraphedTTreeSource`` read through a ``form_mapping``: every chunk is assembled by the
+    mapping's own ``load_buffers`` and ``awkward.from_buffers`` (a branch outside the read list
+    becomes a placeholder, as in ``uproot._dask``'s ``UprootReadMixin.read_tree``), and the source
+    DECLARES its read list, because the graph's field names are the MAPPED form's, not the file's
+    ``TBranch`` names."""
+
+    def __init__(self, *args, name, expected_form, form_mapping_info, interp_options):
+        super().__init__(*args)
+        self._name = name  # the graphed source name, which the projection answers under
+        self._expected_form = expected_form
+        self._form_mapping_info = form_mapping_info
+        self._interp_options = interp_options
+
+    def read_range(self, tree, columns, start, stop):
+        import awkward
+        from awkward._nplikes.numpy import Numpy
+
+        info = self._form_mapping_info
+        keys = frozenset(columns)
+        buffers = info.load_buffers(
+            tree, keys, start, stop, None, None, self._interp_options
+        )
+        container = {}
+        for buffer_key, dtype in self._expected_form.expected_from_buffers(
+            buffer_key=info.buffer_key
+        ).items():
+            if info.keys_for_buffer_keys(frozenset({buffer_key})) <= keys:
+                container[buffer_key] = buffers[buffer_key]
+            else:
+                container[buffer_key] = awkward.typetracer.PlaceholderArray(
+                    nplike=Numpy.instance(),
+                    shape=(awkward.typetracer.unknown_length,),
+                    dtype=dtype,
+                )
+        return awkward.from_buffers(
+            self._expected_form,
+            stop - start,
+            container,
+            behavior=info.behavior,
+            buffer_key=info.buffer_key,
+        )
+
+    def projected_columns(self, outputs, *, on_fail="pass"):
+        """The ``TBranches`` this source declares for ``outputs``, asked driver-side through
+        ``graphed.write.declared_columns``.
+
+        ``graphed``'s buffer projection answers in the mapped form's dotted paths, so each is
+        walked back to the buffer keys it needs — a list's structure is a buffer of its own — and
+        those go to the mapping's ``keys_for_buffer_keys``. ``on_fail="pass"`` because refusing to
+        see through an opaque node would leave the source with no read list at all; its inputs are
+        read, as ``uproot.dask`` does."""
+        graphed = uproot.extras.graphed()
+
+        info = self._form_mapping_info
+        buffer_keys = set()
+        for output in outputs:
+            needs = graphed.awkward.projection.project_buffers(
+                output, on_fail=on_fail
+            ).read_buffers.get(self._name, {})
+            for path, need in needs.items():
+                buffer_keys.update(
+                    _mapped_buffer_keys(
+                        self._expected_form,
+                        path,
+                        need is graphed.BufferNeed.DATA,
+                        info.buffer_key,
+                    )
+                )
+        return tuple(sorted(info.keys_for_buffer_keys(frozenset(buffer_keys))))
+
+
+def _mapped_buffer_keys(form, path, data, buffer_key):
+    """The mapped form's buffer keys for one projected ``path``: every structure crossed on the
+    way down to it, plus the endpoint's own — recursively when its ``data`` is read, and the list
+    offsets alone when only its shape is."""
+    keys = set()
+    fields = path.split(".") if path != "<root>" else []
+    while fields:
+        if form.is_record:
+            form = form.content(fields.pop(0))
+        else:  # a list/option wrapper between records: its structure shapes everything below
+            keys.update(
+                form.expected_from_buffers(buffer_key=buffer_key, recursive=False)
+            )
+            form = form.content
+    keys.update(form.expected_from_buffers(buffer_key=buffer_key, recursive=data))
+    return keys
 
 
 def graphed(
@@ -92,6 +192,9 @@ def graphed(
     custom_classes=None,
     allow_missing=False,
     behavior=None,
+    form_mapping=None,
+    known_base_form=None,
+    backend=None,
     **options,
 ):
     """
@@ -108,6 +211,19 @@ def graphed(
             recording backend: with ``gak.with_name``, behavior PROPERTIES
             (``.pt``, ``.mass``) work through plain attribute access — typetracer forms at record
             time, projectable down to exactly the branches a property reads.
+        form_mapping (ImplementsFormMapping or None): The mapping :doc:`uproot._dask.dask` takes —
+            it restructures the flat ``TTree`` form into the one the user sees (coffea's
+            ``NanoEventsFactory`` is the archetype) and fills that form's buffers from the file.
+            The recorded array then has the MAPPED form, the mapping info's ``behavior`` is
+            registered on the backend, and the source declares its read list in ``TBranch`` names
+            (see :doc:`uproot._graphed.necessary_columns`).
+        known_base_form (awkward.forms.Form or None): Record against this form instead of opening
+            a file to read one — as in :doc:`uproot._dask.dask`, whose ``open_files=False`` takes
+            the same argument. No file is opened at all.
+        backend (graphed Backend or None): The ``graphed`` backend **instance** the session
+            records on, in place of the default ``graphed.awkward.AwkwardBackend`` — the route for
+            a caller's own ``Array`` subclass. Its behavior (and, with ``form_mapping``, the
+            mapping info's) is then the caller's business, so ``behavior=`` is refused beside it.
         options: Passed through to file opening.
 
     Returns a deferred ``graphed`` ``Array`` for the selected ``TTree``(s). Construction reads only
@@ -120,6 +236,11 @@ def graphed(
     if library.name != "ak":
         raise NotImplementedError(
             f"uproot.graphed currently supports only library='ak', not {library.name!r}"
+        )
+    if behavior is not None and (backend is not None or form_mapping is not None):
+        raise TypeError(
+            "uproot.graphed: behavior= is for the default backend and the unmapped form; with "
+            "backend= the behavior belongs to that backend, with form_mapping= to its mapping info"
         )
 
     import awkward
@@ -137,6 +258,9 @@ def graphed(
     first_ttree = None
     for ftuple in resolved:
         file_path, object_path = ftuple[0], ftuple[1]
+        if known_base_form is not None:  # the form is given: nothing is opened
+            file_tree.append((file_path, object_path))
+            continue
         obj = uproot._util.regularize_object_path(
             file_path, object_path, custom_classes, allow_missing, real_options
         )
@@ -161,28 +285,63 @@ def graphed(
             first_ttree = obj
         file_tree.append((file_path, object_path))
 
-    if first_ttree is None:
-        raise ValueError("uproot.graphed: no TTrees found in the given files")
-    if not common_keys:
-        raise ValueError("uproot.graphed: the TTrees have no TBranches in common")
-
-    # RNTuples (HasFields) expose the awkward form directly; TTrees build it from branch interpretations
-    if isinstance(first_ttree, HasFields):
-        record_form = first_ttree.to_akform(filter_name=common_keys)[0]
+    if known_base_form is not None:
+        record_form = known_base_form
+        common_keys = list(dict.fromkeys(known_base_form.fields))
     else:
-        record_form = _get_ttree_form(awkward, first_ttree, common_keys, ak_add_doc)
-    typetracer = awkward.Array(
-        record_form.length_zero_array(highlevel=False).to_typetracer(forget_length=True)
-    )
+        if first_ttree is None:
+            raise ValueError("uproot.graphed: no TTrees found in the given files")
+        if not common_keys:
+            raise ValueError("uproot.graphed: the TTrees have no TBranches in common")
+        # RNTuples (HasFields) expose the awkward form directly; TTrees build it from branch interpretations
+        if isinstance(first_ttree, HasFields):
+            record_form = first_ttree.to_akform(filter_name=common_keys)[0]
+        else:
+            record_form = _get_ttree_form(awkward, first_ttree, common_keys, ak_add_doc)
+        # as in uproot._dask, a mapping may read the branch typenames off the base form
+        if form_mapping is not None:
+            record_form.parameters["typenames"] = first_ttree.typenames()
 
-    session = graphed.Session(graphed.awkward.AwkwardBackend(behavior=behavior))
-    source = _GraphedTTreeSource(
-        file_tree, common_keys, custom_classes, allow_missing, real_options
-    )
     name = getattr(first_ttree, "name", None) or "events"
-    return session.source(
+    args = (file_tree, common_keys, custom_classes, allow_missing, real_options)
+    if form_mapping is None:
+        typetracer = awkward.Array(
+            record_form.length_zero_array(highlevel=False).to_typetracer(
+                forget_length=True
+            )
+        )
+        source = _GraphedTTreeSource(*args)
+    else:
+        expected_form, info = form_mapping(record_form)
+        typetracer = awkward.typetracer.typetracer_from_form(
+            expected_form, highlevel=True, behavior=info.behavior
+        )
+        source = _MappedGraphedTTreeSource(
+            *args,
+            name=name,
+            expected_form=expected_form,
+            form_mapping_info=info,
+            interp_options={"ak_add_doc": ak_add_doc},
+        )
+        behavior = info.behavior
+
+    if backend is None:
+        backend = graphed.awkward.AwkwardBackend(behavior=behavior)
+    return graphed.Session(backend).source(
         name, form=graphed.awkward.AwkwardForm(typetracer), data=source
     )
+
+
+def _mapped_branches(array, *, on_fail):
+    """``{source_name: (branch_name, ...)}`` for the form-mapped sources backing ``array``: the
+    names the FILE has, which the projection's mapped field paths are not."""
+    return {
+        array.session.source_name(nid): source.projected_columns(
+            (array,), on_fail=on_fail
+        )
+        for nid, source in array.session.sources().items()
+        if isinstance(source, _MappedGraphedTTreeSource)
+    }
 
 
 def necessary_columns(array, *, on_fail="raise"):
@@ -190,7 +349,16 @@ def necessary_columns(array, *, on_fail="raise"):
     projection (metadata-only). Returns ``{source_name: frozenset(branch_names)}``."""
     graphed = uproot.extras.graphed()
 
-    return dict(graphed.awkward.projection.project(array, on_fail=on_fail).read_columns)
+    columns = dict(
+        graphed.awkward.projection.project(array, on_fail=on_fail).read_columns
+    )
+    columns.update(
+        {
+            name: frozenset(branches)
+            for name, branches in _mapped_branches(array, on_fail=on_fail).items()
+        }
+    )
+    return columns
 
 
 def necessary_buffers(array, *, on_fail="raise"):
@@ -199,15 +367,26 @@ def necessary_buffers(array, *, on_fail="raise"):
     STRUCTURE is needed, e.g. a multiplicity). Strictly finer than :doc:`necessary_columns`: a
     count-only analysis truthfully reports ``{collection: OFFSETS}`` where the column view reports
     the empty set — feed it to :doc:`resolve_read_branches` to serve the count from the jagged
-    branch's COUNTER branch without reading the payload baskets."""
+    branch's COUNTER branch without reading the payload baskets.
+
+    Through a ``form_mapping`` the answer is in ``TBranch`` names and every need is ``DATA``: the
+    mapping reads whole branches, and there a list's structure IS a branch (its counter).
+    """
     graphed = uproot.extras.graphed()
 
-    return {
+    buffers = {
         name: dict(needs)
         for name, needs in graphed.awkward.projection.project_buffers(
             array, on_fail=on_fail
         ).read_buffers.items()
     }
+    buffers.update(
+        {
+            name: dict.fromkeys(branches, graphed.BufferNeed.DATA)
+            for name, branches in _mapped_branches(array, on_fail=on_fail).items()
+        }
+    )
+    return buffers
 
 
 def resolve_read_branches(obj, needs):
@@ -346,18 +525,24 @@ def read_graphed_partition(
     a per-worker ``open_once`` handle."""
     if tree is None:
         tree = uproot.open(partition.uri, **open_options)[partition.tree]
+    start, stop = _partition_range(partition, tree.num_entries)
+    return tree.arrays(
+        list(columns), entry_start=start, entry_stop=stop, library=library
+    )
+
+
+def _partition_range(partition, n_entries):
+    """A partition's concrete ``(entry_start, entry_stop)`` against a tree's entry count."""
     if getattr(partition, "is_blind", False):
-        partition = partition.resolve(tree.num_entries)
+        partition = partition.resolve(n_entries)
     start, stop = partition.entry_start, partition.entry_stop
     if (
         stop < 0
     ):  # legacy blind sentinel in older serialized plans: step `start` of `-stop` steps
-        n_steps, step, n_entries = -stop, start, tree.num_entries
+        n_steps, step = -stop, start
         start = (step * n_entries) // n_steps
         stop = ((step + 1) * n_entries) // n_steps
-    return tree.arrays(
-        list(columns), entry_start=start, entry_stop=stop, library=library
-    )
+    return start, stop
 
 
 def _evaluation_columns(array, source_node_id, common_keys):
@@ -402,6 +587,15 @@ def _evaluation_columns(array, source_node_id, common_keys):
     return tuple(k for k in common_keys if k in needed)
 
 
+def _task_columns(array, source_node_id, source):
+    """The branches one task must read to evaluate ``array``. A form-mapped source DECLARES them
+    — its graph field names are not branch names — where an unmapped one reads every branch the
+    graph names."""
+    if isinstance(source, _MappedGraphedTTreeSource):
+        return source.projected_columns((array,))
+    return _evaluation_columns(array, source_node_id, source._common_keys)
+
+
 def graphed_head(array, n=5):
     """EAGER peek at the first ``n`` rows of a recorded analysis, reading ONLY the first file's
     leading entries (and only the branches the graph accesses) and evaluating through the
@@ -423,23 +617,12 @@ def graphed_head(array, n=5):
             f"this array is backed by {len(uproot_sources)}"
         )
     nid, source = uproot_sources[0]
-    columns = _evaluation_columns(array, nid, source._common_keys)
+    columns = _task_columns(array, nid, source)
     compiled = graphed.compile_ir(session, array)
 
-    file_path, object_path = source._file_tree[0]
-    obj = uproot._util.regularize_object_path(
-        file_path,
-        object_path,
-        source._custom_classes,
-        source._allow_missing,
-        source._options,
-    )
+    obj = source._resolve(*source._file_tree[0])
     stop = min(int(n), obj.num_entries)
-    chunk = read_graphed_partition(
-        graphed.core.Partition(file_path, object_path, 0, stop),
-        list(columns),
-        tree=obj,
-    )
+    chunk = source.read_range(obj, list(columns), 0, stop)
     (out,) = graphed.evaluate_ir(
         compiled, session.backend, {session.source_name(nid): chunk}
     )
