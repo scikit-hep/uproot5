@@ -48,6 +48,7 @@ test-gpu-cu13 = [
 test-graphed = [
   "graphed[awkward,parquet]>=0.0.4; python_version >= '3.11'",
   "graphed-executors>=0.0.3; python_version >= '3.11'",
+  "pytest-cov",
   "vector; python_version >= '3.11'",
   {include-group = "test-core"}
 ]
