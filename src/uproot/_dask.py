@@ -897,7 +897,11 @@ class TrivialFormMappingInfo(ImplementsFormMappingInfo):
         # An RNTuple selects fields by exact dotted name and a matched record adds no children,
         # so ask for every leaf the projection form keeps under each requested field.
         read_keys = (
-            [p for key in keys for p in _rntuple_leaf_paths(self._form.content(key), key)]
+            [
+                p
+                for key in keys
+                for p in _rntuple_leaf_paths(self._form.content(key), key)
+            ]
             if isinstance(tree, HasFields)
             else keys
         )
@@ -1811,7 +1815,9 @@ which has {entry_stop} entries"""
 
     fn = _UprootRead(
         ttrees,
-        list(base_form.fields),  # the keys a read fetches: for an RNTuple, its top-level fields
+        list(
+            base_form.fields
+        ),  # the keys a read fetches: for an RNTuple, its top-level fields
         interp_options,
         base_form=base_form,
         expected_form=expected_form,
@@ -1919,7 +1925,9 @@ def _get_dak_array_delay_open(
         custom_classes,
         allow_missing,
         real_options,
-        list(base_form.fields),  # the keys a read fetches: for an RNTuple, its top-level fields
+        list(
+            base_form.fields
+        ),  # the keys a read fetches: for an RNTuple, its top-level fields
         interp_options,
         base_form=base_form,
         expected_form=expected_form,
