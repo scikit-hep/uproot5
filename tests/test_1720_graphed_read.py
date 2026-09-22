@@ -139,6 +139,16 @@ def test_a_leaf_branch_as_object_path_selects_that_branch(tmp_path):
     assert uproot.graphed_head(g.x, 3).tolist() == [0.0, 1.0, 2.0]
 
 
+def test_a_grouped_branch_resolves_like_uproot_dask():
+    pytest.importorskip("dask_awkward")
+    path = skhep_testdata.data_path("uproot-issue-1502.root")  # `branch` is AsGrouped
+    for full_paths in (False, True):
+        g = uproot.graphed(path, full_paths=full_paths)
+        ref = uproot.dask(path, full_paths=full_paths)
+        assert g.session.form(g).tt.fields == ref.fields
+        assert ak.array_equal(ak.Array(g.session.materialize(g)), ref.compute())
+
+
 def test_a_nested_rntuple_keeps_its_nesting(tmp_path):
     path = os.path.join(tmp_path, "nt.root")
     with uproot.recreate(path) as f:
@@ -157,6 +167,14 @@ def test_allow_missing_drops_a_file_without_the_tree(tmp_path):
     assert len(_source_of(g).partitions(1)) == 1
     with pytest.raises(uproot.KeyInFileError):
         uproot.graphed(b + ":events")
+    # no object path and no TTree in the file at all
+    nott = os.path.join(tmp_path, "nott.root")
+    with uproot.recreate(nott) as f:
+        f["h"] = np.histogram(np.arange(10.0))
+    with pytest.raises(ValueError, match="no TTrees found"):
+        uproot.graphed(nott)
+    g = uproot.graphed([nott, a], allow_missing=True)
+    assert len(_source_of(g).partitions(1)) == 1
 
 
 def test_known_base_form_with_allow_missing_reads_a_missing_tree_as_empty(tmp_path):
