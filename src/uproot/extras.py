@@ -239,27 +239,33 @@ or
         )
 
 
+_GRAPHED_MIN = "0.0.4"
+
+
 def graphed():
     """
     Imports and returns ``graphed`` (with the submodules Uproot uses).
     """
     try:
         import graphed
+        import graphed.aggregate
         import graphed.awkward
         import graphed.awkward.projection
         import graphed.core
         import graphed.provenance
         import graphed.write
-
-        # a recorded op's provenance is the analyst's line, not the Uproot frame that recorded it
-        graphed.provenance.register_internal("uproot")
-    except (ModuleNotFoundError, AttributeError) as err:
+    except ModuleNotFoundError as err:
         raise ModuleNotFoundError(
-            """for uproot.graphed, install the 'graphed' package (0.0.3 or later) with:
-    pip install graphed --upgrade"""
+            """for uproot.graphed, install the 'graphed' package with:
+    pip install graphed"""
         ) from err
-    else:
-        return graphed
+    if parse_version(graphed.__version__) < parse_version(_GRAPHED_MIN):
+        raise ModuleNotFoundError(
+            f"uproot.graphed needs graphed {_GRAPHED_MIN} or newer; you have graphed {graphed.__version__}"
+        )
+    # a recorded op's provenance is the analyst's line, not the Uproot frame that recorded it
+    graphed.provenance.register_internal("uproot")
+    return graphed
 
 
 def graphed_executors():
