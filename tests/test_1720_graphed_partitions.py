@@ -65,6 +65,14 @@ def test_blind_partitions_open_no_file_and_resolve_on_read():
     assert ak.array_equal(opened_here.px1, chunk.px1)
 
 
+def test_a_blind_partition_without_an_object_path_reads_the_single_tree():
+    bare = _zmumu().split(":")[0]
+    (part,) = graphed_partitions(bare, open_files=False)
+    assert part.tree == ""
+    chunk = read_graphed_partition(part, ["px1"])
+    assert ak.array_equal(chunk.px1, uproot.open(_zmumu())["px1"].array())
+
+
 def test_a_missing_tree_under_allow_missing_yields_no_partition():
     absent = _zmumu().split(":")[0] + ":nope"
     parts = graphed_partitions([_zmumu(), absent], steps_per_file=2, allow_missing=True)

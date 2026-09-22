@@ -510,10 +510,13 @@ def read_graphed_partition(
     partition, columns, *, tree=None, library="ak", **open_options
 ):
     """Read a ``graphed.core.Partition``'s chunk of ``columns`` from its ROOT file, resolving a
-    **blind** partition against the file's actual entry count. Pass an already-open ``tree`` to
-    reuse a per-worker ``open_once`` handle."""
+    **blind** partition against the file's actual entry count. A partition with no object path
+    (``open_files=False`` over a bare file name) reads the file's single ``TTree``. Pass an
+    already-open ``tree`` to reuse a per-worker ``open_once`` handle."""
     if tree is None:
-        tree = uproot.open(partition.uri, **open_options)[partition.tree]
+        tree = uproot._util.object_in_directory(
+            uproot.open(partition.uri, **open_options), partition.tree or None, False
+        )
     start, stop = _partition_range(partition, tree.num_entries)
     return tree.arrays(
         list(columns), entry_start=start, entry_stop=stop, library=library
