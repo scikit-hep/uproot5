@@ -393,7 +393,7 @@ def graphed(
     )
     source = _GraphedTTreeSource(
         file_tree,
-        common_keys,
+        list(base_form.fields),
         name=name,
         expected_form=expected_form,
         form_mapping_info=info,

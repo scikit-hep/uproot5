@@ -158,6 +158,19 @@ def test_a_nested_rntuple_keeps_its_nesting(tmp_path):
     g = uproot.graphed(path + ":nt")
     assert g.session.form(g).describe() == "## * {rec: {x: int64, y: int64}, z: int64}"
     assert g.session.form(g.rec.x).describe() == "## * int64"
+    assert uproot.graphed_head(g.rec.x, 4).tolist() == [0, 1, 2, 3]
+    assert ak.Array(g.session.materialize(g)).tolist() == uproot.open(path + ":nt").arrays().tolist()
+    assert _run(_sum_plan(g.rec.y, steps_per_file=3)) == 30.0
+    # a collection of records: the leaf is read through the collection level
+    jets = ak.Array([{"jets": [{"pt": float(j)} for j in range(k % 3)]} for k in range(6)])
+    with uproot.recreate(os.path.join(tmp_path, "jets.root")) as f:
+        f["nt"] = jets
+    gj = uproot.graphed(os.path.join(tmp_path, "jets.root") + ":nt")
+    assert uproot.graphed_head(gj.jets.pt, 3).tolist() == [[], [0.0], [0.0, 1.0]]
+    paths = uproot.graphed_write(
+        gak.zip({"pt": gj.jets.pt}), os.path.join(tmp_path, "out"), executor="thread"
+    )
+    assert uproot.open(paths[0])["tree"].arrays().pt.tolist() == jets.jets.pt.tolist()
 
 
 def test_allow_missing_drops_a_file_without_the_tree(tmp_path):
