@@ -21,9 +21,6 @@ extra = [
 test = [
   "aiohttp",
   "deflate",
-  "graphed[awkward,parquet]>=0.0.3; python_version >= '3.11'",
-  "graphed-executors>=0.0.2; python_version >= '3.11'",
-  "graphed-histogram>=0.0.2; python_version >= '3.11'",
   "isal",
   "moto[s3,server]",
   "paramiko",
@@ -31,7 +28,6 @@ test = [
   "rangehttpserver",
   "requests",
   "s3fs",
-  "vector; python_version >= '3.11'",
   {include-group = "test-core"}
 ]
 test-core = [
@@ -47,6 +43,12 @@ test-gpu-cu12 = [
 test-gpu-cu13 = [
   "kvikio-cu13",
   "nvidia-nvcomp-cu13",
+  {include-group = "test-core"}
+]
+test-graphed = [
+  "graphed[awkward,parquet]>=0.0.4; python_version >= '3.11'",
+  "graphed-executors>=0.0.3; python_version >= '3.11'",
+  "vector; python_version >= '3.11'",
   {include-group = "test-core"}
 ]
 test-pyodide = [
@@ -209,4 +211,4 @@ write_to = "src/uproot/_version.py"
 
 [tool.uv]
 exclude-newer = "7 days"
-exclude-newer-package = {awkward = false, awkward-cpp = false, scikit-hep-testdata = false, graphed = false, graphed-executors = false, graphed-histogram = false}
+exclude-newer-package = {awkward = false, awkward-cpp = false, scikit-hep-testdata = false, graphed = false, graphed-executors = false}
