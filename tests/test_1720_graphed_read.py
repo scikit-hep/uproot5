@@ -113,6 +113,23 @@ def test_an_open_tree_is_reopened_by_path_in_the_workers(tmp_path):
     (partition,) = _source_of(g).partitions(1)
     assert (partition.uri, partition.tree) == (path, "/events;1")
     assert _run(_sum_plan(g.y, steps_per_file=3)) == 90.0
+    # the same normalisation on the path that opens nothing itself
+    form = g.session.form(g).tt.layout.form
+    known = uproot.graphed(uproot.open(path)["events"], known_base_form=form)
+    (partition,) = _source_of(known).partitions(1)
+    assert (partition.uri, partition.tree) == (path, "/events;1")
+
+
+def test_steps_for_some_but_not_all_files_are_refused(tmp_path):
+    a = _make_tree(os.path.join(tmp_path, "a.root"))
+    b = _make_tree(os.path.join(tmp_path, "b.root"))
+    opened = uproot.graphed(a + ":events")
+    form = opened.session.form(opened).tt.layout.form
+    with pytest.raises(TypeError, match="some but not all"):
+        uproot.graphed(
+            {a: {"object_path": "events", "steps": [[0, 5], [5, 10]]}, b: "events"},
+            known_base_form=form,
+        )
 
 
 def test_a_leaf_branch_as_object_path_selects_that_branch(tmp_path):
@@ -173,6 +190,18 @@ def test_the_whole_dataset_loader_concatenates_every_file(tmp_path):
     assert ak.Array(g.session.materialize(g.x)).tolist() == [0.0, 1.0, 2.0, 3.0] + [
         float(i) for i in range(6)
     ]
+    # under known_base_form nothing is opened up front: a missing tree is skipped at read time,
+    # and a dataset with no tree at all loads as empty
+    form = g.session.form(g).tt.layout.form
+    missing = _make_tree(os.path.join(tmp_path, "c.root"), name="other") + ":events"
+    partial = uproot.graphed(
+        [missing, b + ":events"], known_base_form=form, allow_missing=True
+    )
+    assert ak.Array(partial.session.materialize(partial.x)).tolist() == [
+        float(i) for i in range(6)
+    ]
+    none = uproot.graphed([missing], known_base_form=form, allow_missing=True)
+    assert len(ak.Array(none.session.materialize(none.x))) == 0
 
 
 class _CountingExecutor:
@@ -205,6 +234,7 @@ def test_head_returns_the_first_rows_of_the_output(tmp_path):
         {"x": 2.0, "y": 4.0},
     ]
     assert len(uproot.graphed_head(g.x, 50)) == 10  # clamps to the first file
+    assert uproot.graphed_head(gak.sum(g.x), 3) == 3.0  # a scalar peek over the prefix
 
 
 def test_head_reads_only_the_first_file_and_the_needed_branches(tmp_path):
@@ -244,6 +274,21 @@ def test_missing_graphed_reports_how_to_install_it(monkeypatch):
     monkeypatch.setattr(builtins, "__import__", no_graphed)
     with pytest.raises(ModuleNotFoundError, match="pip install graphed"):
         uproot.extras.graphed()
+
+
+def test_missing_graphed_executors_reports_how_to_install_it(monkeypatch):
+    import builtins
+
+    real_import = builtins.__import__
+
+    def no_executors(name, *args, **kwargs):
+        if name.startswith("graphed_executors"):
+            raise ModuleNotFoundError(name)
+        return real_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", no_executors)
+    with pytest.raises(ModuleNotFoundError, match="pip install graphed-executors"):
+        uproot.extras.graphed_executors()
 
 
 def test_a_too_old_graphed_reports_the_floor(monkeypatch):

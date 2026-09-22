@@ -59,6 +59,18 @@ def test_blind_partitions_open_no_file_and_resolve_on_read():
     assert ak.array_equal(
         chunk.px1, tree["px1"].array(entry_start=N // 3, entry_stop=(2 * N) // 3)
     )
+    opened_here = read_graphed_partition(
+        blind[1], ["px1"]
+    )  # no handle: opens the file itself
+    assert ak.array_equal(opened_here.px1, chunk.px1)
+
+
+def test_a_missing_tree_under_allow_missing_yields_no_partition():
+    absent = _zmumu().split(":")[0] + ":nope"
+    parts = graphed_partitions([_zmumu(), absent], steps_per_file=2, allow_missing=True)
+    assert len(parts) == 2 and {p.tree for p in parts} == {"/events;1"}
+    with pytest.raises(uproot.KeyInFileError):
+        graphed_partitions([_zmumu(), absent], steps_per_file=2)
 
 
 def test_incompatible_knobs_are_refused():

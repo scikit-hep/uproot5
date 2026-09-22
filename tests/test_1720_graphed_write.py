@@ -68,6 +68,17 @@ def test_prefix_tree_name_and_multifile_numbering(tmp_path):
     assert [len(uproot.open(p)["ev"].arrays()) for p in paths] == [3, 3, 2, 2]
 
 
+def test_nested_records_flatten_to_joined_branch_names(tmp_path):
+    src = _make_tree(os.path.join(tmp_path, "in.root"))
+    g = uproot.graphed(src)
+    paths = uproot.graphed_write(
+        gak.zip({"v": gak.zip({"x": g.x, "y": g.y})}),
+        os.path.join(tmp_path, "out"),
+        executor="thread",
+    )
+    assert uproot.open(paths[0])["tree"].keys() == ["v_x", "v_y"]
+
+
 def test_compute_false_returns_the_plan_and_writes_nothing(tmp_path):
     g = uproot.graphed(_make_tree(os.path.join(tmp_path, "in.root")))
     outdir = os.path.join(tmp_path, "out")
