@@ -1811,7 +1811,8 @@ def _filter_name_deep(filter_name, hasfields, field):
         return True
     while field is not hasfields:
         field = field.parent
-        if field is not hasfields:
+        # the spelling ``keys()`` shows: a collection's anonymous item field adds no segment
+        if field is not hasfields and not (field.is_anonymous or field.in_variant):
             name = field.name + "." + name
     if name != shallow and filter_name(name):
         return True

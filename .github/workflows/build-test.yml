@@ -150,6 +150,35 @@ jobs:
         run: |
           uv run --no-sync pytest -vv tests --reruns 10 --reruns-delay 30 --only-rerun "(?i)http|ssl|timeout|expired|connection|socket"
 
+  graphed-build:
+    name: graphed test on ubuntu-latest with Python 3.13
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.13'
+
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+
+      - name: Pip install the package
+        run: uv pip install --system -e. --group=dev --group=test-graphed
+
+      - name: Run the graphed tests and collect coverage
+        run: |
+          python -m pytest -vv tests/test_1720_graphed_read.py tests/test_1720_graphed_form_mapping.py tests/test_1720_graphed_projection.py tests/test_1720_graphed_write.py tests/test_1720_graphed_partitions.py --reruns 10 --reruns-delay 30 --only-rerun "(?i)http|ssl|timeout|expired|connection|socket"\
+                           --cov=uproot --cov-branch --cov-report=xml
+
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+
   pyodide-build:
     name: Pyodide test
     runs-on: ubuntu-latest

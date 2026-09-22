@@ -45,6 +45,13 @@ test-gpu-cu13 = [
   "nvidia-nvcomp-cu13",
   {include-group = "test-core"}
 ]
+test-graphed = [
+  "graphed[awkward,parquet]>=0.0.4; python_version >= '3.11'",
+  "graphed-executors>=0.0.3; python_version >= '3.11'",
+  "pytest-cov",
+  "vector; python_version >= '3.11'",
+  {include-group = "test-core"}
+]
 test-pyodide = [
   "pytest-pyodide; python_version >='3.11'",
   {include-group = "test-core"}
@@ -205,4 +212,4 @@ write_to = "src/uproot/_version.py"
 
 [tool.uv]
 exclude-newer = "7 days"
-exclude-newer-package = {awkward = false, awkward-cpp = false, scikit-hep-testdata = false}
+exclude-newer-package = {awkward = false, awkward-cpp = false, scikit-hep-testdata = false, graphed = false, graphed-executors = false}
