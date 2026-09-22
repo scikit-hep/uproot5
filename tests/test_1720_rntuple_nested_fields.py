@@ -56,3 +56,54 @@ def test_dask_reads_nested_rntuple_fields(tmp_path):
     only_x = uproot.dask(where, filter_name="rec.x").compute()
     assert only_x.fields == ["rec"] and only_x.rec.fields == ["x"]
     assert ak.array_equal(only_x.rec.x, arr.rec.x)
+
+
+def test_leaf_paths_are_spelled_like_rntuple_keys():
+    from uproot._dask import _rntuple_leaf_paths
+
+    form = ak.forms.from_dict(
+        {
+            "class": "RecordArray",
+            "fields": ["jets", "v", "n"],
+            "contents": [
+                {
+                    "class": "ListOffsetArray",
+                    "offsets": "i64",
+                    "content": {
+                        "class": "RecordArray",
+                        "fields": ["pt", "tag"],
+                        "contents": [
+                            {"class": "NumpyArray", "primitive": "float64"},
+                            {
+                                "class": "UnionArray",
+                                "tags": "i8",
+                                "index": "i64",
+                                "contents": [
+                                    {"class": "NumpyArray", "primitive": "int64"},
+                                    {
+                                        "class": "RecordArray",
+                                        "fields": ["a"],
+                                        "contents": [
+                                            {"class": "NumpyArray", "primitive": "bool"}
+                                        ],
+                                    },
+                                ],
+                            },
+                        ],
+                    },
+                },
+                {
+                    "class": "UnmaskedArray",
+                    "content": {"class": "NumpyArray", "primitive": "int32"},
+                },
+                {"class": "NumpyArray", "primitive": "int64"},
+            ],
+        }
+    )
+    assert _rntuple_leaf_paths(form.content("jets"), "jets") == [
+        "jets.pt",
+        "jets.tag",
+        "jets.tag.a",
+    ]
+    assert _rntuple_leaf_paths(form.content("v"), "v") == ["v"]
+    assert _rntuple_leaf_paths(form.content("n"), "n") == ["n"]
