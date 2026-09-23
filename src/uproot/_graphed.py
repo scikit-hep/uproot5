@@ -92,6 +92,10 @@ class _GraphedTTreeSource:
         self._interpretation_executor = interpretation_executor
         self._explicit_chunks = explicit_chunks  # per file: [(start, stop), ...]
         self._align_baskets = align_baskets
+        self._offsets_memo = {}  # (uri, tree, keys) -> aligned offsets, per process
+
+    def __getstate__(self):
+        return {**self.__dict__, "_offsets_memo": {}}
 
     # ---- opening -------------------------------------------------------------------------
     def _open_directory(self, file_path):
@@ -211,10 +215,13 @@ class _GraphedTTreeSource:
             raise NotImplementedError(
                 "align_baskets=True follows TBasket boundaries; an RNTuple has none"
             )
-        read = (tree[key] for key in keys if key in tree)
-        offsets = _basket_offsets(
-            (b for branch in read for b in (branch, *branch.itervalues())), n_entries
-        )
+        memo_key = (partition.uri, partition.tree, tuple(keys))
+        if memo_key not in self._offsets_memo:
+            self._offsets_memo[memo_key] = _basket_offsets(
+                [tree[key].common_entry_offsets() for key in keys if key in tree],
+                n_entries,
+            )
+        offsets = self._offsets_memo[memo_key]
         if offsets is None:
             return start, stop
         return _snap(start, offsets), _snap(stop, offsets)
@@ -400,6 +407,11 @@ def graphed(
         raise TypeError(
             "partition sizes for some but not all 'files' have been assigned"
         )
+    if align_baskets and any(is_3arg):
+        raise TypeError(
+            "uproot.graphed: align_baskets=True moves blind partitions; it cannot be used "
+            "with explicit 'steps' in 'files'"
+        )
 
     if known_base_form is not None:  # the form is given: nothing is opened
         common_keys = list(dict.fromkeys(known_base_form.fields))
@@ -419,16 +431,14 @@ def graphed(
             allow_missing,
             real_options,
         )
+        if align_baskets and any(isinstance(t, HasFields) for t in ttrees):
+            raise NotImplementedError(
+                "align_baskets=True follows TBasket boundaries; an RNTuple has none"
+            )
         common_keys = _normalize_grouped_keys(ttrees[0], common_keys, full_paths)
         base_form = _base_form_of(ttrees[0], common_keys, ak_add_doc, form_mapping)
         file_tree = [(t.file.file_path, t.object_path) for t in ttrees]
         name = getattr(ttrees[0], "name", None) or _name_from_object_path(file_tree)
-    if align_baskets and explicit_chunks is not None:
-        raise TypeError(
-            "uproot.graphed: align_baskets=True moves blind partitions; it cannot be used "
-            "with explicit 'steps' in 'files'"
-        )
-
     expected_form, info = _mapping_of(form_mapping, base_form)
     typetracer = awkward.typetracer.typetracer_from_form(
         expected_form, highlevel=True, behavior=info.behavior
@@ -493,11 +503,16 @@ def graphed_partitions(
       entry ranges. ``open_files=False`` emits **blind** partitions (``Partition.blind``): files
       are not opened here and the entry range is resolved against the file's own count when the
       partition is read (:doc:`uproot._graphed.read_graphed_partition`).
-    - ``align_baskets`` (default ``False``): move every chunk boundary to the nearest entry
-      offset where all of the ``TTree``'s ``TBranches`` start a new ``TBasket`` (a tie goes to
-      the lower one), and drop the chunks this leaves empty, so no ``TBasket`` is decompressed
-      by two chunks. A chunk can then be larger than ``step_size``, and a file whose
-      ``TBaskets`` span it yields one chunk. Needs ``open_files=True``; ``TTrees`` only.
+    - ``align_baskets`` (default ``False``): ``True``, or a ``filter_name``-style selection
+      (glob, regex, callable, or an iterable of them) of the ``TBranches`` whose ``TBaskets``
+      the boundaries follow: pass the branches the analysis reads. Every chunk boundary moves
+      to the nearest entry offset where all of those ``TBranches`` start a new ``TBasket`` (a
+      tie goes to the lower one), and the chunks this leaves empty are dropped, so no
+      ``TBasket`` is decompressed by two chunks. A chunk can then be larger than
+      ``step_size``. With ``True`` on a ``TTree`` whose branches' ``TBaskets`` do not line up,
+      the shared offsets can shrink to the file's ends and the file yields one chunk, where a
+      read with ``uproot.graphed(align_baskets=True)`` follows only the branches each
+      partition reads. Needs ``open_files=True``; ``TTrees`` only.
     """
     graphed = uproot.extras.graphed()
 
@@ -553,9 +568,17 @@ def graphed_partitions(
         else:
             bounds = [(i * n_entries) // n_steps for i in range(n_steps + 1)]
         if align_baskets:
-            offsets = _basket_offsets(obj.itervalues(recursive=True), n_entries)
-            if offsets is not None:
-                bounds = [_snap(bound, offsets) for bound in bounds]
+            shared = obj.common_entry_offsets(
+                filter_name=no_filter if align_baskets is True else align_baskets,
+                recursive=True,
+            )
+            if n_entries and shared == [0]:  # a non-empty tree's fold holds n_entries
+                raise ValueError(
+                    f"align_baskets={align_baskets!r} selects no TBranch with TBaskets in "
+                    f"{obj.file.file_path}:{obj.object_path}"
+                )
+            offsets = _basket_offsets([shared], n_entries)
+            bounds = [_snap(bound, offsets) for bound in bounds]
         partitions.extend(
             graphed.core.Partition(
                 obj.file.file_path, obj.object_path, int(start), int(stop)
@@ -566,17 +589,12 @@ def graphed_partitions(
     return partitions
 
 
-def _basket_offsets(branches, n_entries):
-    """The sorted entry offsets where every one of ``branches`` that has ``TBaskets`` starts
-    a new one, plus ``0`` and ``n_entries``; ``None`` when none has any. A branch without
-    ``TBaskets`` (a split parent, any branch of an empty tree) decompresses nothing, so it
-    constrains nothing."""
-    offsets = None
-    for branch in branches:
-        if branch.num_baskets:
-            own = set(branch.entry_offsets)
-            offsets = own if offsets is None else offsets & own
-    return None if offsets is None else sorted(offsets | {0, n_entries})
+def _basket_offsets(offset_lists, n_entries):
+    """The sorted intersection of ``offset_lists`` (``common_entry_offsets`` results) with
+    ``0`` and ``n_entries`` added; ``None`` when there is nothing to intersect."""
+    if not offset_lists:
+        return None
+    return sorted(set.intersection(*map(set, offset_lists)) | {0, n_entries})
 
 
 def _snap(boundary, offsets):

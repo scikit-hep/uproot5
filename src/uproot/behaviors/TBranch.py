@@ -2103,26 +2103,31 @@ class HasBranches(Mapping):
                 object. (Only applies when ``branches=None``.)
 
         Returns entry offsets in which ``TBasket`` boundaries align in the
-        specified set of branches.
+        specified set of branches, plus this ``TBranch``'s own if it is one.
+        A branch without ``TBaskets`` (a split parent, any branch of an empty
+        ``TTree``) constrains nothing; when no branch has any, the output is
+        ``[0]``.
 
         If this :doc:`uproot.behaviors.TBranch.TBranch` has no subbranches,
         the output is identical to
         :ref:`uproot.behaviors.TBranch.TBranch.entry_offsets`.
         """
-        if isinstance(self, TBranch) and not self.branches:
-            return list(self.entry_offsets)
-        common_offsets = None
-        for branch in self.itervalues(
+        branches = self.itervalues(
             filter_name=filter_name,
             filter_typename=filter_typename,
             filter_branch=filter_branch,
             recursive=recursive,
-        ):
-            if common_offsets is None:
-                common_offsets = set(branch.entry_offsets)
-            else:
-                common_offsets = common_offsets.intersection(set(branch.entry_offsets))
-        return sorted(common_offsets)
+        )
+        # reading a TBranch decompresses its own TBaskets too
+        if isinstance(self, TBranch):
+            branches = (self, *branches)
+        common_offsets = None
+        for branch in branches:
+            if branch.num_baskets == 0:
+                continue
+            own = set(branch.entry_offsets)
+            common_offsets = own if common_offsets is None else common_offsets & own
+        return [0] if common_offsets is None else sorted(common_offsets)
 
     def __getitem__(self, where):
         original_where = where

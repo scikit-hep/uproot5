@@ -50,16 +50,34 @@ def _every_branch(tree):
 def test_the_rule_over_both_ends_of_the_branch_family():
     _basket_offsets = uproot._graphed._basket_offsets
     assert _basket_offsets([], 10) is None
-    empty = uproot.open(EMPTY)
-    assert _basket_offsets(_every_branch(empty), 0) is None
+    assert _basket_offsets([[0]], 0) == [0]
     hep = uproot.open(HEPDATA)
-    px, random = hep["px"], hep["random"]
+    n = hep.num_entries
+    px, random = hep["px"].common_entry_offsets(), hep["random"].common_entry_offsets()
+    assert _basket_offsets([px], n) == hep["px"].entry_offsets
+    assert _basket_offsets([px, random], n) == [0, n]
     evt = uproot.open(FULLSPLIT)["evt"]
     assert evt.num_baskets == 0 and evt.entry_offsets == [0]
-    alone = _basket_offsets([px], hep.num_entries)
-    assert list(alone) == px.entry_offsets
-    assert list(_basket_offsets([evt, px], hep.num_entries)) == px.entry_offsets
-    assert list(_basket_offsets([px, random], hep.num_entries)) == [0, hep.num_entries]
+    assert _basket_offsets([evt.common_entry_offsets()], evt.num_entries) == [
+        0,
+        evt.num_entries,
+    ]
+
+
+def test_a_branch_selection_follows_only_those_baskets():
+    hep = uproot.open(HEPDATA)
+    n = hep.num_entries
+    px_only = graphed_partitions(HEPDATA, steps_per_file=5, align_baskets="px")
+    assert _ranges(px_only) == aligned_ranges(
+        even_bounds(n, 5), common_offsets([hep["px"]])
+    )
+    assert len(px_only) == 5
+    for kwargs in ({"align_baskets": True}, {"align_baskets": ["px", "random"]}):
+        assert _ranges(graphed_partitions(HEPDATA, steps_per_file=5, **kwargs)) == [
+            (0, n)
+        ]
+    with pytest.raises(ValueError, match="no TBranch with TBaskets"):
+        graphed_partitions(HEPDATA, steps_per_file=5, align_baskets="no_such*")
 
 
 @pytest.mark.parametrize(

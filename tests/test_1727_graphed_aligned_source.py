@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import itertools
 import os
+import pickle
 
 import awkward as ak
 import numpy as np
@@ -296,22 +297,47 @@ def test_the_writer_reads_the_aligned_range(tmp_path):
 
 
 # ---- 8. refusals ---------------------------------------------------------------------
-def test_explicit_steps_refuse_alignment():
-    uri = HEPDATA.split(":")[0]
+def test_explicit_steps_refuse_alignment_before_any_file_opens(tmp_path):
+    files = {os.path.join(tmp_path, "no_such.root"): {"steps": [[0, 100]]}}
+    with pytest.raises(FileNotFoundError):
+        uproot.graphed(files)
     with pytest.raises(TypeError, match="align_baskets"):
-        g = uproot.graphed(
-            {uri: {"object_path": "ntuple", "steps": [[0, 100], [100, 200]]}},
-            align_baskets=True,
-        )
-        _lengths(g.px, 1)
+        uproot.graphed(files, align_baskets=True)
 
 
-def test_an_rntuple_refuses_alignment_when_the_plan_runs(tmp_path):
+def test_an_rntuple_refuses_alignment(tmp_path):
     where = _rntuple(tmp_path)
-    assert _lengths(uproot.graphed(where).z, 2) == [3, 3]
-    g = uproot.graphed(where, align_baskets=True)
+    g = uproot.graphed(where)
+    assert _lengths(g.z, 2) == [3, 3]
     with pytest.raises(NotImplementedError, match="align_baskets"):
-        _lengths(g.z, 2)
+        uproot.graphed(where, align_baskets=True)
+    form = g.session.form(g).tt.layout.form
+    lazy = uproot.graphed(where, align_baskets=True, known_base_form=form)
+    with pytest.raises(NotImplementedError, match="align_baskets"):
+        _lengths(lazy.z, 2)
+
+
+# ---- 8b. the fold runs once per file and read list -----------------------------------
+def test_the_offset_fold_runs_once_per_file_and_read_list(monkeypatch):
+    calls = []
+    original = uproot.behaviors.TBranch.HasBranches.common_entry_offsets
+
+    def counting(self, *args, **kwargs):
+        calls.append(self.name)
+        return original(self, *args, **kwargs)
+
+    monkeypatch.setattr(
+        uproot.behaviors.TBranch.HasBranches, "common_entry_offsets", counting
+    )
+    g = uproot.graphed(HEPDATA, align_baskets=True)
+    expected = _rule_lengths(HEPDATA, ["px"], 5)
+    assert _lengths(g.px, 5) == expected
+    assert calls == ["px"]
+    assert _lengths(g.px, 5) == expected
+    assert calls == ["px"]
+    _lengths(g.px + g.random, 5)
+    assert sorted(calls) == ["px", "px", "random"]
+    assert pickle.loads(pickle.dumps(_source_of(g)))._offsets_memo == {}
 
 
 # ---- 9. default unchanged ------------------------------------------------------------
