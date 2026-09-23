@@ -2109,6 +2109,8 @@ class HasBranches(Mapping):
         the output is identical to
         :ref:`uproot.behaviors.TBranch.TBranch.entry_offsets`.
         """
+        if isinstance(self, TBranch) and not self.branches:
+            return list(self.entry_offsets)
         common_offsets = None
         for branch in self.itervalues(
             filter_name=filter_name,
