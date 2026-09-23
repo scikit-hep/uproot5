@@ -283,21 +283,6 @@ def graphed_executors():
     else:
         return graphed_executors
 
-
-def pyarrow():
-    """
-    Imports and returns ``pyarrow``.
-    """
-    try:
-        import pyarrow
-    except ModuleNotFoundError as err:
-        raise ModuleNotFoundError("""install the 'pyarrow' package with:
-    pip install pyarrow
-or
-    conda install -c conda-forge pyarrow""") from err
-    else:
-        return pyarrow
-
 def akimbo_pandas():
     """
     Imports and returns ``akimbo.pandas``.
