@@ -616,70 +616,17 @@ def _get_dask_array(
     decompression_executor,
     interpretation_executor,
 ):
-    ttrees = []
-    explicit_chunks = []
-    common_keys = None
-    is_self = []
-
-    count = 0
-    for file_object_maybechunks in files:
-        file_path, object_path = file_object_maybechunks[0:2]
-
-        obj = uproot._util.regularize_object_path(
-            file_path, object_path, custom_classes, allow_missing, real_options
-        )
-
-        if obj is not None:
-            count += 1
-
-            if isinstance(obj, TBranch) and len(obj.keys(recursive=True)) == 0:
-                original = obj
-                obj = obj.parent
-                is_self.append(True)
-
-                def real_filter_branch(branch):
-                    return branch is original and filter_branch(branch)  # noqa: B023
-
-            else:
-                is_self.append(False)
-                real_filter_branch = filter_branch
-
-            ttrees.append(obj)
-            if len(file_object_maybechunks) == 3:
-                explicit_chunks.append(file_object_maybechunks[2])
-            else:
-                explicit_chunks = None  # they all have it or none of them have it
-
-            new_keys = obj.keys(
-                recursive=recursive,
-                filter_name=filter_name,
-                filter_typename=filter_typename,
-                **{
-                    (
-                        "filter_field"
-                        if isinstance(obj, HasFields)
-                        else "filter_branch"
-                    ): real_filter_branch
-                },
-                full_paths=full_paths,
-                ignore_duplicates=True,
-            )
-
-            if common_keys is None:
-                common_keys = new_keys
-            else:
-                new_keys = set(new_keys)
-                common_keys = [key for key in common_keys if key in new_keys]
-
-    if count == 0:
-        raise ValueError(
-            "allow_missing=True and no TTrees found in\n\n    {}".format(
-                "\n    ".join(
-                    f"{{{f.file_path if isinstance(f, HasBranches) else f!r}: {f.object_path if isinstance(f, HasBranches) else o!r}}}"
-                    for f, o, *_ in files
-                )
-            )
-        )
+    ttrees, common_keys, _, explicit_chunks = _resolve_trees_and_keys(
+        files,
+        filter_name,
+        filter_typename,
+        filter_branch,
+        recursive,
+        full_paths,
+        custom_classes,
+        allow_missing,
+        real_options,
+    )
 
     # this is the earliest time we can deal with an unset step_size
     if step_size is unset:
@@ -687,16 +634,6 @@ def _get_dask_array(
         total_files = len(ttrees)
         total_entries = sum(ttree.num_entries for ttree in ttrees)
         step_size = max(1, math.ceil(total_entries / (total_files * steps_per_file)))
-
-    if len(common_keys) == 0 or not (all(is_self) or not any(is_self)):
-        raise ValueError(
-            "TTrees in\n\n    {}\n\nhave no TBranches in common".format(
-                "\n    ".join(
-                    f"{{{f.file_path if isinstance(f, HasBranches) else f!r}: {f.object_path if isinstance(f, HasBranches) else o!r}}}"
-                    for f, o, *_ in files
-                )
-            )
-        )
 
     dask_dict = {}
 
@@ -957,25 +894,29 @@ class TrivialFormMappingInfo(ImplementsFormMappingInfo):
         interpretation_executor,
         options: Any,
     ) -> Mapping[str, AwkArray]:
+        # An RNTuple selects fields by exact dotted name and a matched record adds no children,
+        # so ask for every leaf the projection form keeps under each requested field.
+        read_keys = (
+            [
+                p
+                for key in keys
+                for p in _rntuple_leaf_paths(self._form.content(key), key)
+            ]
+            if isinstance(tree, HasFields)
+            else keys
+        )
         # Read the arrays as a top-level awkward RecordArray. Omitting how= (the
         # default) ensures that AsGrouped branches are returned as proper awkward
         # RecordArrays rather than Python tuples of sub-arrays (which how=tuple
         # would produce), allowing awkward.to_buffers() to work correctly below.
         arrays = tree.arrays(
-            keys,
+            read_keys,
             entry_start=start,
             entry_stop=stop,
             ak_add_doc=options["ak_add_doc"],
             decompression_executor=decompression_executor,
             interpretation_executor=interpretation_executor,
         )
-
-        if isinstance(tree, HasFields):
-            # Temporary workaround to have basic support for RNTuple
-            # This is needed since currently arrays only has top-level fields
-            # TODO: Ask people how they want this handled since the previous
-            # approach might not make sense for RNTuples
-            keys = [f for f in tree.field_names if f in keys]
 
         # The subform generated by awkward.to_buffers() has different form keys
         # from those used to perform buffer projection. However, the subform
@@ -1000,6 +941,22 @@ class TrivialFormMappingInfo(ImplementsFormMappingInfo):
                 container[dst] = ttree_container[src]
 
         return container
+
+
+def _rntuple_leaf_paths(form, prefix):
+    """The dotted names ``RNTuple.keys()`` gives the leaves under ``prefix`` in ``form``; a
+    collection or option level adds no segment."""
+    if form.is_record:
+        return [
+            p
+            for field in form.fields
+            for p in _rntuple_leaf_paths(form.content(field), f"{prefix}.{field}")
+        ]
+    if form.is_union:
+        return [p for c in form.contents for p in _rntuple_leaf_paths(c, prefix)]
+    if form.is_list or form.is_option or form.is_indexed:
+        return _rntuple_leaf_paths(form.content, prefix)
+    return [prefix]
 
 
 class FormMappingInfoWithVirtualArrays(TrivialFormMappingInfo):
@@ -1088,6 +1045,85 @@ class FormMappingWithVirtualArrays(ImplementsFormMapping):
 T = TypeVar("T")
 
 
+def _read_tree(
+    tree,
+    keys,
+    start,
+    stop,
+    *,
+    expected_form,
+    form_mapping_info,
+    interp_options,
+    decompression_executor,
+    interpretation_executor,
+):
+    """Read entries ``[start, stop)`` of ``keys`` from ``tree`` through a form mapping: the
+    mapping loads the buffers of ``keys``; every other buffer of ``expected_form`` is filled by
+    the mapping's ``buffer_replacements`` when it has them, else by a placeholder."""
+    assert start <= stop
+
+    from awkward._nplikes.numpy import Numpy
+
+    nplike = Numpy.instance()
+
+    # The remap implementation should correctly populate the generated
+    # buffer mapping in __call__, such that the high-level form can be
+    # used in `from_buffers`
+    mapping = form_mapping_info.load_buffers(
+        tree,
+        keys,
+        start,
+        stop,
+        decompression_executor,
+        interpretation_executor,
+        interp_options,
+    )
+
+    # Populate container with placeholders if keys aren't required
+    # Otherwise, read from disk
+    container = {}
+    for buffer_key, dtype in expected_form.expected_from_buffers(
+        buffer_key=form_mapping_info.buffer_key
+    ).items():
+        # Which key(s) does this buffer require. This code permits the caller
+        # to require multiple keys to compute a single buffer.
+        keys_for_buffer = form_mapping_info.keys_for_buffer_keys(
+            frozenset({buffer_key})
+        )
+        # If reading this buffer loads a permitted key, read from the tree
+        # We might not have _all_ keys if e.g. buffer A requires one
+        # but not two of the keys required for buffer B
+        if all(k in keys for k in keys_for_buffer):
+            container[buffer_key] = mapping[buffer_key]
+        # if the form mapping info provides a replacements, use it
+        elif hasattr(form_mapping_info, "buffer_replacements"):
+            container[buffer_key] = form_mapping_info.buffer_replacements(
+                tree,
+                keys_for_buffer,
+                start,
+                stop,
+                decompression_executor,
+                interpretation_executor,
+                interp_options,
+            )[buffer_key]
+        # Otherwise, introduce a placeholder (default replacement)
+        else:
+            container[buffer_key] = awkward.typetracer.PlaceholderArray(
+                nplike=nplike,
+                shape=(awkward.typetracer.unknown_length,),
+                dtype=dtype,
+            )
+
+    out = awkward.from_buffers(
+        expected_form,
+        stop - start,
+        container,
+        behavior=form_mapping_info.behavior,
+        buffer_key=form_mapping_info.buffer_key,
+    )
+    return out
+
+
 class UprootReadMixin:
     base_form: Form
     expected_form: Form
@@ -1109,66 +1145,16 @@ class UprootReadMixin:
     def read_tree(
         self, tree: HasBranches, start: int, stop: int
     ) -> tuple[AwkArray, SourcePerformanceCounters]:
-        assert start <= stop
-
-        from awkward._nplikes.numpy import Numpy
-
-        nplike = Numpy.instance()
-
-        # The remap implementation should correctly populate the generated
-        # buffer mapping in __call__, such that the high-level form can be
-        # used in `from_buffers`
-        mapping = self.form_mapping_info.load_buffers(
+        out = _read_tree(
             tree,
             self.common_keys,
             start,
             stop,
-            self.decompression_executor,
-            self.interpretation_executor,
-            self.interp_options,
-        )
-
-        # Populate container with placeholders if keys aren't required
-        # Otherwise, read from disk
-        container = {}
-        for buffer_key, dtype in self.expected_form.expected_from_buffers(
-            buffer_key=self.form_mapping_info.buffer_key
-        ).items():
-            # Which key(s) does this buffer require. This code permits the caller
-            # to require multiple keys to compute a single buffer.
-            keys_for_buffer = self.form_mapping_info.keys_for_buffer_keys(
-                frozenset({buffer_key})
-            )
-            # If reading this buffer loads a permitted key, read from the tree
-            # We might not have _all_ keys if e.g. buffer A requires one
-            # but not two of the keys required for buffer B
-            if all(k in self.common_keys for k in keys_for_buffer):
-                container[buffer_key] = mapping[buffer_key]
-            # if the form mapping info provides a replacements, use it
-            elif hasattr(self.form_mapping_info, "buffer_replacements"):
-                container[buffer_key] = self.form_mapping_info.buffer_replacements(
-                    tree,
-                    keys_for_buffer,
-                    start,
-                    stop,
-                    self.decompression_executor,
-                    self.interpretation_executor,
-                    self.interp_options,
-                )[buffer_key]
-            # Otherwise, introduce a placeholder (default replacement)
-            else:
-                container[buffer_key] = awkward.typetracer.PlaceholderArray(
-                    nplike=nplike,
-                    shape=(awkward.typetracer.unknown_length,),
-                    dtype=dtype,
-                )
-
-        out = awkward.from_buffers(
-            self.expected_form,
-            stop - start,
-            container,
-            behavior=self.form_mapping_info.behavior,
-            buffer_key=self.form_mapping_info.buffer_key,
+            expected_form=self.expected_form,
+            form_mapping_info=self.form_mapping_info,
+            interp_options=self.interp_options,
+            decompression_executor=self.decompression_executor,
+            interpretation_executor=self.interpretation_executor,
         )
         assert tree.source  # we must be reading something here
         return out, tree.source.performance_counters
@@ -1571,32 +1557,26 @@ def _get_ttree_form(
     return awkward.forms.RecordForm(contents, common_keys, parameters=parameters)
 
 
-def _get_dak_array(
+def _resolve_trees_and_keys(
     files,
     filter_name,
     filter_typename,
     filter_branch,
     recursive,
     full_paths,
-    step_size,
     custom_classes,
     allow_missing,
     real_options,
-    interp_options,
-    form_mapping,
-    steps_per_file,
-    allow_read_errors_with_report,
-    decompression_executor,
-    interpretation_executor,
 ):
-    dask_awkward = uproot.extras.dask_awkward()
-
+    """Open every entry of ``files`` and intersect their keys. A leaf ``TBranch`` given as the
+    object path stands for its parent ``TTree`` with that one branch selected (``is_self``).
+    Returns ``(ttrees, common_keys, is_self, explicit_chunks)``; ``explicit_chunks`` is ``None``
+    unless every entry carries its own ``steps``."""
     ttrees = []
     explicit_chunks = []
     common_keys = None
     is_self = []
 
-    count = 0
     for file_object_maybechunks in files:
         file_path, object_path = file_object_maybechunks[0:2]
 
@@ -1605,8 +1585,6 @@ def _get_dak_array(
         )
 
         if obj is not None:
-            count += 1
-
             if isinstance(obj, TBranch) and len(obj.keys(recursive=True)) == 0:
                 original = obj
                 obj = obj.parent
@@ -1646,7 +1624,7 @@ def _get_dak_array(
                 new_keys = set(new_keys)
                 common_keys = [key for key in common_keys if key in new_keys]
 
-    if count == 0:
+    if len(ttrees) == 0:
         raise ValueError(
             "allow_missing=True and no TTrees found in\n\n    {}".format(
                 "\n    ".join(
@@ -1655,13 +1633,6 @@ def _get_dak_array(
                 )
             )
         )
-
-    # this is the earliest time we can deal with an unset step_size
-    if step_size is unset:
-        assert steps_per_file is not unset  # either assigned or assumed to be 1
-        total_files = len(ttrees)
-        total_entries = sum(ttree.num_entries for ttree in ttrees)
-        step_size = max(1, math.ceil(total_entries / (total_files * steps_per_file)))
 
     if len(common_keys) == 0 or not (all(is_self) or not any(is_self)):
         raise ValueError(
@@ -1673,41 +1644,109 @@ def _get_dak_array(
             )
         )
 
-    # Normalise AsGrouped branches in common_keys according to which of their
-    # children also appear in common_keys:
-    # - Case 1 (Parent matched, no leaves matched):    include parent grouped
-    # - Case 2 (Parent not matched, some leaves matched):   skip parent, keep matched leaves individual
-    # - Case 3 (Parent matched, all leaves matched):   skip parent, keep leaves individual
-    # - Case 4 (Parent matched, some leaves matched):  include parent grouped, suppress matched leaves
-    if ttrees and not isinstance(ttrees[0], HasFields):
-        common_keys_set = set(common_keys)
-        parent_keys_to_remove = set()
-        child_keys_to_suppress = set()
-        for k in common_keys:
-            if not isinstance(
-                ttrees[0][k].interpretation,
-                uproot.interpretation.grouped.AsGrouped,
-            ):
-                continue
-            if full_paths:
-                all_child_keys = [
-                    f"{k}/{ck}"
-                    for ck in ttrees[0][k].keys(recursive=True, full_paths=True)
-                ]
-            else:
-                all_child_keys = ttrees[0][k].keys(recursive=True, full_paths=False)
-            matched_children = [c for c in all_child_keys if c in common_keys_set]
-            if len(all_child_keys) > 0 and len(matched_children) == len(all_child_keys):
-                # Case 3: drop parent, keep individual children
-                parent_keys_to_remove.add(k)
-            elif matched_children:
-                # Case 4: keep parent, suppress the individually-matched children
-                child_keys_to_suppress.update(matched_children)
-        common_keys = [
-            k
-            for k in common_keys
-            if k not in parent_keys_to_remove and k not in child_keys_to_suppress
-        ]
+    return ttrees, common_keys, is_self, explicit_chunks
+
+
+def _normalize_grouped_keys(ttree, common_keys, full_paths):
+    """Normalise AsGrouped branches in common_keys according to which of their children also
+    appear in common_keys:
+
+    - Case 1 (Parent matched, no leaves matched):    include parent grouped
+    - Case 2 (Parent not matched, some leaves matched):   skip parent, keep matched leaves individual
+    - Case 3 (Parent matched, all leaves matched):   skip parent, keep leaves individual
+    - Case 4 (Parent matched, some leaves matched):  include parent grouped, suppress matched leaves
+    """
+    if isinstance(ttree, HasFields):
+        return common_keys
+    common_keys_set = set(common_keys)
+    parent_keys_to_remove = set()
+    child_keys_to_suppress = set()
+    for k in common_keys:
+        if not isinstance(
+            ttree[k].interpretation,
+            uproot.interpretation.grouped.AsGrouped,
+        ):
+            continue
+        if full_paths:
+            all_child_keys = [
+                f"{k}/{ck}" for ck in ttree[k].keys(recursive=True, full_paths=True)
+            ]
+        else:
+            all_child_keys = ttree[k].keys(recursive=True, full_paths=False)
+        matched_children = [c for c in all_child_keys if c in common_keys_set]
+        if len(all_child_keys) > 0 and len(matched_children) == len(all_child_keys):
+            # Case 3: drop parent, keep individual children
+            parent_keys_to_remove.add(k)
+        elif matched_children:
+            # Case 4: keep parent, suppress the individually-matched children
+            child_keys_to_suppress.update(matched_children)
+    return [
+        k
+        for k in common_keys
+        if k not in parent_keys_to_remove and k not in child_keys_to_suppress
+    ]
+
+
+def _base_form_of(ttree, common_keys, ak_add_doc, form_mapping):
+    """The dataset's base form from one open tree: an ``RNTuple`` keeps its nesting through
+    ``to_akform``; a ``TTree`` form carries the branch typenames a mapping may read."""
+    if isinstance(ttree, HasFields):
+        base_form, _ = ttree.to_akform(filter_name=common_keys)
+    else:
+        base_form = _get_ttree_form(awkward, ttree, common_keys, ak_add_doc)
+        if form_mapping is not None:
+            base_form.parameters["typenames"] = ttree.typenames()
+    return base_form
+
+
+def _mapping_of(form_mapping, base_form):
+    """``(expected_form, form_mapping_info)``: the trivial mapping when none is given."""
+    if form_mapping is None:
+        expected_form = awkward.forms.form_with_unique_keys(base_form, ("<root>",))
+        return expected_form, TrivialFormMappingInfo(expected_form)
+    return form_mapping(base_form)
+
+
+def _get_dak_array(
+    files,
+    filter_name,
+    filter_typename,
+    filter_branch,
+    recursive,
+    full_paths,
+    step_size,
+    custom_classes,
+    allow_missing,
+    real_options,
+    interp_options,
+    form_mapping,
+    steps_per_file,
+    allow_read_errors_with_report,
+    decompression_executor,
+    interpretation_executor,
+):
+    dask_awkward = uproot.extras.dask_awkward()
+
+    ttrees, common_keys, _, explicit_chunks = _resolve_trees_and_keys(
+        files,
+        filter_name,
+        filter_typename,
+        filter_branch,
+        recursive,
+        full_paths,
+        custom_classes,
+        allow_missing,
+        real_options,
+    )
+
+    # this is the earliest time we can deal with an unset step_size
+    if step_size is unset:
+        assert steps_per_file is not unset  # either assigned or assumed to be 1
+        total_files = len(ttrees)
+        total_entries = sum(ttree.num_entries for ttree in ttrees)
+        step_size = max(1, math.ceil(total_entries / (total_files * steps_per_file)))
+
+    common_keys = _normalize_grouped_keys(ttrees[0], common_keys, full_paths)
 
     step_sum = 0
     for ttree in ttrees:
@@ -1764,28 +1803,21 @@ which has {entry_stop} entries"""
                     divisions.append(divisions[-1] + length)
                     partition_args.append((i, start, stop))
 
-    if isinstance(ttrees[0], HasFields):
-        base_form, _ = ttrees[0].to_akform(filter_name=common_keys)
-    else:
-        base_form = _get_ttree_form(
-            awkward, ttrees[0], common_keys, interp_options.get("ak_add_doc")
-        )
-        if form_mapping is not None:
-            base_form.parameters["typenames"] = ttrees[0].typenames()
+    base_form = _base_form_of(
+        ttrees[0], common_keys, interp_options.get("ak_add_doc"), form_mapping
+    )
 
     if len(partition_args) == 0:
         divisions.append(0)
         partition_args.append((0, 0, 0))
 
-    if form_mapping is None:
-        expected_form = awkward.forms.form_with_unique_keys(base_form, ("<root>",))
-        form_mapping_info = TrivialFormMappingInfo(expected_form)
-    else:
-        expected_form, form_mapping_info = form_mapping(base_form)
+    expected_form, form_mapping_info = _mapping_of(form_mapping, base_form)
 
     fn = _UprootRead(
         ttrees,
-        common_keys,
+        list(
+            base_form.fields
+        ),  # the keys a read fetches: for an RNTuple, its top-level fields
         interp_options,
         base_form=base_form,
         expected_form=expected_form,
@@ -1847,41 +1879,7 @@ def _get_dak_array_delay_open(
             full_paths=full_paths,
             ignore_duplicates=True,
         )
-        # Normalise AsGrouped branches in common_keys according to which of their
-        # children also appear in common_keys (same logic as _get_dak_array):
-        # - Case 1 (Parent matched, no leaves matched):    include parent grouped
-        # - Case 2 (Parent not matched, some leaves matched):   skip parent, keep matched leaves individual
-        # - Case 3 (Parent matched, all leaves matched):   skip parent, keep leaves individual
-        # - Case 4 (Parent matched, some leaves matched):  include parent grouped, suppress matched leaves
-        if not isinstance(obj, HasFields):
-            common_keys_set = set(common_keys)
-            parent_keys_to_remove = set()
-            child_keys_to_suppress = set()
-            for k in common_keys:
-                if not isinstance(
-                    obj[k].interpretation,
-                    uproot.interpretation.grouped.AsGrouped,
-                ):
-                    continue
-                if full_paths:
-                    all_child_keys = [
-                        f"{k}/{ck}"
-                        for ck in obj[k].keys(recursive=True, full_paths=True)
-                    ]
-                else:
-                    all_child_keys = obj[k].keys(recursive=True, full_paths=False)
-                matched_children = [c for c in all_child_keys if c in common_keys_set]
-                if len(all_child_keys) > 0 and len(matched_children) == len(
-                    all_child_keys
-                ):
-                    parent_keys_to_remove.add(k)
-                elif matched_children:
-                    child_keys_to_suppress.update(matched_children)
-            common_keys = [
-                k
-                for k in common_keys
-                if k not in parent_keys_to_remove and k not in child_keys_to_suppress
-            ]
+        common_keys = _normalize_grouped_keys(obj, common_keys, full_paths)
         base_form = _get_ttree_form(
             awkward, obj, common_keys, interp_options.get("ak_add_doc")
         )
@@ -1921,17 +1919,15 @@ def _get_dak_array_delay_open(
                     )
                 )
 
-    if form_mapping is None:
-        expected_form = awkward.forms.form_with_unique_keys(base_form, ("<root>",))
-        form_mapping_info = TrivialFormMappingInfo(expected_form)
-    else:
-        expected_form, form_mapping_info = form_mapping(base_form)
+    expected_form, form_mapping_info = _mapping_of(form_mapping, base_form)
 
     fn = _UprootOpenAndRead(
         custom_classes,
         allow_missing,
         real_options,
-        common_keys,
+        list(
+            base_form.fields
+        ),  # the keys a read fetches: for an RNTuple, its top-level fields
         interp_options,
         base_form=base_form,
         expected_form=expected_form,
