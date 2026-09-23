@@ -298,6 +298,7 @@ or
     else:
         return pyarrow
 
+
 def akimbo_pandas():
     """
     Imports and returns ``akimbo.pandas``.

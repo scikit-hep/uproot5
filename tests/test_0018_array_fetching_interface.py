@@ -789,7 +789,7 @@ def test_jagged_pandas():
             28,
             29,
         ]
-        
+
         assert result.values.tolist() == [
             [],
             [-15],
