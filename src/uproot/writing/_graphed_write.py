@@ -65,10 +65,10 @@ def _write_partition(
     tree = source.open_tree(partition, resources)
     if tree is None:
         return []
-    resolved = partition.resolve(tree.num_entries)
-    if resolved.entry_stop <= resolved.entry_start:
+    start, stop = source.entry_range(partition, tree, columns)
+    if stop <= start:
         return []
-    chunk = source.read_range(tree, columns, resolved.entry_start, resolved.entry_stop)
+    chunk = source.read_range(tree, columns, start, stop)
     (evaluated,) = graphed.evaluate_ir(
         compiled,
         graphed.resolve_backend(backend),
