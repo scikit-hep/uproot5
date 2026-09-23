@@ -171,7 +171,7 @@ jobs:
 
       - name: Run the graphed tests and collect coverage
         run: |
-          python -m pytest -vv tests/test_1720_graphed_read.py tests/test_1720_graphed_form_mapping.py tests/test_1720_graphed_projection.py tests/test_1720_graphed_write.py tests/test_1720_graphed_partitions.py tests/test_1727_graphed_aligned_partitions.py tests/test_1727_graphed_aligned_source.py --reruns 10 --reruns-delay 30 --only-rerun "(?i)http|ssl|timeout|expired|connection|socket"\
+          python -m pytest -vv tests/test_1720_graphed_read.py tests/test_1720_graphed_form_mapping.py tests/test_1720_graphed_projection.py tests/test_1720_graphed_write.py tests/test_1720_graphed_partitions.py tests/test_1727_graphed_aligned_partitions.py tests/test_1727_graphed_aligned_source.py tests/test_1727_common_entry_offsets_leaf.py --reruns 10 --reruns-delay 30 --only-rerun "(?i)http|ssl|timeout|expired|connection|socket"\
                            --cov=uproot --cov-branch --cov-report=xml
 
       - name: Upload coverage reports to Codecov
