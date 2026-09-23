@@ -3,7 +3,6 @@
 import json
 import sys
 
-import awkward
 import numpy
 import pytest
 import skhep_testdata
@@ -75,6 +74,7 @@ def test_leaflist_awkward():
 def test_leaflist_pandas():
     pandas = pytest.importorskip("pandas")
     pytest.importorskip("pyarrow")
+    awkward = pytest.importorskip("awkward")
     with uproot.open(skhep_testdata.data_path("uproot-leaflist.root"))["tree"] as tree:
         result = tree["leaflist"].array(library="pd")
 
@@ -109,6 +109,7 @@ def test_fixed_width_awkward():
 def test_fixed_width_pandas():
     pandas = pytest.importorskip("pandas")
     pytest.importorskip("pyarrow")
+    awkward = pytest.importorskip("awkward")
     with uproot.open(
         skhep_testdata.data_path("uproot-sample-6.20.04-uncompressed.root")
     )["sample"] as tree:

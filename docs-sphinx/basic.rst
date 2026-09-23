@@ -657,7 +657,7 @@ These "nested" NumPy arrays are not slicable as multidimensional arrays because 
     # File "<stdin>", line 1, in <module>
     # IndexError: too many indices for array: array is 1-dimensional, but 2 were indexed
 
-The Pandas form for this type of data is a DataFrame with object dtype.
+The Pandas form for this type of data is a DataFrame with PyArrow dtype, provided by the `Pandas ArrowExtensionArray <https://pandas.pydata.org/docs/reference/api/pandas.arrays.ArrowExtensionArray.html>`__ type.
 
 .. code-block:: python
 

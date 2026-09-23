@@ -832,8 +832,9 @@ def _process_array_for_pandas(
                 ) and array.layout.minmax_depth == (1, 1):
                     array = array.to_numpy()
                 else:
+                    pandas = uproot.extras.pandas()
                     uproot.extras.pyarrow()  # The next line requires PyArrow
-                    array = awkward.to_arrow(array, extensionarray=False)
+                    array = pandas.arrays.ArrowExtensionArray(awkward.to_arrow(array, extensionarray=False))
             else:
                 array = _object_to_awkward_array(awkward, form, array)
         return array
