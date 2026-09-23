@@ -833,7 +833,9 @@ def _process_array_for_pandas(
                     array = array.to_numpy()
                 else:
                     pandas = uproot.extras.pandas()
-                    array = pandas.arrays.ArrowExtensionArray(awkward.to_arrow(array, extensionarray=False))
+                    array = pandas.arrays.ArrowExtensionArray(
+                        awkward.to_arrow(array, extensionarray=False)
+                    )
             else:
                 array = _object_to_awkward_array(awkward, form, array)
         return array
@@ -871,8 +873,8 @@ class Pandas(Library):
 
     def finalize(self, array, branch, interpretation, entry_start, entry_stop, options):
         pandas = self.imported
-        uproot.extras.akimbo_pandas() # Automatically adds .ak accessors to Pandas DataFrames
-                                      # recovering the behavior of AwkwardExtensionArrays
+        uproot.extras.akimbo_pandas()  # Automatically adds .ak accessors to Pandas DataFrames
+        # recovering the behavior of AwkwardExtensionArrays
 
         index = _pandas_basic_index(pandas, entry_start, entry_stop)
 
