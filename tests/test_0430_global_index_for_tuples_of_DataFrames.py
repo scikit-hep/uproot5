@@ -8,6 +8,7 @@ import uproot
 
 pytest.importorskip("pandas")
 pytest.importorskip("pyarrow")
+pytest.importorskip("akimbo")
 
 
 def test():

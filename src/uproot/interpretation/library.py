@@ -872,6 +872,9 @@ class Pandas(Library):
 
     def finalize(self, array, branch, interpretation, entry_start, entry_stop, options):
         pandas = self.imported
+        uproot.extras.akimbo_pandas() # Automatically adds .ak accessors to Pandas DataFrames
+                                      # recovering the behavior of AwkwardExtensionArrays
+
         index = _pandas_basic_index(pandas, entry_start, entry_stop)
 
         array = _process_array_for_pandas(

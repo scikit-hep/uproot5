@@ -677,8 +677,7 @@ The Pandas form for this type of data is a DataFrame with PyArrow dtype, provide
 
     [2421 rows x 6 columns]
 
-Up to Uproot 5.7.6, such a Pandas object had Awkward Dtype and you could operate on Awkward arrays using the ``.ak`` accessor.
-You can now access such Pandas results as Awkward Array by using ``ak_array = awkward.Array(pandas_result.tolist())``.
+You can operate on Awkward Array data in Pandas using the ``.ak`` accessor; see the [akimbo documentation](https://akimbo.readthedocs.io/en/latest/quickstart.html).
 
 Before Uproot 5.0, Uproot exploded this data with a `MultiIndex <https://pandas.pydata.org/pandas-docs/stable/user_guide/advanced.html>`__, such that each Pandas cell contains a number, not a list or other type. You can still do this using Awkward Array and `ak.to_dataframe <https://awkward-array.org/doc/main/reference/generated/ak.to_dataframe.html>`__:
 

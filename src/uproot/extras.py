@@ -253,6 +253,20 @@ or
     else:
         return pyarrow
 
+def akimbo_pandas():
+    """
+    Imports and returns ``akimbo.pandas``.
+    """
+    try:
+        import akimbo.pandas
+    except ModuleNotFoundError as err:
+        raise ModuleNotFoundError("""install the 'akimbo' package with:
+    pip install akimbo
+or
+    conda install -c conda-forge akimbo""") from err
+    else:
+        return akimbo.pandas
+
 
 def cupy():
     """

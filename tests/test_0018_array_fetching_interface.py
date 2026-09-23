@@ -747,6 +747,7 @@ def test_jagged_pandas():
     awkward = pytest.importorskip("awkward")
     pandas = pytest.importorskip("pandas")
     pytest.importorskip("pyarrow")
+    pytest.importorskip("akimbo")
 
     interpretation = uproot.interpretation.jagged.AsJagged(
         uproot.interpretation.numerical.AsDtype(">i2")
