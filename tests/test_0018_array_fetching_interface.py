@@ -744,8 +744,8 @@ def test_jagged_awkward():
 
 
 def test_jagged_pandas():
-    awkward = pytest.importorskip("awkward")
     pandas = pytest.importorskip("pandas")
+    pytest.importorskip("awkward")
     pytest.importorskip("pyarrow")
     pytest.importorskip("akimbo")
 
