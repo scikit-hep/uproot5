@@ -24,6 +24,9 @@ recorded graph does not touch standing in as placeholders. The source DECLARES t
 
 from __future__ import annotations
 
+import bisect
+import itertools
+
 import uproot
 import uproot._util
 import uproot.interpretation.library
@@ -36,6 +39,7 @@ from uproot._dask import (
     _resolve_trees_and_keys,
 )
 from uproot._util import no_filter, unset
+from uproot.behaviors.RNTuple import HasFields
 from uproot.behaviors.TBranch import HasBranches
 
 #: ``uproot.dask`` parameters ``uproot.graphed`` has no counterpart for, and where that concern
@@ -73,6 +77,7 @@ class _GraphedTTreeSource:
         decompression_executor,
         interpretation_executor,
         explicit_chunks=None,
+        align_baskets=False,
     ):
         self._file_tree = list(file_tree)  # [(file_path, object_path or None)]
         self._common_keys = list(common_keys)
@@ -86,6 +91,11 @@ class _GraphedTTreeSource:
         self._decompression_executor = decompression_executor
         self._interpretation_executor = interpretation_executor
         self._explicit_chunks = explicit_chunks  # per file: [(start, stop), ...]
+        self._align_baskets = align_baskets
+        self._offsets_memo = {}  # (uri, tree, keys) -> aligned offsets, per process
+
+    def __getstate__(self):
+        return {**self.__dict__, "_offsets_memo": {}}
 
     # ---- opening -------------------------------------------------------------------------
     def _open_directory(self, file_path):
@@ -187,9 +197,34 @@ class _GraphedTTreeSource:
         if tree is None:
             return self._empty()
         keys = list(columns) if columns is not None else list(self._common_keys)
-        return self.read_range(
-            tree, keys, *_partition_range(partition, tree.num_entries)
-        )
+        start, stop = self.entry_range(partition, tree, keys)
+        if stop <= start:  # read_range would still decompress the boundary TBasket
+            return self._empty()
+        return self.read_range(tree, keys, start, stop)
+
+    def entry_range(self, partition, tree, keys):
+        """The ``(start, stop)`` entries ``partition`` reads from ``tree``. With
+        ``align_baskets``, a blind step's boundaries move to the nearest ``TBasket`` boundary
+        shared by the ``TBranches`` that reading ``keys`` decompresses; a key absent from
+        ``tree`` reads nothing, so it constrains nothing."""
+        n_entries = tree.num_entries
+        start, stop = _partition_range(partition, n_entries)
+        if not (self._align_baskets and partition.is_blind):
+            return start, stop
+        if isinstance(tree, HasFields):
+            raise NotImplementedError(
+                "align_baskets=True follows TBasket boundaries; an RNTuple has none"
+            )
+        memo_key = (partition.uri, partition.tree, tuple(keys))
+        if memo_key not in self._offsets_memo:
+            self._offsets_memo[memo_key] = _basket_offsets(
+                [tree[key].common_entry_offsets() for key in keys if key in tree],
+                n_entries,
+            )
+        offsets = self._offsets_memo[memo_key]
+        if offsets is None:
+            return start, stop
+        return _snap(start, offsets), _snap(stop, offsets)
 
     def projected_columns(self, outputs, *, on_fail="pass"):
         """The ``TBranches`` this source declares for ``outputs`` (asked driver-side through
@@ -286,6 +321,7 @@ def graphed(
     backend=None,
     decompression_executor=None,
     interpretation_executor=None,
+    align_baskets=False,
     **options,
 ):
     """
@@ -317,6 +353,11 @@ def graphed(
             mapping info's) is then the caller's business, so ``behavior=`` is refused beside it.
         decompression_executor, interpretation_executor: As in :doc:`uproot._dask.dask`; every
             partition read uses them.
+        align_baskets (bool): If True, each blind partition's entry range moves, when it is
+            read, to the nearest ``TBasket`` boundaries shared by the ``TBranches`` it reads, so
+            no ``TBasket`` is decompressed by two partitions. The partition count is unchanged;
+            a partition can come out empty. Incompatible with explicit ``"steps"``; ``TTrees``
+            only.
         options: Passed through to file opening.
 
     Returns a deferred ``graphed`` ``Array`` for the selected ``TTree``(s). Construction reads only
@@ -325,7 +366,10 @@ def graphed(
     the read, partition by partition, fetching only the ``TBranches`` the recorded graph touches.
 
     Partitioning is decided where a plan is built (``steps_per_file=`` there), not here, so
-    ``step_size``, ``steps_per_file`` and ``open_files`` are refused by name.
+    ``step_size``, ``steps_per_file`` and ``open_files`` are refused by name; ``align_baskets=``
+    decides that the boundaries follow ``TBaskets``. For one task per ``TBasket``-sparse file,
+    pass ``partitions=uproot._graphed.graphed_partitions(..., align_baskets=True)`` where the
+    plan is built.
 
     **Experimental**: tracks a pre-1.0 ``graphed``; the API may change without a deprecation cycle.
 
@@ -363,6 +407,11 @@ def graphed(
         raise TypeError(
             "partition sizes for some but not all 'files' have been assigned"
         )
+    if align_baskets and any(is_3arg):
+        raise TypeError(
+            "uproot.graphed: align_baskets=True moves blind partitions; it cannot be used "
+            "with explicit 'steps' in 'files'"
+        )
 
     if known_base_form is not None:  # the form is given: nothing is opened
         common_keys = list(dict.fromkeys(known_base_form.fields))
@@ -382,11 +431,14 @@ def graphed(
             allow_missing,
             real_options,
         )
+        if align_baskets and any(isinstance(t, HasFields) for t in ttrees):
+            raise NotImplementedError(
+                "align_baskets=True follows TBasket boundaries; an RNTuple has none"
+            )
         common_keys = _normalize_grouped_keys(ttrees[0], common_keys, full_paths)
         base_form = _base_form_of(ttrees[0], common_keys, ak_add_doc, form_mapping)
         file_tree = [(t.file.file_path, t.object_path) for t in ttrees]
         name = getattr(ttrees[0], "name", None) or _name_from_object_path(file_tree)
-
     expected_form, info = _mapping_of(form_mapping, base_form)
     typetracer = awkward.typetracer.typetracer_from_form(
         expected_form, highlevel=True, behavior=info.behavior
@@ -404,6 +456,7 @@ def graphed(
         decompression_executor=decompression_executor,
         interpretation_executor=interpretation_executor,
         explicit_chunks=explicit_chunks,
+        align_baskets=align_baskets,
     )
     if backend is None:
         backend = graphed.awkward.AwkwardBackend(
@@ -433,6 +486,7 @@ def graphed_partitions(
     step_size=unset,
     steps_per_file=unset,
     open_files=True,
+    align_baskets=False,
     custom_classes=None,
     allow_missing=False,
     **options,
@@ -448,11 +502,27 @@ def graphed_partitions(
     - ``open_files`` (default ``True``): open every file to read its entry count and emit exact
       entry ranges. ``open_files=False`` emits **blind** partitions (``Partition.blind``): files
       are not opened here and the entry range is resolved against the file's own count when the
-      partition is read (:doc:`uproot._graphed.read_graphed_partition`)."""
+      partition is read (:doc:`uproot._graphed.read_graphed_partition`).
+    - ``align_baskets`` (default ``False``): ``True``, or a ``filter_name``-style selection
+      (glob, regex, callable, or an iterable of them) of the ``TBranches`` whose ``TBaskets``
+      the boundaries follow: pass the branches the analysis reads. Every chunk boundary moves
+      to the nearest entry offset where all of those ``TBranches`` start a new ``TBasket`` (a
+      tie goes to the lower one), and the chunks this leaves empty are dropped, so no
+      ``TBasket`` is decompressed by two chunks. A chunk can then be larger than
+      ``step_size``. With ``True`` on a ``TTree`` whose branches' ``TBaskets`` do not line up,
+      the shared offsets can shrink to the file's ends and the file yields one chunk, where a
+      read with ``uproot.graphed(align_baskets=True)`` follows only the branches each
+      partition reads. Needs ``open_files=True``; ``TTrees`` only.
+    """
     graphed = uproot.extras.graphed()
 
     have_step_size = not isinstance(step_size, uproot._util._Unset)
     have_steps_per_file = not isinstance(steps_per_file, uproot._util._Unset)
+    if align_baskets and not open_files:
+        raise TypeError(
+            "align_baskets=True needs the entry offsets of opened files; "
+            "it cannot be used with open_files=False"
+        )
     if have_step_size and not open_files:
         raise TypeError(
             "step_size cannot be used with open_files=False; use steps_per_file"
@@ -482,6 +552,10 @@ def graphed_partitions(
         )
         if obj is None:
             continue
+        if align_baskets and isinstance(obj, HasFields):
+            raise NotImplementedError(
+                "align_baskets=True follows TBasket boundaries; an RNTuple has none"
+            )
         n_entries = obj.num_entries
         if have_step_size:
             per = (
@@ -490,20 +564,46 @@ def graphed_partitions(
                 else obj.num_entries_for(step_size)
             )
             per = max(1, int(per))
-            ranges = [(s, min(s + per, n_entries)) for s in range(0, n_entries, per)]
+            bounds = [*range(0, n_entries, per), n_entries]
         else:
-            ranges = [
-                ((i * n_entries) // n_steps, ((i + 1) * n_entries) // n_steps)
-                for i in range(n_steps)
-            ]
+            bounds = [(i * n_entries) // n_steps for i in range(n_steps + 1)]
+        if align_baskets:
+            shared = obj.common_entry_offsets(
+                filter_name=no_filter if align_baskets is True else align_baskets,
+                recursive=True,
+            )
+            if n_entries and shared == [0]:  # a non-empty tree's fold holds n_entries
+                raise ValueError(
+                    f"align_baskets={align_baskets!r} selects no TBranch with TBaskets in "
+                    f"{obj.file.file_path}:{obj.object_path}"
+                )
+            offsets = _basket_offsets([shared], n_entries)
+            bounds = [_snap(bound, offsets) for bound in bounds]
         partitions.extend(
             graphed.core.Partition(
                 obj.file.file_path, obj.object_path, int(start), int(stop)
             )
-            for start, stop in ranges
+            for start, stop in itertools.pairwise(bounds)
             if stop > start
         )
     return partitions
+
+
+def _basket_offsets(offset_lists, n_entries):
+    """The sorted intersection of ``offset_lists`` (``common_entry_offsets`` results) with
+    ``0`` and ``n_entries`` added; ``None`` when there is nothing to intersect."""
+    if not offset_lists:
+        return None
+    return sorted(set.intersection(*map(set, offset_lists)) | {0, n_entries})
+
+
+def _snap(boundary, offsets):
+    """The offset nearest ``boundary``, the lower on a tie; ``offsets`` is sorted and spans it."""
+    i = bisect.bisect_left(offsets, boundary)
+    if offsets[i] == boundary:
+        return boundary
+    lower, upper = offsets[i - 1], offsets[i]
+    return upper if upper - boundary < boundary - lower else lower
 
 
 def read_graphed_partition(
