@@ -82,6 +82,13 @@ def test_create_and_update_do_not_truncate(tmp_path):
         uproot.create(path)
     assert path.read_bytes() == contents
 
+    # a file-like object has no path to check, so create writes into it as is
+    other = tmp_path / "other.root"
+    other.write_bytes(b"\x00" * 100_000)
+    with open(other, "r+b") as file, uproot.create(file) as f:
+        f["h"] = "hello"
+    assert other.stat().st_size == 100_000
+
     with uproot.update(path) as f:
         f["h2"] = "world"
     with uproot.open(path) as f:
