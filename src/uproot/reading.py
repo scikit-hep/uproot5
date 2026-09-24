@@ -1131,20 +1131,7 @@ in file {self._file_path}"""
 
         if cls is None:
             if len(streamers) == 0:
-                # key on the encoded name, which distinguishes this versionless
-                # UnknownClass from the per-version UnknownClassVersion classes
-                encoded_classname = uproot.model.classname_encode(
-                    classname, unknown=True
-                )
-                unknown_cls = uproot.unknown_classes.get(encoded_classname)
-                if unknown_cls is None:
-                    unknown_cls = uproot._util.new_class(
-                        encoded_classname,
-                        (uproot.model.UnknownClass,),
-                        {},
-                    )
-                    uproot.unknown_classes[encoded_classname] = unknown_cls
-                return unknown_cls
+                return uproot.model.unknown_class(classname)
 
             else:
                 cls = uproot._util.new_class(
@@ -1164,18 +1151,7 @@ in file {self._file_path}"""
                 elif version == "min" and len(cls.known_versions) != 0:
                     version = min(cls.known_versions)
                 else:
-                    encoded_classname = uproot.model.classname_encode(
-                        classname, version, unknown=True
-                    )
-                    unknown_cls = uproot.unknown_classes.get(encoded_classname)
-                    if unknown_cls is None:
-                        unknown_cls = uproot._util.new_class(
-                            encoded_classname,
-                            (uproot.model.UnknownClassVersion,),
-                            {},
-                        )
-                        uproot.unknown_classes[encoded_classname] = unknown_cls
-                    return unknown_cls
+                    return uproot.model.unknown_class(classname, version)
 
             versioned_cls = cls.class_of_version(version)
             if versioned_cls is None:
