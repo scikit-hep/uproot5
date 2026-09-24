@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import io
 
+import fsspec
 import pytest
 
 import uproot
@@ -49,6 +50,26 @@ def test_recreate_file_like_without_truncate():
         f["h"] = "hello"
     with uproot.open(io.BytesIO(file.buffer.getvalue())) as f:
         assert f.keys() == ["h;1"]
+
+
+def test_recreate_keeps_file_if_it_cannot_be_opened(monkeypatch):
+    # like S3 or XRootD, which can write whole files but not open them "r+b"
+    fs = fsspec.filesystem("memory")
+    original_open = type(fs)._open
+
+    def _open(self, path, mode="rb", **kwargs):
+        if mode == "r+b":
+            raise NotImplementedError("File mode not supported")
+        return original_open(self, path, mode, **kwargs)
+
+    monkeypatch.setattr(type(fs), "_open", _open)
+    fs.pipe("/test_1697/file.root", b"contents")
+    try:
+        with pytest.raises(NotImplementedError):
+            uproot.recreate("memory://test_1697/file.root")
+        assert fs.cat("/test_1697/file.root") == b"contents"
+    finally:
+        fs.rm("/test_1697", recursive=True)
 
 
 def test_create_and_update_do_not_truncate(tmp_path):
