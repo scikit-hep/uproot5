@@ -10,6 +10,8 @@ every byte beyond the new ``fEND`` in place.
 
 from __future__ import annotations
 
+import io
+
 import pytest
 
 import uproot
@@ -30,6 +32,23 @@ def test_recreate_truncates(tmp_path, kind):
     with uproot.open(path) as f:
         assert f.keys() == ["h;1"]
         assert path.stat().st_size == f.file.fEND
+
+
+def test_recreate_file_like_without_truncate():
+    class FileLike:
+        def __init__(self):
+            self.buffer = io.BytesIO()
+
+        def __getattr__(self, name):
+            if name in ("read", "write", "seek", "tell", "flush"):
+                return getattr(self.buffer, name)
+            raise AttributeError(name)
+
+    file = FileLike()
+    with uproot.recreate(file) as f:
+        f["h"] = "hello"
+    with uproot.open(io.BytesIO(file.buffer.getvalue())) as f:
+        assert f.keys() == ["h;1"]
 
 
 def test_create_and_update_do_not_truncate(tmp_path):

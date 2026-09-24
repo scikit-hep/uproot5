@@ -28,9 +28,9 @@ class FileSink:
             must have ``read``, ``write``, ``seek``, ``tell``, and ``flush`` methods.
         mode ("create", "recreate", or "update"): Like ROOT's ``TFile`` options.
             ``"create"`` raises ``FileExistsError`` if the path already exists,
-            ``"recreate"`` truncates an existing file (or file-like object), and
-            ``"update"`` keeps its contents. In all three, a missing path is created
-            along with its parent directories.
+            ``"recreate"`` truncates an existing file (or a file-like object that has
+            a ``truncate`` method), and ``"update"`` keeps its contents. In all three,
+            a missing path is created along with its parent directories.
 
     An object that can write (and read) files on a local or remote filesystem.
     It can be initialized from a file-like object (already opened) or a filesystem URL.
@@ -65,8 +65,10 @@ class FileSink:
                     """writable file can only be created from a file path or an object that supports reading and writing"""
                 )
 
-            if mode != "update":
-                self._file.truncate(0)
+            # truncate is not required of file-like objects
+            truncate = getattr(self._file, "truncate", None)
+            if mode != "update" and callable(truncate):
+                truncate(0)
         else:
             fs, path = fsspec.core.url_to_fs(urlpath_or_file_like, **storage_options)
             if mode == "create":
