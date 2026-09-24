@@ -240,19 +240,19 @@ class _GraphedTTreeSource:
 
         info = self._form_mapping_info
         buffer_keys = set()
-        for output in outputs:
-            needs = graphed.awkward.projection.project_buffers(
-                output, on_fail=on_fail
-            ).read_buffers.get(self._name, {})
-            for path, need in needs.items():
-                buffer_keys.update(
-                    _mapped_buffer_keys(
-                        self._expected_form,
-                        path,
-                        need is graphed.BufferNeed.DATA,
-                        info.buffer_key,
-                    )
+        # one replay of the mapped form for all outputs, not one per output
+        needs = graphed.awkward.projection.project_buffers_many(
+            list(outputs), on_fail=on_fail
+        ).read_buffers.get(self._name, {})
+        for path, need in needs.items():
+            buffer_keys.update(
+                _mapped_buffer_keys(
+                    self._expected_form,
+                    path,
+                    need is graphed.BufferNeed.DATA,
+                    info.buffer_key,
                 )
+            )
         return tuple(sorted(info.keys_for_buffer_keys(frozenset(buffer_keys))))
 
 
