@@ -27,9 +27,10 @@ class FileSink:
             filesystem URL that specifies the file to open by fsspec. If a file-like object, it
             must have ``read``, ``write``, ``seek``, ``tell``, and ``flush`` methods.
         mode ("create", "recreate", or "update"): Like ROOT's ``TFile`` options.
-            ``"create"`` raises ``FileExistsError`` if the path already exists,
-            ``"recreate"`` truncates an existing file (or a file-like object that has
-            a ``truncate`` method), and ``"update"`` keeps its contents. In all three,
+            ``"create"`` raises ``FileExistsError`` if the path already exists
+            (a file-like object is neither checked nor truncated), ``"recreate"``
+            truncates an existing file (or a file-like object that has a
+            ``truncate`` method), and ``"update"`` keeps its contents. In all three,
             a missing path is created along with its parent directories.
 
     An object that can write (and read) files on a local or remote filesystem.
@@ -65,7 +66,7 @@ class FileSink:
                     """writable file can only be created from a file path or an object that supports reading and writing"""
                 )
 
-            truncate = mode != "update"
+            truncate = mode == "recreate"
         else:
             fs, path = fsspec.core.url_to_fs(urlpath_or_file_like, **storage_options)
             truncate = False
