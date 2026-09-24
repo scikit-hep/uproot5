@@ -49,7 +49,8 @@ class Executor(ABC):
     @property
     def closed(self) -> bool:
         """
-        True if the executor has been stopped and its resources freed.
+        True once the executor has started shutting down and no longer accepts
+        new tasks.
         """
         return False
 
@@ -89,7 +90,7 @@ class TrivialExecutor(Executor):
 
     def submit(self, task, /, *args, **kwargs):
         """
-        Immediately runs ``task(*args)``.
+        Immediately runs ``task(*args, **kwargs)``.
         """
         return TrivialFuture(task(*args, **kwargs))
 
@@ -101,7 +102,8 @@ class Future:
     """
     Args:
         task (function): The function to evaluate.
-        args (tuple): Arguments for the function.
+        args (tuple): Positional arguments for the function.
+        kwargs (None or dict): Keyword arguments for the function.
 
     Like Python 3 ``concurrent.futures.Future`` except that it has only
     the subset of the interface Uproot needs.
@@ -204,6 +206,7 @@ class ThreadPoolExecutor(Executor):
     def __init__(self, max_workers: int | None = None):
         self._max_workers = max_workers or os.cpu_count()
         self._closed = False
+        self._shutdown_lock = threading.Lock()
 
         self._work_queue = queue.Queue()
         self._workers = []
@@ -243,10 +246,11 @@ class ThreadPoolExecutor(Executor):
         :doc:`uproot.source.futures.Future` so that it will be executed when
         one is available.
         """
-        if self.closed:
-            raise OSError("executor is closed")
         future = Future(task, args, kwargs)
-        self._work_queue.put(future)
+        with self._shutdown_lock:
+            if self._closed:
+                raise RuntimeError("cannot submit a task after shutdown")
+            self._work_queue.put(future)
         return future
 
     @property
@@ -263,12 +267,12 @@ class ThreadPoolExecutor(Executor):
         worker on the :ref:`uproot.source.futures.Worker.work_queue` and
         joining each worker thread.
         """
-        # mark this executor closed *before* queuing the sentinels: a submit
-        # accepted after a sentinel is queued would sit behind it in the queue,
-        # no worker would ever reach it, and its Future would block forever
-        self._closed = True
-        for _ in self._workers:
-            self._work_queue.put(None)
+        # submit holds the same lock while it checks _closed and enqueues, so
+        # no task can land behind a sentinel, where no worker would reach it
+        with self._shutdown_lock:
+            self._closed = True
+            for _ in self._workers:
+                self._work_queue.put(None)
         for worker in self._workers:
             worker.join()
 
@@ -370,6 +374,7 @@ class ResourceThreadPoolExecutor(ThreadPoolExecutor):
 
     def __init__(self, resources):
         self._closed = False
+        self._shutdown_lock = threading.Lock()
 
         if len(resources) < 1:
             raise ValueError("at least one worker is required")
@@ -390,11 +395,12 @@ class ResourceThreadPoolExecutor(ThreadPoolExecutor):
         when that worker is available.
         """
         assert isinstance(future, ResourceFuture)
-        if self.closed:
-            raise OSError(
-                f"resource is closed for file {self._workers[0].resource.file_path}"
-            )
-        self._work_queue.put(future)
+        with self._shutdown_lock:
+            if self._closed:
+                raise OSError(
+                    f"resource is closed for file {self._workers[0].resource.file_path}"
+                )
+            self._work_queue.put(future)
         return future
 
     def close(self):
@@ -419,8 +425,6 @@ class ResourceThreadPoolExecutor(ThreadPoolExecutor):
             worker.resource.__enter__()
 
     def __exit__(self, exception_type, exception_value, traceback):
-        # shutdown sets self._closed before it queues the sentinels, so a
-        # concurrent submit is rejected instead of being orphaned behind one
         self.shutdown()
         for worker in self._workers:
             worker.resource.__exit__(exception_type, exception_value, traceback)
