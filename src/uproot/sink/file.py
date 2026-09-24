@@ -65,18 +65,26 @@ class FileSink:
                     """writable file can only be created from a file path or an object that supports reading and writing"""
                 )
 
-            # truncate is not required of file-like objects
-            truncate = getattr(self._file, "truncate", None)
-            if mode != "update" and callable(truncate):
-                truncate(0)
+            truncate = mode != "update"
         else:
             fs, path = fsspec.core.url_to_fs(urlpath_or_file_like, **storage_options)
+            truncate = False
             if mode == "create":
                 self._create_file(fs, path)
-            elif mode == "recreate" or not fs.exists(path):
+            elif not fs.exists(path):
                 self._truncate_file(fs, path)
+            elif mode == "recreate":
+                truncate = True
 
             self._open_file = fsspec.core.OpenFile(fs, path, mode="r+b")
+
+        if truncate:
+            # through the opened file, rather than fs.touch, so that a filesystem
+            # that cannot open it for writing fails before the file is lost
+            self._ensure()
+            # truncate is not required of file-like objects
+            if callable(getattr(self._file, "truncate", None)):
+                self._file.truncate(0)
 
     @staticmethod
     def _make_parent_directories(fs, path: str) -> None:
