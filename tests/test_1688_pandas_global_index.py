@@ -3,8 +3,10 @@
 """Regression tests for issue #1688: Pandas global indices.
 
 ``uproot.concatenate``/``uproot.iterate`` re-index each file's DataFrames so that
-entry numbers are global rather than per-file, but ``how=dict`` was not handled.
-``RNTuple.arrays`` built its Pandas index from a cluster-relative entry number.
+entry numbers are global rather than per-file, but ``how=dict`` was not handled
+and a non-``RangeIndex`` (from a ``cut``) was shifted in place. ``RNTuple.arrays``
+and ``RField.array`` built their Pandas index from a cluster-relative or
+unregularized entry number.
 """
 
 from __future__ import annotations
@@ -14,104 +16,68 @@ import pytest
 
 import uproot
 
-pytest.importorskip("pandas")
+pd = pytest.importorskip("pandas")
 
 
-def _write_tree(path, start, stop):
-    with uproot.recreate(path) as f:
-        tree = f.mktree("t", {"x": np.dtype("int64")})
-        tree.extend({"x": np.arange(start, stop)})
+def _members(result, how):
+    assert isinstance(result, pd.DataFrame if how is None else how)
+    if how is None:
+        return [result["x"]]
+    elif how is dict:
+        return list(result.values())
+    else:
+        return list(result)
 
 
-@pytest.mark.parametrize("num_files", [1, 2])
-def test_concatenate_pandas_how_dict(tmp_path, num_files):
-    paths = []
-    for i in range(num_files):
-        path = str(tmp_path / f"file{i}.root")
-        _write_tree(path, 5 * i, 5 * (i + 1))
-        paths.append(path)
-
-    result = uproot.concatenate(
-        {path: "t" for path in paths}, ["x"], library="pd", how=dict
-    )
-
-    assert isinstance(result, dict)
-    assert list(result) == ["x"]
-    assert result["x"].tolist() == list(range(5 * num_files))
-    # the index must be global, not restarted at 0 for every file
-    assert result["x"].index.tolist() == list(range(5 * num_files))
-
-
-def test_iterate_pandas_how_dict(tmp_path):
-    paths = []
+@pytest.mark.parametrize("cut", [None, "x % 3 != 0"])
+@pytest.mark.parametrize("how", [None, dict, tuple, list])
+def test_multifile_index_is_global(tmp_path, how, cut):
+    # every branch holds its global entry number, so index == values
+    files = {}
     for i in range(2):
         path = str(tmp_path / f"file{i}.root")
-        _write_tree(path, 5 * i, 5 * (i + 1))
-        paths.append(path)
+        with uproot.recreate(path) as f:
+            f.mktree("t", {"x": np.int64, "y": np.float64}).extend(
+                {"x": np.arange(5 * i, 5 * i + 5), "y": np.arange(5 * i, 5 * i + 5)}
+            )
+        files[path] = "t"
+    expected = [i for i in range(10) if cut is None or i % 3 != 0]
+
+    result = uproot.concatenate(files, ["x", "y"], cut=cut, library="pd", how=how)
+    for member in _members(result, how):
+        assert member.index.tolist() == member.tolist() == expected
 
     chunks = list(
-        uproot.iterate(
-            {path: "t" for path in paths}, ["x"], library="pd", how=dict, step_size=5
-        )
+        uproot.iterate(files, ["x", "y"], cut=cut, library="pd", how=how, step_size=3)
     )
-
-    assert [type(chunk) for chunk in chunks] == [dict, dict]
-    assert chunks[0]["x"].index.tolist() == [0, 1, 2, 3, 4]
-    assert chunks[1]["x"].index.tolist() == [5, 6, 7, 8, 9]
-
-
-@pytest.mark.parametrize("how", [tuple, list])
-def test_concatenate_pandas_how_tuple_and_list_still_work(tmp_path, how):
-    paths = []
-    for i in range(2):
-        path = str(tmp_path / f"file{i}.root")
-        _write_tree(path, 5 * i, 5 * (i + 1))
-        paths.append(path)
-
-    result = uproot.concatenate(
-        {path: "t" for path in paths}, ["x"], library="pd", how=how
-    )
-
-    assert isinstance(result, how)
-    assert result[0].index.tolist() == list(range(10))
-
-
-def _write_rntuple(path):
-    with uproot.recreate(path) as f:
-        ntuple = f.mkrntuple("nt", {"x": np.dtype("int64")})
-        ntuple.extend({"x": np.arange(0, 4)})
-        ntuple.extend({"x": np.arange(4, 8)})
+    for i in range(len(_members(chunks[0], how))):
+        members = [_members(chunk, how)[i] for chunk in chunks]
+        for member in members:
+            assert member.index.tolist() == member.tolist()
+        assert sum((member.index.tolist() for member in members), []) == expected
 
 
 @pytest.mark.parametrize(
     ("entry_start", "entry_stop"),
-    [(0, 8), (0, 3), (2, 6), (4, 6), (5, 8), (6, 7)],
+    [(None, None), (0, 3), (2, 6), (4, 6), (5, 8), (6, 7), (-2, None), (3, 100)],
 )
-def test_rntuple_pandas_index_is_global(tmp_path, entry_start, entry_stop):
-    path = str(tmp_path / "ntuple.root")
-    _write_rntuple(path)
+def test_rntuple_index_is_global(tmp_path, entry_start, entry_stop):
+    # two clusters, [0, 4) and [4, 8), and a TTree with the same content
+    path = str(tmp_path / "file.root")
+    with uproot.recreate(path) as f:
+        ntuple = f.mkrntuple("nt", {"x": np.int64})
+        tree = f.mktree("t", {"x": np.int64})
+        for chunk in (np.arange(0, 4), np.arange(4, 8)):
+            ntuple.extend({"x": chunk})
+            tree.extend({"x": chunk})
+    expected = list(range(8))[entry_start:entry_stop]
 
+    kwargs = {"entry_start": entry_start, "entry_stop": entry_stop, "library": "pd"}
     with uproot.open(path) as f:
-        df = f["nt"].arrays(
-            library="pd", entry_start=entry_start, entry_stop=entry_stop
-        )
+        from_ntuple = f["nt"].arrays(**kwargs)
+        from_field = f["nt"]["x"].array(**kwargs)
+        from_tree = f["t"].arrays(**kwargs)
 
-    assert df.index.tolist() == list(range(entry_start, entry_stop))
-    assert df["x"].tolist() == list(range(entry_start, entry_stop))
-
-
-def test_rntuple_pandas_index_matches_ttree(tmp_path):
-    rntuple_path = str(tmp_path / "ntuple.root")
-    ttree_path = str(tmp_path / "tree.root")
-    _write_rntuple(rntuple_path)
-    with uproot.recreate(ttree_path) as f:
-        tree = f.mktree("t", {"x": np.dtype("int64")})
-        tree.extend({"x": np.arange(0, 4)})
-        tree.extend({"x": np.arange(4, 8)})
-
-    with uproot.open(rntuple_path) as f:
-        from_rntuple = f["nt"].arrays(library="pd", entry_start=4, entry_stop=6)
-    with uproot.open(ttree_path) as f:
-        from_ttree = f["t"].arrays(library="pd", entry_start=4, entry_stop=6)
-
-    assert from_rntuple.index.tolist() == from_ttree.index.tolist() == [4, 5]
+    assert from_ntuple["x"].tolist() == from_field.tolist() == expected
+    assert from_ntuple.index.tolist() == from_field.index.tolist() == expected
+    assert from_tree.index.tolist() == expected

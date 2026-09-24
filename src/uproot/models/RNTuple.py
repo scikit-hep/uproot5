@@ -2015,6 +2015,11 @@ class RField(uproot.behaviors.RNTuple.HasFields):
         See also :ref:`uproot.behaviors.RNTuple.HasFields.arrays` to read
         multiple ``RFields`` into a group of arrays or an array-group.
         """
+        entry_start, entry_stop = (
+            uproot.behaviors.TBranch._regularize_entries_start_stop(
+                self.num_entries, entry_start, entry_stop
+            )
+        )
         arrays = self.arrays(
             entry_start=entry_start,
             entry_stop=entry_stop,
@@ -2050,9 +2055,8 @@ class RField(uproot.behaviors.RNTuple.HasFields):
                     raise ValueError(msg) from None
             if library.name == "pd":
                 pd = uproot.extras.pandas()
-                index_start = 0 if entry_start is None else entry_start
-                pandas_index = pd.RangeIndex(
-                    start=index_start, stop=index_start + len(arrays)
+                pandas_index = uproot.interpretation.library._pandas_basic_index(
+                    pd, entry_start, entry_start + len(arrays)
                 )
                 pandas_data = pd.Series(numpy_data, index=pandas_index)
                 return pandas_data
