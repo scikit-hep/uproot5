@@ -75,18 +75,7 @@ def create(file_path: str | Path | IO, **options):
 
     Additional options are passed as ``storage_options`` to the fsspec filesystem
     """
-    file_path = uproot._util.regularize_path(file_path)
-    storage_options = {
-        key: value for key, value in options.items() if key not in create.defaults
-    }
-    if isinstance(file_path, str) and uproot.sink.file.FileSink._file_exists(
-        file_path, **storage_options
-    ):
-        raise FileExistsError(
-            "path exists and refusing to overwrite (use 'uproot.recreate' to "
-            f"overwrite)\n\nfor path {file_path}"
-        )
-    return recreate(file_path, **options)
+    return _create_or_recreate(file_path, "create", options)
 
 
 def recreate(file_path: str | Path | IO, **options):
@@ -120,19 +109,15 @@ def recreate(file_path: str | Path | IO, **options):
 
     Additional options are passed as ``storage_options`` to the fsspec filesystem
     """
+    return _create_or_recreate(file_path, "recreate", options)
 
+
+def _create_or_recreate(file_path, mode, options):
     file_path = uproot._util.regularize_path(file_path)
     storage_options = {
-        key: value for key, value in options.items() if key not in recreate.defaults
+        key: value for key, value in options.items() if key not in create.defaults
     }
-    if isinstance(file_path, str):
-        # like ROOT's "RECREATE", physically truncate the file: otherwise a
-        # pre-existing, larger file would keep every byte beyond the new fEND.
-        # (uproot.update deliberately does not do this; it opens with "r+b".)
-        uproot.sink.file.FileSink._truncate_file(file_path, **storage_options)
-    sink = uproot.sink.file.FileSink(file_path, **storage_options)
     compression = options.pop("compression", create.defaults["compression"])
-
     initial_directory_bytes = options.pop(
         "initial_directory_bytes", create.defaults["initial_directory_bytes"]
     )
@@ -141,10 +126,13 @@ def recreate(file_path: str | Path | IO, **options):
     )
     uuid_function = options.pop("uuid_function", create.defaults["uuid_function"])
     if options:
+        # before opening the sink, which may truncate an existing file
         raise TypeError(
             "unrecognized options for uproot.create or uproot.recreate: "
             + ", ".join(repr(x) for x in options)
         )
+
+    sink = uproot.sink.file.FileSink(file_path, mode=mode, **storage_options)
     cascading = uproot.writing._cascade.create_empty(
         sink,
         compression,
@@ -189,8 +177,6 @@ def update(file_path: str | Path | IO, **options):
     storage_options = {
         key: value for key, value in options.items() if key not in update.defaults
     }
-    sink = uproot.sink.file.FileSink(file_path, **storage_options)
-
     initial_directory_bytes = options.pop(
         "initial_directory_bytes", create.defaults["initial_directory_bytes"]
     )
@@ -200,6 +186,8 @@ def update(file_path: str | Path | IO, **options):
             "unrecognized options for uproot.update: "
             + ", ".join(repr(x) for x in options)
         )
+
+    sink = uproot.sink.file.FileSink(file_path, mode="update", **storage_options)
     cascading = uproot.writing._cascade.update_existing(
         sink,
         initial_directory_bytes,

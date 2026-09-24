@@ -26,6 +26,11 @@ class FileSink:
         urlpath_or_file_like (str, Path, or file-like object): If a string or Path, a
             filesystem URL that specifies the file to open by fsspec. If a file-like object, it
             must have ``read``, ``write``, ``seek``, ``tell``, and ``flush`` methods.
+        mode ("create", "recreate", or "update"): Like ROOT's ``TFile`` options.
+            ``"create"`` raises ``FileExistsError`` if the path already exists,
+            ``"recreate"`` truncates an existing file (or file-like object), and
+            ``"update"`` keeps its contents. In all three, a missing path is created
+            along with its parent directories.
 
     An object that can write (and read) files on a local or remote filesystem.
     It can be initialized from a file-like object (already opened) or a filesystem URL.
@@ -33,7 +38,17 @@ class FileSink:
     In this case the file is opened in the first read or write operation.
     """
 
-    def __init__(self, urlpath_or_file_like: str | IO, **storage_options):
+    def __init__(
+        self,
+        urlpath_or_file_like: str | IO,
+        mode: str = "update",
+        **storage_options,
+    ):
+        if mode not in ("create", "recreate", "update"):
+            raise ValueError(
+                f"mode must be 'create', 'recreate', or 'update', not {mode!r}"
+            )
+
         self._open_file = None
         self._file = None
         self._closed = False
@@ -49,37 +64,63 @@ class FileSink:
                 raise TypeError(
                     """writable file can only be created from a file path or an object that supports reading and writing"""
                 )
+
+            if mode != "update":
+                self._file.truncate(0)
         else:
-            if not self._file_exists(urlpath_or_file_like, **storage_options):
-                self._truncate_file(urlpath_or_file_like, **storage_options)
+            fs, path = fsspec.core.url_to_fs(urlpath_or_file_like, **storage_options)
+            if mode == "create":
+                self._create_file(fs, path)
+            elif mode == "recreate" or not fs.exists(path):
+                self._truncate_file(fs, path)
 
-            self._open_file = fsspec.open(
-                urlpath_or_file_like, mode="r+b", **storage_options
-            )
+            self._open_file = fsspec.core.OpenFile(fs, path, mode="r+b")
 
-    @classmethod
-    def _file_exists(cls, urlpath: str, **storage_options) -> bool:
-        """
-        Args:
-            urlpath (str): A filesystem URL that specifies the file to check by fsspec.
-
-        Returns True if the file exists; False otherwise.
-        """
-        fs, local_path = fsspec.core.url_to_fs(urlpath, **storage_options)
-        return fs.exists(local_path)
+    @staticmethod
+    def _make_parent_directories(fs, path: str) -> None:
+        parent_directory = fs.sep.join(path.split(fs.sep)[:-1])
+        fs.mkdirs(parent_directory, exist_ok=True)
 
     @classmethod
-    def _truncate_file(cls, urlpath: str, **storage_options) -> None:
+    def _create_file(cls, fs, path: str) -> None:
         """
         Args:
-            urlpath (str): A filesystem URL that specifies the file to truncate by fsspec.
+            fs (fsspec.AbstractFileSystem): The filesystem of the file.
+            path (str): The file's path within ``fs``.
+
+        Creates an empty file, raising ``FileExistsError`` if it already exists.
+        Creates parent directories if necessary.
+        """
+        cls._make_parent_directories(fs, path)
+        try:
+            # exclusive creation, so that a file that appears after an existence
+            # check is never overwritten (atomic on local filesystems)
+            with fs.open(path, "xb"):
+                pass
+            return
+        except FileExistsError:
+            pass
+        except (ValueError, NotImplementedError):
+            # this filesystem does not support mode "xb"
+            if not fs.exists(path):
+                fs.touch(path, truncate=True)
+                return
+        raise FileExistsError(
+            "path exists and refusing to overwrite (use 'uproot.recreate' to "
+            f"overwrite)\n\nfor path {fs.unstrip_protocol(path)}"
+        )
+
+    @classmethod
+    def _truncate_file(cls, fs, path: str) -> None:
+        """
+        Args:
+            fs (fsspec.AbstractFileSystem): The filesystem of the file.
+            path (str): The file's path within ``fs``.
 
         Truncates the file to zero bytes. Creates parent directories if necessary.
         """
-        fs, local_path = fsspec.core.url_to_fs(urlpath, **storage_options)
-        parent_directory = fs.sep.join(local_path.split(fs.sep)[:-1])
-        fs.mkdirs(parent_directory, exist_ok=True)
-        fs.touch(local_path, truncate=True)
+        cls._make_parent_directories(fs, path)
+        fs.touch(path, truncate=True)
 
     @property
     def from_object(self) -> bool:
