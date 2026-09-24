@@ -101,7 +101,7 @@ class _GraphedTTreeSource:
     def _open_directory(self, file_path):
         return uproot.reading.ReadOnlyFile(
             file_path,
-            object_cache=None,
+            # the object cache keeps the TTree across a worker's partitions; arrays are not held
             array_cache=None,
             custom_classes=self._custom_classes,
             **self._options,
