@@ -3200,7 +3200,9 @@ class WritableNTuple:
             reloaded = directory._load_existing_ntuple(key)
             self._cascading = reloaded._cascading
 
-        compression = self._cascading._freesegments.fileheader.compression
+        compression_code = cnt._compression_code(
+            self._cascading._freesegments.fileheader.compression
+        )
         num_entries = self._cascading._num_entries
         header = self._cascading._header
         footer = self._cascading._footer
@@ -3363,7 +3365,7 @@ class WritableNTuple:
                     ]
                     new_cluster_page_data.append(
                         cnt.NTuple_ColumnPageListDescription(
-                            existing_pages, col_pages.element_offset, compression.code
+                            existing_pages, col_pages.element_offset, compression_code
                         )
                     )
                 # deferred columns: no pages needed for existing cluster groups
@@ -3396,9 +3398,12 @@ class WritableNTuple:
             )
 
         footer_raw = footer.serialize()
+        old_footer_key = self._cascading._footer_key
         new_footer_key = self._cascading.add_rblob(
             self._file.sink, footer_raw, len(footer_raw)
         )
+        self._cascading._footer_key = new_footer_key
+        self._cascading.sync(self._file.sink)
         self._cascading._anchor.seek_footer = (
             new_footer_key.location + new_footer_key.allocation
         )
@@ -3406,8 +3411,13 @@ class WritableNTuple:
         self._cascading._anchor.len_footer = len(footer_raw)
         anchor_raw = self._cascading._anchor.serialize()
         self._file.sink.write(self._cascading._anchor._location, anchor_raw)
-        self._cascading._freesegments.write(self._file.sink)
-        self._file.sink.flush()
+        self._cascading._freesegments.release(
+            old_footer_key.location,
+            old_footer_key.location
+            + old_footer_key.num_bytes
+            + old_footer_key.compressed_bytes,
+        )
+        self._cascading.sync(self._file.sink)
 
         # _existing_field_records and _column_counts are updated directly from what
         # we just wrote, without going back to disk for them specifically.
