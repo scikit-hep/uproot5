@@ -657,7 +657,7 @@ These "nested" NumPy arrays are not slicable as multidimensional arrays because 
     # File "<stdin>", line 1, in <module>
     # IndexError: too many indices for array: array is 1-dimensional, but 2 were indexed
 
-The Pandas form for this type of data is a DataFrame with Awkward Dtype, provided by the `awkward-pandas <https://github.com/intake/awkward-pandas>`__ package.
+The Pandas form for this type of data is a DataFrame with PyArrow dtype, provided by the `Pandas ArrowExtensionArray <https://pandas.pydata.org/docs/reference/api/pandas.arrays.ArrowExtensionArray.html>`__ type.
 
 .. code-block:: python
 
@@ -677,7 +677,7 @@ The Pandas form for this type of data is a DataFrame with Awkward Dtype, provide
 
     [2421 rows x 6 columns]
 
-You can operate on Awkward Array data in Pandas using the ``.ak`` accessor; see the [awkward-pandas documentation](https://awkward-pandas.readthedocs.io/en/latest/quickstart.html).
+You can operate on Awkward Array data in Pandas using the ``.ak`` accessor; see the [akimbo documentation](https://akimbo.readthedocs.io/en/latest/quickstart.html).
 
 Before Uproot 5.0, Uproot exploded this data with a `MultiIndex <https://pandas.pydata.org/pandas-docs/stable/user_guide/advanced.html>`__, such that each Pandas cell contains a number, not a list or other type. You can still do this using Awkward Array and `ak.to_dataframe <https://awkward-array.org/doc/main/reference/generated/ak.to_dataframe.html>`__:
 
