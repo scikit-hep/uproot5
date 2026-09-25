@@ -802,6 +802,10 @@ class HasFields(Mapping):
             [c.num_entries for c in clusters[start_cluster_idx:stop_cluster_idx]],
             dtype=int,
         )
+        # the buffers below start at the first cluster that is read
+        cluster_offset = (
+            cluster_starts[start_cluster_idx] if start_cluster_idx >= 0 else 0
+        )
 
         array_cache = _regularize_array_cache(array_cache, self.ntuple._file)
 
@@ -836,10 +840,7 @@ class HasFields(Mapping):
                 key_nr = int(key.split("-")[1])
                 # Find how many elements should be padded at the beginning
                 n_padding = self.ntuple.column_records[key_nr].first_element_index
-                n_padding -= (
-                    cluster_starts[start_cluster_idx] if start_cluster_idx >= 0 else 0
-                )
-                n_padding = max(n_padding, 0)
+                n_padding = max(n_padding - cluster_offset, 0)
                 dtype = None
                 if interpreter == "cpu":
                     content_generator = partial(
@@ -876,17 +877,12 @@ class HasFields(Mapping):
                 dtype_byte = self.ntuple.column_records[key_nr].type
                 _fill_container_dict(container_dict, content, key, dtype_byte, dtype)
 
-        cluster_offset = (
-            cluster_starts[start_cluster_idx] if start_cluster_idx >= 0 else 0
-        )
-        entry_start -= cluster_offset
-        entry_stop -= cluster_offset
         arrays = ak.from_buffers(
             form,
             cluster_num_entries,
             container_dict,
             backend="cuda" if interpreter == "gpu" and backend == "cuda" else "cpu",
-        )[entry_start:entry_stop]
+        )[entry_start - cluster_offset : entry_stop - cluster_offset]
 
         arrays = ak.to_backend(arrays, backend=backend)
         # no longer needed; save memory
@@ -922,8 +918,8 @@ class HasFields(Mapping):
                         raise ValueError(msg) from None
             if library.name == "pd":
                 pd = uproot.extras.pandas()
-                pandas_index = pd.RangeIndex(
-                    start=entry_start, stop=entry_start + len(arrays)
+                pandas_index = uproot.interpretation.library._pandas_basic_index(
+                    pd, entry_start, entry_start + len(arrays)
                 )
                 pandas_data = pd.DataFrame(numpy_data, index=pandas_index)
                 arrays = pandas_data
