@@ -171,6 +171,14 @@ def _serialize_string(content):
     return _rntuple_string_length_format.pack(len(content_bytes)) + content_bytes
 
 
+def _compression_code(compression):
+    # The file's compression is None when it is written uncompressed; encode that
+    # as ZLIB level 0, like TTree's fCompress, since a bare 0 is not an algorithm.
+    if compression is None:
+        return uproot.compression.ZLIB(0).code
+    return compression.code
+
+
 def _record_frame_wrap(payload, includeself=True):
     aloc = len(payload)
     if includeself:
@@ -554,7 +562,13 @@ class NTuple_Footer(CascadeLeaf):
         )
         out.append(_record_frame_wrap(schema_extension_payload))
 
-        out.append(_serialize_rntuple_list_frame(self.cluster_group_record_frames))
+        out.append(
+            _serialize_rntuple_list_frame(
+                [x.frame for x in self.cluster_group_record_frames],
+                wrap=False,
+                rawinput=True,
+            )
+        )
         payload = b"".join(out)
 
         env_header = _serialize_envelope_header(
@@ -604,24 +618,45 @@ class NTuple_EnvLink:
 
 
 class NTuple_ClusterGroupRecord:
+    """
+    Every extension rewrites the whole footer, which holds one of these per
+    extension so far, so the record's bytes (already wrapped as a list-frame
+    item) are computed once, here. The record is read-only so that the bytes
+    cannot go stale; ``page_list_envlink`` is captured as it is at construction.
+    """
+
     def __init__(self, min_entry, entry_span, num_clusters, page_list_envlink):
-        self.min_entry = min_entry
-        self.entry_span = entry_span
-        self.num_clusters = num_clusters
-        self.page_list_envlink = page_list_envlink
-        self._serialized = None
+        self._min_entry = min_entry
+        self._entry_span = entry_span
+        self._num_clusters = num_clusters
+        self._page_list_envlink = page_list_envlink
+        self._frame = _record_frame_wrap(
+            _rntuple_cluster_group_format.pack(min_entry, entry_span, num_clusters)
+            + page_list_envlink.serialize()
+        )
+
+    @property
+    def min_entry(self):
+        return self._min_entry
+
+    @property
+    def entry_span(self):
+        return self._entry_span
+
+    @property
+    def num_clusters(self):
+        return self._num_clusters
+
+    @property
+    def page_list_envlink(self):
+        return self._page_list_envlink
+
+    @property
+    def frame(self):
+        return self._frame
 
     def serialize(self):
-        # A record is built once, appended to the footer, and never modified
-        # again, but every extension rewrites the whole footer and so
-        # re-serializes all of the records written so far. Cache the bytes.
-        if self._serialized is None:
-            header_bytes = _rntuple_cluster_group_format.pack(
-                self.min_entry, self.entry_span, self.num_clusters
-            )
-            page_list_link_bytes = self.page_list_envlink.serialize()
-            self._serialized = header_bytes + page_list_link_bytes
-        return self._serialized
+        return self._frame[_rntuple_frame_size_format.size :]
 
     def __repr__(self):
         return f"{type(self).__name__}({self.num_clusters}, {self.page_list_envlink})"
@@ -875,6 +910,7 @@ class NTuple(CascadeNode):
         2. Write page list for new cluster group
         3. Relocate footer
         4. Update anchor's foot metadata values in-place
+        5. Release old footer
         """
 
         data = _regularize_input_type_to_awkward(data)
@@ -928,6 +964,10 @@ class NTuple(CascadeNode):
                 deltas = numpy.array(index >= 0, dtype=index.dtype)
                 data_buffers[key] = numpy.cumsum(deltas, dtype=deltas.dtype)
 
+        # TODO: need better logic to specify per-column/field compression
+        compression = self._directory.freesegments.fileheader.compression
+        compression_code = _compression_code(compression)
+
         for idx, key in enumerate(self._header._column_keys):
             col_data = data_buffers[key]
             col_len = len(col_data.reshape(-1))
@@ -935,8 +975,6 @@ class NTuple(CascadeNode):
             if col_data.dtype == numpy.dtype("bool"):
                 raw_data = numpy.packbits(raw_data, bitorder="little")
             uncompressed_bytes = len(raw_data)
-            # TODO: need better logic to specify per-column/field compression
-            compression = self._directory.freesegments.fileheader.compression
             raw_data = uproot.compression.compress(raw_data, compression)
             # TODO: need to add some logic for page splitting
             pages = []
@@ -948,7 +986,7 @@ class NTuple(CascadeNode):
                 pages.append(NTuple_PageDescription(col_len, page_locator))
             cluster_page_data.append(
                 NTuple_ColumnPageListDescription(
-                    pages, self._column_counts[idx], compression.code
+                    pages, self._column_counts[idx], compression_code
                 )
             )
             self._column_counts[idx] += col_len
@@ -986,16 +1024,13 @@ class NTuple(CascadeNode):
         self._footer.cluster_group_record_frames.append(cluster_group)
 
         # 3. Relocate footer
+        # The old footer stays allocated until the anchor no longer points to
+        # it, so that nothing written before then can land on top of it.
 
         old_footer_key = self._footer_key
-        self._freesegments.release(
-            old_footer_key.location,
-            old_footer_key.location
-            + old_footer_key.num_bytes
-            + old_footer_key.compressed_bytes,
-        )
         footer_raw_data = self._footer.serialize()
         self._footer_key = self.add_rblob(sink, footer_raw_data, len(footer_raw_data))
+        self.sync(sink)
 
         # 4. Update anchor's foot metadata values in-place
 
@@ -1007,8 +1042,29 @@ class NTuple(CascadeNode):
 
         anchor_raw_data = self._anchor.serialize()
         sink.write(self._anchor.location, anchor_raw_data)
-        self._freesegments.write(sink)
 
+        # 5. Release old footer
+
+        self._freesegments.release(
+            old_footer_key.location,
+            old_footer_key.location
+            + old_footer_key.num_bytes
+            + old_footer_key.compressed_bytes,
+        )
+        self._freesegments.write(sink)
+        self.sync(sink)
+
+    def sync(self, sink):
+        """
+        Pushes everything written so far to storage.
+
+        ``add_rblob`` neither flushes nor sets the file length, because an
+        extension adds one blob per column plus the page list and the footer,
+        and doing either per blob is expensive for remote sinks. Instead,
+        callers sync once before overwriting the anchor in place (so that it
+        never points to data that has not reached storage) and once when done.
+        """
+        sink.set_file_length(self._freesegments.fileheader.end)
         sink.flush()
 
     def add_rblob(
@@ -1036,10 +1092,7 @@ class NTuple(CascadeNode):
 
         key.write(sink)
         sink.write(location + key.num_bytes, raw_data)
-        sink.set_file_length(self._freesegments.fileheader.end)
-        # no flush here: callers flush once at their commit boundary, because
-        # an extension adds one blob per column plus the page list and the
-        # footer, and a flush per blob is expensive for remote sinks
+        # no set_file_length or flush here: see sync
         return key
 
     def write(self, sink):
@@ -1064,6 +1117,9 @@ class NTuple(CascadeNode):
         #### Footer end ##############################
 
         #### Anchor ##############################
+        # add_object syncs after writing the anchor and the directory, which
+        # point to the header and footer, so those must be synced first
+        self.sync(sink)
         anchor_raw_data = self._anchor.serialize()
         self._key = self._directory.add_object(
             sink,
@@ -1079,8 +1135,7 @@ class NTuple(CascadeNode):
         #### Anchor end ##############################
 
         self._freesegments.write(sink)
-
-        sink.flush()
+        self.sync(sink)
 
 
 def _to_packed_form(form):
