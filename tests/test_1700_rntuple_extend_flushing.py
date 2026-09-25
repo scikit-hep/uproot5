@@ -9,6 +9,8 @@ and the old footer must stay intact until then.
 
 from __future__ import annotations
 
+import struct
+
 import numpy as np
 import pytest
 
@@ -16,9 +18,27 @@ import uproot
 import uproot.sink.file
 
 
+class SinkLog(list):
+    on_flush = None
+
+
+def free_segments_classname(path):
+    """Class name of the key that the file header's fSeekFree points to."""
+    with uproot.open(path) as f:
+        seek_free = f.file.fSeekFree
+    with open(path, "rb") as raw:
+        raw.seek(seek_free)
+        data = raw.read(64)
+    (version,) = struct.unpack(">h", data[4:6])
+    # fNbytes, fVersion, fObjlen, fDatime, fKeylen, fCycle, then fSeekKey and
+    # fSeekPdir, which are 64-bit in big keys
+    position = 18 + (16 if version > 1000 else 8)
+    return data[position + 1 : position + 1 + data[position]]
+
+
 @pytest.fixture
 def sink_log(monkeypatch):
-    log = []
+    log = SinkLog()
     original_write = uproot.sink.file.FileSink.write
     original_flush = uproot.sink.file.FileSink.flush
 
@@ -28,7 +48,10 @@ def sink_log(monkeypatch):
 
     def flush(self):
         log.append(("flush",))
-        return original_flush(self)
+        out = original_flush(self)
+        if log.on_flush is not None:
+            log.on_flush()
+        return out
 
     monkeypatch.setattr(uproot.sink.file.FileSink, "write", write)
     monkeypatch.setattr(uproot.sink.file.FileSink, "flush", flush)
@@ -48,8 +71,17 @@ def checked_commit(path, name, sink_log, operation):
             anchor.member("fSeekFooter") + anchor.member("fNBytesFooter"),
         )
 
+    def check_free_segments():
+        # every flush leaves the file header pointing to the FreeSegments
+        # record, not to a blob that was allocated over its old location
+        assert free_segments_classname(path) == b"TFile"
+
     sink_log.clear()
-    operation()
+    sink_log.on_flush = check_free_segments
+    try:
+        operation()
+    finally:
+        sink_log.on_flush = None
 
     anchor_write = max(
         i

@@ -1051,19 +1051,21 @@ class NTuple(CascadeNode):
             + old_footer_key.num_bytes
             + old_footer_key.compressed_bytes,
         )
-        self._freesegments.write(sink)
         self.sync(sink)
 
     def sync(self, sink):
         """
-        Pushes everything written so far to storage.
+        Pushes everything written so far to storage, along with the FreeSegments
+        record and the file header, which ``add_rblob`` may have made stale by
+        allocating over the FreeSegments record's old location.
 
-        ``add_rblob`` neither flushes nor sets the file length, because an
-        extension adds one blob per column plus the page list and the footer,
-        and doing either per blob is expensive for remote sinks. Instead,
-        callers sync once before overwriting the anchor in place (so that it
-        never points to data that has not reached storage) and once when done.
+        ``add_rblob`` does none of this, because an extension adds one blob per
+        column plus the page list and the footer, and doing it per blob is
+        expensive for remote sinks. Instead, callers sync once before
+        overwriting the anchor in place (so that it never points to data that
+        has not reached storage) and once when done.
         """
+        self._freesegments.write(sink)
         sink.set_file_length(self._freesegments.fileheader.end)
         sink.flush()
 
@@ -1134,7 +1136,6 @@ class NTuple(CascadeNode):
         self._anchor.location = self._key.location + self._key.allocation
         #### Anchor end ##############################
 
-        self._freesegments.write(sink)
         self.sync(sink)
 
 
