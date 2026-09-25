@@ -3417,7 +3417,6 @@ class WritableNTuple:
             + old_footer_key.num_bytes
             + old_footer_key.compressed_bytes,
         )
-        self._cascading._freesegments.write(self._file.sink)
         self._cascading.sync(self._file.sink)
 
         # _existing_field_records and _column_counts are updated directly from what
