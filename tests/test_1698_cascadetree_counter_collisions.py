@@ -84,22 +84,43 @@ def test_counter_disagreement(tmp_path, overrides):
             tree.extend({**data, **overrides})
 
 
+def concat_fields(outer, inner):
+    return outer + inner
+
+
+record = ak.Array([{"a": 1}]).type
+jagged_record = ak.Array([[{"n": 1}]]).type
+
+
 @pytest.mark.parametrize(
-    "nx_type",
-    [np.float64, np.dtype(("i4", (3,))), x.type, {"a": np.int32}],
-    ids=["float", "subarray", "jagged", "record"],
+    ("branch_types", "field_name"),
+    [
+        ({"nx": np.float64, "x": x.type}, None),
+        ({"nx": np.dtype(("i4", (3,))), "x": x.type}, None),
+        ({"nx": x.type, "x": x.type}, None),
+        ({"nx": {"a": np.int32}, "x": x.type}, None),
+        ({"x": x.type, "nx": {"a": np.int32}}, None),
+        ({"x": x.type, "nx": record}, None),
+        ({"n": {"x": np.int32}, "x": x.type}, concat_fields),
+        ({"x": x.type, "n": {"x": np.int32}}, concat_fields),
+        ({"x": x.type, "n": ak.Array([{"x": 1}]).type}, concat_fields),
+        ({"n": jagged_record}, concat_fields),
+    ],
+    ids=[
+        "float",
+        "subarray",
+        "jagged",
+        "record-before",
+        "record-after",
+        "awkward-record-after",
+        "record-field-before",
+        "record-field-after",
+        "awkward-record-field-after",
+        "own-jagged-record-field",
+    ],
 )
-def test_counter_collides_with_incompatible_branch(tmp_path, nx_type):
+def test_counter_collides_with_incompatible_branch(tmp_path, branch_types, field_name):
+    kwargs = {} if field_name is None else {"field_name": field_name}
     with uproot.recreate(tmp_path / "file.root") as f:
         with pytest.raises(ValueError, match="collides"):
-            f.mktree("t", {"nx": nx_type, "x": x.type})
-
-
-def test_counter_collides_with_record_field(tmp_path):
-    with uproot.recreate(tmp_path / "file.root") as f:
-        with pytest.raises(ValueError, match="collides"):
-            f.mktree(
-                "t",
-                {"n": {"x": np.int32}, "x": x.type},
-                field_name=lambda outer, inner: outer + inner,
-            )
+            f.mktree("t", branch_types, **kwargs)
