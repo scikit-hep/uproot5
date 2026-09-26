@@ -1802,7 +1802,44 @@ class RNTuple(HasFields):
         String that uniquely specifies this ``RNTuple`` in its path, to use as
         part of object and array cache keys.
         """
-        return f"{self.parent.cache_key}{self.name};{self.parent.fCycle}"
+        if self._cache_key is None:
+            self._cache_key = f"{self.parent.cache_key}{self.name};{self.parent.fCycle}"
+        return self._cache_key
+
+    @property
+    def attributes(self):
+        """
+        The linked attribute sets of the ``RNTuple`` as a dict of str \u2192
+        :doc:`uproot.models.RNTuple.RNTupleAttributeSet`, in the order in which they
+        appear in the file.
+
+        Attribute sets hold user-defined metadata that applies to *ranges of
+        entries*, so they are not ordinary fields and are not included in
+        :ref:`uproot.behaviors.RNTuple.HasFields.keys`. The dict is empty for
+        ``RNTuples`` that have no attributes.
+
+        Only the footer is read: each attribute set reads its own data on first use,
+        so an unsupported attribute set does not prevent the others from being read.
+
+        For example:
+
+        .. code-block:: python
+
+            >>> my_ntuple.attributes
+            {'Calibration': <RNTupleAttributeSet 'Calibration' at 0x7ff8e0a1c250>}
+            >>> my_ntuple.attributes["Calibration"].keys()
+            ['tag']
+            >>> my_ntuple.attributes["Calibration"].ranges
+            array([(0, 500), (500, 500)], dtype=[('start', '<u8'), ('length', '<u8')])
+        """
+        if self._attributes is None:
+            self._attributes = {
+                record.attribute_set_name: uproot.models.RNTuple.RNTupleAttributeSet(
+                    record, self
+                )
+                for record in self.footer.linked_attribute_sets
+            }
+        return self._attributes
 
 
 def _filter_name_deep(filter_name, hasfields, field):
