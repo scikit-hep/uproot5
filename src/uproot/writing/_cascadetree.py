@@ -178,6 +178,8 @@ class Tree:
                             )
 
             elif branch_dtype is not None:
+                if branch_dtype.subdtype is not None or branch_dtype.kind not in "iu":
+                    self._check_not_counter(branch_name)
                 if branch_name not in self._branch_lookup:
                     self._branch_lookup[branch_name] = len(self._branch_data)
                     self._branch_data.append(
@@ -190,6 +192,7 @@ class Tree:
                     parameters = {}
 
                 if parameters.get("__array__") == "string":
+                    self._check_not_counter(branch_name)
                     if branch_name not in self._branch_lookup:
                         self._branch_lookup[branch_name] = len(self._branch_data)
                         self._branch_data.append(
@@ -237,6 +240,8 @@ class Tree:
                         self._branch_lookup[counter_name] = len(self._branch_data)
                         self._branch_data.append(counter)
 
+                    self._check_not_counter(branch_name)
+
                     if type(content).__name__ == "RecordType":
                         if hasattr(content, "contents"):
                             contents = content.contents
@@ -248,7 +253,6 @@ class Tree:
                         if keys is None:
                             keys = [str(x) for x in range(len(contents))]
 
-                        self._check_not_counter(branch_name)
                         if branch_name not in self._branch_lookup:
                             self._branch_lookup[branch_name] = len(self._branch_data)
                             self._branch_data.append(
@@ -351,9 +355,9 @@ class Tree:
         index = self._branch_lookup.get(name)
         if index is not None and self._branch_data[index]["kind"] == "counter":
             raise ValueError(
-                f"record branch {name!r} collides with a generated counter of the "
-                f"same name; rename one of them or choose a different counter_name "
-                f"or field_name"
+                f"branch {name!r} collides with a generated counter of the same "
+                f"name; rename one of them or choose a different counter_name or "
+                f"field_name"
             )
 
     def _branch_ak_to_np(self, branch_datashape):

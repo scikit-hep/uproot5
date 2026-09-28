@@ -18,8 +18,9 @@ def counter_name(counted):
 
 
 def make_tree(f):
-    # 'nx' is declared before the jagged 'x' whose counter replaces it, and
-    # 'Jet_pt' and 'Jet_eta' share the counter 'nJet'
+    # 'nx' is declared before the jagged 'x' whose counter replaces it,
+    # 'Jet_pt' and 'Jet_eta' share the counter 'nJet', and 'nJet' is declared
+    # after the counter exists
     return f.mktree(
         "t",
         {
@@ -28,6 +29,7 @@ def make_tree(f):
             "x": x.type,
             "Jet_pt": jet_pt.type,
             "Jet_eta": jet_eta.type,
+            "nJet": np.int32,
         },
         counter_name=counter_name,
     )
@@ -89,27 +91,39 @@ def concat_fields(outer, inner):
 
 
 record = ak.Array([{"a": 1}]).type
+record_x = ak.Array([{"x": 1}]).type
 jagged_record = ak.Array([[{"n": 1}]]).type
 
 
 @pytest.mark.parametrize(
-    ("branch_types", "field_name"),
+    ("branch_types", "kwargs"),
     [
-        ({"nx": np.float64, "x": x.type}, None),
-        ({"nx": np.dtype(("i4", (3,))), "x": x.type}, None),
-        ({"nx": x.type, "x": x.type}, None),
-        ({"nx": {"a": np.int32}, "x": x.type}, None),
-        ({"x": x.type, "nx": {"a": np.int32}}, None),
-        ({"x": x.type, "nx": record}, None),
-        ({"n": {"x": np.int32}, "x": x.type}, concat_fields),
-        ({"x": x.type, "n": {"x": np.int32}}, concat_fields),
-        ({"x": x.type, "n": ak.Array([{"x": 1}]).type}, concat_fields),
-        ({"n": jagged_record}, concat_fields),
+        ({"nx": np.float64, "x": x.type}, {}),
+        ({"x": x.type, "nx": np.float64}, {}),
+        ({"nx": np.dtype(("i4", (3,))), "x": x.type}, {}),
+        ({"x": x.type, "nx": np.dtype(("i4", (3,)))}, {}),
+        ({"nx": "string", "x": x.type}, {}),
+        ({"x": x.type, "nx": "string"}, {}),
+        ({"nx": x.type, "x": x.type}, {}),
+        ({"x": x.type, "nx": x.type}, {}),
+        ({"nx": {"a": np.int32}, "x": x.type}, {}),
+        ({"x": x.type, "nx": {"a": np.int32}}, {}),
+        ({"x": x.type, "nx": record}, {}),
+        ({"n": {"x": np.int32}, "x": x.type}, {"field_name": concat_fields}),
+        ({"x": x.type, "n": {"x": np.int32}}, {"field_name": concat_fields}),
+        ({"x": x.type, "n": record_x}, {"field_name": concat_fields}),
+        ({"n": jagged_record}, {"field_name": concat_fields}),
+        ({"x": x.type}, {"counter_name": lambda counted: counted}),
     ],
     ids=[
-        "float",
-        "subarray",
-        "jagged",
+        "float-before",
+        "float-after",
+        "subarray-before",
+        "subarray-after",
+        "string-before",
+        "string-after",
+        "jagged-before",
+        "jagged-after",
         "record-before",
         "record-after",
         "awkward-record-after",
@@ -117,10 +131,10 @@ jagged_record = ak.Array([[{"n": 1}]]).type
         "record-field-after",
         "awkward-record-field-after",
         "own-jagged-record-field",
+        "own-jagged-branch",
     ],
 )
-def test_counter_collides_with_incompatible_branch(tmp_path, branch_types, field_name):
-    kwargs = {} if field_name is None else {"field_name": field_name}
+def test_counter_collides_with_incompatible_branch(tmp_path, branch_types, kwargs):
     with uproot.recreate(tmp_path / "file.root") as f:
         with pytest.raises(ValueError, match="collides"):
             f.mktree("t", branch_types, **kwargs)

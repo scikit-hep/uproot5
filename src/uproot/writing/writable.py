@@ -1810,7 +1810,11 @@ in file {self.file_path} in directory {self.path}"""
                 type specifications, they are assumed to be the actual data to be written.
             title (str): Title for the new TTree.
             counter_name (callable of str \u2192 str): Function to generate counter-TBranch
-                names for Awkward Arrays of variable-length lists.
+                names for Awkward Arrays of variable-length lists. Arrays whose
+                counters get the same name share one counter TBranch. A counter
+                replaces a scalar integer TBranch of the same name with an
+                ``int32`` one; a name collision with any other TBranch raises
+                a ValueError.
             field_name (callable of str \u2192 str): Function to generate TBranch
                 names for columns of an Awkward record array or a Pandas DataFrame.
             initial_basket_capacity (int): Number of TBaskets that can be written to the
