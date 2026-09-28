@@ -296,6 +296,10 @@ jobs:
           # cccl-python >= 1.2 JIT-compiles the Python callables that Awkward's
           # CUDA backend passes to cuda.compute with numba-cuda-mlir, which the
           # conda package treats as optional, so it has to be requested here.
+          #
+          # numba-cuda (and with it numba) used to be a dependency of
+          # cccl-python, but the conda-forge rebuild of cccl-python 1.2.0
+          # (build number 1) dropped it, so it has to be requested here too.
           create-args: >-
             -c rapidsai
             python=3.13
@@ -303,6 +307,7 @@ jobs:
             cuda-toolkit
             cuda-python
             cccl-python
+            numba-cuda
             numba-cuda-mlir
             cupy
             kvikio
