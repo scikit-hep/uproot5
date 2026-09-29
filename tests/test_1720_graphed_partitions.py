@@ -31,7 +31,9 @@ def _ranges(parts):
 def test_steps_per_file_splits_into_contiguous_ranges():
     parts = graphed_partitions(_zmumu(), steps_per_file=5)
     assert _ranges(parts) == [((i * N) // 5, ((i + 1) * N) // 5) for i in range(5)]
-    assert {(p.uri, p.tree) for p in parts} == {(_zmumu().split(":")[0], "/events;1")}
+    assert {(p.uri, p.tree) for p in parts} == {
+        (_zmumu().rsplit(":", 1)[0], "/events;1")
+    }
     assert _ranges(graphed_partitions(_zmumu())) == [(0, N)]
 
 
@@ -52,7 +54,7 @@ def test_blind_partitions_open_no_file_and_resolve_on_read():
     eager = graphed_partitions(_zmumu(), steps_per_file=3)
     tree = uproot.open(_zmumu())
     assert [p.resolve(N) for p in blind] == [
-        graphed.core.Partition(_zmumu().split(":")[0], "events", s, e)
+        graphed.core.Partition(_zmumu().rsplit(":", 1)[0], "events", s, e)
         for s, e in _ranges(eager)
     ]
     chunk = read_graphed_partition(blind[1], ["px1"], tree=tree)
@@ -66,7 +68,7 @@ def test_blind_partitions_open_no_file_and_resolve_on_read():
 
 
 def test_a_blind_partition_without_an_object_path_reads_the_single_tree():
-    bare = _zmumu().split(":")[0]
+    bare = _zmumu().rsplit(":", 1)[0]
     (part,) = graphed_partitions(bare, open_files=False)
     assert part.tree == ""
     chunk = read_graphed_partition(part, ["px1"])
@@ -74,7 +76,7 @@ def test_a_blind_partition_without_an_object_path_reads_the_single_tree():
 
 
 def test_a_missing_tree_under_allow_missing_yields_no_partition():
-    absent = _zmumu().split(":")[0] + ":nope"
+    absent = _zmumu().rsplit(":", 1)[0] + ":nope"
     parts = graphed_partitions([_zmumu(), absent], steps_per_file=2, allow_missing=True)
     assert len(parts) == 2 and {p.tree for p in parts} == {"/events;1"}
     with pytest.raises(uproot.KeyInFileError):
