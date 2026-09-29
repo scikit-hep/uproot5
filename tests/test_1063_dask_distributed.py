@@ -18,6 +18,6 @@ dask_distributed = pytest.importorskip("dask.distributed")
 def test_issue_1063(handler):
     file_path = skhep_testdata.data_path("uproot-issue121.root")
 
-    with dask_distributed.Client():
+    with dask_distributed.Client(dashboard_address=":0"):
         events = uproot.dask({file_path: "Events"}, handler=handler)
         dask.compute(events.Muon_pt)
