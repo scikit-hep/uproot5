@@ -1,6 +1,8 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot5/blob/main/LICENSE
 import shutil
+import socket
 import subprocess
+import tempfile
 import pytest
 import threading
 import contextlib
@@ -14,6 +16,39 @@ from http.server import HTTPServer
 from RangeHTTPServer import RangeRequestHandler
 
 import uproot
+
+_skhep_data_path = skhep_testdata.data_path
+
+
+def _data_path(filename, raise_missing=True, cache_dir=None):
+    """
+    Like ``skhep_testdata.data_path``, but safe to call from several processes.
+
+    skhep_testdata writes a downloaded file straight into the shared cache, so
+    under pytest-xdist another worker can find the file half-written and read
+    it. Download into a private directory instead, and move the finished file
+    into the cache.
+    """
+    if cache_dir is None:
+        cache_path = skhep_testdata.data.cache_path()
+        target = cache_path / filename
+        if not target.exists():
+            with tempfile.TemporaryDirectory(dir=cache_path) as tmp:
+                path = _skhep_data_path(filename, raise_missing, tmp)
+                if path.startswith(tmp) and os.path.isfile(path):
+                    target.parent.mkdir(parents=True, exist_ok=True)
+                    try:
+                        os.replace(path, target)
+                    except OSError:
+                        # on Windows, another worker may already have it open
+                        if not target.exists():
+                            raise
+    return _skhep_data_path(filename, raise_missing, cache_dir)
+
+
+# conftest.py is imported before the test modules, so this also covers
+# "from skhep_testdata import data_path"
+skhep_testdata.data_path = _data_path
 
 
 @pytest.fixture(scope="function", autouse=False)
@@ -149,9 +184,13 @@ def xrootd_server(tmpdir_factory):
     xrootd = shutil.which("xrootd")
     if xrootd is None:
         pytest.skip("xrootd server executable is not available on PATH")
-    proc = subprocess.Popen([xrootd, server_dir])
+    # not the default port, so that several pytest-xdist workers can each run one
+    with socket.socket() as sock:
+        sock.bind(("localhost", 0))
+        port = sock.getsockname()[1]
+    proc = subprocess.Popen([xrootd, "-p", str(port), server_dir])
     time.sleep(2)  # give it some startup
-    yield "root://localhost/" + str(temp_path), temp_path
+    yield f"root://localhost:{port}/" + str(temp_path), temp_path
     proc.terminate()
     proc.wait(timeout=10)
     shutil.rmtree(server_dir)
