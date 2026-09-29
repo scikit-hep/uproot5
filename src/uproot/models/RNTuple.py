@@ -430,9 +430,11 @@ in file {self.file.file_path}"""
         The list of cluster summaries in the RNTuple.
         """
         if self._cluster_summaries is None:
-            self._cluster_summaries = []
+            # assigned only once complete, so that another thread never sees it partly filled
+            cluster_summaries = []
             for pl in self.page_list_envelopes:
-                self._cluster_summaries.extend(pl.cluster_summaries)
+                cluster_summaries.extend(pl.cluster_summaries)
+            self._cluster_summaries = cluster_summaries
         return self._cluster_summaries
 
     @property
@@ -441,9 +443,11 @@ in file {self.file.file_path}"""
         The list of page links in the RNTuple.
         """
         if self._page_link_list is None:
-            self._page_link_list = []
+            # assigned only once complete, so that another thread never sees it partly filled
+            page_link_list = []
             for pl in self.page_list_envelopes:
-                self._page_link_list.extend(pl.pagelinklist)
+                page_link_list.extend(pl.pagelinklist)
+            self._page_link_list = page_link_list
         return self._page_link_list
 
     def read_locator(self, loc, uncomp_size):
@@ -474,13 +478,16 @@ in file {self.file.file_path}"""
         context = {}
 
         if not self._page_list_envelopes:
+            # assigned only once complete, so that another thread never sees it partly filled
+            page_list_envelopes = []
             for record in self.footer.cluster_group_records:
                 link = record.page_list_link
                 loc = link.locator
                 decomp_chunk, cursor = self.read_locator(loc, link.env_uncomp_size)
-                self._page_list_envelopes.append(
+                page_list_envelopes.append(
                     PageLink().read(decomp_chunk, cursor, context)
                 )
+            self._page_list_envelopes = page_list_envelopes
 
         return self._page_list_envelopes
 
