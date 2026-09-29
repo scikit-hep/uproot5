@@ -489,8 +489,9 @@ def _dask_array_from_map(
 
     blockwise_kwargs = {
         "output": name,
-        "output_indices": "i",
-        "indices": [(io_arg_map, "i")],
+        "output_indices": tuple(range(len(chunks))),
+        "indices": [(io_arg_map, (0,))],
+        "new_axes": {axis: chunks[axis] for axis in range(1, len(chunks))},
         "numblocks": {},
         "annotations": None,
     }
@@ -656,8 +657,9 @@ def _get_dask_array(
 
     for key in common_keys:
         dt = ttrees[0][key].interpretation.numpy_dtype
+        inner_shape = ()
         if dt.subdtype is not None:
-            dt, _inner_shape = dt.subdtype
+            dt, inner_shape = dt.subdtype
 
         chunks = []
         chunk_args = []
@@ -704,7 +706,7 @@ which has {entry_stop} entries"""
                 interpretation_executor,
             ),
             chunk_args,
-            chunks=(tuple(chunks),),
+            chunks=(tuple(chunks), *((size,) for size in inner_shape)),
             dtype=dt,
             label=f"{key}-from-uproot",
         )
@@ -748,8 +750,9 @@ def _get_dask_array_delay_open(
 
     for key in common_keys:
         dt = obj[key].interpretation.numpy_dtype
+        inner_shape = ()
         if dt.subdtype is not None:
-            dt, _inner_shape = dt.subdtype
+            dt, inner_shape = dt.subdtype
 
         partitions = []
         partition_args = []
@@ -796,7 +799,7 @@ def _get_dask_array_delay_open(
                 interpretation_executor,
             ),
             partition_args,
-            chunks=(tuple(partitions),),
+            chunks=(tuple(partitions), *((size,) for size in inner_shape)),
             dtype=dt,
             label=f"{key}-from-uproot",
         )
