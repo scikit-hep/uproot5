@@ -33,8 +33,8 @@ jobs:
           - platform: ubuntu-latest
             python-version: '3.10'
             root-version: '6.32'
-          # Also runs the graphed tests and the XRootD server tests, which no
-          # other job has the dependencies for, and measures coverage
+          # Also runs the XRootD server tests, which no other job has the
+          # server for, and measures coverage
           - platform: ubuntu-latest
             python-version: '3.14'
             root-version: latest
@@ -94,9 +94,7 @@ jobs:
           uv pip install --group=test-xrootd
 
       - name: Pip install the package
-        env:
-          EXTRA_GROUPS: ${{ matrix.coverage && '--group=test-graphed' || '' }}
-        run: uv pip install --system -e. --group=dev $EXTRA_GROUPS
+        run: uv pip install --system -e. --group=dev
 
       - name: Run pytest
         if: ${{ !matrix.coverage }}
