@@ -11,6 +11,8 @@ context manager (Python's ``with`` statement) to ensure that files are properly 
 
 from __future__ import annotations
 
+import contextlib
+import io
 import numbers
 import os
 from typing import IO
@@ -83,9 +85,12 @@ class FileSink:
             # through the opened file, rather than fs.touch, so that a filesystem
             # that cannot open it for writing fails before the file is lost
             self._ensure()
-            # truncate is not required of file-like objects
-            if callable(getattr(self._file, "truncate", None)):
-                self._file.truncate(0)
+            # truncate is not required of file-like objects, and io.IOBase's
+            # default implementation raises io.UnsupportedOperation
+            truncate = getattr(self._file, "truncate", None)
+            if callable(truncate):
+                with contextlib.suppress(io.UnsupportedOperation):
+                    truncate(0)
 
     @staticmethod
     def _make_parent_directories(fs, path: str) -> None:
@@ -102,18 +107,20 @@ class FileSink:
         Creates an empty file, raising ``FileExistsError`` if it already exists.
         Creates parent directories if necessary.
         """
-        cls._make_parent_directories(fs, path)
-        try:
-            # exclusive creation, so that a file that appears after an existence
-            # check is never overwritten (atomic on local filesystems)
-            with fs.open(path, "xb"):
+        if not fs.exists(path):
+            cls._make_parent_directories(fs, path)
+            try:
+                # exclusive creation, so that a file that appears after the check
+                # is not overwritten (atomic on local filesystems). The check is
+                # still needed: a caching filesystem, such as simplecache, only
+                # creates its local copy exclusively and then uploads over the file.
+                with fs.open(path, "xb"):
+                    pass
+                return
+            except FileExistsError:
                 pass
-            return
-        except FileExistsError:
-            pass
-        except (ValueError, NotImplementedError):
-            # this filesystem does not support mode "xb"
-            if not fs.exists(path):
+            except (ValueError, NotImplementedError):
+                # this filesystem does not support mode "xb"
                 fs.touch(path, truncate=True)
                 return
         raise FileExistsError(

@@ -35,17 +35,49 @@ def test_recreate_truncates(tmp_path, kind):
         assert path.stat().st_size == f.file.fEND
 
 
-def test_recreate_file_like_without_truncate():
-    class FileLike:
-        def __init__(self):
-            self.buffer = io.BytesIO()
+class FileLikeWithoutTruncate:
+    def __init__(self):
+        self.buffer = io.BytesIO()
 
-        def __getattr__(self, name):
-            if name in ("read", "write", "seek", "tell", "flush"):
-                return getattr(self.buffer, name)
-            raise AttributeError(name)
+    def __getattr__(self, name):
+        if name in ("read", "write", "seek", "tell", "flush"):
+            return getattr(self.buffer, name)
+        raise AttributeError(name)
 
-    file = FileLike()
+
+class RawWithUnsupportedTruncate(io.RawIOBase):
+    # inherits io.IOBase.truncate, which raises io.UnsupportedOperation
+    def __init__(self):
+        self.buffer = io.BytesIO()
+
+    def readable(self):
+        return True
+
+    def writable(self):
+        return True
+
+    def seekable(self):
+        return True
+
+    def readinto(self, b):
+        return self.buffer.readinto(b)
+
+    def write(self, b):
+        return self.buffer.write(b)
+
+    def seek(self, *args):
+        return self.buffer.seek(*args)
+
+    def tell(self):
+        return self.buffer.tell()
+
+    def close(self):
+        pass
+
+
+@pytest.mark.parametrize("cls", [FileLikeWithoutTruncate, RawWithUnsupportedTruncate])
+def test_recreate_file_like_without_truncate(cls):
+    file = cls()
     with uproot.recreate(file) as f:
         f["h"] = "hello"
     with uproot.open(io.BytesIO(file.buffer.getvalue())) as f:
@@ -80,6 +112,9 @@ def test_create_and_update_do_not_truncate(tmp_path):
 
     with pytest.raises(FileExistsError):
         uproot.create(path)
+    # simplecache creates its local copy exclusively, and it is not cached yet
+    with pytest.raises(FileExistsError):
+        uproot.create("simplecache::" + path.as_uri())
     assert path.read_bytes() == contents
 
     # a file-like object has no path to check, so create writes into it as is
