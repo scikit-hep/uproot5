@@ -37,7 +37,8 @@ def test_std_array_of_records():
 
 
 def test_nested_std_arrays(tmp_path):
-    records = ak.zip({"x": numpy.arange(30) + 0.5, "y": numpy.arange(30)})
+    y = numpy.arange(30, dtype=numpy.int64)
+    records = ak.zip({"x": y + 0.5, "y": y})
 
     def array(content, size):
         return ak.to_regular(ak.unflatten(content, size), axis=1)
@@ -58,7 +59,7 @@ def test_nested_std_arrays(tmp_path):
     }
     # struct{std::array<struct>, int}
     arrays["rec_arr"] = ak.zip(
-        {"a": arrays["arr"], "z": numpy.arange(5)}, depth_limit=1
+        {"a": arrays["arr"], "z": numpy.arange(5, dtype=numpy.int64)}, depth_limit=1
     )
 
     path = os.path.join(tmp_path, "test_1737.root")
