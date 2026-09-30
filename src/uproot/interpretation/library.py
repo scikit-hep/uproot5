@@ -919,23 +919,15 @@ class Pandas(Library):
             return tuple(self.global_index(x, global_offset) for x in arrays)
         elif isinstance(arrays, list):
             return [self.global_index(x, global_offset) for x in arrays]
+        elif isinstance(arrays, dict):
+            return {
+                name: self.global_index(x, global_offset) for name, x in arrays.items()
+            }
 
-        if type(arrays.index).__name__ == "RangeIndex":
-            index_start = arrays.index.start
-            index_stop = arrays.index.stop
-            arrays.index = type(arrays.index)(
-                index_start + global_offset, index_stop + global_offset
-            )
-
-        else:
-            # arrays.index.values before Pandas 0.24 and again now;
-            # arrays.index.arrays from Pandas 0.24 through some time ago.
-            if hasattr(arrays.index, "values"):
-                index = arrays.index.values
-            else:
-                index = arrays.index.arrays
-            numpy.add(index, global_offset, out=index)
-
+        # build a new index rather than shifting the old one in place: its
+        # values may be read-only, or shared with other Series or the caller
+        # (a RangeIndex stays a RangeIndex)
+        arrays.index = arrays.index + global_offset
         return arrays
 
     def concatenate(self, all_arrays):
