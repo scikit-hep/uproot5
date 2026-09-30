@@ -98,3 +98,21 @@ def test_dask_matches_arrays(open_files):
         lazy = uproot.dask({path: "ntuple"}, open_files=open_files, filter_name=name)
         assert lazy.fields == expected.fields, name
         assert ak.array_equal(lazy.compute(), expected), name
+
+
+def test_dask_reads_common_subfields(tmp_path):
+    pytest.importorskip("dask_awkward")
+    files = []
+    for name, other in [("a.root", "y"), ("b.root", "z")]:
+        files.append({str(tmp_path / name): "ntuple"})
+        with uproot.recreate(tmp_path / name) as f:
+            f.mkrntuple(
+                "ntuple", {"record": ak.zip({"x": [1, 2], other: [3, 4]}), "n": [0, 1]}
+            )
+    # only the subfields that every file has are read
+    for selection, expected in [
+        ({}, "{n: int64, record: {x: int64}}"),
+        ({"filter_name": "record"}, "{record: {x: int64}}"),
+    ]:
+        lazy = uproot.dask(files, **selection)
+        assert str(lazy.compute().type) == f"4 * {expected}"

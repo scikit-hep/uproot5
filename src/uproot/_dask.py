@@ -13,7 +13,7 @@ import numpy
 
 import uproot
 from uproot._util import no_filter, unset
-from uproot.behaviors.RNTuple import HasFields
+from uproot.behaviors.RNTuple import HasFields, _with_subfield_keys
 from uproot.behaviors.RNTuple import (
     _regularize_step_size as _RNTuple_regularize_step_size,
 )
@@ -1581,6 +1581,7 @@ def _resolve_trees_and_keys(
     explicit_chunks = []
     common_keys = None
     is_self = []
+    rntuple_keys = []
 
     for file_object_maybechunks in files:
         file_path, object_path = file_object_maybechunks[0:2]
@@ -1623,12 +1624,19 @@ def _resolve_trees_and_keys(
                 full_paths=True if isinstance(obj, HasFields) else full_paths,
                 ignore_duplicates=True,
             )
+            if isinstance(obj, HasFields):
+                # a selected field is read with all of its subfields, so intersect those
+                new_keys = _with_subfield_keys(obj, new_keys)
+                rntuple_keys.append(set(new_keys))
 
             if common_keys is None:
                 common_keys = new_keys
             else:
                 new_keys = set(new_keys)
                 common_keys = [key for key in common_keys if key in new_keys]
+
+    if len(rntuple_keys) > 1:
+        common_keys = _drop_partly_common_fields(common_keys, rntuple_keys)
 
     if len(ttrees) == 0:
         raise ValueError(
@@ -1651,6 +1659,19 @@ def _resolve_trees_and_keys(
         )
 
     return ttrees, common_keys, is_self, explicit_chunks
+
+
+def _drop_partly_common_fields(common_keys, keys_per_file):
+    """Drop the RNTuple fields that have subfields missing from some of the files, keeping
+    their common subfields. Otherwise, reading a field with all of its subfields would
+    request subfields that some files don't have."""
+    common = set(common_keys)
+    partly_common = set()
+    for keys in keys_per_file:
+        for key in keys - common:
+            parts = key.split(".")
+            partly_common.update(".".join(parts[:i]) for i in range(1, len(parts)))
+    return [key for key in common_keys if key not in partly_common]
 
 
 def _normalize_grouped_keys(ttree, common_keys, full_paths):
