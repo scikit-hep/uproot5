@@ -6,6 +6,7 @@ import queue
 import fsspec
 import requests
 import os
+import shutil
 import sys
 
 import pytest
@@ -179,11 +180,11 @@ def test_open_fsspec_xrootd(handler, xrootd_server):
 @pytest.mark.skipif(
     is_windows, reason="Windows does not support colons (':') in filenames"
 )
-def test_issue_1054_filename_colons(handler):
-    root_filename = "uproot-issue121.root"
-    local_path = str(skhep_testdata.data_path(root_filename))
-    local_path_new = local_path[: -len(root_filename)] + "file:with:colons.root"
-    os.rename(local_path, local_path_new)
+def test_issue_1054_filename_colons(handler, tmp_path):
+    local_path = skhep_testdata.data_path("uproot-issue121.root")
+    # copy, rather than rename, so the file stays in the shared skhep_testdata cache
+    local_path_new = str(tmp_path / "file:with:colons.root")
+    shutil.copyfile(local_path, local_path_new)
     with uproot.open(local_path_new, handler=handler) as f:
         data = f["Events/MET_pt"].array(library="np")
         assert len(data) == 40

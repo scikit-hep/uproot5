@@ -15,20 +15,30 @@ permissions:
 
 jobs:
   build:
-    name: Test on ${{ matrix.platform }} with Python ${{ matrix.python-version }}${{ matrix.root-version != '' && format(' and ROOT {0}', matrix.root-version) || '' }}
+    name: Test on ${{ matrix.platform }} with Python ${{ matrix.python-version }}${{ matrix.root-version != '' && format(' and ROOT {0}', matrix.root-version) || '' }}${{ matrix.coverage && ' (coverage)' || '' }}
     strategy:
       fail-fast: false
       matrix:
         platform: [windows-latest, macos-latest, ubuntu-latest]
         python-version: ['3.10', '3.14', 3.14 python-freethreading]
         root-version: ['']
+        # On Linux, 3.10 and 3.14 only run in the ROOT jobs below, which run
+        # the same tests plus the ones that need ROOT
+        exclude:
+          - platform: ubuntu-latest
+            python-version: '3.10'
+          - platform: ubuntu-latest
+            python-version: '3.14'
         include:
           - platform: ubuntu-latest
             python-version: '3.10'
-            root-version: latest
-          - platform: ubuntu-latest
-            python-version: '3.10'
             root-version: '6.32'
+          # Also runs the XRootD server tests, which no other job has the
+          # server for, and measures coverage
+          - platform: ubuntu-latest
+            python-version: '3.14'
+            root-version: latest
+            coverage: true
 
     runs-on: ${{ matrix.platform }}
     timeout-minutes: 30
@@ -53,6 +63,7 @@ jobs:
             conda-forge/label/python_rc::_python_rc
             python=${{ matrix.python-version }}
             ${{ matrix.root-version == 'latest' && 'root' || matrix.root-version == '6.32' && 'root=6.32.*' || '' }}
+            ${{ matrix.coverage && 'xrootd' || '' }}
           micromamba-version: 2.6.0-0   # unpin when there is a release newer than 2.6.1-0
 
       - name: Set PYTHON_GIL=0 for free-threaded builds
@@ -86,45 +97,39 @@ jobs:
         run: uv pip install --system -e. --group=dev
 
       - name: Run pytest
+        if: ${{ !matrix.coverage }}
         run: |
-          python -m pytest -vv tests --reruns 10 --reruns-delay 30 --only-rerun "(?i)http|ssl|timeout|expired|connection|socket"
+          python -m pytest -vv -n auto tests --reruns 10 --reruns-delay 30 --only-rerun "(?i)http|ssl|timeout|expired|connection|socket"
 
-  vanilla-build:
-    name: Vanilla test on ${{ matrix.platform }} with Python ${{ matrix.python-version }}
-    strategy:
-      fail-fast: false
-      matrix:
-        platform: [windows-latest, ubuntu-latest, macos-latest]
-        python-version: ['3.13']
-
-    runs-on: ${{ matrix.platform }}
-    timeout-minutes: 30
-
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
-        with:
-          python-version: ${{ matrix.python-version }}
-          allow-prereleases: true
-
-      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
-
-      - name: Pip install the package
-        run: uv pip install --system -e. --group=dev
-
-      - name: Run pytest
+      - name: Run pytest and collect coverage
+        if: matrix.coverage
         run: |
-          python -m pytest -vv tests --reruns 10 --reruns-delay 30 --only-rerun "(?i)http|ssl|timeout|expired|connection|socket"
+          python -m pytest -vv -n auto tests --reruns 10 --reruns-delay 30 --only-rerun "(?i)http|ssl|timeout|expired|connection|socket"\
+                           --cov=uproot --cov-branch --cov-report=xml --junitxml=junit.xml -o junit_family=legacy
+
+      - name: Upload coverage reports to Codecov
+        if: matrix.coverage
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: coverage.xml
+
+      - name: Upload test results to Codecov
+        if: ${{ !cancelled() && matrix.coverage }}
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          report_type: test_results
+          files: junit.xml
 
   numpy1-build:
     name: NumPy 1 test on ${{ matrix.platform }} with Python ${{ matrix.python-version }}
     strategy:
       fail-fast: false
       matrix:
-        platform: [windows-latest, ubuntu-latest, macos-latest]
+        # NumPy 1's default integer is 32-bit on Windows, so that is the
+        # platform that differs; macOS adds little on top of Linux
+        platform: [windows-latest, ubuntu-latest]
         python-version: ['3.11']
 
     runs-on: ${{ matrix.platform }}
@@ -148,36 +153,7 @@ jobs:
 
       - name: Run pytest
         run: |
-          uv run --no-sync pytest -vv tests --reruns 10 --reruns-delay 30 --only-rerun "(?i)http|ssl|timeout|expired|connection|socket"
-
-  graphed-build:
-    name: graphed test on ubuntu-latest with Python 3.13
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
-        with:
-          python-version: '3.13'
-
-      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
-
-      - name: Pip install the package
-        run: uv pip install --system -e. --group=dev --group=test-graphed
-
-      - name: Run the graphed tests and collect coverage
-        run: |
-          python -m pytest -vv tests/test_1720_graphed_read.py tests/test_1720_graphed_form_mapping.py tests/test_1720_graphed_projection.py tests/test_1720_graphed_write.py tests/test_1720_graphed_partitions.py tests/test_1727_graphed_aligned_partitions.py tests/test_1727_graphed_aligned_source.py tests/test_1727_common_entry_offsets_leaf.py --reruns 10 --reruns-delay 30 --only-rerun "(?i)http|ssl|timeout|expired|connection|socket"\
-                           --cov=uproot --cov-branch --cov-report=xml
-
-      - name: Upload coverage reports to Codecov
-        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
+          uv run --no-sync pytest -vv -n auto tests --reruns 10 --reruns-delay 30 --only-rerun "(?i)http|ssl|timeout|expired|connection|socket"
 
   pyodide-build:
     name: Pyodide test
@@ -313,41 +289,33 @@ jobs:
             kvikio
             nvcomp
             pytest-cov
+            pytest-rerunfailures
             numpy<2.5
-            ${{ matrix.cuda-version == 13 && 'root' || '' }}
 
       - name: Pip install the package
-        run: pip install --group=dev --group=test-xrootd .
+        run: pip install --group=test-core .
 
-      - name: Run only GPU tests
-        if: matrix.cuda-version != 13
+      # The CPU tests run on the GitHub-hosted runners, which also measure their
+      # coverage. CUDA 13 measures the coverage of the GPU code paths.
+      - name: Run the GPU tests
+        env:
+          COVERAGE_ARGS: ${{ matrix.cuda-version == 13 && '--cov=uproot --cov-branch --cov-report=xml' || '' }}
         run: |
-          python -m pytest -vv tests-cuda --reruns 10 --reruns-delay 30 --only-rerun "(?i)http|ssl|timeout|expired|connection|socket"
-
-      - name: Run full test suite and collect coverage
-        if: matrix.cuda-version == 13
-        run: |
-          python -m pytest -vv tests tests-cuda --reruns 10 --reruns-delay 30 --only-rerun "(?i)http|ssl|timeout|expired|connection|socket"\
-                           --cov=uproot --cov-branch --cov-report=xml --junitxml=junit.xml -o junit_family=legacy
+          python -m pytest -vv tests-cuda --reruns 10 --reruns-delay 30 --only-rerun "(?i)http|ssl|timeout|expired|connection|socket"\
+                           $COVERAGE_ARGS
 
       - name: Upload coverage reports to Codecov
         if: matrix.cuda-version == 13
         uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-
-      - name: Upload test results to Codecov
-        if: ${{ !cancelled() && matrix.cuda-version == 13 }}
-        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          report_type: test_results
+          files: coverage.xml
 
   pass:
     name: Check required tests
     if: always()
-    needs: [build, vanilla-build, numpy1-build, pyodide-build]
-    runs-on: ubuntu-latest
+    needs: [build, numpy1-build, pyodide-build]
+    runs-on: ubuntu-slim
     timeout-minutes: 2
     steps:
       - name: Decide whether the needed jobs succeeded or failed

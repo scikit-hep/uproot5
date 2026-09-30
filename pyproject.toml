@@ -21,13 +21,18 @@ extra = [
 test = [
   "aiohttp",
   "deflate",
+  "graphed[awkward,parquet]>=0.0.5; python_version >= '3.11'",
+  "graphed-executors>=0.0.3; python_version >= '3.11'",
   "isal",
   "moto[s3,server]",
   "paramiko",
+  "pytest-cov",
   "pytest-rerunfailures",
+  "pytest-xdist",
   "rangehttpserver",
   "requests",
   "s3fs",
+  "vector; python_version >= '3.11'",
   {include-group = "test-core"}
 ]
 test-core = [
@@ -43,13 +48,6 @@ test-gpu-cu12 = [
 test-gpu-cu13 = [
   "kvikio-cu13",
   "nvidia-nvcomp-cu13",
-  {include-group = "test-core"}
-]
-test-graphed = [
-  "graphed[awkward,parquet]>=0.0.5; python_version >= '3.11'",
-  "graphed-executors>=0.0.3; python_version >= '3.11'",
-  "pytest-cov",
-  "vector; python_version >= '3.11'",
   {include-group = "test-core"}
 ]
 test-pyodide = [

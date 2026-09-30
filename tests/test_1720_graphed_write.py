@@ -41,7 +41,10 @@ def test_writes_one_ttree_file_per_partition(tmp_path):
     g = uproot.graphed(src)
     outdir = os.path.join(tmp_path, "out")
     paths = uproot.graphed_write(g, outdir, steps_per_file=4, executor="thread")
-    assert paths == [os.path.join(outdir, f"part-0000{i}.root") for i in range(4)]
+    # fsspec reports local Windows paths with "/" separators
+    assert [os.path.normpath(p) for p in paths] == [
+        os.path.join(outdir, f"part-0000{i}.root") for i in range(4)
+    ]
     assert all(uproot.open(p)["tree"].classname == "TTree" for p in paths)
     pieces = [uproot.open(p)["tree"].arrays() for p in paths]
     assert [len(p) for p in pieces] == [5, 5, 5, 5]
@@ -243,7 +246,7 @@ def test_refusals_happen_before_anything_is_written(tmp_path):
         uproot.graphed_write(
             uproot.graphed(
                 {
-                    src.split(":")[0]: {
+                    src.rsplit(":", 1)[0]: {
                         "object_path": "events",
                         "steps": [[0, 5], [5, 20]],
                     }

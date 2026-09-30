@@ -153,7 +153,7 @@ def test_entry_range_over_missing_and_empty_read_lists():
     zmumu = uproot.open(ZMUMU)
     hep_src = _source_of(uproot.graphed(HEPDATA, align_baskets=True))
     zmumu_src = _source_of(uproot.graphed(ZMUMU, align_baskets=True))
-    uri = HEPDATA.split(":")[0]
+    uri = HEPDATA.rsplit(":", 1)[0]
     for s in range(5):
         step = graphed.core.Partition.blind(uri, "ntuple", s, 5)
         px_only = hep_src.entry_range(step, hep, ["px"])
@@ -179,7 +179,7 @@ def test_a_tree_without_baskets_reads_as_empty():
     g = uproot.graphed(EMPTY, align_baskets=True)
     assert _lengths(g.x, 3) == [0, 0, 0]
     assert _source_of(g).entry_range(
-        graphed.core.Partition.blind(EMPTY.split(":")[0], "tree", 1, 3),
+        graphed.core.Partition.blind(EMPTY.rsplit(":", 1)[0], "tree", 1, 3),
         uproot.open(EMPTY),
         ["x"],
     ) == (0, 0)
