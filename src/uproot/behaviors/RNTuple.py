@@ -586,6 +586,8 @@ class HasFields(Mapping):
             filter_field=filter_field,
             filter_branch=filter_branch,
         )
+        # A selected field comes with all of its subfields
+        keys = _with_subfield_keys(self, keys)
         rntuple = self.ntuple
 
         top_names = []
@@ -742,6 +744,10 @@ class HasFields(Mapping):
                 and will be removed in a future version.
 
         Returns a group of arrays from the ``RNTuple``.
+
+        A selected ``RField`` is read with all of its subfields, even if the
+        filters also select some of them. If only a subfield is selected, its
+        parents are included with nothing but the path down to it.
 
         For example:
 
@@ -1813,6 +1819,27 @@ def _filter_name_deep(filter_name, hasfields, field):
     if name != shallow and filter_name(name):
         return True
     return filter_name("." + name)
+
+
+def _with_subfield_keys(hasfields, keys):
+    """
+    Returns ``keys`` extended with the keys of all subfields of the fields in ``keys``,
+    so that selecting a field selects its whole subtree.
+    """
+    selected = set(keys)
+    if len(selected) == 0:
+        return keys
+    out = list(keys)
+    for key in hasfields.keys():
+        if key in selected:
+            continue
+        pos = key.find(".")
+        while pos != -1:
+            if key[:pos] in selected:
+                out.append(key)
+                break
+            pos = key.find(".", pos + 1)
+    return out
 
 
 def _get_recursive(hasfields, where):

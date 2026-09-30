@@ -1501,11 +1501,16 @@ def _get_ttree_form(
     common_keys,
     ak_add_doc,
 ):
+    if isinstance(ttree, HasFields):
+        # an RNTuple keeps the nesting of the selected fields under its top-level fields
+        rntuple_form, _ = ttree.to_akform(filter_name=common_keys)
+        common_keys = rntuple_form.fields
+
     contents = []
     for key in common_keys:
         branch = ttree[key]
         if isinstance(branch, HasFields):
-            content_form = branch.to_akform()[0].content(0)
+            content_form = rntuple_form.content(key)
         else:
             content_form = branch.interpretation.awkward_form(ttree.file)
         content_parameters = {}
@@ -1614,7 +1619,8 @@ def _resolve_trees_and_keys(
                         else "filter_branch"
                     ): real_filter_branch
                 },
-                full_paths=full_paths,
+                # an RNTuple form keeps the nesting, so its fields are selected by full path
+                full_paths=True if isinstance(obj, HasFields) else full_paths,
                 ignore_duplicates=True,
             )
 
@@ -1876,7 +1882,8 @@ def _get_dak_array_delay_open(
                     "filter_field" if isinstance(obj, HasFields) else "filter_branch"
                 ): filter_branch
             },
-            full_paths=full_paths,
+            # an RNTuple form keeps the nesting, so its fields are selected by full path
+            full_paths=True if isinstance(obj, HasFields) else full_paths,
             ignore_duplicates=True,
         )
         common_keys = _normalize_grouped_keys(obj, common_keys, full_paths)
