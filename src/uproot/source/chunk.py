@@ -233,8 +233,9 @@ class MultithreadedSource(Source):
     @property
     def closed(self) -> bool:
         """
-        True if the :doc:`uproot.source.futures.ResourceThreadPoolExecutor` has
-        been shut down and the file handles have been closed.
+        True once the :doc:`uproot.source.futures.ResourceThreadPoolExecutor`
+        has started shutting down; the file handles are closed by the time
+        that shutdown returns.
         """
         return self._executor.closed
 
@@ -386,21 +387,24 @@ class Chunk:
         """
         if self._raw_data is None:
             self._raw_data = numpy.frombuffer(self._future.result(), dtype=self._dtype)
-            if insist is True:
-                requirement = len(self._raw_data) == self._stop - self._start
-            elif isinstance(insist, numbers.Integral):
-                requirement = len(self._raw_data) >= insist - self._start
-            elif insist is False:
-                requirement = True
-            else:
-                raise TypeError(f"""insist must be a bool or an int, not {insist!r}
+            self._future = None
+
+        # validate on every call, not just the first: the data may have been
+        # loaded by a call with a weaker ``insist`` than this one
+        if insist is True:
+            requirement = len(self._raw_data) == self._stop - self._start
+        elif insist is False:
+            requirement = True
+        elif isinstance(insist, numbers.Integral):
+            requirement = len(self._raw_data) >= insist - self._start
+        else:
+            raise TypeError(f"""insist must be a bool or an int, not {insist!r}
 for file path {self._source.file_path}""")
 
-            if not requirement:
-                raise OSError(f"""expected Chunk of length {self._stop - self._start},
+        if not requirement:
+            raise OSError(f"""expected Chunk of length {self._stop - self._start},
 received {len(self._raw_data)} bytes from {type(self._source).__name__}
 for file path {self._source.file_path}""")
-            self._future = None
 
     @property
     def raw_data(self) -> numpy.ndarray | bytes:
@@ -439,9 +443,12 @@ for file path {self._source.file_path}""")
         already.
         """
         if self._start <= start and stop <= self._stop:
-            self.wait(insist=stop)
             local_start = start - self._start
             local_stop = stop - self._start
+            # fast path for this hot method: only go through wait (which loads
+            # the data or raises) if the data aren't already loaded and long enough
+            if self._raw_data is None or len(self._raw_data) < local_stop:
+                self.wait(insist=stop)
             return self._raw_data[local_start:local_stop]
 
         else:

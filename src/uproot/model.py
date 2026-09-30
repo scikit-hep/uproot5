@@ -329,6 +329,26 @@ def maybe_custom_classes(classname, custom_classes):
         return custom_classes
 
 
+def unknown_class(classname, version=None):
+    """
+    Returns the placeholder class for a ``classname`` whose streamer could not
+    be found, creating it (and adding it to ``uproot.unknown_classes``) if it's
+    not already there.
+
+    If ``version`` is None, the class is a :doc:`uproot.model.UnknownClass`;
+    otherwise, it is a :doc:`uproot.model.UnknownClassVersion` for that version.
+    """
+    # key on the encoded name, which carries the version and so keeps distinct
+    # versions (and the versionless UnknownClass) apart
+    encoded_classname = classname_encode(classname, version, unknown=True)
+    cls = uproot.unknown_classes.get(encoded_classname)
+    if cls is None:
+        base = UnknownClass if version is None else UnknownClassVersion
+        cls = uproot._util.new_class(encoded_classname, (base,), {})
+        uproot.unknown_classes[encoded_classname] = cls
+    return cls
+
+
 class Model:
     """
     Abstract class for all objects extracted from ROOT files (except for
@@ -1257,7 +1277,7 @@ class DispatchByVersion:
 
         If the ``file`` lacks a ``TStreamerInfo`` for the class, this function
         returns a :doc:`uproot.model.UnknownClassVersion` (adding it to
-        ``uproo4.unknown_classes`` if it's not already there).
+        ``uproot.unknown_classes`` if it's not already there).
         """
         classname, _ = classname_decode(cls.__name__)
         classname = classname_regularize(classname)
@@ -1279,15 +1299,7 @@ class DispatchByVersion:
             return versioned_cls
 
         else:
-            unknown_cls = uproot.unknown_classes.get(classname)
-            if unknown_cls is None:
-                unknown_cls = uproot._util.new_class(
-                    classname_encode(classname, version, unknown=True),
-                    (UnknownClassVersion,),
-                    {},
-                )
-                uproot.unknown_classes[classname] = unknown_cls
-            return unknown_cls
+            return unknown_class(classname, version)
 
     @classmethod
     def read(cls, chunk, cursor, context, file, selffile, parent, concrete=None):
