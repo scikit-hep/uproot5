@@ -558,6 +558,11 @@ def interpretation_of(branch, context, simplify=True):
                     or not branch._streamer_isTClonesArray
                 ):
                     model_cls = uproot.containers.AsArray(False, False, model_cls, dims)
+                elif isinstance(model_cls, type) and issubclass(
+                    model_cls, uproot.models.TArray.Model_TArray
+                ):
+                    # TArray has no byte-count header, so there is no array header either
+                    model_cls = uproot.containers.AsArray(False, False, model_cls, dims)
                 else:
                     if hasattr(model_cls, "header"):
                         model_cls._header = False
