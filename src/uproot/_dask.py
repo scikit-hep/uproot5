@@ -416,6 +416,7 @@ def _dask_array_from_map(
     *iterables,
     chunks,
     dtype,
+    inner_shape=(),
     args=None,
     label=None,
     token=None,
@@ -487,6 +488,8 @@ def _dask_array_from_map(
         produces_tasks=produces_tasks,
     )
 
+    chunks = (*chunks, *((size,) for size in inner_shape))
+    assert all(len(axis_chunks) == 1 for axis_chunks in chunks[1:])
     blockwise_kwargs = {
         "output": name,
         "output_indices": tuple(range(len(chunks))),
@@ -536,6 +539,16 @@ class _UprootReadNumpy:
         )
 
 
+def _check_numpy_dtype(branch, expected_dtype):
+    actual_dtype = branch.interpretation.numpy_dtype
+    if actual_dtype != expected_dtype:
+        raise ValueError(
+            f"inconsistent NumPy dtype for branch {branch.object_path!r} in file "
+            f"{branch.file.file_path!r}: expected {expected_dtype!r}, "
+            f"found {actual_dtype!r}"
+        )
+
+
 class _UprootOpenAndReadNumpy:
     def __init__(
         self,
@@ -544,6 +557,7 @@ class _UprootOpenAndReadNumpy:
         real_options,
         key,
         interp_options,
+        expected_dtype,
         decompression_executor=None,
         interpretation_executor=None,
     ):
@@ -552,6 +566,7 @@ class _UprootOpenAndReadNumpy:
         self.real_options = real_options
         self.key = key
         self.interp_options = interp_options
+        self.expected_dtype = expected_dtype
         self.decompression_executor = decompression_executor
         self.interpretation_executor = interpretation_executor
 
@@ -570,6 +585,7 @@ class _UprootOpenAndReadNumpy:
             self.allow_missing,
             self.real_options,
         )
+        _check_numpy_dtype(ttree[self.key], self.expected_dtype)
         num_entries = ttree.num_entries
         start, stop = istep_or_start, nsteps_or_stop
         if not ischunk:
@@ -657,9 +673,9 @@ def _get_dask_array(
 
     for key in common_keys:
         dt = ttrees[0][key].interpretation.numpy_dtype
-        inner_shape = ()
-        if dt.subdtype is not None:
-            dt, inner_shape = dt.subdtype
+        for ttree in ttrees[1:]:
+            _check_numpy_dtype(ttree[key], dt)
+        dt, inner_shape = uproot.interpretation.numerical._dtype_shape(dt)
 
         chunks = []
         chunk_args = []
@@ -706,8 +722,9 @@ which has {entry_stop} entries"""
                 interpretation_executor,
             ),
             chunk_args,
-            chunks=(tuple(chunks), *((size,) for size in inner_shape)),
+            chunks=(tuple(chunks),),
             dtype=dt,
+            inner_shape=inner_shape,
             label=f"{key}-from-uproot",
         )
 
@@ -749,10 +766,8 @@ def _get_dask_array_delay_open(
     dask_dict = {}
 
     for key in common_keys:
-        dt = obj[key].interpretation.numpy_dtype
-        inner_shape = ()
-        if dt.subdtype is not None:
-            dt, inner_shape = dt.subdtype
+        expected_dtype = obj[key].interpretation.numpy_dtype
+        dt, inner_shape = uproot.interpretation.numerical._dtype_shape(expected_dtype)
 
         partitions = []
         partition_args = []
@@ -795,12 +810,14 @@ def _get_dask_array_delay_open(
                 real_options,
                 key,
                 interp_options,
+                expected_dtype,
                 decompression_executor,
                 interpretation_executor,
             ),
             partition_args,
-            chunks=(tuple(partitions), *((size,) for size in inner_shape)),
+            chunks=(tuple(partitions),),
             dtype=dt,
+            inner_shape=inner_shape,
             label=f"{key}-from-uproot",
         )
     return dask_dict

@@ -10,6 +10,40 @@ pytest.importorskip("dask.array")
 
 
 @pytest.mark.parametrize("open_files", [True, False])
+@pytest.mark.parametrize(
+    ("dtype", "shape"), [(np.float64, (4,)), (np.float32, (3,)), (np.float64, ())]
+)
+@pytest.mark.parametrize("reduce", [True, False])
+def test_inconsistent_array_dtypes(tmp_path, open_files, dtype, shape, reduce):
+    files = {}
+    for name, base, inner in [
+        ("first.root", np.float64, (3,)),
+        ("different.root", dtype, shape),
+    ]:
+        path = tmp_path / name
+        values = np.zeros((5, *inner), dtype=base)
+        with uproot.recreate(path) as output:
+            output.mktree("tree", {"values": np.dtype((base, inner))}).extend(
+                {"values": values}
+            )
+        files[path] = "tree"
+
+    if open_files:
+        with pytest.raises(
+            ValueError, match=r"inconsistent NumPy dtype.*different\.root"
+        ):
+            uproot.dask(files, library="np", open_files=True)
+    else:
+        array = uproot.dask(files, library="np", open_files=False)["values"]
+        if reduce:
+            array = array.sum(axis=1)
+        with pytest.raises(
+            ValueError, match=r"inconsistent NumPy dtype.*different\.root"
+        ):
+            array.compute()
+
+
+@pytest.mark.parametrize("open_files", [True, False])
 @pytest.mark.parametrize("inner_shape", [(), (3,), (2, 3)])
 @pytest.mark.parametrize("num_entries", [0, 10])
 def test_fixed_array_shapes(tmp_path, open_files, inner_shape, num_entries):
