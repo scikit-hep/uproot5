@@ -118,7 +118,11 @@ class FileSink:
                     pass
                 return
             except FileExistsError:
-                pass
+                # a caching filesystem also raises this for a stale local copy
+                # of a file that is no longer there, which is not a conflict
+                if not fs.exists(path):
+                    fs.touch(path, truncate=True)
+                    return
             except (ValueError, NotImplementedError):
                 # this filesystem does not support mode "xb"
                 fs.touch(path, truncate=True)

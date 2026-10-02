@@ -130,6 +130,26 @@ def test_create_and_update_do_not_truncate(tmp_path):
         assert f.keys() == ["h;1", "h2;1"]
 
 
+def test_create_ignores_stale_cached_copy(tmp_path):
+    # simplecache keeps its local copy of a file after the file itself is deleted
+    path = tmp_path / "file.root"
+    uri = "simplecache::" + path.as_uri()
+    with uproot.create(uri) as f:
+        f["h"] = "first"
+    path.unlink()
+
+    with uproot.create(uri) as f:
+        f["h"] = "second"
+    with uproot.open(path) as f:
+        assert f["h"] == "second"
+
+    # the destination exists again, so this is a conflict
+    contents = path.read_bytes()
+    with pytest.raises(FileExistsError):
+        uproot.create(uri)
+    assert path.read_bytes() == contents
+
+
 @pytest.mark.parametrize("function", [uproot.create, uproot.recreate, uproot.update])
 def test_invalid_option_leaves_file_intact(tmp_path, function):
     path = tmp_path / "file.root"
