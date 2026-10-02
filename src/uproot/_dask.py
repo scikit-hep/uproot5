@@ -13,7 +13,11 @@ import numpy
 
 import uproot
 from uproot._util import no_filter, unset
-from uproot.behaviors.RNTuple import HasFields, _with_subfield_keys
+from uproot.behaviors.RNTuple import (
+    HasFields,
+    _filter_field_by_key,
+    _with_subfield_keys,
+)
 from uproot.behaviors.RNTuple import (
     _regularize_step_size as _RNTuple_regularize_step_size,
 )
@@ -894,23 +898,24 @@ class TrivialFormMappingInfo(ImplementsFormMappingInfo):
         interpretation_executor,
         options: Any,
     ) -> Mapping[str, AwkArray]:
-        # An RNTuple selects fields by exact dotted name and a matched record adds no children,
-        # so ask for every leaf the projection form keeps under each requested field.
-        read_keys = (
-            [
+        # An RNTuple reads a selected field with all of its subfields, so ask for every leaf
+        # the projection form keeps under each requested field. They are selected by key
+        # because a name like "x" would also select the fields named "x" in other records.
+        if isinstance(tree, HasFields):
+            leaf_keys = [
                 p
                 for key in keys
                 for p in _rntuple_leaf_paths(self._form.content(key), key)
             ]
-            if isinstance(tree, HasFields)
-            else keys
-        )
+            selection = {"filter_field": _filter_field_by_key(tree, leaf_keys)}
+        else:
+            selection = {"expressions": keys}
         # Read the arrays as a top-level awkward RecordArray. Omitting how= (the
         # default) ensures that AsGrouped branches are returned as proper awkward
         # RecordArrays rather than Python tuples of sub-arrays (which how=tuple
         # would produce), allowing awkward.to_buffers() to work correctly below.
         arrays = tree.arrays(
-            read_keys,
+            **selection,
             entry_start=start,
             entry_stop=stop,
             ak_add_doc=options["ak_add_doc"],
@@ -1503,7 +1508,9 @@ def _get_ttree_form(
 ):
     if isinstance(ttree, HasFields):
         # an RNTuple keeps the nesting of the selected fields under its top-level fields
-        rntuple_form, _ = ttree.to_akform(filter_name=common_keys)
+        rntuple_form, _ = ttree.to_akform(
+            filter_field=_filter_field_by_key(ttree, common_keys)
+        )
         common_keys = rntuple_form.fields
 
     contents = []
@@ -1718,7 +1725,9 @@ def _base_form_of(ttree, common_keys, ak_add_doc, form_mapping):
     """The dataset's base form from one open tree: an ``RNTuple`` keeps its nesting through
     ``to_akform``; a ``TTree`` form carries the branch typenames a mapping may read."""
     if isinstance(ttree, HasFields):
-        base_form, _ = ttree.to_akform(filter_name=common_keys)
+        base_form, _ = ttree.to_akform(
+            filter_field=_filter_field_by_key(ttree, common_keys)
+        )
     else:
         base_form = _get_ttree_form(awkward, ttree, common_keys, ak_add_doc)
         if form_mapping is not None:
@@ -1781,7 +1790,9 @@ def _get_dak_array(
         entry_stop = ttree.num_entries
 
         if isinstance(ttree, HasFields):
-            akform, _ = ttree.to_akform(filter_name=common_keys)
+            akform, _ = ttree.to_akform(
+                filter_field=_filter_field_by_key(ttree, common_keys)
+            )
             ttree_step = _RNTuple_regularize_step_size(
                 ttree, akform, step_size, entry_start, entry_stop
             )

@@ -116,3 +116,26 @@ def test_dask_reads_common_subfields(tmp_path):
     ]:
         lazy = uproot.dask(files, **selection)
         assert str(lazy.compute().type) == f"4 * {expected}"
+
+
+@pytest.mark.parametrize("open_files", [True, False])
+def test_dask_selects_fields_by_full_path(tmp_path, open_files):
+    pytest.importorskip("dask_awkward")
+    # the top-level "x" has the same name as "rec.x"
+    files = []
+    for name, other, value in [("a.root", "b", 100), ("b.root", "c", 200)]:
+        files.append({str(tmp_path / name): "ntuple"})
+        with uproot.recreate(tmp_path / name) as f:
+            rec_x = ak.zip({"a": [10, 10], other: [value, value]})
+            f.mkrntuple("ntuple", {"x": [1, 2], "rec": ak.zip({"x": rec_x})})
+
+    lazy = uproot.dask(
+        files[0], open_files=open_files, filter_branch=lambda f: f.path == "x"
+    )
+    assert str(lazy.compute().type) == "2 * {x: int64}"
+
+    # the subfields of "rec.x" that only some files have are not read as the common ones
+    if open_files:
+        out = uproot.dask(files).compute()
+        assert str(out.type) == "4 * {rec: {x: {a: int64}}, x: int64}"
+        assert out.rec.x.a.tolist() == [10] * 4

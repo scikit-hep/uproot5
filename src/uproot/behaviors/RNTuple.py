@@ -1842,6 +1842,17 @@ def _with_subfield_keys(hasfields, keys):
     return out
 
 
+def _filter_field_by_key(hasfields, keys):
+    """
+    Returns a ``filter_field`` that selects exactly the fields that ``hasfields.keys()``
+    lists as ``keys``. Unlike passing ``keys`` as a ``filter_name``, a key doesn't select
+    the fields that only share their name with it, such as ``rec.x`` for the key ``x``.
+    """
+    keys = set(keys)
+    field_ids = {field.field_id for key, field in hasfields.iteritems() if key in keys}
+    return lambda field: field.field_id in field_ids
+
+
 def _get_recursive(hasfields, where):
     if hasfields._lookup is None:
         hasfields._lookup = {f.name: f for f in hasfields.fields}
