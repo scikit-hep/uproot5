@@ -18,6 +18,7 @@ import os
 from typing import IO
 
 import fsspec
+from fsspec.implementations.cached import WholeFileCacheFileSystem
 
 import uproot._util
 
@@ -74,6 +75,9 @@ class FileSink:
             truncate = False
             if mode == "create":
                 self._create_file(fs, path)
+                # the file is empty, but a caching filesystem such as simplecache
+                # may open a stale local copy of a since-deleted file instead
+                truncate = True
             elif not fs.exists(path):
                 self._truncate_file(fs, path)
             elif mode == "recreate":
@@ -107,25 +111,26 @@ class FileSink:
         Creates an empty file, raising ``FileExistsError`` if it already exists.
         Creates parent directories if necessary.
         """
-        if not fs.exists(path):
-            cls._make_parent_directories(fs, path)
+        # filecache and simplecache would create only their local copy
+        # exclusively, failing on a stale copy of a since-deleted file, and then
+        # upload it over the destination, so create it in the filesystem they wrap
+        target = fs
+        while isinstance(target, WholeFileCacheFileSystem):
+            target = target.fs
+
+        if not target.exists(path):
+            cls._make_parent_directories(target, path)
             try:
                 # exclusive creation, so that a file that appears after the check
-                # is not overwritten (atomic on local filesystems). The check is
-                # still needed: a caching filesystem, such as simplecache, only
-                # creates its local copy exclusively and then uploads over the file.
-                with fs.open(path, "xb"):
+                # is not overwritten (atomic on local filesystems)
+                with target.open(path, "xb"):
                     pass
                 return
             except FileExistsError:
-                # a caching filesystem also raises this for a stale local copy
-                # of a file that is no longer there, which is not a conflict
-                if not fs.exists(path):
-                    fs.touch(path, truncate=True)
-                    return
+                pass
             except (ValueError, NotImplementedError):
                 # this filesystem does not support mode "xb"
-                fs.touch(path, truncate=True)
+                target.touch(path, truncate=True)
                 return
         raise FileExistsError(
             "path exists and refusing to overwrite (use 'uproot.recreate' to "

@@ -135,19 +135,39 @@ def test_create_ignores_stale_cached_copy(tmp_path):
     path = tmp_path / "file.root"
     uri = "simplecache::" + path.as_uri()
     with uproot.create(uri) as f:
-        f["h"] = "first"
+        f["h"] = "first" * 10_000
     path.unlink()
 
     with uproot.create(uri) as f:
         f["h"] = "second"
     with uproot.open(path) as f:
         assert f["h"] == "second"
+        # the stale copy is longer, and none of it may be left behind
+        assert path.stat().st_size == f.file.fEND
 
     # the destination exists again, so this is a conflict
     contents = path.read_bytes()
     with pytest.raises(FileExistsError):
         uproot.create(uri)
     assert path.read_bytes() == contents
+
+
+def test_create_does_not_overwrite_concurrently_created_file(tmp_path, monkeypatch):
+    # another writer creates the file after create checks that it does not exist,
+    # and the check keeps missing it, as if it disappeared and reappeared
+    path = tmp_path / "file.root"
+    fs_class = type(fsspec.filesystem("file"))
+
+    def exists(self, p, **kwargs):
+        if not path.exists():
+            path.write_bytes(b"competing contents")
+        return False
+
+    monkeypatch.setattr(fs_class, "exists", exists)
+    with pytest.raises(FileExistsError):
+        uproot.create(path)
+    monkeypatch.undo()
+    assert path.read_bytes() == b"competing contents"
 
 
 @pytest.mark.parametrize("function", [uproot.create, uproot.recreate, uproot.update])
