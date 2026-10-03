@@ -13,7 +13,11 @@ import numpy
 
 import uproot
 from uproot._util import no_filter, unset
-from uproot.behaviors.RNTuple import HasFields
+from uproot.behaviors.RNTuple import (
+    HasFields,
+    _filter_field_by_key,
+    _with_subfield_keys,
+)
 from uproot.behaviors.RNTuple import (
     _regularize_step_size as _RNTuple_regularize_step_size,
 )
@@ -894,23 +898,24 @@ class TrivialFormMappingInfo(ImplementsFormMappingInfo):
         interpretation_executor,
         options: Any,
     ) -> Mapping[str, AwkArray]:
-        # An RNTuple selects fields by exact dotted name and a matched record adds no children,
-        # so ask for every leaf the projection form keeps under each requested field.
-        read_keys = (
-            [
+        # An RNTuple reads a selected field with all of its subfields, so ask for every leaf
+        # the projection form keeps under each requested field. They are selected by key
+        # because a name like "x" would also select the fields named "x" in other records.
+        if isinstance(tree, HasFields):
+            leaf_keys = [
                 p
                 for key in keys
                 for p in _rntuple_leaf_paths(self._form.content(key), key)
             ]
-            if isinstance(tree, HasFields)
-            else keys
-        )
+            selection = {"filter_field": _filter_field_by_key(tree, leaf_keys)}
+        else:
+            selection = {"expressions": keys}
         # Read the arrays as a top-level awkward RecordArray. Omitting how= (the
         # default) ensures that AsGrouped branches are returned as proper awkward
         # RecordArrays rather than Python tuples of sub-arrays (which how=tuple
         # would produce), allowing awkward.to_buffers() to work correctly below.
         arrays = tree.arrays(
-            read_keys,
+            **selection,
             entry_start=start,
             entry_stop=stop,
             ak_add_doc=options["ak_add_doc"],
@@ -1501,11 +1506,18 @@ def _get_ttree_form(
     common_keys,
     ak_add_doc,
 ):
+    if isinstance(ttree, HasFields):
+        # an RNTuple keeps the nesting of the selected fields under its top-level fields
+        rntuple_form, _ = ttree.to_akform(
+            filter_field=_filter_field_by_key(ttree, common_keys)
+        )
+        common_keys = rntuple_form.fields
+
     contents = []
     for key in common_keys:
         branch = ttree[key]
         if isinstance(branch, HasFields):
-            content_form = branch.to_akform()[0].content(0)
+            content_form = rntuple_form.content(key)
         else:
             content_form = branch.interpretation.awkward_form(ttree.file)
         content_parameters = {}
@@ -1576,6 +1588,7 @@ def _resolve_trees_and_keys(
     explicit_chunks = []
     common_keys = None
     is_self = []
+    rntuple_keys = []
 
     for file_object_maybechunks in files:
         file_path, object_path = file_object_maybechunks[0:2]
@@ -1614,15 +1627,23 @@ def _resolve_trees_and_keys(
                         else "filter_branch"
                     ): real_filter_branch
                 },
-                full_paths=full_paths,
+                # an RNTuple form keeps the nesting, so its fields are selected by full path
+                full_paths=True if isinstance(obj, HasFields) else full_paths,
                 ignore_duplicates=True,
             )
+            if isinstance(obj, HasFields):
+                # a selected field is read with all of its subfields, so intersect those
+                new_keys = _with_subfield_keys(obj, new_keys)
+                rntuple_keys.append(set(new_keys))
 
             if common_keys is None:
                 common_keys = new_keys
             else:
                 new_keys = set(new_keys)
                 common_keys = [key for key in common_keys if key in new_keys]
+
+    if len(rntuple_keys) > 1:
+        common_keys = _drop_partly_common_fields(common_keys, rntuple_keys)
 
     if len(ttrees) == 0:
         raise ValueError(
@@ -1645,6 +1666,19 @@ def _resolve_trees_and_keys(
         )
 
     return ttrees, common_keys, is_self, explicit_chunks
+
+
+def _drop_partly_common_fields(common_keys, keys_per_file):
+    """Drop the RNTuple fields that have subfields missing from some of the files, keeping
+    their common subfields. Otherwise, reading a field with all of its subfields would
+    request subfields that some files don't have."""
+    common = set(common_keys)
+    partly_common = set()
+    for keys in keys_per_file:
+        for key in keys - common:
+            parts = key.split(".")
+            partly_common.update(".".join(parts[:i]) for i in range(1, len(parts)))
+    return [key for key in common_keys if key not in partly_common]
 
 
 def _normalize_grouped_keys(ttree, common_keys, full_paths):
@@ -1691,7 +1725,9 @@ def _base_form_of(ttree, common_keys, ak_add_doc, form_mapping):
     """The dataset's base form from one open tree: an ``RNTuple`` keeps its nesting through
     ``to_akform``; a ``TTree`` form carries the branch typenames a mapping may read."""
     if isinstance(ttree, HasFields):
-        base_form, _ = ttree.to_akform(filter_name=common_keys)
+        base_form, _ = ttree.to_akform(
+            filter_field=_filter_field_by_key(ttree, common_keys)
+        )
     else:
         base_form = _get_ttree_form(awkward, ttree, common_keys, ak_add_doc)
         if form_mapping is not None:
@@ -1754,7 +1790,9 @@ def _get_dak_array(
         entry_stop = ttree.num_entries
 
         if isinstance(ttree, HasFields):
-            akform, _ = ttree.to_akform(filter_name=common_keys)
+            akform, _ = ttree.to_akform(
+                filter_field=_filter_field_by_key(ttree, common_keys)
+            )
             ttree_step = _RNTuple_regularize_step_size(
                 ttree, akform, step_size, entry_start, entry_stop
             )
@@ -1876,7 +1914,8 @@ def _get_dak_array_delay_open(
                     "filter_field" if isinstance(obj, HasFields) else "filter_branch"
                 ): filter_branch
             },
-            full_paths=full_paths,
+            # an RNTuple form keeps the nesting, so its fields are selected by full path
+            full_paths=True if isinstance(obj, HasFields) else full_paths,
             ignore_duplicates=True,
         )
         common_keys = _normalize_grouped_keys(obj, common_keys, full_paths)
