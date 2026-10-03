@@ -605,7 +605,9 @@ class HasFields(Mapping):
                         rntuple.field_form(field.field_id, keys, ak_add_doc=ak_add_doc)
                     )
         else:
-            # If it is a subfield of a collection, we need to include the collection in the keys
+            # If it is a subfield of a collection or a std::array (a LEAF with a nonzero
+            # repetition), we need to include the outermost one in the keys so that the
+            # dimensions they add are not lost
             path_keys = self.path.split(".")
             top_collection = None
             tmp_field = self.ntuple
@@ -615,6 +617,7 @@ class HasFields(Mapping):
                 if (
                     tmp_field.record.struct_role
                     == uproot.const.RNTupleFieldRole.COLLECTION
+                    or tmp_field.record.repetition > 0
                 ):
                     top_collection = tmp_field
                     field_path = path_keys[i:]
