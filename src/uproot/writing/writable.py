@@ -123,7 +123,7 @@ def recreate(file_path: str | Path | IO, **options):
 
     file_path = uproot._util.regularize_path(file_path)
     storage_options = {
-        key: value for key, value in options.items() if key not in recreate.defaults
+        key: options.pop(key) for key in list(options) if key not in recreate.defaults
     }
     sink = uproot.sink.file.FileSink(file_path, **storage_options)
     compression = options.pop("compression", create.defaults["compression"])
@@ -182,7 +182,7 @@ def update(file_path: str | Path | IO, **options):
 
     file_path = uproot._util.regularize_path(file_path)
     storage_options = {
-        key: value for key, value in options.items() if key not in update.defaults
+        key: options.pop(key) for key in list(options) if key not in update.defaults
     }
     sink = uproot.sink.file.FileSink(file_path, **storage_options)
 
