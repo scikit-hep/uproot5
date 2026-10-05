@@ -130,6 +130,11 @@ def test_create_and_update_do_not_truncate(tmp_path):
         assert f.keys() == ["h;1", "h2;1"]
 
 
+@pytest.mark.skipif(
+    uproot._util.parse_version(fsspec.__version__)
+    < uproot._util.parse_version("2026.2.0"),
+    reason="before fsspec 2026.2.0, simplecache keeps files opened 'r+b' in its cache",
+)
 def test_create_ignores_stale_cached_copy(tmp_path):
     # simplecache keeps its local copy of a file after the file itself is deleted
     path = tmp_path / "file.root"
