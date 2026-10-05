@@ -73,20 +73,10 @@ def create(file_path: str | Path | IO, **options):
 
     See :doc:`uproot.writing.writable.WritableFile` for details on these options.
 
-    Additional options are passed as ``storage_options`` to the fsspec filesystem
+    * storage_options (dict or None; None): Options passed to the fsspec filesystem,
+      e.g. ``storage_options={"auto_mkdir": True}``.
     """
-    file_path = uproot._util.regularize_path(file_path)
-    storage_options = {
-        key: value for key, value in options.items() if key not in create.defaults
-    }
-    if isinstance(file_path, str) and uproot.sink.file.FileSink._file_exists(
-        file_path, **storage_options
-    ):
-        raise FileExistsError(
-            "path exists and refusing to overwrite (use 'uproot.recreate' to "
-            f"overwrite)\n\nfor path {file_path}"
-        )
-    return recreate(file_path, **options)
+    return _create_or_recreate(file_path, "create", options)
 
 
 def recreate(file_path: str | Path | IO, **options):
@@ -118,16 +108,16 @@ def recreate(file_path: str | Path | IO, **options):
 
     See :doc:`uproot.writing.writable.WritableFile` for details on these options.
 
-    Additional options are passed as ``storage_options`` to the fsspec filesystem
+    * storage_options (dict or None; None): Options passed to the fsspec filesystem,
+      e.g. ``storage_options={"auto_mkdir": True}``.
     """
+    return _create_or_recreate(file_path, "recreate", options)
 
+
+def _create_or_recreate(file_path, mode, options):
     file_path = uproot._util.regularize_path(file_path)
-    storage_options = {
-        key: options.pop(key) for key in list(options) if key not in recreate.defaults
-    }
-    sink = uproot.sink.file.FileSink(file_path, **storage_options)
+    storage_options = options.pop("storage_options", None) or {}
     compression = options.pop("compression", create.defaults["compression"])
-
     initial_directory_bytes = options.pop(
         "initial_directory_bytes", create.defaults["initial_directory_bytes"]
     )
@@ -136,10 +126,13 @@ def recreate(file_path: str | Path | IO, **options):
     )
     uuid_function = options.pop("uuid_function", create.defaults["uuid_function"])
     if options:
+        # before opening the sink, which may truncate an existing file
         raise TypeError(
             "unrecognized options for uproot.create or uproot.recreate: "
             + ", ".join(repr(x) for x in options)
         )
+
+    sink = uproot.sink.file.FileSink(file_path, mode=mode, **storage_options)
     cascading = uproot.writing._cascade.create_empty(
         sink,
         compression,
@@ -177,15 +170,12 @@ def update(file_path: str | Path | IO, **options):
 
     See :doc:`uproot.writing.writable.WritableFile` for details on these options.
 
-    Additional options are passed as ``storage_options`` to the fsspec filesystem
+    * storage_options (dict or None; None): Options passed to the fsspec filesystem,
+      e.g. ``storage_options={"auto_mkdir": True}``.
     """
 
     file_path = uproot._util.regularize_path(file_path)
-    storage_options = {
-        key: options.pop(key) for key in list(options) if key not in update.defaults
-    }
-    sink = uproot.sink.file.FileSink(file_path, **storage_options)
-
+    storage_options = options.pop("storage_options", None) or {}
     initial_directory_bytes = options.pop(
         "initial_directory_bytes", create.defaults["initial_directory_bytes"]
     )
@@ -195,6 +185,8 @@ def update(file_path: str | Path | IO, **options):
             "unrecognized options for uproot.update: "
             + ", ".join(repr(x) for x in options)
         )
+
+    sink = uproot.sink.file.FileSink(file_path, mode="update", **storage_options)
     cascading = uproot.writing._cascade.update_existing(
         sink,
         initial_directory_bytes,

@@ -174,7 +174,7 @@ def ak_to_root(
         compression=uproot.compression.Compression.from_code_pair(
             compression_code, compression_level
         ),
-        **(storage_options or {}),
+        storage_options=storage_options,
     )
 
     try:
