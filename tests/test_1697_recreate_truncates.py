@@ -11,9 +11,11 @@ every byte beyond the new ``fEND`` in place.
 from __future__ import annotations
 
 import io
+import os
 
 import fsspec
 import pytest
+from fsspec.implementations.memory import MemoryFile
 
 import uproot
 
@@ -185,3 +187,64 @@ def test_invalid_option_leaves_file_intact(tmp_path, function):
     with pytest.raises(TypeError, match="compresion"):
         function(path, compresion=uproot.ZLIB(1))
     assert path.read_bytes() == contents
+
+
+def test_recreate_truncates_xrootd(xrootd_server):
+    # XRootD files can be opened "r+b", but their truncate is io.IOBase's
+    remote_path, local_path = xrootd_server
+    uri = remote_path + "/test_1697.root"
+    path = os.path.join(local_path, "test_1697.root")
+    with uproot.recreate(uri) as f:
+        f["h"] = "first" * 10_000
+
+    with uproot.recreate(uri) as f:
+        f["h"] = "second"
+    with uproot.open(path) as f:
+        assert f["h"] == "second"
+        assert os.path.getsize(path) == f.file.fEND
+
+
+def test_recreate_truncates_by_path_if_file_objects_cannot(monkeypatch):
+    # like XRootD, whose file objects have io.IOBase's truncate
+    def truncate(self, size=None):
+        raise io.UnsupportedOperation("truncate")
+
+    monkeypatch.setattr(MemoryFile, "truncate", truncate)
+    fs = fsspec.filesystem("memory")
+    fs.pipe("/test_1697/file.root", b"\x00" * 100_000)
+    try:
+        with uproot.recreate("memory://test_1697/file.root") as f:
+            f["h"] = "hello"
+        with uproot.open(io.BytesIO(fs.cat("/test_1697/file.root"))) as f:
+            assert f.keys() == ["h;1"]
+            assert fs.size("/test_1697/file.root") == f.file.fEND
+    finally:
+        fs.rm("/test_1697", recursive=True)
+
+
+def test_create_without_exclusive_mode(monkeypatch):
+    # filesystems that do not support mode "xb" still check for the file first
+    fs = fsspec.filesystem("memory")
+    original_open = type(fs)._open
+
+    def _open(self, path, mode="rb", **kwargs):
+        if mode == "xb":
+            raise ValueError("unsupported mode")
+        return original_open(self, path, mode, **kwargs)
+
+    monkeypatch.setattr(type(fs), "_open", _open)
+    try:
+        with uproot.create("memory://test_1697/file.root") as f:
+            f["h"] = "hello"
+        contents = fs.cat("/test_1697/file.root")
+        with pytest.raises(FileExistsError):
+            uproot.create("memory://test_1697/file.root")
+        assert fs.cat("/test_1697/file.root") == contents
+    finally:
+        fs.rm("/test_1697", recursive=True)
+
+
+def test_invalid_mode(tmp_path):
+    with pytest.raises(ValueError, match="mode"):
+        uproot.sink.file.FileSink(str(tmp_path / "file.root"), mode="w")
+    assert not (tmp_path / "file.root").exists()

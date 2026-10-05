@@ -11,7 +11,6 @@ context manager (Python's ``with`` statement) to ensure that files are properly 
 
 from __future__ import annotations
 
-import contextlib
 import io
 import numbers
 import os
@@ -39,7 +38,8 @@ class FileSink:
     An object that can write (and read) files on a local or remote filesystem.
     It can be initialized from a file-like object (already opened) or a filesystem URL.
     If initialized from a filesystem URL, fsspec is used to open the file.
-    In this case the file is opened in the first read or write operation.
+    In this case the file is opened in the first read or write operation, unless
+    it has to be truncated first.
     """
 
     def __init__(
@@ -74,10 +74,14 @@ class FileSink:
             fs, path = fsspec.core.url_to_fs(urlpath_or_file_like, **storage_options)
             truncate = False
             if mode == "create":
-                self._create_file(fs, path)
-                # the file is empty, but a caching filesystem such as simplecache
-                # may open a stale local copy of a since-deleted file instead
-                truncate = True
+                if not self._create_file(fs, path):
+                    raise FileExistsError(
+                        "path exists and refusing to overwrite (use 'uproot.recreate' "
+                        f"to overwrite)\n\nfor path {urlpath_or_file_like}"
+                    )
+                # the file is empty, but filecache and simplecache may open a
+                # stale local copy of a since-deleted file instead
+                truncate = isinstance(fs, WholeFileCacheFileSystem)
             elif not fs.exists(path):
                 self._truncate_file(fs, path)
             elif mode == "recreate":
@@ -89,12 +93,28 @@ class FileSink:
             # through the opened file, rather than fs.touch, so that a filesystem
             # that cannot open it for writing fails before the file is lost
             self._ensure()
-            # truncate is not required of file-like objects, and io.IOBase's
-            # default implementation raises io.UnsupportedOperation
-            truncate = getattr(self._file, "truncate", None)
-            if callable(truncate):
-                with contextlib.suppress(io.UnsupportedOperation):
-                    truncate(0)
+            if not self._truncate_opened_file() and not self.from_object:
+                # the filesystem can open the file for writing, but its file
+                # objects cannot truncate (XRootD's), so truncate it by path
+                self._file.close()
+                self._file = None
+                fs.touch(path, truncate=True)
+
+    def _truncate_opened_file(self) -> bool:
+        """
+        Truncates the opened file to zero bytes, returning False if its file
+        object does not support it.
+        """
+        # truncate is not required of file-like objects, and io.IOBase's
+        # default implementation raises io.UnsupportedOperation
+        truncate = getattr(self._file, "truncate", None)
+        if not callable(truncate):
+            return False
+        try:
+            truncate(0)
+        except io.UnsupportedOperation:
+            return False
+        return True
 
     @staticmethod
     def _make_parent_directories(fs, path: str) -> None:
@@ -102,13 +122,13 @@ class FileSink:
         fs.mkdirs(parent_directory, exist_ok=True)
 
     @classmethod
-    def _create_file(cls, fs, path: str) -> None:
+    def _create_file(cls, fs, path: str) -> bool:
         """
         Args:
             fs (fsspec.AbstractFileSystem): The filesystem of the file.
             path (str): The file's path within ``fs``.
 
-        Creates an empty file, raising ``FileExistsError`` if it already exists.
+        Creates an empty file, returning False if it already exists.
         Creates parent directories if necessary.
         """
         # filecache and simplecache would create only their local copy
@@ -125,17 +145,14 @@ class FileSink:
                 # is not overwritten (atomic on local filesystems)
                 with target.open(path, "xb"):
                     pass
-                return
+                return True
             except FileExistsError:
                 pass
             except (ValueError, NotImplementedError):
                 # this filesystem does not support mode "xb"
                 target.touch(path, truncate=True)
-                return
-        raise FileExistsError(
-            "path exists and refusing to overwrite (use 'uproot.recreate' to "
-            f"overwrite)\n\nfor path {fs.unstrip_protocol(path)}"
-        )
+                return True
+        return False
 
     @classmethod
     def _truncate_file(cls, fs, path: str) -> None:
