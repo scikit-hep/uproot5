@@ -722,6 +722,16 @@
       "contributions": [
         "doc"
       ]
+    },
+    {
+      "login": "TaiSakuma",
+      "name": "Tai Sakuma",
+      "avatar_url": "https://avatars.githubusercontent.com/u/1388081?v=4",
+      "profile": "https://github.com/TaiSakuma",
+      "contributions": [
+        "infra",
+        "maintenance"
+      ]
     }
   ],
   "contributorsPerLine": 7,

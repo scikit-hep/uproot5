@@ -201,6 +201,7 @@ Thanks especially to the gracious help of Uproot contributors (including the [or
     </tr>
     <tr>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/sapunyangkut"><img src="https://avatars.githubusercontent.com/u/302607731?v=4?s=100" width="100px;" alt="sapunyangkut"/><br /><sub><b>sapunyangkut</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot5/commits?author=sapunyangkut" title="Documentation">📖</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/TaiSakuma"><img src="https://avatars.githubusercontent.com/u/1388081?v=4?s=100" width="100px;" alt="Tai Sakuma"/><br /><sub><b>Tai Sakuma</b></sub></a><br /><a href="#infra-TaiSakuma" title="Infrastructure (Hosting, Build-Tools, etc)">🚇</a> <a href="#maintenance-TaiSakuma" title="Maintenance">🚧</a></td>
     </tr>
   </tbody>
 </table>
