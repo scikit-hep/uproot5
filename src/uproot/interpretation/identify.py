@@ -556,12 +556,13 @@ def interpretation_of(branch, context, simplify=True):
                 if (
                     isinstance(branch.streamer, uproot.streamers.Model_TStreamerObject)
                     or not branch._streamer_isTClonesArray
+                    # ROOT writes a TArray member with a custom streamer, without
+                    # a per-item byte count, so the items follow each other directly
+                    or (
+                        isinstance(model_cls, type)
+                        and issubclass(model_cls, uproot.models.TArray.Model_TArray)
+                    )
                 ):
-                    model_cls = uproot.containers.AsArray(False, False, model_cls, dims)
-                elif isinstance(model_cls, type) and issubclass(
-                    model_cls, uproot.models.TArray.Model_TArray
-                ):
-                    # TArray has no byte-count header, so there is no array header either
                     model_cls = uproot.containers.AsArray(False, False, model_cls, dims)
                 else:
                     if hasattr(model_cls, "header"):
