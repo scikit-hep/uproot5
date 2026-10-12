@@ -196,7 +196,11 @@ def _storage_options(options, function_name):
     """
     mistaken = []
     for name in options:
-        matches = difflib.get_close_matches(name, create.defaults, n=1)
+        # a cutoff above the default 0.6, which would reject real fsspec options
+        # such as session or compresslevel for resembling compression
+        matches = difflib.get_close_matches(
+            name, create.defaults, n=1, cutoff=0.8
+        )
         if matches and matches[0] != name:
             mistaken.append(f"{name!r} (did you mean {matches[0]!r}?)")
         elif matches:
