@@ -15,7 +15,7 @@ permissions:
 
 jobs:
   build:
-    name: Test on ${{ matrix.platform }} with Python ${{ matrix.python-version }}${{ matrix.root-version != '' && format(' and ROOT {0}', matrix.root-version) || '' }}${{ matrix.coverage && ' (coverage)' || '' }}
+    name: Test on ${{ matrix.platform }} with Python ${{ matrix.python-version }}${{ matrix.root-version != '' && format(' and ROOT {0}', matrix.root-version) || '' }}${{ matrix.coverage && ' (coverage)' || '' }}${{ matrix.core-deps && ' and core test dependencies' || '' }}
     strategy:
       fail-fast: false
       matrix:
@@ -39,6 +39,11 @@ jobs:
             python-version: '3.14'
             root-version: latest
             coverage: true
+          # Many optional and test dependencies don't have Python 3.15 wheels
+          # yet, so only install the core test dependencies
+          - platform: ubuntu-latest
+            python-version: '3.15'
+            core-deps: true
 
     runs-on: ${{ matrix.platform }}
     timeout-minutes: 30
@@ -89,12 +94,17 @@ jobs:
           ssh -o StrictHostKeyChecking=no localhost echo "ssh connection successful"
 
       - name: Install XRootD
-        if: runner.os != 'Windows' && !contains(matrix.python-version, 'python-freethreading')
+        if: runner.os != 'Windows' && !contains(matrix.python-version, 'python-freethreading') && !matrix.core-deps
         run: |
           uv pip install --group=test-xrootd
 
       - name: Pip install the package
+        if: ${{ !matrix.core-deps }}
         run: uv pip install --system -e. --group=dev
+
+      - name: Pip install the package with core test dependencies
+        if: matrix.core-deps
+        run: uv pip install --system -e. --group=test-core pytest-xdist pytest-rerunfailures
 
       - name: Run pytest
         if: ${{ !matrix.coverage }}

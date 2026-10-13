@@ -29,8 +29,6 @@ test = [
   "pytest-cov",
   "pytest-rerunfailures",
   "pytest-xdist",
-  "rangehttpserver",
-  "requests",
   "s3fs",
   "vector; python_version >= '3.11'",
   { include-group = "test-core" }
@@ -38,6 +36,8 @@ test = [
 test-core = [
   "pytest-timeout",
   "pytest>=6",
+  "rangehttpserver",
+  "requests",
   "scikit-hep-testdata"
 ]
 test-gpu-cu12 = [
@@ -79,6 +79,7 @@ classifiers = [
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
   "Programming Language :: Python :: 3.14",
+  "Programming Language :: Python :: 3.15",
   "Topic :: Scientific/Engineering",
   "Topic :: Scientific/Engineering :: Information Analysis",
   "Topic :: Scientific/Engineering :: Mathematics",
