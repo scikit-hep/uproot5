@@ -111,3 +111,69 @@ def test_rntuple_dask_numpy_inconsistent_dtype(tmp_path):
 
     with pytest.raises(ValueError, match="inconsistent NumPy dtype for field"):
         uproot.dask([f"{filepath1}:ntuple", f"{filepath2}:ntuple"], library="np")
+
+
+def test_rntuple_dask_numpy_jagged_field(tmp_path):
+    ak = pytest.importorskip("awkward")
+    filepath = os.path.join(tmp_path, "rntuple_jagged.root")
+    data_jagged = [[1.0, 2.0], [3.0], []]
+
+    with uproot.recreate(filepath) as file:
+        file.mkrntuple("ntuple", ak.Array({"jagged": data_jagged}))
+
+    dask_arrays = uproot.dask(f"{filepath}:ntuple", library="np")
+    assert dask_arrays["jagged"].dtype == np.dtype(object)
+    assert dask_arrays["jagged"].shape == (3,)
+
+    computed = dask_arrays["jagged"].compute()
+    assert computed.dtype == np.dtype(object)
+    assert len(computed) == 3
+    assert np.array_equal(computed[0], np.array([1.0, 2.0]))
+    assert np.array_equal(computed[1], np.array([3.0]))
+    assert len(computed[2]) == 0
+
+
+def test_rntuple_dask_numpy_string_field(tmp_path):
+    ak = pytest.importorskip("awkward")
+    filepath = os.path.join(tmp_path, "rntuple_str.root")
+    strings = ["a", "bc", "def"]
+
+    with uproot.recreate(filepath) as file:
+        file.mkrntuple("ntuple", ak.Array({"s": strings}))
+
+    dask_arrays = uproot.dask(f"{filepath}:ntuple", library="np")
+    assert dask_arrays["s"].dtype == np.dtype(object)
+    assert dask_arrays["s"].shape == (3,)
+
+    computed = dask_arrays["s"].compute()
+    assert computed.dtype == np.dtype(object)
+    assert list(computed) == strings
+
+
+def test_rntuple_dask_numpy_fixed_array_dimension_mismatch(tmp_path):
+    ak = pytest.importorskip("awkward")
+    filepath1 = os.path.join(tmp_path, "rntuple_fix1.root")
+    filepath2 = os.path.join(tmp_path, "rntuple_fix2.root")
+
+    with uproot.recreate(filepath1) as file:
+        file.mkrntuple("ntuple", ak.Array({"fixed": np.ones((5, 3), dtype=np.int32)}))
+    with uproot.recreate(filepath2) as file:
+        file.mkrntuple("ntuple", ak.Array({"fixed": np.ones((5, 4), dtype=np.int32)}))
+
+    with pytest.raises(ValueError, match="inconsistent NumPy dtype for field"):
+        uproot.dask([f"{filepath1}:ntuple", f"{filepath2}:ntuple"], library="np")
+
+
+def test_ttree_dask_numpy_fixed_array_dimension_mismatch(tmp_path):
+    filepath1 = os.path.join(tmp_path, "tree_fix1.root")
+    filepath2 = os.path.join(tmp_path, "tree_fix2.root")
+
+    with uproot.recreate(filepath1) as file:
+        file.mktree("tree", {"arr": "3*int32"})
+        file["tree"].extend({"arr": np.ones((5, 3), dtype=np.int32)})
+    with uproot.recreate(filepath2) as file:
+        file.mktree("tree", {"arr": "4*int32"})
+        file["tree"].extend({"arr": np.ones((5, 4), dtype=np.int32)})
+
+    with pytest.raises(ValueError, match="inconsistent NumPy dtype for branch"):
+        uproot.dask([f"{filepath1}:tree", f"{filepath2}:tree"], library="np")
