@@ -546,7 +546,7 @@ class _UprootReadNumpy:
         if (
             self.expected_dtype is not None
             and self.expected_dtype == numpy.dtype(object)
-            and arr.dtype != object
+            and (arr.dtype != object or arr.ndim > 1)
         ):
             out = numpy.empty(len(arr), dtype=object)
             for i, row in enumerate(arr):
@@ -695,7 +695,7 @@ which has {num_entries} entries"""
         if (
             self.expected_dtype is not None
             and self.expected_dtype == numpy.dtype(object)
-            and arr.dtype != object
+            and (arr.dtype != object or arr.ndim > 1)
         ):
             out = numpy.empty(len(arr), dtype=object)
             for i, row in enumerate(arr):
@@ -860,9 +860,12 @@ def _get_dask_array_delay_open(
                 "filter_field" if isinstance(obj, HasFields) else "filter_branch"
             ): filter_branch
         },
-        full_paths=full_paths,
+        # an RNTuple form keeps the nesting, so its fields are selected by full path
+        full_paths=True if isinstance(obj, HasFields) else full_paths,
         ignore_duplicates=True,
     )
+    if isinstance(obj, HasFields):
+        common_keys = _with_subfield_keys(obj, common_keys)
 
     dask_dict = {}
 

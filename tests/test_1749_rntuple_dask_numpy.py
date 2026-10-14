@@ -235,3 +235,12 @@ def test_rntuple_dask_numpy_collection_of_structs(tmp_path):
     result_pt = filtered["jets.pt"].compute()
     assert result_pt.dtype == np.dtype(object)
     assert result_pt.shape == (3,)
+
+    # open_files=False on collection of structs.
+    dask_delayed = uproot.dask(f"{filepath}:ntuple", library="np", open_files=False)
+    assert "x" in dask_delayed
+    assert np.array_equal(dask_delayed["x"].compute(), [1.0, 2.0, 3.0])
+    assert "jets.pt" in dask_delayed
+    result_pt_delayed = dask_delayed["jets.pt"].compute()
+    assert result_pt_delayed.dtype == np.dtype(object)
+    assert result_pt_delayed.shape == (3,)
