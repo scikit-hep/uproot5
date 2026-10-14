@@ -52,7 +52,7 @@ def translate_errors(file_path, object_path):
         raise NotImplementedError(
             f"{err}\nin file {file_path}\nin object {object_path}"
         ) from err
-    except (ValueError, KeyError, IndexError, TypeError, struct.error) as err:
+    except (ValueError, KeyError, IndexError, struct.error) as err:
         raise uproot.exceptions.FormatError(str(err), file_path, object_path) from err
 
 

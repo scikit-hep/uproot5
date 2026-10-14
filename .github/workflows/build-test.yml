@@ -107,9 +107,11 @@ jobs:
         run: uv pip install --system -e. --group=test-core pytest-xdist pytest-rerunfailures
 
       # rootfilespec parses the metadata of ROOT files for Uproot, and the two are
-      # developed together, so test against its main branch
+      # developed together, so test against its main branch. It is installed from
+      # GitHub's source archive rather than with git, which would also clone its
+      # test-data submodule (all of ROOT, whose paths are too long for Windows).
       - name: Install rootfilespec from source
-        run: uv pip install --system "rootfilespec @ git+https://github.com/nsmith-/rootfilespec@main"
+        run: uv pip install --system "rootfilespec @ https://github.com/nsmith-/rootfilespec/archive/refs/heads/main.tar.gz"
 
       - name: Run pytest
         if: ${{ !matrix.coverage }}
@@ -167,7 +169,7 @@ jobs:
           uv pip install -e. 'numpy<2' --group test
 
       - name: Install rootfilespec from source
-        run: uv pip install "rootfilespec @ git+https://github.com/nsmith-/rootfilespec@main"
+        run: uv pip install "rootfilespec @ https://github.com/nsmith-/rootfilespec/archive/refs/heads/main.tar.gz"
 
       - name: Run pytest
         run: |
@@ -202,7 +204,7 @@ jobs:
 
       # The tests install every wheel in dist into Pyodide
       - name: Build rootfilespec from source
-        run: pip wheel --no-deps --wheel-dir dist "rootfilespec @ git+https://github.com/nsmith-/rootfilespec@main"
+        run: pip wheel --no-deps --wheel-dir dist "rootfilespec @ https://github.com/nsmith-/rootfilespec/archive/refs/heads/main.tar.gz"
 
       - name: Install dependencies
         run: uv pip install --system -e. --group=test-pyodide pyodide-py
@@ -305,7 +307,7 @@ jobs:
         run: pip install --group=test-core .
 
       - name: Install rootfilespec from source
-        run: pip install "rootfilespec @ git+https://github.com/nsmith-/rootfilespec@main"
+        run: pip install "rootfilespec @ https://github.com/nsmith-/rootfilespec/archive/refs/heads/main.tar.gz"
 
       # The CPU tests run on the GitHub-hosted runners, which also measure their
       # coverage. CUDA 13 measures the coverage of the GPU code paths.
