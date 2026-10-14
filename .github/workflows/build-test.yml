@@ -106,11 +106,15 @@ jobs:
         if: matrix.core-deps
         run: uv pip install --system -e. --group=test-core pytest-xdist pytest-rerunfailures
 
-      # rootfilespec parses the metadata of ROOT files for Uproot, and the two are
-      # developed together, so test against its main branch. It is installed from
-      # GitHub's source archive rather than with git, which would also clone its
-      # test-data submodule (all of ROOT, whose paths are too long for Windows).
-      - name: Install rootfilespec from source
+      # TEMPORARY: while the rootfilespec integration is in progress, test against
+      # rootfilespec's main branch. Once the work is closer to done, remove this
+      # step and the ones like it below, and install rootfilespec the normal way,
+      # as a dependency from PyPI.
+      #
+      # It is installed from GitHub's source archive rather than with git, which
+      # would also clone its test-data submodule (all of ROOT, whose paths are too
+      # long for Windows).
+      - name: Install rootfilespec from source (temporary)
         run: uv pip install --system "rootfilespec @ https://github.com/nsmith-/rootfilespec/archive/refs/heads/main.tar.gz"
 
       - name: Run pytest
@@ -168,7 +172,8 @@ jobs:
           uv venv
           uv pip install -e. 'numpy<2' --group test
 
-      - name: Install rootfilespec from source
+      # TEMPORARY: see the "Install rootfilespec from source" step of the build job
+      - name: Install rootfilespec from source (temporary)
         run: uv pip install "rootfilespec @ https://github.com/nsmith-/rootfilespec/archive/refs/heads/main.tar.gz"
 
       - name: Run pytest
@@ -202,8 +207,9 @@ jobs:
       - name: Build the package
         run: uv build --wheel --out-dir dist
 
-      # The tests install every wheel in dist into Pyodide
-      - name: Build rootfilespec from source
+      # TEMPORARY: see the "Install rootfilespec from source" step of the build job.
+      # The tests install every wheel in dist into Pyodide.
+      - name: Build rootfilespec from source (temporary)
         run: pip wheel --no-deps --wheel-dir dist "rootfilespec @ https://github.com/nsmith-/rootfilespec/archive/refs/heads/main.tar.gz"
 
       - name: Install dependencies
@@ -306,7 +312,8 @@ jobs:
       - name: Pip install the package
         run: pip install --group=test-core .
 
-      - name: Install rootfilespec from source
+      # TEMPORARY: see the "Install rootfilespec from source" step of the build job
+      - name: Install rootfilespec from source (temporary)
         run: pip install "rootfilespec @ https://github.com/nsmith-/rootfilespec/archive/refs/heads/main.tar.gz"
 
       # The CPU tests run on the GitHub-hosted runners, which also measure their
