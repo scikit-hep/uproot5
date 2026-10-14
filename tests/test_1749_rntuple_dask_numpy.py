@@ -138,3 +138,100 @@ def test_ttree_dask_numpy_fixed_array_dimension_mismatch(tmp_path):
 
     with pytest.raises(ValueError, match="inconsistent NumPy dtype for branch"):
         uproot.dask([f"{filepath1}:tree", f"{filepath2}:tree"], library="np")
+
+
+def test_rntuple_dask_numpy_jagged_regular_chunk(tmp_path):
+    """Jagged field where all lists in a chunk have the same length (regular)."""
+    ak = pytest.importorskip("awkward")
+
+    # All-regular file: every entry has exactly 2 elements.
+    regular_path = os.path.join(tmp_path, "jagged_regular.root")
+    with uproot.recreate(regular_path) as f:
+        f.mkrntuple(
+            "ntuple",
+            ak.Array({"j": [[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]]}),
+        )
+
+    # Single file, single chunk — must still be 1-D object array, not 2-D.
+    a = uproot.dask(f"{regular_path}:ntuple", library="np")["j"]
+    assert a.dtype == np.dtype(object)
+    result = a.compute()
+    assert result.dtype == np.dtype(object)
+    assert result.shape == (3,)
+    assert np.array_equal(result[0], [1.0, 2.0])
+
+    # Mixed file (irregular + regular) — step_size=1 forces single-entry chunks.
+    mixed_path = os.path.join(tmp_path, "jagged_mixed.root")
+    with uproot.recreate(mixed_path) as f:
+        f.mkrntuple("ntuple", ak.Array({"j": [[1.0, 2.0], [3.0], []]}))
+
+    result2 = uproot.dask(f"{mixed_path}:ntuple", library="np", step_size=1)[
+        "j"
+    ].compute()
+    assert result2.dtype == np.dtype(object)
+    assert result2.shape == (3,)
+    assert len(result2[2]) == 0
+
+    # Multi-file: one regular, one irregular.
+    multi = uproot.dask(
+        [f"{regular_path}:ntuple", f"{mixed_path}:ntuple"], library="np"
+    )["j"].compute()
+    assert multi.dtype == np.dtype(object)
+    assert multi.shape == (6,)
+
+
+def test_rntuple_dask_numpy_jagged_regular_chunk_open_files_false(tmp_path):
+    """Same as above but with open_files=False (delayed-open path)."""
+    ak = pytest.importorskip("awkward")
+
+    regular_path = os.path.join(tmp_path, "jagged_regular.root")
+    with uproot.recreate(regular_path) as f:
+        f.mkrntuple(
+            "ntuple",
+            ak.Array({"j": [[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]]}),
+        )
+    mixed_path = os.path.join(tmp_path, "jagged_mixed.root")
+    with uproot.recreate(mixed_path) as f:
+        f.mkrntuple("ntuple", ak.Array({"j": [[1.0, 2.0], [3.0], []]}))
+
+    multi = uproot.dask(
+        [f"{regular_path}:ntuple", f"{mixed_path}:ntuple"],
+        open_files=False,
+        library="np",
+    )["j"].compute()
+    assert multi.dtype == np.dtype(object)
+    assert multi.shape == (6,)
+
+
+def test_rntuple_dask_numpy_collection_of_structs(tmp_path):
+    """RNTuple with a collection of structs (e.g. jets: [{pt, eta}])."""
+    ak = pytest.importorskip("awkward")
+
+    filepath = os.path.join(tmp_path, "collection.root")
+    with uproot.recreate(filepath) as f:
+        f.mkrntuple(
+            "ntuple",
+            ak.Array(
+                {
+                    "x": [1.0, 2.0, 3.0],
+                    "jets": [
+                        [{"pt": 1.0, "eta": 2.0}],
+                        [],
+                        [{"pt": 3.0, "eta": 4.0}],
+                    ],
+                }
+            ),
+        )
+
+    # Default (all fields) — should not crash with AttributeError.
+    dask_arrays = uproot.dask(f"{filepath}:ntuple", library="np")
+    assert "x" in dask_arrays
+    result_x = dask_arrays["x"].compute()
+    assert np.array_equal(result_x, [1.0, 2.0, 3.0])
+
+    # filter_name for a subfield of the collection.
+    filtered = uproot.dask(f"{filepath}:ntuple", library="np", filter_name="jets.pt")
+    assert "jets.pt" in filtered
+    result_pt = filtered["jets.pt"].compute()
+    assert result_pt.dtype == np.dtype(object)
+    assert result_pt.shape == (3,)

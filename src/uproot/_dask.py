@@ -548,7 +548,10 @@ class _UprootReadNumpy:
             and self.expected_dtype == numpy.dtype(object)
             and arr.dtype != object
         ):
-            arr = arr.astype(object)
+            out = numpy.empty(len(arr), dtype=object)
+            for i, row in enumerate(arr):
+                out[i] = row
+            arr = out
         return arr
 
 
@@ -559,8 +562,6 @@ def _form_to_numpy_dtype(form):
         sizes.append(curr.size)
         curr = curr.content
     if isinstance(curr, awkward.forms.NumpyForm):
-        if curr.parameters.get("__array__") in ("string", "bytestring"):
-            return numpy.dtype(object)
         inner_dt = numpy.dtype(curr.primitive)
         shape = tuple(sizes) + curr.inner_shape
         if shape:
@@ -575,8 +576,33 @@ def _branch_or_field_numpy_dtype(branch):
         form, path = branch.to_akform()
         if path is not None:
             for p in path:
+                # Step through list/option forms to reach the record inside.
+                while isinstance(
+                    form,
+                    (
+                        awkward.forms.ListOffsetForm,
+                        awkward.forms.ListForm,
+                        awkward.forms.RegularForm,
+                        awkward.forms.IndexedOptionForm,
+                        awkward.forms.ByteMaskedForm,
+                        awkward.forms.BitMaskedForm,
+                        awkward.forms.UnmaskedForm,
+                    ),
+                ):
+                    # Any list boundary means the result is a jagged array.
+                    if isinstance(
+                        form,
+                        (
+                            awkward.forms.ListOffsetForm,
+                            awkward.forms.ListForm,
+                        ),
+                    ):
+                        return numpy.dtype(object)
+                    form = form.content
                 if hasattr(form, "fields") and p in form.fields:
                     form = form.contents[form.fields.index(p)]
+                else:
+                    return numpy.dtype(object)
         return _form_to_numpy_dtype(form)
     else:
         return branch.interpretation.numpy_dtype
@@ -671,7 +697,10 @@ which has {num_entries} entries"""
             and self.expected_dtype == numpy.dtype(object)
             and arr.dtype != object
         ):
-            arr = arr.astype(object)
+            out = numpy.empty(len(arr), dtype=object)
+            for i, row in enumerate(arr):
+                out[i] = row
+            arr = out
         return arr
 
 
