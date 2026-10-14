@@ -85,3 +85,38 @@ class KeyInFileError(KeyError):
             return f"not found: {self.key!r}{because}{with_keys}{in_file}{in_object}"
         else:
             return f"not found: {self.key!r} with cycle {self.cycle}{because}{with_keys}{in_file}{in_object}"
+
+
+class FormatError(ValueError):
+    """
+    Exception raised when the bytes of a ROOT file do not follow the format,
+    for example a checksum that does not match or a record that does not fit
+    in its frame.
+
+    Unlike :doc:`uproot.deserialization.DeserializationError`, it does not
+    make Uproot retry with the classes from the file's own streamers: the
+    format of the objects that raise it does not depend on them.
+
+    This exception descends from Python's ``ValueError``. It provides
+
+    * ``message``: what is wrong with the bytes
+    * ``file_path``: a path (or URL) to the file
+    * ``object_path``: a path to the object within the ROOT file.
+    """
+
+    def __init__(self, message, file_path=None, object_path=None):
+        super().__init__(message)
+        self.message = message
+        self.file_path = file_path
+        self.object_path = object_path
+
+    def __str__(self):
+        in_file = ""
+        if self.file_path is not None:
+            in_file = f"\nin file {self.file_path}"
+
+        in_object = ""
+        if self.object_path is not None:
+            in_object = f"\nin object {self.object_path}"
+
+        return f"{self.message}{in_file}{in_object}"

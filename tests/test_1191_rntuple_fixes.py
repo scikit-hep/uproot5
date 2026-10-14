@@ -11,9 +11,13 @@ def test_schema_extension():
     with uproot.open(filename) as f:
         obj = f["ntuple"]
 
-        assert len(obj.page_link_list[0]) < len(obj.page_link_list[1])
+        # the first cluster was written before the schema extension added columns
+        listed = [
+            [column.element_offset is not None for column in cluster.columns]
+            for cluster in obj.clusters
+        ]
+        assert sum(listed[0]) < sum(listed[1])
 
-        assert len(obj.column_records) > len(obj.header.column_records)
         assert len(obj.column_records) == 4
         assert obj.column_records[1].first_element_index == 200
         assert obj.column_records[2].first_element_index == 400

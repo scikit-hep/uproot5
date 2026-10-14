@@ -30,10 +30,7 @@ def test_header(tmp_path):
 
     file = uproot.open(filepath)["ntuple"]
 
-    header = file.header
-    assert header.checksum == file.footer.header_checksum
-
-    frs = header.field_records
+    frs = file.field_records
     assert frs[0].parent_field_id == 0
     assert frs[1].parent_field_id == 1
     assert frs[2].parent_field_id == 2
@@ -44,7 +41,7 @@ def test_header(tmp_path):
     assert frs[1].type_name == "std::int32_t"
     assert frs[2].type_name == "bool"
 
-    crs = header.column_records
+    crs = file.column_records
     assert crs[0].type == uproot.const.rntuple_col_type_to_num_dict["real64"]
     assert crs[1].type == uproot.const.rntuple_col_type_to_num_dict["int32"]
     assert crs[2].type == uproot.const.rntuple_col_type_to_num_dict["bit"]

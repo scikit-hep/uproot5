@@ -106,6 +106,11 @@ jobs:
         if: matrix.core-deps
         run: uv pip install --system -e. --group=test-core pytest-xdist pytest-rerunfailures
 
+      # rootfilespec parses the metadata of ROOT files for Uproot, and the two are
+      # developed together, so test against its main branch
+      - name: Install rootfilespec from source
+        run: uv pip install --system "rootfilespec @ git+https://github.com/nsmith-/rootfilespec@main"
+
       - name: Run pytest
         if: ${{ !matrix.coverage }}
         run: |
@@ -161,6 +166,9 @@ jobs:
           uv venv
           uv pip install -e. 'numpy<2' --group test
 
+      - name: Install rootfilespec from source
+        run: uv pip install "rootfilespec @ git+https://github.com/nsmith-/rootfilespec@main"
+
       - name: Run pytest
         run: |
           uv run --no-sync pytest -vv -n auto tests --reruns 10 --reruns-delay 30 --only-rerun "(?i)http|ssl|timeout|expired|connection|socket"
@@ -191,6 +199,10 @@ jobs:
       # the Pyodide distribution or from the Pyodide wheels on PyPI.
       - name: Build the package
         run: uv build --wheel --out-dir dist
+
+      # The tests install every wheel in dist into Pyodide
+      - name: Build rootfilespec from source
+        run: pip wheel --no-deps --wheel-dir dist "rootfilespec @ git+https://github.com/nsmith-/rootfilespec@main"
 
       - name: Install dependencies
         run: uv pip install --system -e. --group=test-pyodide pyodide-py
@@ -291,6 +303,9 @@ jobs:
 
       - name: Pip install the package
         run: pip install --group=test-core .
+
+      - name: Install rootfilespec from source
+        run: pip install "rootfilespec @ git+https://github.com/nsmith-/rootfilespec@main"
 
       # The CPU tests run on the GitHub-hosted runners, which also measure their
       # coverage. CUDA 13 measures the coverage of the GPU code paths.

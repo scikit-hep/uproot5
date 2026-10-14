@@ -13,11 +13,8 @@ def test_multiple_cluster_groups():
     with uproot.open(filename) as f:
         obj = f["ntuple"]
 
-        assert len(obj.footer.cluster_group_records) == 3
-
-        assert obj.footer.cluster_group_records[0].num_clusters == 5
-        assert obj.footer.cluster_group_records[1].num_clusters == 4
-        assert obj.footer.cluster_group_records[2].num_clusters == 3
+        group_ids = [cluster.cluster_group_id for cluster in obj.clusters]
+        assert group_ids == [0] * 5 + [1] * 4 + [2] * 3
 
         assert obj.num_entries == 1000
 
