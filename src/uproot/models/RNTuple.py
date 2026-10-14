@@ -19,6 +19,7 @@ import numpy
 import xxhash
 
 import uproot
+import uproot._rntuple_metadata
 import uproot.behaviors.RNTuple
 import uproot.const
 from uproot.source.cufile_interface import CuFileSource
@@ -133,10 +134,8 @@ in file {self.file.file_path}"""
         self._footer_chunk_ready = False
         self._header, self._footer = None, None
 
-        self._field_records = None
+        self._schema = None
         self._field_names = None
-        self._column_records = None
-        self._alias_column_records = None
         self._related_ids_ = None
         self._column_records_dict_ = None
         self._field_metadata_cache = {}
@@ -144,8 +143,7 @@ in file {self.file.file_path}"""
         self._length = None
 
         self._page_list_envelopes = []
-        self._cluster_summaries = None
-        self._page_link_list = None
+        self._clusters = None
 
         self._ntuple = self
         self._fields = None
@@ -327,16 +325,23 @@ in file {self.file.file_path}"""
         return self._header
 
     @property
+    def _metadata_schema(self):
+        """
+        The :doc:`uproot._rntuple_metadata.Schema` of the RNTuple, from its header
+        and footer.
+        """
+        if self._schema is None:
+            self._schema = _schema_from_legacy(self.header, self.footer)
+        return self._schema
+
+    @property
     def field_records(self):
         """
         The complete list of field records in the RNTuple.
 
         This includes the fields from the header and from schema extensions in the footer.
         """
-        if self._field_records is None:
-            self._field_records = list(self.header.field_records)
-            self._field_records.extend(self.footer.extension_links.field_records)
-        return self._field_records
+        return self._metadata_schema.fields
 
     @property
     def field_names(self):
@@ -354,34 +359,23 @@ in file {self.file.file_path}"""
 
         This includes the columns from the header and from schema extensions in the footer.
         """
-        if self._column_records is None:
-            self._column_records = list(self.header.column_records)
-            self._column_records.extend(self.footer.extension_links.column_records)
-            for i, cr in enumerate(self._column_records):
-                cr.idx = i
-        return self._column_records
+        return self._metadata_schema.columns
 
     @property
     def alias_column_records(self):
         """
         The list of alias column records in the RNTuple.
         """
-        if self._alias_column_records is None:
-            self._alias_column_records = list(self.header.alias_column_records)
-            self._alias_column_records.extend(
-                self.footer.extension_links.alias_column_records
-            )
-        return self._alias_column_records
+        return self._metadata_schema.alias_columns
 
     @property
     def _column_records_dict(self):
         if self._column_records_dict_ is None:
-            self._column_records_dict_ = {}
+            column_records_dict = {}
             for cr in self.column_records:
-                if cr.field_id not in self._column_records_dict_:
-                    self._column_records_dict_[cr.field_id] = [cr]
-                else:
-                    self._column_records_dict_[cr.field_id].append(cr)
+                column_records_dict.setdefault(cr.field_id, []).append(cr)
+            # assigned only once complete, so that another thread never sees it partly filled
+            self._column_records_dict_ = column_records_dict
         return self._column_records_dict_
 
     @property
@@ -425,30 +419,50 @@ in file {self.file.file_path}"""
         return self._footer
 
     @property
+    def clusters(self):
+        """
+        The list of :doc:`uproot._rntuple_metadata.Cluster` in the RNTuple, in
+        cluster ID order, each with the pages of every physical column.
+        """
+        if self._clusters is None:
+            # assigned only once complete, so that another thread never sees it partly filled
+            self._clusters = _clusters_from_legacy(
+                self.page_list_envelopes, self._metadata_schema
+            )
+        return self._clusters
+
+    @property
     def cluster_summaries(self):
         """
         The list of cluster summaries in the RNTuple.
         """
-        if self._cluster_summaries is None:
-            # assigned only once complete, so that another thread never sees it partly filled
-            cluster_summaries = []
-            for pl in self.page_list_envelopes:
-                cluster_summaries.extend(pl.cluster_summaries)
-            self._cluster_summaries = cluster_summaries
-        return self._cluster_summaries
+        return self.clusters
 
     @property
     def page_link_list(self):
         """
         The list of page links in the RNTuple.
         """
-        if self._page_link_list is None:
-            # assigned only once complete, so that another thread never sees it partly filled
-            page_link_list = []
-            for pl in self.page_list_envelopes:
-                page_link_list.extend(pl.pagelinklist)
-            self._page_link_list = page_link_list
-        return self._page_link_list
+        page_link_list = []
+        for pl in self.page_list_envelopes:
+            page_link_list.extend(pl.pagelinklist)
+        return page_link_list
+
+    def _read_bytes(self, offset, num_bytes, uncomp_size):
+        """
+        Returns a tuple of the chunk of ``num_bytes`` at ``offset``, decompressed
+        to ``uncomp_size`` bytes if it is smaller, and a cursor at its start.
+        """
+        cursor = uproot.source.cursor.Cursor(offset)
+        chunk = self.file.source.chunk(offset, offset + num_bytes)
+        if num_bytes < uncomp_size:
+            decomp_chunk = uproot.compression.decompress(
+                chunk, cursor, {}, num_bytes, uncomp_size, block_info=None
+            )
+            cursor.move_to(0)
+        else:
+            decomp_chunk = chunk
+        return decomp_chunk, cursor
 
     def read_locator(self, loc, uncomp_size):
         """
@@ -459,16 +473,7 @@ in file {self.file.file_path}"""
 
         Returns a tuple of the decompressed chunk and the updated cursor.
         """
-        cursor = uproot.source.cursor.Cursor(loc.offset)
-        chunk = self.file.source.chunk(loc.offset, loc.offset + loc.num_bytes)
-        if loc.num_bytes < uncomp_size:
-            decomp_chunk = uproot.compression.decompress(
-                chunk, cursor, {}, loc.num_bytes, uncomp_size, block_info=None
-            )
-            cursor.move_to(0)
-        else:
-            decomp_chunk = chunk
-        return decomp_chunk, cursor
+        return self._read_bytes(loc.offset, loc.num_bytes, uncomp_size)
 
     @property
     def page_list_envelopes(self):
@@ -501,7 +506,7 @@ in file {self.file.file_path}"""
         Returns an Awkward Form describing the column if applicable, or a form key otherwise.
         """
 
-        form_key = f"column-{cr.idx}" + ("-cardinality" if is_cardinality else "")
+        form_key = f"column-{cr.column_id}" + ("-cardinality" if is_cardinality else "")
         dtype_byte = cr.type
         if dtype_byte == uproot.const.rntuple_col_type_to_num_dict["switch"]:
             return form_key
@@ -552,7 +557,7 @@ in file {self.file.file_path}"""
         ):
             # string field splits->2 in col records
             inner = self.base_col_form(rel_crs[1], parameters={"__array__": "char"})
-            form_key = f"column-{rel_crs[0].idx}"
+            form_key = f"column-{rel_crs[0].column_id}"
             parameters = {"__array__": "string"}
             if extra_parameters is not None:
                 parameters.update(extra_parameters)
@@ -653,7 +658,7 @@ in file {self.file.file_path}"""
                         f"The field_id: {cfid} is missing from the columns records."
                     )
                 )
-            col_id = self._column_records_dict[cfid][0].idx
+            col_id = self._column_records_dict[cfid][0].column_id
             keyname = f"column-{col_id}"
             #  this only has one child
             child_id = self._related_ids[this_id][0]
@@ -725,8 +730,28 @@ in file {self.file.file_path}"""
                 f"Unsplit fields are not supported. {this_record}"
             )
         else:
-            # everything should recurse above this branch
-            raise AssertionError("this should be unreachable")
+            raise NotImplementedError(
+                f"Field {this_record.field_name!r} has the structural role "
+                f"{int(structural_role)}, which Uproot does not know"
+            )
+
+    def _active_column(self, cluster_idx, col_idx):
+        """
+        Args:
+            cluster_idx (int): The index of the cluster.
+            col_idx (int): The column index.
+
+        Returns the index of the column to read for ``col_idx`` in the cluster: the
+        column itself, or the corresponding column of another representation of its
+        field if it is suppressed in this cluster.
+        """
+        columns = self._ntuple.clusters[cluster_idx].columns
+        if not columns[col_idx].suppressed:
+            return col_idx
+        rel_crs = self._column_records_dict[self.column_records[col_idx].field_id]
+        return next(
+            cr.column_id for cr in rel_crs if not columns[cr.column_id].suppressed
+        )
 
     def read_page(
         self,
@@ -747,8 +772,7 @@ in file {self.file.file_path}"""
 
         Fills the destination array with the data from the page.
         """
-        page_desc = self._ntuple.page_link_list[cluster_idx][col_idx].pages[page_idx]
-        loc = page_desc.locator
+        page = self._ntuple.clusters[cluster_idx].columns[col_idx].pages[page_idx]
         num_elements = len(destination)
         # Pages storing bits, real32trunc, and real32quant need num_elements
         # corrected
@@ -762,7 +786,9 @@ in file {self.file.file_path}"""
             num_elements_toread = num_elements
 
         uncomp_size = num_elements_toread * field_metadata.dtype_toread.itemsize
-        decomp_chunk, cursor = self.read_locator(loc, uncomp_size)
+        decomp_chunk, cursor = self._read_bytes(
+            page.offset, page.num_bytes, uncomp_size
+        )
         content = cursor.array(
             decomp_chunk,
             num_elements_toread,
@@ -796,24 +822,13 @@ in file {self.file.file_path}"""
         for cluster_idx in range(cluster_start, cluster_stop):
             if cluster_idx < 0:
                 continue
-            linklist = self._ntuple.page_link_list[cluster_idx]
-            # Check if the column is suppressed and pick the non-suppressed one if so
-            if col_idx < len(linklist) and linklist[col_idx].suppressed:
-                rel_crs = self._column_records_dict[
-                    self.column_records[col_idx].field_id
-                ]
-                col_idx = next(
-                    cr.idx for cr in rel_crs if not linklist[cr.idx].suppressed
-                )
-                field_metadata = self.get_field_metadata(
-                    col_idx
-                )  # Update metadata if suppressed
-            pagelist = (
-                linklist[field_metadata.ncol].pages
-                if field_metadata.ncol < len(linklist)
-                else []
-            )
-            cluster_length = sum(desc.num_elements for desc in pagelist)
+            active_col_idx = self._active_column(cluster_idx, col_idx)
+            if active_col_idx != col_idx:
+                # Update metadata if suppressed
+                col_idx = active_col_idx
+                field_metadata = self.get_field_metadata(col_idx)
+            pagelist = self._ntuple.clusters[cluster_idx].columns[col_idx].pages
+            cluster_length = sum(page.num_elements for page in pagelist)
             starts.append(total_length)
             total_length += cluster_length
 
@@ -916,18 +931,12 @@ in file {self.file.file_path}"""
                     destination[:] = cached_data
                     return
 
-        linklist = self._ntuple.page_link_list[cluster_idx]
-        # Check if the column is suppressed and pick the non-suppressed one if so
-        if col_idx < len(linklist) and linklist[col_idx].suppressed:
-            rel_crs = self._column_records_dict[self.column_records[col_idx].field_id]
-            col_idx = next(cr.idx for cr in rel_crs if not linklist[cr.idx].suppressed)
+        active_col_idx = self._active_column(cluster_idx, col_idx)
+        if active_col_idx != col_idx:
+            col_idx = active_col_idx
             field_metadata = self.get_field_metadata(col_idx)
-        pagelist = (
-            linklist[field_metadata.ncol].pages
-            if field_metadata.ncol < len(linklist)
-            else []
-        )
-        total_len = numpy.sum([desc.num_elements for desc in pagelist], dtype=int)
+        pagelist = self._ntuple.clusters[cluster_idx].columns[col_idx].pages
+        total_len = numpy.sum([page.num_elements for page in pagelist], dtype=int)
         if destination is None:
             return_buffer = True
             destination = numpy.empty(total_len, dtype=field_metadata.dtype_result)
@@ -937,8 +946,8 @@ in file {self.file.file_path}"""
 
         tracker = 0
         cumsum = 0
-        for page_idx, page_desc in enumerate(pagelist):
-            n_elements = page_desc.num_elements
+        for page_idx, page in enumerate(pagelist):
+            n_elements = page.num_elements
             tracker_end = tracker + n_elements
             self.read_page(
                 destination[tracker:tracker_end],
@@ -1024,30 +1033,24 @@ in file {self.file.file_path}"""
         """
         # Get cluster and pages metadatas
         cupy = uproot.extras.cupy()
-        linklist = self._ntuple.page_link_list[cluster_idx]
         col_idx_orig = col_idx
-        if col_idx < len(linklist):
-            if linklist[col_idx].suppressed:
-                rel_crs = self._column_records_dict[
-                    self.column_records[col_idx].field_id
-                ]
-                col_idx = next(
-                    cr.idx for cr in rel_crs if not linklist[cr.idx].suppressed
-                )
-                field_metadata = self.get_field_metadata(col_idx)
-            linklist_col = linklist[col_idx]
-            pagelist = linklist_col.pages
-            compression = linklist_col.compression_settings
+        active_col_idx = self._active_column(cluster_idx, col_idx)
+        if active_col_idx != col_idx:
+            col_idx = active_col_idx
+            field_metadata = self.get_field_metadata(col_idx)
+        column_range = self._ntuple.clusters[cluster_idx].columns[col_idx]
+        pagelist = column_range.pages
+        compression = column_range.compression_settings
+        if compression is not None:
             compression_level = compression % 100
             algorithm = compression // 100
             algorithm_str = compression_settings_dict[algorithm]
         else:
-            pagelist = []
             algorithm_str = None
             compression_level = None
 
         # Prepare full output buffer
-        total_len = numpy.sum([desc.num_elements for desc in pagelist], dtype=int)
+        total_len = numpy.sum([page.num_elements for page in pagelist], dtype=int)
         full_output_buffer = cupy.empty(total_len, dtype=field_metadata.dtype)
 
         # Check if field compressed/decompressed
@@ -1055,7 +1058,7 @@ in file {self.file.file_path}"""
             total_len = int(numpy.ceil(total_len / 8))
         elif field_metadata.dtype_str in ("real32trunc", "real32quant"):
             total_len = int(numpy.ceil((total_len * 4 * field_metadata.nbits) / 32))
-        total_raw_bytes = numpy.sum([desc.locator.num_bytes for desc in pagelist])
+        total_raw_bytes = numpy.sum([page.num_bytes for page in pagelist])
         page_is_compressed = (
             total_raw_bytes != total_len * field_metadata.dtype_toread.itemsize
         )
@@ -1068,10 +1071,9 @@ in file {self.file.file_path}"""
             compression_level,
         )
         tracker = 0
-        for page_desc in pagelist:
-            num_elements = page_desc.num_elements
-            loc = page_desc.locator
-            n_bytes = loc.num_bytes
+        for page in pagelist:
+            num_elements = page.num_elements
+            n_bytes = page.num_bytes
             if field_metadata.isbit:  # Need to correct length when dtype = bit
                 num_elements = int(numpy.ceil(num_elements / 8))
 
@@ -1082,7 +1084,7 @@ in file {self.file.file_path}"""
             if page_is_compressed:
                 # If LZ4, page contains additional 8-byte checksum
                 header_size = 9 if algorithm_str != "LZ4" else 9 + 8
-                offset = int(loc.offset + header_size)
+                offset = int(page.offset + header_size)
                 read_size = int(n_bytes - header_size)
                 comp_buff = cupy.empty(read_size, dtype="b")
                 filehandle.pread(comp_buff, size=read_size, file_offset=offset)
@@ -1091,7 +1093,7 @@ in file {self.file.file_path}"""
             else:
                 comp_buff = None
                 filehandle.pread(
-                    out_buff, size=int(n_bytes), file_offset=int(loc.offset)
+                    out_buff, size=int(n_bytes), file_offset=int(page.offset)
                 )
 
             cluster_contents._add_page(comp_buff)
@@ -1119,7 +1121,7 @@ in file {self.file.file_path}"""
         across requested clusters organized by column key.
         """
         cupy = uproot.extras.cupy()
-        clusters = self.ntuple.cluster_summaries
+        clusters = self.ntuple.clusters
         cluster_starts = numpy.array([c.num_first_entry for c in clusters])
         cluster_range = range(start_cluster_idx, stop_cluster_idx)
 
@@ -1180,22 +1182,17 @@ in file {self.file.file_path}"""
         """
         # Get pagelist and metadatas
         cupy = uproot.extras.cupy()
-        linklist = self.page_link_list[cluster_i]
-        if ncol < len(linklist):
-            if linklist[ncol].suppressed:
-                rel_crs = self._column_records_dict[self.column_records[ncol].field_id]
-                ncol = next(cr.idx for cr in rel_crs if not linklist[cr.idx].suppressed)
-                field_metadata = self.get_field_metadata(ncol)
-            linklist_col = linklist[ncol]
-            pagelist = linklist_col.pages
-        else:
-            pagelist = []
+        active_ncol = self._active_column(cluster_i, ncol)
+        if active_ncol != ncol:
+            ncol = active_ncol
+            field_metadata = self.get_field_metadata(ncol)
+        pagelist = self.clusters[cluster_i].columns[ncol].pages
 
         # Begin looping through pages
         tracker = 0
         cumsum = 0
-        for page_desc in pagelist:
-            num_elements = page_desc.num_elements
+        for page in pagelist:
+            num_elements = page.num_elements
             tracker_end = tracker + num_elements
             # Get content associated with page
             page_buffer = cluster_buffer[tracker:tracker_end]
@@ -1350,7 +1347,7 @@ in file {self.file.file_path}"""
         rel_crs = self._column_records_dict[self.column_records[ncol].field_id]
         alt_dtype_list = []
         for cr in rel_crs:
-            alt_dtype_byte = self.column_records[cr.idx].type
+            alt_dtype_byte = cr.type
             alt_dtype_str = uproot.const.rntuple_col_num_to_dtype_dict[alt_dtype_byte]
             if alt_dtype_str == "switch":
                 alt_dtype = numpy.dtype([("index", "int64"), ("tag", "int32")])
@@ -1402,6 +1399,119 @@ in file {self.file.file_path}"""
                 if start == stop:
                     continue
                 array[start:stop] += array[start - 1]
+
+
+def _schema_from_legacy(header, footer):
+    extension = footer.extension_links
+    field_records = [*header.field_records, *extension.field_records]
+    column_records = [*header.column_records, *extension.column_records]
+    alias_column_records = [
+        *header.alias_column_records,
+        *extension.alias_column_records,
+    ]
+    return uproot._rntuple_metadata.Schema(
+        name=header.ntuple_name,
+        description=header.ntuple_description,
+        writer=header.writer_identifier,
+        header_checksum=header.checksum,
+        fields=tuple(
+            uproot._rntuple_metadata.FieldRecord(
+                field_id=i,
+                field_version=r.field_version,
+                type_version=r.type_version,
+                parent_field_id=r.parent_field_id,
+                struct_role=r.struct_role,
+                flags=r.flags,
+                field_name=r.field_name,
+                type_name=r.type_name,
+                type_alias=r.type_alias,
+                field_desc=r.field_desc,
+                repetition=r.repetition,
+                source_field_id=r.source_field_id,
+                checksum=r.checksum,
+            )
+            for i, r in enumerate(field_records)
+        ),
+        columns=tuple(
+            uproot._rntuple_metadata.ColumnRecord(
+                column_id=i,
+                type=r.type,
+                nbits=r.nbits,
+                field_id=r.field_id,
+                flags=r.flags,
+                repr_idx=r.repr_idx,
+                first_element_index=r.first_element_index,
+                min_value=r.min_value,
+                max_value=r.max_value,
+            )
+            for i, r in enumerate(column_records)
+        ),
+        alias_columns=tuple(
+            uproot._rntuple_metadata.AliasColumnRecord(r.physical_id, r.field_id)
+            for r in alias_column_records
+        ),
+        num_header_fields=len(header.field_records),
+        num_header_columns=len(header.column_records),
+        cluster_groups=tuple(
+            uproot._rntuple_metadata.ClusterGroup(
+                min_entry_num=r.min_entry_num,
+                entry_span=r.entry_span,
+                num_clusters=r.num_clusters,
+                page_list_length=r.page_list_link.env_uncomp_size,
+                page_list_num_bytes=r.page_list_link.locator.num_bytes,
+                page_list_offset=r.page_list_link.locator.offset,
+            )
+            for r in footer.cluster_group_records
+        ),
+    )
+
+
+def _clusters_from_legacy(page_list_envelopes, schema):
+    num_columns = len(schema.columns)
+    clusters = []
+    for group_id, page_list in enumerate(page_list_envelopes):
+        for summary, column_pages in zip(
+            page_list.cluster_summaries, page_list.pagelinklist, strict=True
+        ):
+            columns = []
+            for column_id in range(num_columns):
+                if column_id >= len(column_pages):
+                    # the cluster was written before a schema extension added the column
+                    columns.append(
+                        uproot._rntuple_metadata.ColumnRange(
+                            column_id, False, None, None, ()
+                        )
+                    )
+                    continue
+                listed = column_pages[column_id]
+                columns.append(
+                    uproot._rntuple_metadata.ColumnRange(
+                        column_id=column_id,
+                        suppressed=listed.suppressed,
+                        element_offset=listed.element_offset,
+                        compression_settings=listed.compression_settings,
+                        pages=tuple(
+                            uproot._rntuple_metadata.Page(
+                                num_elements=page.num_elements,
+                                offset=page.locator.offset,
+                                num_bytes=page.locator.num_bytes,
+                                has_checksum=page.has_checksum,
+                            )
+                            for page in listed.pages
+                        ),
+                    )
+                )
+            clusters.append(
+                uproot._rntuple_metadata.Cluster(
+                    cluster_id=len(clusters),
+                    cluster_group_id=group_id,
+                    num_first_entry=summary.num_first_entry,
+                    num_entries=summary.num_entries,
+                    flags=summary.flags,
+                    columns=tuple(columns),
+                )
+            )
+    return clusters
 
 
 def _extract_bits(packed, nbits):

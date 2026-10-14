@@ -1435,14 +1435,14 @@ class WritableDirectory(MutableMapping):
         am = existing._ntuple.all_members
         anchor_location = key.seek_location + key.num_bytes
         num_entries = existing.num_entries
-        existing_footer = existing._footer
-        existing_page_list_envelopes = existing.page_list_envelopes
-        existing_field_records = existing._ntuple.field_records
+        existing_schema = existing._metadata_schema
+        existing_clusters = existing.clusters
+        existing_field_records = existing.field_records
 
         header = cnt.NTuple_Header(
-            None, existing.name, existing._header.ntuple_description, full_akform
+            None, existing.name, existing.description, full_akform
         )
-        header._checksum = existing._header.checksum
+        header._checksum = existing_schema.header_checksum
 
         # check column records match existing — store mismatch for later error
         # (e.g. ROOT writes split-encoded columns, uproot writes unsplit)
@@ -1474,18 +1474,16 @@ class WritableDirectory(MutableMapping):
 
         footer = cnt.NTuple_Footer(None, header._checksum)
 
-        for cg in existing_footer.cluster_group_records:
-            locator = cnt.NTuple_Locator(
-                cg.page_list_link.locator.num_bytes, cg.page_list_link.locator.offset
-            )
-            envlink = cnt.NTuple_EnvLink(cg.page_list_link.env_uncomp_size, locator)
+        for cg in existing_schema.cluster_groups:
+            locator = cnt.NTuple_Locator(cg.page_list_num_bytes, cg.page_list_offset)
+            envlink = cnt.NTuple_EnvLink(cg.page_list_length, locator)
             footer.cluster_group_record_frames.append(
                 cnt.NTuple_ClusterGroupRecord(
                     cg.min_entry_num, cg.entry_span, cg.num_clusters, envlink
                 )
             )
         # copy extension field and column records from existing footer
-        for fr in existing_footer.extension_links.field_records:
+        for fr in existing_field_records[existing_schema.num_header_fields :]:
             new_field = cnt.NTuple_Field_Description(
                 fr.parent_field_id,
                 fr.struct_role,
@@ -1494,7 +1492,7 @@ class WritableDirectory(MutableMapping):
                 field_description=fr.field_desc,
             )
             footer.extension_field_record_frames.append(new_field)
-        for cr in existing_footer.extension_links.column_records:
+        for cr in existing.column_records[existing_schema.num_header_columns :]:
             new_col = cnt.NTuple_Column_Description(
                 cr.type,
                 cr.nbits,
@@ -1552,31 +1550,23 @@ class WritableDirectory(MutableMapping):
             big=True,
         )
         ntuple_cascading._num_entries = num_entries
-        num_columns = len(existing._header.column_records) + len(
-            existing._footer.extension_links.column_records
-        )
-        # recover per-column element counts from existing page lists
-        # for jagged fields, data columns advance by elements not entries
-        column_counts = []
-        for cg_idx, _cg in enumerate(existing_footer.cluster_group_records):
-            ple = existing_page_list_envelopes[cg_idx]
-            if not column_counts:
-                column_counts = [0] * num_columns
-            # a cluster group can hold more than one cluster (e.g. a ROOT-written
-            # file); summing only pagelinklist[0] would silently undercount every
-            # column's element offset for any cluster after the first, corrupting
-            # the next page written for that column (uproot currently only ever
-            # writes one cluster per group, so this hasn't been reachable yet)
-            for cluster_col_pages in ple.pagelinklist:
-                for col_idx, col_pages in enumerate(cluster_col_pages):
-                    column_counts[col_idx] += sum(
-                        p.num_elements for p in col_pages.pages
+        num_columns = len(existing.column_records)
+        # recover per-column element counts from existing page lists, summed over
+        # every cluster (a cluster group can hold more than one, e.g. in a
+        # ROOT-written file); for jagged fields, data columns advance by elements
+        # not entries
+        if existing_clusters:
+            column_counts = [0] * num_columns
+            for cluster in existing_clusters:
+                for column in cluster.columns:
+                    column_counts[column.column_id] += sum(
+                        p.num_elements for p in column.pages
                     )
-        if not column_counts:
+        else:
             column_counts = [num_entries] * num_columns
         ntuple_cascading._column_counts = numpy.array(column_counts, dtype=int)
-        ntuple_cascading._existing_footer = existing_footer
-        ntuple_cascading._existing_page_list_envelopes = existing_page_list_envelopes
+        ntuple_cascading._existing_cluster_groups = existing_schema.cluster_groups
+        ntuple_cascading._existing_clusters = existing_clusters
         ntuple_cascading._existing_field_records = existing_field_records
 
         path = (*self._path, name)
@@ -3197,7 +3187,7 @@ class WritableNTuple:
 
         import uproot.writing._cascadentuple as cnt
 
-        if not hasattr(self._cascading, "_existing_footer"):
+        if not hasattr(self._cascading, "_existing_cluster_groups"):
             # this RNTuple was created in this same session (e.g. via mkrntuple or
             # directory assignment) rather than loaded from an existing file by
             # _load_existing_ntuple, so it never got the _existing_* attributes
@@ -3215,8 +3205,8 @@ class WritableNTuple:
         num_entries = self._cascading._num_entries
         header = self._cascading._header
         footer = self._cascading._footer
-        existing_footer = self._cascading._existing_footer
-        existing_page_list_envelopes = self._cascading._existing_page_list_envelopes
+        existing_cluster_groups = self._cascading._existing_cluster_groups
+        existing_clusters = self._cascading._existing_clusters
         existing_field_records = self._cascading._existing_field_records
 
         next_field_id = len(existing_field_records)
@@ -3359,29 +3349,33 @@ class WritableNTuple:
             next_field_id += 1
 
         footer.cluster_group_record_frames = []
-        for cg_idx, cg in enumerate(existing_footer.cluster_group_records):
-            ple = existing_page_list_envelopes[cg_idx]
+        for cg_idx, cg in enumerate(existing_cluster_groups):
+            group_clusters = [
+                c for c in existing_clusters if c.cluster_group_id == cg_idx
+            ]
             all_cluster_page_data = []
-            for _cluster_idx, cluster_col_pages in enumerate(ple.pagelinklist):
+            for cluster in group_clusters:
                 new_cluster_page_data = []
-                for col_pages in cluster_col_pages:
+                for column in cluster.columns:
+                    if column.element_offset is None:
+                        # deferred columns: no pages needed for existing cluster groups
+                        continue
                     existing_pages = [
                         cnt.NTuple_PageDescription(
                             p.num_elements,
-                            cnt.NTuple_Locator(p.locator.num_bytes, p.locator.offset),
+                            cnt.NTuple_Locator(p.num_bytes, p.offset),
                         )
-                        for p in col_pages.pages
+                        for p in column.pages
                     ]
                     new_cluster_page_data.append(
                         cnt.NTuple_ColumnPageListDescription(
-                            existing_pages, col_pages.element_offset, compression_code
+                            existing_pages, column.element_offset, compression_code
                         )
                     )
-                # deferred columns: no pages needed for existing cluster groups
                 all_cluster_page_data.append(new_cluster_page_data)
             cluster_summaries = [
-                cnt.NTuple_ClusterSummary(s.num_first_entry, s.num_entries)
-                for s in ple.cluster_summaries
+                cnt.NTuple_ClusterSummary(c.num_first_entry, c.num_entries)
+                for c in group_clusters
             ]
             pagelistenv = cnt.NTuple_PageListEnvelope(
                 header._checksum, cluster_summaries, all_cluster_page_data
@@ -3445,21 +3439,21 @@ class WritableNTuple:
         self._cascading._column_counts = numpy.append(
             self._cascading._column_counts, numpy.zeros(len(new_fields), dtype=int)
         )
-        # _existing_footer, _existing_page_list_envelopes, and _header._akform,
-        # by contrast, DO require a full read back from disk here: they need to
-        # be read-side model objects (Model_RNTuple_Footer, page-list envelopes),
-        # not the write-side NTuple_Footer/etc. objects already held in this
-        # method's local variables, and there's no cheaper way to produce those
-        # without re-implementing a write-to-read-model adapter. This makes every
+        # _existing_cluster_groups, _existing_clusters, and _header._akform, by
+        # contrast, DO require a full read back from disk here: they need to be
+        # read-side metadata (uproot._rntuple_metadata views), not the write-side
+        # NTuple_Footer/etc. objects already held in this method's local
+        # variables, and there's no cheaper way to produce those without
+        # re-implementing a write-to-read-model adapter. This makes every
         # add_fields() call pay for re-parsing the whole footer and page-list
         # state, scaling with how much has already been written -- a real but
         # unoptimized cost, not a correctness issue.
         directory, _ntuple_key = self._existing_key()
         existing_reload = directory._read_ntuple_envelope(_ntuple_key)
-        self._cascading._existing_footer = existing_reload._footer
-        self._cascading._existing_page_list_envelopes = (
-            existing_reload.page_list_envelopes
+        self._cascading._existing_cluster_groups = (
+            existing_reload._metadata_schema.cluster_groups
         )
+        self._cascading._existing_clusters = existing_reload.clusters
         full_akform_reload, _ = existing_reload.to_akform()
         self._cascading._header._akform = full_akform_reload
 

@@ -490,7 +490,7 @@ class HasFields(Mapping):
         """
         if isinstance(self, uproot.behaviors.RNTuple.RNTuple):
             if self._num_entries is None:
-                self._num_entries = sum(x.num_entries for x in self.cluster_summaries)
+                self._num_entries = sum(x.num_entries for x in self.clusters)
             return self._num_entries
         return self.ntuple.num_entries
 
@@ -801,7 +801,7 @@ class HasFields(Mapping):
         )
         library = uproot.interpretation.library._regularize_library(library)
 
-        clusters = self.ntuple.cluster_summaries
+        clusters = self.ntuple.clusters
         cluster_starts = numpy.array([c.num_first_entry for c in clusters])
         start_cluster_idx = (
             numpy.searchsorted(cluster_starts, entry_start, side="right") - 1
@@ -1785,14 +1785,14 @@ class RNTuple(HasFields):
         """
         Name of the ``RNTuple``.
         """
-        return self.header.ntuple_name
+        return self._metadata_schema.name
 
     @property
     def description(self):
         """
         Description of the ``RNTuple``.
         """
-        return self.header.ntuple_description
+        return self._metadata_schema.description
 
     @property
     def object_path(self):
@@ -1871,7 +1871,7 @@ def _get_recursive(hasfields, where):
 
 
 def _num_entries_for(ntuple, akform, target_num_bytes, entry_start, entry_stop):
-    clusters = ntuple.cluster_summaries
+    clusters = ntuple.clusters
     cluster_starts = numpy.array([c.num_first_entry for c in clusters])
 
     start_cluster_idx = (
