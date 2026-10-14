@@ -8,6 +8,7 @@ and may be changed without notice.
 from __future__ import annotations
 
 import datetime
+import difflib
 import glob
 import itertools
 import numbers
@@ -308,6 +309,38 @@ def file_object_path_split(urlpath: str) -> tuple[str, str | None]:
     return urlpath, obj
 
 
+def _check_unknown_options(source_cls, options: dict) -> None:
+    """
+    Raise on unrecognized options for uproot's own sources and warn about likely
+    misspellings of uproot options for fsspec, whose storage options are open-ended.
+    """
+    from uproot.reading import open as uproot_open
+
+    known = set(uproot_open.defaults)
+    unknown = [key for key in options if key not in known]
+    if len(unknown) == 0:
+        return
+
+    if issubclass(source_cls, uproot.source.fsspec.FSSpecSource):
+        for key in unknown:
+            matches = difflib.get_close_matches(key, known, n=1, cutoff=0.8)
+            if matches:
+                warnings.warn(
+                    f"option {key!r} is passed to fsspec as a storage option; "
+                    f"did you mean the uproot option {matches[0]!r}?",
+                    stacklevel=2,
+                )
+    elif source_cls.__module__.startswith("uproot.source."):
+        # "timeout" is read by the HTTP and XRootD sources but has no default
+        unknown = [key for key in unknown if key != "timeout"]
+        if unknown:
+            raise TypeError(
+                f"unrecognized option(s) for {source_cls.__name__}: "
+                f"{', '.join(map(repr, unknown))}; "
+                f"valid options are {sorted(known | {'timeout'})}"
+            )
+
+
 def file_path_to_source_class(
     file_path_or_object: str | Path | IO, options: dict
 ) -> tuple[type[uproot.source.chunk.Source], str | IO]:
@@ -340,11 +373,13 @@ def file_path_to_source_class(
             raise TypeError(
                 f"'handler' is not ObjectSource for a file-like object: {source_cls!r}"
             )
+        _check_unknown_options(uproot.source.object.ObjectSource, options)
         return uproot.source.object.ObjectSource, file_path_or_object
     elif isinstance(file_path_or_object, str):
         source_cls = (
             uproot.source.fsspec.FSSpecSource if source_cls is None else source_cls
         )
+        _check_unknown_options(source_cls, options)
         return source_cls, file_path_or_object
     else:
         raise TypeError(
