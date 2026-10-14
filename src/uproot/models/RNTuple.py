@@ -661,9 +661,11 @@ in file {self.file.file_path}"""
         columns = self._ntuple.clusters[cluster_idx].columns
         if not columns[col_idx].suppressed:
             return col_idx
-        rel_crs = self._column_records_dict[self.column_records[col_idx].field_id]
+        record = self.column_records[col_idx]
         return next(
-            cr.column_id for cr in rel_crs if not columns[cr.column_id].suppressed
+            other.column_id
+            for other in self._column_records_dict[record.field_id]
+            if other.index == record.index and not columns[other.column_id].suppressed
         )
 
     def read_page(
@@ -735,15 +737,11 @@ in file {self.file.file_path}"""
         for cluster_idx in range(cluster_start, cluster_stop):
             if cluster_idx < 0:
                 continue
-            active_col_idx = self._active_column(cluster_idx, col_idx)
-            if active_col_idx != col_idx:
-                # Update metadata if suppressed
-                col_idx = active_col_idx
-                field_metadata = self.get_field_metadata(col_idx)
-            pagelist = self._ntuple.clusters[cluster_idx].columns[col_idx].pages
-            cluster_length = sum(page.num_elements for page in pagelist)
+            # a suppressed column has the elements of the active representation's
             starts.append(total_length)
-            total_length += cluster_length
+            total_length += (
+                self._ntuple.clusters[cluster_idx].columns[col_idx].num_elements
+            )
 
         return total_length, starts, field_metadata.dtype_result
 
@@ -848,8 +846,8 @@ in file {self.file.file_path}"""
         if active_col_idx != col_idx:
             col_idx = active_col_idx
             field_metadata = self.get_field_metadata(col_idx)
-        pagelist = self._ntuple.clusters[cluster_idx].columns[col_idx].pages
-        total_len = numpy.sum([page.num_elements for page in pagelist], dtype=int)
+        column_range = self._ntuple.clusters[cluster_idx].columns[col_idx]
+        total_len = column_range.num_elements
         if destination is None:
             return_buffer = True
             destination = numpy.empty(total_len, dtype=field_metadata.dtype_result)
@@ -857,28 +855,34 @@ in file {self.file.file_path}"""
             return_buffer = False
             assert len(destination) == total_len
 
+        # The elements of a deferred column before its first stored one have no
+        # page and read as zeros; the pages hold the rest
+        num_zeros = column_range.num_zero_elements
+        destination[:num_zeros] = 0
+        stored = destination[num_zeros:]
+
         tracker = 0
         cumsum = 0
-        for page_idx, page in enumerate(pagelist):
+        for page_idx, page in enumerate(column_range.pages):
             n_elements = page.num_elements
             tracker_end = tracker + n_elements
             self.read_page(
-                destination[tracker:tracker_end],
+                stored[tracker:tracker_end],
                 cluster_idx,
                 col_idx,
                 page_idx,
                 field_metadata,
             )
             if field_metadata.dtype != field_metadata.dtype_result:
-                destination[tracker:tracker_end] = destination[
-                    tracker:tracker_end
-                ].view(field_metadata.dtype)[: tracker_end - tracker]
+                stored[tracker:tracker_end] = stored[tracker:tracker_end].view(
+                    field_metadata.dtype
+                )[: tracker_end - tracker]
             if field_metadata.delta:
-                destination[tracker] -= cumsum
-                cumsum += numpy.sum(destination[tracker:tracker_end])
+                stored[tracker] -= cumsum
+                cumsum += numpy.sum(stored[tracker:tracker_end])
             tracker = tracker_end
 
-        self.post_process(destination, field_metadata)
+        self.post_process(stored, field_metadata)
 
         # Save a copy in array_cache
         if array_cache is not None:
@@ -1034,20 +1038,14 @@ in file {self.file.file_path}"""
         across requested clusters organized by column key.
         """
         cupy = uproot.extras.cupy()
-        clusters = self.ntuple.clusters
-        cluster_starts = numpy.array([c.num_first_entry for c in clusters])
         cluster_range = range(start_cluster_idx, stop_cluster_idx)
 
         col_arrays = {}  # collect content for each col
         for key_nr in clusters_datas.columns:
             ncol = int(key_nr)
             field_metadata = self.get_field_metadata(ncol)
-            # Find how many elements should be padded at the beginning
-            n_padding = self.column_records[key_nr].first_element_index
-            n_padding -= cluster_starts[start_cluster_idx]
-            n_padding = max(n_padding, 0)
             total_length, starts, _ = self._expected_array_length_starts_dtype(
-                ncol, start_cluster_idx, stop_cluster_idx, n_padding
+                ncol, start_cluster_idx, stop_cluster_idx
             )
 
             res = cupy.empty(total_length, field_metadata.dtype_result)
@@ -1067,13 +1065,20 @@ in file {self.file.file_path}"""
                 cluster_buffer = self.gpu_deserialize_pages(
                     cluster_buffer, ncol, cluster_i, field_metadata
                 )
-                # if field_metadata.dtype != field_metadata.dtype_result:
-                res[starts[i] : stop] = cluster_buffer
+                # The elements of a deferred column before its first stored one
+                # have no page and read as zeros; the pages hold the rest
+                active_ncol = self._active_column(cluster_i, ncol)
+                num_zeros = (
+                    self.clusters[cluster_i].columns[active_ncol].num_zero_elements
+                )
+                res[starts[i] : starts[i] + num_zeros] = 0
+                start = starts[i] + num_zeros
+                res[start:stop] = cluster_buffer
 
                 if field_metadata.dtype != field_metadata.dtype_result:
-                    res[starts[i] : stop] = res[starts[i] : stop].view(
-                        field_metadata.dtype
-                    )[: stop - starts[i]]
+                    res[start:stop] = res[start:stop].view(field_metadata.dtype)[
+                        : stop - start
+                    ]
                 i += 1
 
             self.combine_cluster_arrays(res, starts, field_metadata)

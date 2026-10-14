@@ -53,6 +53,10 @@ class ColumnRecord:
     field_id: int
     flags: uproot.const.RNTupleColumnFlags
     repr_idx: int
+    index: int
+    """The position of the column among the columns of its field's representation.
+    The columns of the field's other representations at the same position
+    correspond to it."""
     first_element_index: int
     """The index of the first element of a deferred column, or 0. Negative if
     the column is deferred and suppressed."""
@@ -128,7 +132,16 @@ class ColumnRange:
 
     column_id: int
     suppressed: bool
-    """Whether the column is a representation that is inactive in this cluster."""
+    """Whether the column is a representation that is inactive in this cluster.
+    A suppressed column has no pages; its elements are those of the
+    corresponding column of the field's active representation."""
+    first_element_index: int
+    """The index, within the column, of its first element in this cluster."""
+    num_elements: int
+    """The number of elements of the column in this cluster."""
+    num_zero_elements: int
+    """The number of leading elements that have no page and read as zeros: the
+    elements of a deferred column before its first stored one."""
     element_offset: int | None
     """The element offset as stored in the page list, or None if the page list
     does not list the column (a cluster written before a schema extension)."""
@@ -136,6 +149,8 @@ class ColumnRange:
     """The compression settings as stored, or None if the column is suppressed
     or not listed."""
     pages: tuple[Page, ...]
+    """The pages, which hold the ``num_elements - num_zero_elements`` elements
+    after the zeros."""
 
 
 @dataclasses.dataclass(frozen=True)

@@ -847,9 +847,6 @@ class HasFields(Mapping):
         for key in target_cols:
             if "column" in key:
                 key_nr = int(key.split("-")[1])
-                # Find how many elements should be padded at the beginning
-                n_padding = self.ntuple.column_records[key_nr].first_element_index
-                n_padding = max(n_padding - cluster_offset, 0)
                 dtype = None
                 if interpreter == "cpu":
                     content_generator = partial(
@@ -857,7 +854,6 @@ class HasFields(Mapping):
                         key_nr,
                         start_cluster_idx,
                         stop_cluster_idx,
-                        missing_element_padding=n_padding,
                         array_cache=array_cache,
                         access_log=access_log,
                     )
@@ -867,7 +863,6 @@ class HasFields(Mapping):
                                 key_nr,
                                 start_cluster_idx,
                                 stop_cluster_idx,
-                                missing_element_padding=n_padding,
                             )
                         )
                         if "cardinality" in key:

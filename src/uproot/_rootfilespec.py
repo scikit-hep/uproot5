@@ -23,7 +23,7 @@ import types
 
 from rootfilespec.bootstrap import BOOTSTRAP_CONTEXT, ROOT3a3aRNTuple
 from rootfilespec.rntuple.RLocator import LargeLocator, StandardLocator
-from rootfilespec.rntuple.RNTuple import RNTuple
+from rootfilespec.rntuple.RNTuple import RNTuple, SchemaDescription
 from rootfilespec.serializable import BufferContext, ReadBuffer
 
 import uproot._rntuple_metadata
@@ -149,7 +149,7 @@ def _field_record(field_id, record):
     )
 
 
-def _column_record(column_id, record):
+def _column_record(column_id, record, index):
     return uproot._rntuple_metadata.ColumnRecord(
         column_id=column_id,
         type=int(record.fColumnType),
@@ -157,6 +157,7 @@ def _column_record(column_id, record):
         field_id=record.fFieldID,
         flags=uproot.const.RNTupleColumnFlags(record.fFlags),
         repr_idx=record.fRepresentationIndex,
+        index=index,
         first_element_index=record.fFirstElementIndex or 0,
         min_value=record.fMinValue,
         max_value=record.fMaxValue,
@@ -175,6 +176,13 @@ def schema(header, footer):
         *header.aliasColumnDescriptions,
         *extension.aliasColumnDescriptions,
     ]
+    # the position of each column among its field's representation's columns
+    column_index = {}
+    description = SchemaDescription.from_envelopes(header, footer)
+    for representations in description.field_columns():
+        for representation in representations:
+            for i, column_id in enumerate(representation):
+                column_index[column_id] = i
     cluster_groups = []
     for group in footer.clusterGroups:
         link = group.pagelistLink
@@ -194,7 +202,9 @@ def schema(header, footer):
         writer=decode(header.fLibrary),
         header_checksum=header.checksum,
         fields=tuple(_field_record(i, r) for i, r in enumerate(field_records)),
-        columns=tuple(_column_record(i, r) for i, r in enumerate(column_records)),
+        columns=tuple(
+            _column_record(i, r, column_index[i]) for i, r in enumerate(column_records)
+        ),
         alias_columns=tuple(
             uproot._rntuple_metadata.AliasColumnRecord(r.fPhysicalColumnID, r.fFieldID)
             for r in alias_records
@@ -223,6 +233,9 @@ def _column_range(column_range):
     return uproot._rntuple_metadata.ColumnRange(
         column_id=column_range.column.columnID,
         suppressed=column_range.suppressed,
+        first_element_index=column_range.firstElementIndex,
+        num_elements=column_range.nElements,
+        num_zero_elements=column_range.nZeroElements,
         element_offset=None if locations is None else locations.elementoffset,
         compression_settings=compression,
         pages=tuple(_page(page.pageDescription) for page in column_range.pages),
