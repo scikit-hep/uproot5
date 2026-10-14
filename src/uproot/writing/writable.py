@@ -1556,7 +1556,11 @@ class WritableDirectory(MutableMapping):
         # ROOT-written file); for jagged fields, data columns advance by elements
         # not entries
         if existing_clusters:
-            column_counts = [0] * num_columns
+            # a deferred column's elements start at its first element index, and
+            # its pages hold only the elements from there on
+            column_counts = [
+                max(cr.first_element_index, 0) for cr in existing.column_records
+            ]
             for cluster in existing_clusters:
                 for column in cluster.columns:
                     column_counts[column.column_id] += sum(
@@ -3436,8 +3440,10 @@ class WritableNTuple:
         self._cascading._existing_field_records = list(header._field_records) + list(
             footer.extension_field_record_frames
         )
+        # the new columns are deferred: their elements start at num_entries
         self._cascading._column_counts = numpy.append(
-            self._cascading._column_counts, numpy.zeros(len(new_fields), dtype=int)
+            self._cascading._column_counts,
+            numpy.full(len(new_fields), num_entries, dtype=int),
         )
         # _existing_cluster_groups, _existing_clusters, and _header._akform, by
         # contrast, DO require a full read back from disk here: they need to be
