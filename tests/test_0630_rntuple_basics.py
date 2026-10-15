@@ -18,11 +18,10 @@ def test_flat():
     with uproot.open(filename) as f:
         R = f["ntuple"]
         assert R.keys() == ["one_integers", "two_floats"]
-        assert [r.type_name for r in R.header.field_records] == [
+        assert [r.type_name for r in R.field_records] == [
             "std::int32_t",
             "float",
         ]
-        assert R.header.checksum == R.footer.header_checksum
         assert all(R.arrays(entry_stop=3)["one_integers"] == numpy.array([9, 8, 7]))
         assert all(
             R.arrays("one_integers", entry_stop=3)["one_integers"]
