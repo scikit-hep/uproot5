@@ -8,7 +8,6 @@ and may be changed without notice.
 from __future__ import annotations
 
 import datetime
-import difflib
 import glob
 import itertools
 import numbers
@@ -309,10 +308,47 @@ def file_object_path_split(urlpath: str) -> tuple[str, str | None]:
     return urlpath, obj
 
 
-def _check_unknown_options(source_cls, options: dict) -> None:
+def fsspec_storage_options(options: dict) -> dict:
+    """
+    Returns the subset of uproot ``options`` that should be forwarded to fsspec:
+    everything that is not an uproot option, plus ``timeout`` if it is not None.
+    """
+    from uproot.reading import open as uproot_open
+
+    return {
+        key: value
+        for key, value in options.items()
+        if (key not in uproot_open.defaults) or (key == "timeout" and value is not None)
+    }
+
+
+def _edit_distance(a: str, b: str) -> int:
+    # optimal string alignment distance: insertions, deletions, substitutions,
+    # and transpositions of adjacent characters
+    rows = [[0] * (len(b) + 1) for _ in range(len(a) + 1)]
+    for i in range(len(a) + 1):
+        rows[i][0] = i
+    for j in range(len(b) + 1):
+        rows[0][j] = j
+    for i in range(1, len(a) + 1):
+        for j in range(1, len(b) + 1):
+            cost = 0 if a[i - 1] == b[j - 1] else 1
+            rows[i][j] = min(
+                rows[i - 1][j] + 1, rows[i][j - 1] + 1, rows[i - 1][j - 1] + cost
+            )
+            if i > 1 and j > 1 and a[i - 1] == b[j - 2] and a[i - 2] == b[j - 1]:
+                rows[i][j] = min(rows[i][j], rows[i - 2][j - 2] + 1)
+    return rows[len(a)][len(b)]
+
+
+def _check_unknown_options(options: dict, file_path=None, stacklevel: int = 3) -> None:
     """
     Raise on unrecognized options for uproot's own sources and warn about likely
     misspellings of uproot options for fsspec, whose storage options are open-ended.
+    Custom handlers that are not uproot Sources are not checked.
+
+    This must be called directly from a public entry point, so that the default
+    ``stacklevel`` points at the user's code.
     """
     from uproot.reading import open as uproot_open
 
@@ -321,24 +357,32 @@ def _check_unknown_options(source_cls, options: dict) -> None:
     if len(unknown) == 0:
         return
 
+    source_cls = options.get("handler")
+    if source_cls is None:
+        if file_path is not None and not isinstance(file_path, str):
+            source_cls = uproot.source.object.ObjectSource
+        else:
+            source_cls = uproot.source.fsspec.FSSpecSource
+    if not (
+        isinstance(source_cls, type)
+        and issubclass(source_cls, uproot.source.chunk.Source)
+    ):
+        return
+
     if issubclass(source_cls, uproot.source.fsspec.FSSpecSource):
         for key in unknown:
-            matches = difflib.get_close_matches(key, known, n=1, cutoff=0.8)
+            matches = [k for k in sorted(known) if _edit_distance(key, k) <= 2]
             if matches:
                 warnings.warn(
                     f"option {key!r} is passed to fsspec as a storage option; "
                     f"did you mean the uproot option {matches[0]!r}?",
-                    stacklevel=2,
+                    stacklevel=stacklevel,
                 )
-    elif source_cls.__module__.startswith("uproot.source."):
-        # "timeout" is read by the HTTP and XRootD sources but has no default
-        unknown = [key for key in unknown if key != "timeout"]
-        if unknown:
-            raise TypeError(
-                f"unrecognized option(s) for {source_cls.__name__}: "
-                f"{', '.join(map(repr, unknown))}; "
-                f"valid options are {sorted(known | {'timeout'})}"
-            )
+    else:
+        raise TypeError(
+            f"unrecognized option(s) for {source_cls.__name__}: "
+            f"{', '.join(map(repr, unknown))}; valid options are {sorted(known)}"
+        )
 
 
 def file_path_to_source_class(
@@ -373,13 +417,11 @@ def file_path_to_source_class(
             raise TypeError(
                 f"'handler' is not ObjectSource for a file-like object: {source_cls!r}"
             )
-        _check_unknown_options(uproot.source.object.ObjectSource, options)
         return uproot.source.object.ObjectSource, file_path_or_object
     elif isinstance(file_path_or_object, str):
         source_cls = (
             uproot.source.fsspec.FSSpecSource if source_cls is None else source_cls
         )
-        _check_unknown_options(source_cls, options)
         return source_cls, file_path_or_object
     else:
         raise TypeError(
@@ -875,11 +917,7 @@ def _regularize_files_inner(
                 file.full_name
                 for file in fsspec.open_files(
                     file_path,
-                    **{
-                        k: v
-                        for k, v in options.items()
-                        if k not in uproot.reading.open.defaults
-                    },
+                    **fsspec_storage_options(options),
                 )
             ]
             # https://github.com/fsspec/filesystem_spec/issues/1459
