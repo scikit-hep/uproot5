@@ -345,7 +345,8 @@ def _check_unknown_options(options: dict, file_path=None, stacklevel: int = 3) -
     """
     Raise on unrecognized options for uproot's own sources and warn about likely
     misspellings of uproot options for fsspec, whose storage options are open-ended.
-    Custom handlers that are not uproot Sources are not checked.
+    Handlers that are not uproot Sources are skipped here and rejected later by
+    ``file_path_to_source_class``.
 
     This must be called directly from a public entry point, so that the default
     ``stacklevel`` points at the user's code.

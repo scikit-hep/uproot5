@@ -380,6 +380,7 @@ def graphed(
             raise TypeError(
                 f"uproot.graphed() got {name}=, which belongs to uproot.dask; {instead}"
             )
+    uproot._util._check_unknown_options(options)
     library = uproot.interpretation.library._regularize_library(library)
     if library.name != "ak":
         raise NotImplementedError(
@@ -514,6 +515,7 @@ def graphed_partitions(
       read with ``uproot.graphed(align_baskets=True)`` follows only the branches each
       partition reads. Needs ``open_files=True``; ``TTrees`` only.
     """
+    uproot._util._check_unknown_options(options)
     graphed = uproot.extras.graphed()
 
     have_step_size = not isinstance(step_size, uproot._util._Unset)
