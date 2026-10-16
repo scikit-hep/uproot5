@@ -397,7 +397,8 @@ def graphed(
             and opened only when read, so a missing ``TBranch`` in one of them fails the read and,
             with ``allow_missing``, a missing ``TTree`` reads as empty. A file listed more than
             once is opened to resolve each entry's ``TTree``, so the same ``TTree`` listed twice
-            in two spellings is one input (``uproot.graphed_write`` refuses the duplicate). If True, every file is
+            in two spellings is one input (``uproot.graphed_write`` refuses the duplicate), and
+            with ``allow_missing`` its missing ``TTree`` is dropped rather than read as empty. If True, every file is
             opened up front, as :doc:`uproot._dask.dask` does by default: the ``TBranches`` are
             those every file has and a file without the ``TTree`` is dropped.
         options: Passed through to file opening.
