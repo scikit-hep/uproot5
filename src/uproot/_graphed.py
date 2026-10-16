@@ -25,6 +25,7 @@ recorded graph does not touch standing in as placeholders. The source DECLARES t
 from __future__ import annotations
 
 import bisect
+import collections
 import itertools
 
 import uproot
@@ -40,7 +41,7 @@ from uproot._dask import (
 )
 from uproot._util import no_filter, unset
 from uproot.behaviors.RNTuple import HasFields
-from uproot.behaviors.TBranch import HasBranches
+from uproot.behaviors.TBranch import HasBranches, TBranch
 
 #: ``uproot.dask`` parameters ``uproot.graphed`` has no counterpart for, and where that concern
 #: lives instead; ``**options`` would otherwise swallow them silently.
@@ -286,14 +287,38 @@ def _file_and_path(file_path, object_path):
     return file_path, object_path
 
 
-def _unopened_key(entry, opened, opened_key, is_self):
-    """An unopened entry's ``(file_path, object_path)``: the opened entry's resolved key when it
-    names the same tree, so a duplicate is still refused, and a leaf ``TBranch``'s parent.
-    """
-    if entry == opened:
-        return opened_key
-    file_path, object_path = entry
-    return file_path, (object_path or "").rpartition("/")[0] if is_self else object_path
+def _later_entries(
+    entries, files, opened, is_self, custom_classes, allow_missing, options
+):
+    """``(file_path, object_path, steps)`` of the entries after the opened one. A file listed once
+    stays unopened (a leaf ``TBranch`` path names its parent); a file listed more than once is
+    opened, once, and its entries keyed by their resolved ``TTree`` as ``open_files=True`` keys
+    them, so the same tree spelled two ways is a duplicate ``graphed.write`` refuses."""
+    listed = collections.Counter(_file_and_path(f, o)[0] for f, o, *_ in files)
+    directories = {opened.file.file_path: opened.file.root_directory}
+    for given, given_object_path, *steps in entries:
+        file_path, object_path = _file_and_path(given, given_object_path)
+        if listed[file_path] == 1:
+            yield file_path, (
+                (object_path or "").rpartition("/")[0] if is_self else object_path
+            ), steps
+            continue
+        if file_path not in directories:
+            directories[file_path] = uproot.reading.ReadOnlyFile(
+                file_path,
+                object_cache=None,
+                array_cache=None,
+                custom_classes=custom_classes,
+                **options,
+            ).root_directory
+        obj = uproot._util.object_in_directory(
+            directories[file_path], object_path or None, allow_missing
+        )
+        if obj is None:
+            continue
+        if isinstance(obj, TBranch) and len(obj.keys(recursive=True)) == 0:
+            obj = obj.parent
+        yield obj.file.file_path, obj.object_path, steps
 
 
 def _uproot_source(array, what):
@@ -370,7 +395,9 @@ def graphed(
         open_files (bool): If False (default), only the first file that has the ``TTree`` is
             opened, for the form and the ``TBranch`` names; the files after it are listed by path
             and opened only when read, so a missing ``TBranch`` in one of them fails the read and,
-            with ``allow_missing``, a missing ``TTree`` reads as empty. If True, every file is
+            with ``allow_missing``, a missing ``TTree`` reads as empty. A file listed more than
+            once is opened to resolve each entry's ``TTree``, so the same ``TTree`` listed twice
+            in two spellings is one input (``uproot.graphed_write`` refuses the duplicate). If True, every file is
             opened up front, as :doc:`uproot._dask.dask` does by default: the ``TBranches`` are
             those every file has and a file without the ``TTree`` is dropped.
         options: Passed through to file opening.
@@ -452,8 +479,6 @@ def graphed(
             real_options,
             first_only=not open_files,
         )
-        unopened = list(entries)
-        opened = _file_and_path(*files[len(files) - len(unopened) - 1][:2])
         if align_baskets and any(isinstance(t, HasFields) for t in ttrees):
             raise NotImplementedError(
                 "align_baskets=True follows TBasket boundaries; an RNTuple has none"
@@ -461,12 +486,20 @@ def graphed(
         common_keys = _normalize_grouped_keys(ttrees[0], common_keys, full_paths)
         base_form = _base_form_of(ttrees[0], common_keys, ak_add_doc, form_mapping)
         file_tree = [(t.file.file_path, t.object_path) for t in ttrees]
-        file_tree += [
-            _unopened_key(_file_and_path(f, o), opened, file_tree[0], _is_self[0])
-            for f, o, *_ in unopened
-        ]
+        later = list(
+            _later_entries(
+                entries,
+                files,
+                ttrees[0],
+                _is_self[0],
+                custom_classes,
+                allow_missing,
+                real_options,
+            )
+        )
+        file_tree += [(file_path, object_path) for file_path, object_path, _ in later]
         if explicit_chunks is not None:
-            explicit_chunks += [f[2] for f in unopened]
+            explicit_chunks += [steps[0] for _, _, steps in later]
         name = getattr(ttrees[0], "name", None) or _name_from_object_path(file_tree)
     expected_form, info = _mapping_of(form_mapping, base_form)
     typetracer = awkward.typetracer.typetracer_from_form(

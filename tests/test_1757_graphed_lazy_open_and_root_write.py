@@ -132,6 +132,47 @@ def test_unopened_files_resolve_a_leaf_branch_and_a_duplicate_like_the_opened_on
     ]
 
 
+@pytest.mark.parametrize(
+    ("spelling", "opens"),
+    [
+        (lambda a, b: [a, b, a + ":events"], "a"),
+        (lambda a, b: [a + ":events", b, a], "a"),
+        (lambda a, b: [a, b, b + ":events"], "ab"),
+        (lambda a, b: [a + ":events/x", b + ":events/x", a + ":events/x"], "a"),
+    ],
+    ids=["first-again-with-path", "first-again-without", "later-twice", "leaf"],
+)
+def test_a_tree_listed_twice_in_two_spellings_is_a_refused_duplicate(
+    tmp_path, monkeypatch, spelling, opens
+):
+    a, b = (_make_tree(os.path.join(tmp_path, f"{x}.root")) for x in "ab")
+    opened = _opens(monkeypatch)
+    g = uproot.graphed(spelling(a, b))
+    assert opened == [
+        {"a": a, "b": b}[x] for x in opens
+    ]  # a file listed once is not opened
+    with pytest.raises(ValueError, match="duplicate input"):
+        uproot.graphed_write(g, str(tmp_path / "out"), executor="thread")
+
+
+def test_two_trees_of_one_file_are_two_inputs(tmp_path, monkeypatch):
+    a = os.path.join(tmp_path, "a.root")
+    with uproot.recreate(a) as f:
+        for name in ("events", "other"):
+            f.mktree(name, {"x": "f8", "y": "f8"})
+            f[name].extend({"x": np.arange(10, dtype="f8"), "y": np.zeros(10)})
+    b = _make_tree(os.path.join(tmp_path, "b.root"))
+    opened = _opens(monkeypatch)
+    g = uproot.graphed([a + ":events", b + ":events", a + ":other"])
+    assert opened == [a]
+    assert _keys(g) == [(a, "/events;1"), (b, "events"), (a, "/other;1")]
+    paths = uproot.graphed_write(g, str(tmp_path / "out"), executor="thread")
+    assert [len(t) for t in _trees(paths, "tree")] == [10, 10, 10]
+    c = _make_tree(os.path.join(tmp_path, "c.root"))
+    missing = uproot.graphed([b, c, c + ":nope"], allow_missing=True)
+    assert _keys(missing) == [(b, "/events;1"), (c, "/events;1")]  # c is listed twice
+
+
 def test_explicit_steps_of_unopened_files_are_their_partitions(tmp_path):
     a, b = (_make_tree(os.path.join(tmp_path, f"{x}.root")) for x in "ab")
     g = uproot.graphed(
