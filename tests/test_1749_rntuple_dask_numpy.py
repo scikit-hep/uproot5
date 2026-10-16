@@ -244,3 +244,35 @@ def test_rntuple_dask_numpy_collection_of_structs(tmp_path):
     result_pt_delayed = dask_delayed["jets.pt"].compute()
     assert result_pt_delayed.dtype == np.dtype(object)
     assert result_pt_delayed.shape == (3,)
+
+
+def test_rntuple_dask_numpy_regular_array_of_structs(tmp_path):
+    """Subfields of std::array of structs (e.g. std::array<struct{a, b}, N>)."""
+    ak = pytest.importorskip("awkward")
+
+    path3 = os.path.join(tmp_path, "array3.root")
+    path4 = os.path.join(tmp_path, "array4.root")
+
+    for path, size in [(path3, 3), (path4, 4)]:
+        s = ak.to_regular(ak.Array([[{"a": 1, "b": 2.0}] * size] * 5), axis=1)
+        with uproot.recreate(path) as f:
+            f.mkrntuple("ntuple", ak.Array({"s": s}))
+
+    # Single-file read: declared shape and computed shape must match (5, 3)
+    a = uproot.dask(f"{path3}:ntuple", library="np")["s.a"]
+    assert a.shape == (5, 3)
+    computed = a.compute()
+    assert computed.shape == (5, 3)
+    assert np.array_equal(a[:, 0].compute(), np.ones(5, dtype=np.int64))
+
+    # open_files=False delayed-open read
+    a_delayed = uproot.dask(f"{path3}:ntuple", library="np", open_files=False)["s.a"]
+    assert np.isnan(a_delayed.shape[0])
+    assert a_delayed.shape[1] == 3
+    computed_delayed = a_delayed.compute()
+    assert computed_delayed.shape == (5, 3)
+    assert np.array_equal(a_delayed[:, 0].compute(), np.ones(5, dtype=np.int64))
+
+    # Cross-file read with size mismatch (size 3 vs 4) raises ValueError
+    with pytest.raises(ValueError, match="inconsistent NumPy dtype for field"):
+        uproot.dask([f"{path3}:ntuple", f"{path4}:ntuple"], library="np")["s.a"]

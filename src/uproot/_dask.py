@@ -555,8 +555,8 @@ class _UprootReadNumpy:
         return arr
 
 
-def _form_to_numpy_dtype(form):
-    sizes = []
+def _form_to_numpy_dtype(form, initial_sizes=()):
+    sizes = list(initial_sizes)
     curr = form
     while isinstance(curr, awkward.forms.RegularForm):
         sizes.append(curr.size)
@@ -574,6 +574,7 @@ def _form_to_numpy_dtype(form):
 def _branch_or_field_numpy_dtype(branch):
     if isinstance(branch, HasFields):
         form, path = branch.to_akform()
+        sizes = []
         if path is not None:
             for p in path:
                 # Step through list/option forms to reach the record inside.
@@ -598,12 +599,14 @@ def _branch_or_field_numpy_dtype(branch):
                         ),
                     ):
                         return numpy.dtype(object)
+                    if isinstance(form, awkward.forms.RegularForm):
+                        sizes.append(form.size)
                     form = form.content
                 if hasattr(form, "fields") and p in form.fields:
                     form = form.contents[form.fields.index(p)]
                 else:
-                    return numpy.dtype(object)
-        return _form_to_numpy_dtype(form)
+                    raise KeyError(f"field {p!r} not found in form {form!r}")
+        return _form_to_numpy_dtype(form, initial_sizes=sizes)
     else:
         return branch.interpretation.numpy_dtype
 
