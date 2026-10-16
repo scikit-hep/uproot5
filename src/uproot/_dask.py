@@ -1599,11 +1599,14 @@ def _resolve_trees_and_keys(
     custom_classes,
     allow_missing,
     real_options,
+    first_only=False,
 ):
     """Open every entry of ``files`` and intersect their keys. A leaf ``TBranch`` given as the
     object path stands for its parent ``TTree`` with that one branch selected (``is_self``).
     Returns ``(ttrees, common_keys, is_self, explicit_chunks)``; ``explicit_chunks`` is ``None``
-    unless every entry carries its own ``steps``."""
+    unless every entry carries its own ``steps``. With ``first_only``, stop after the first
+    entry that has the object, leaving an iterator ``files`` at the entry after it."""
+    seen = []
     ttrees = []
     explicit_chunks = []
     common_keys = None
@@ -1611,6 +1614,7 @@ def _resolve_trees_and_keys(
     rntuple_keys = []
 
     for file_object_maybechunks in files:
+        seen.append(file_object_maybechunks)
         file_path, object_path = file_object_maybechunks[0:2]
 
         obj = uproot._util.regularize_object_path(
@@ -1662,6 +1666,9 @@ def _resolve_trees_and_keys(
                 new_keys = set(new_keys)
                 common_keys = [key for key in common_keys if key in new_keys]
 
+            if first_only:
+                break
+
     if len(rntuple_keys) > 1:
         common_keys = _drop_partly_common_fields(common_keys, rntuple_keys)
 
@@ -1670,7 +1677,7 @@ def _resolve_trees_and_keys(
             "allow_missing=True and no TTrees found in\n\n    {}".format(
                 "\n    ".join(
                     f"{{{f.file_path if isinstance(f, HasBranches) else f!r}: {f.object_path if isinstance(f, HasBranches) else o!r}}}"
-                    for f, o, *_ in files
+                    for f, o, *_ in seen
                 )
             )
         )
@@ -1680,7 +1687,7 @@ def _resolve_trees_and_keys(
             "TTrees in\n\n    {}\n\nhave no TBranches in common".format(
                 "\n    ".join(
                     f"{{{f.file_path if isinstance(f, HasBranches) else f!r}: {f.object_path if isinstance(f, HasBranches) else o!r}}}"
-                    for f, o, *_ in files
+                    for f, o, *_ in seen
                 )
             )
         )

@@ -81,7 +81,6 @@ def test_np_library_is_not_implemented():
     [
         {"step_size": "1 MB"},
         {"steps_per_file": 2},
-        {"open_files": False},
         {"allow_read_errors_with_report": True},
     ],
 )
@@ -181,8 +180,13 @@ def test_a_nested_rntuple_keeps_its_nesting(tmp_path):
 def test_allow_missing_drops_a_file_without_the_tree(tmp_path):
     a = _make_tree(os.path.join(tmp_path, "a.root"))
     b = _make_tree(os.path.join(tmp_path, "b.root"), name="other")
-    g = uproot.graphed([a + ":events", b + ":events"], allow_missing=True)
-    assert len(_source_of(g).partitions(1)) == 1
+    eager = uproot.graphed(
+        [a + ":events", b + ":events"], allow_missing=True, open_files=True
+    )
+    assert len(_source_of(eager).partitions(1)) == 1
+    lazy = uproot.graphed([a + ":events", b + ":events"], allow_missing=True)
+    assert len(_source_of(lazy).partitions(1)) == 2  # b is not opened until it is read
+    assert _run(_sum_plan(lazy.x)) == _run(_sum_plan(eager.x)) == 45.0
     with pytest.raises(uproot.KeyInFileError):
         uproot.graphed(b + ":events")
     # no object path and no TTree in the file at all
