@@ -239,7 +239,7 @@ or
         )
 
 
-_GRAPHED_MIN = "0.0.4"
+_GRAPHED_MIN = "0.0.5"
 
 
 def graphed(minimum=_GRAPHED_MIN):

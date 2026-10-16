@@ -332,8 +332,8 @@ def test_missing_graphed_executors_reports_how_to_install_it(monkeypatch):
 
 
 def test_a_too_old_graphed_reports_the_floor(monkeypatch):
-    monkeypatch.setattr(graphed, "__version__", "0.0.3")
-    with pytest.raises(ModuleNotFoundError, match="needs graphed 0.0.4 or newer"):
+    monkeypatch.setattr(graphed, "__version__", "0.0.4")
+    with pytest.raises(ModuleNotFoundError, match="needs graphed 0.0.5 or newer"):
         uproot.extras.graphed()
 
 
