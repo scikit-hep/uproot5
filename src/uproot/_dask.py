@@ -16,6 +16,7 @@ from uproot._util import no_filter, unset
 from uproot.behaviors.RNTuple import (
     HasFields,
     _filter_field_by_key,
+    _form_to_numpy_dtype,
     _with_subfield_keys,
 )
 from uproot.behaviors.RNTuple import (
@@ -543,32 +544,7 @@ class _UprootReadNumpy:
             decompression_executor=self.decompression_executor,
             interpretation_executor=self.interpretation_executor,
         )
-        if (
-            self.expected_dtype is not None
-            and self.expected_dtype == numpy.dtype(object)
-            and (arr.dtype != object or arr.ndim > 1)
-        ):
-            out = numpy.empty(len(arr), dtype=object)
-            for i, row in enumerate(arr):
-                out[i] = row
-            arr = out
         return arr
-
-
-def _form_to_numpy_dtype(form, initial_sizes=()):
-    sizes = list(initial_sizes)
-    curr = form
-    while isinstance(curr, awkward.forms.RegularForm):
-        sizes.append(curr.size)
-        curr = curr.content
-    if isinstance(curr, awkward.forms.NumpyForm):
-        inner_dt = numpy.dtype(curr.primitive)
-        shape = tuple(sizes) + curr.inner_shape
-        if shape:
-            return numpy.dtype((inner_dt, shape))
-        return inner_dt
-    else:
-        return numpy.dtype(object)
 
 
 def _branch_or_field_numpy_dtype(branch):
@@ -695,15 +671,6 @@ which has {num_entries} entries"""
             decompression_executor=self.decompression_executor,
             interpretation_executor=self.interpretation_executor,
         )
-        if (
-            self.expected_dtype is not None
-            and self.expected_dtype == numpy.dtype(object)
-            and (arr.dtype != object or arr.ndim > 1)
-        ):
-            out = numpy.empty(len(arr), dtype=object)
-            for i, row in enumerate(arr):
-                out[i] = row
-            arr = out
         return arr
 
 

@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import sys
 import warnings
-from collections.abc import Iterable, Mapping
+from collections.abc import Mapping
 from functools import partial
 
 import awkward as ak
@@ -918,13 +918,10 @@ class HasFields(Mapping):
             numpy_data = {}
             for f in arrays.fields:
                 try:
-                    numpy_data[f] = arrays[f].to_numpy()
-                except (ValueError, TypeError):
-                    try:
-                        numpy_data[f] = _awkward_to_numpy(arrays[f])
-                    except Exception:
-                        msg = f"Field {f} cannot be converted to NumPy/Pandas"
-                        raise ValueError(msg) from None
+                    numpy_data[f] = _rntuple_to_numpy(arrays[f])
+                except Exception:
+                    msg = f"Field {f} cannot be converted to NumPy/Pandas"
+                    raise ValueError(msg) from None
             if library.name == "pd":
                 pd = uproot.extras.pandas()
                 pandas_index = uproot.interpretation.library._pandas_basic_index(
@@ -2065,32 +2062,156 @@ def _fill_container_dict(container_dict, content, key, dtype_byte, dtype):
             container_dict[f"{key}-offsets"] = content
 
 
-def _awkward_to_numpy(data):
-    if isinstance(data, str):
-        return data
+def _is_string_form(form):
+    curr = form
+    while isinstance(
+        curr,
+        (
+            ak.forms.IndexedOptionForm,
+            ak.forms.ByteMaskedForm,
+            ak.forms.BitMaskedForm,
+            ak.forms.UnmaskedForm,
+        ),
+    ):
+        curr = curr.content
+    if isinstance(curr, (ak.forms.ListOffsetForm, ak.forms.ListForm)):
+        if curr.parameters.get("__array__") in ("string", "bytestring"):
+            return True
+        if (
+            isinstance(curr.content, ak.forms.NumpyForm)
+            and curr.content.parameters.get("__array__") == "char"
+        ):
+            return True
+    return False
 
-    if isinstance(data, ak.Array) and isinstance(data.layout, ak.contents.RecordArray):
-        try:
-            return data.to_numpy()
-        except (TypeError, ValueError):
-            fields = data.fields
-            arrays = [_awkward_to_numpy(data[f]) for f in fields]
-            dtypes = [arr.dtype if len(arr.shape) == 1 else "O" for arr in arrays]
-            tuple_array = [tuple(arr[i] for arr in arrays) for i in range(len(data))]
-            del arrays
-            return numpy.array(
-                tuple_array, dtype=list(zip(fields, dtypes, strict=True))
-            )
 
-    if not isinstance(data, Iterable) or len(data) == 0:
+def _form_to_numpy_dtype(form, initial_sizes=()):
+    sizes = list(initial_sizes)
+    curr = form
+    is_optional = False
+
+    while isinstance(
+        curr,
+        (
+            ak.forms.RegularForm,
+            ak.forms.IndexedOptionForm,
+            ak.forms.ByteMaskedForm,
+            ak.forms.BitMaskedForm,
+            ak.forms.UnmaskedForm,
+        ),
+    ):
+        if isinstance(curr, ak.forms.RegularForm):
+            sizes.append(curr.size)
+        else:
+            is_optional = True
+        curr = curr.content
+
+    if isinstance(curr, ak.forms.NumpyForm):
+        inner_dt = numpy.dtype(curr.primitive)
+        shape = tuple(sizes) + curr.inner_shape
+        if shape:
+            return numpy.dtype((inner_dt, shape))
+        return inner_dt
+
+    if not is_optional and isinstance(curr, ak.forms.RecordForm):
+        field_dtypes = []
+        for field in curr.fields:
+            content_form = curr.content(field)
+            field_dtypes.append((field, _form_to_numpy_dtype(content_form)))
+        record_dtype = numpy.dtype(field_dtypes)
+        if sizes:
+            return numpy.dtype((record_dtype, tuple(sizes)))
+        return record_dtype
+
+    return numpy.dtype(object)
+
+
+def _rntuple_to_numpy(data):
+    if not isinstance(data, (ak.Array, ak.contents.Content)):
         return numpy.asarray(data)
 
-    converted = [_awkward_to_numpy(item) for item in data]
+    form = data.layout.form if isinstance(data, ak.Array) else data.form
 
-    shapes = [c.shape if isinstance(c, numpy.ndarray) else (1,) for c in converted]
-    if len(set(shapes)) == 1:
-        return numpy.array(converted)
+    if _is_string_form(form):
+        lst = ak.to_list(data)
+        out = numpy.empty(len(lst), dtype=object)
+        out[:] = lst
+        return out
 
-    arr = numpy.empty(len(converted), dtype=object)
-    arr[:] = converted
-    return arr
+    if isinstance(
+        form,
+        (
+            ak.forms.IndexedOptionForm,
+            ak.forms.ByteMaskedForm,
+            ak.forms.BitMaskedForm,
+            ak.forms.UnmaskedForm,
+        ),
+    ):
+        curr = form
+        while isinstance(
+            curr,
+            (
+                ak.forms.RegularForm,
+                ak.forms.IndexedOptionForm,
+                ak.forms.ByteMaskedForm,
+                ak.forms.BitMaskedForm,
+                ak.forms.UnmaskedForm,
+            ),
+        ):
+            curr = curr.content
+        if isinstance(curr, ak.forms.NumpyForm):
+            return ak.to_numpy(data)
+        else:
+            if len(data) == 0:
+                return numpy.empty(0, dtype=object)
+            mask = ak.is_none(data).to_numpy()
+            projected = ak.Array(data.layout.project())
+            converted_proj = _rntuple_to_numpy(projected)
+            out = numpy.full(len(data), None, dtype=object)
+            for idx, val in zip(numpy.flatnonzero(~mask), converted_proj, strict=True):
+                out[idx] = val
+            return out
+
+    if isinstance(form, (ak.forms.ListOffsetForm, ak.forms.ListForm)):
+        if len(data) == 0:
+            return numpy.empty(0, dtype=object)
+        layout = data.layout if isinstance(data, ak.Array) else data
+        lo = layout.to_ListOffsetArray64(False)
+        offsets = numpy.asarray(lo.offsets)
+        start = offsets[0]
+        stop = offsets[-1]
+        inner = _rntuple_to_numpy(ak.Array(lo.content[start:stop]))
+        splits = numpy.split(inner, offsets[1:-1] - start)
+        out = numpy.empty(len(splits), dtype=object)
+        out[:] = splits
+        return out
+
+    if isinstance(form, ak.forms.RegularForm):
+        curr = form
+        while isinstance(curr, ak.forms.RegularForm):
+            curr = curr.content
+        if isinstance(curr, ak.forms.NumpyForm):
+            return ak.to_numpy(data)
+        else:
+            if len(data) == 0:
+                dt = _form_to_numpy_dtype(form)
+                base_dt, inner_shape = uproot.interpretation.numerical._dtype_shape(dt)
+                return numpy.empty((0, *inner_shape), dtype=base_dt)
+            flat = ak.flatten(data, axis=1)
+            flat_out = _rntuple_to_numpy(flat)
+            return flat_out.reshape((len(data), form.size, *flat_out.shape[1:]))
+
+    if isinstance(form, ak.forms.RecordForm):
+        record_dtype = _form_to_numpy_dtype(form)
+        out = numpy.empty(len(data), dtype=record_dtype)
+        for field in form.fields:
+            out[field] = _rntuple_to_numpy(data[field])
+        return out
+
+    if isinstance(form, ak.forms.NumpyForm):
+        return ak.to_numpy(data)
+
+    return ak.to_numpy(data)
+
+
+_awkward_to_numpy = _rntuple_to_numpy

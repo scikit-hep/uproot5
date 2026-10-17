@@ -2053,13 +2053,10 @@ class RField(uproot.behaviors.RNTuple.HasFields):
         # TODO: The conversion would be ideally be fully handled by Awkward.
         if library.name in ("np", "pd"):
             try:
-                numpy_data = arrays.to_numpy()
-            except (ValueError, TypeError):
-                try:
-                    numpy_data = uproot.behaviors.RNTuple._awkward_to_numpy(arrays)
-                except Exception:
-                    msg = f"Field {self.name} cannot be converted to NumPy/Pandas"
-                    raise ValueError(msg) from None
+                numpy_data = uproot.behaviors.RNTuple._rntuple_to_numpy(arrays)
+            except Exception:
+                msg = f"Field {self.name} cannot be converted to NumPy/Pandas"
+                raise ValueError(msg) from None
             if library.name == "pd":
                 pd = uproot.extras.pandas()
                 pandas_index = uproot.interpretation.library._pandas_basic_index(
