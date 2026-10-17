@@ -133,6 +133,25 @@ def test_unopened_files_resolve_a_leaf_branch_and_a_duplicate_like_the_opened_on
 
 
 @pytest.mark.parametrize(
+    "later",
+    [
+        lambda b: b + ":events/y",
+        lambda b: b + ":events",
+        lambda b: b,
+        lambda b: [b + ":events/y", b + ":events/x"],
+    ],
+    ids=["other-leaf", "tree", "no-path", "listed-twice"],
+)
+@pytest.mark.parametrize("open_files", [False, True])
+def test_a_later_entry_selecting_another_branch_is_refused(tmp_path, later, open_files):
+    a, b = (_make_tree(os.path.join(tmp_path, f"{x}.root")) for x in "ab")
+    rest = later(b)
+    files = [a + ":events/x", *(rest if isinstance(rest, list) else [rest])]
+    with pytest.raises(ValueError, match="TBranch"):
+        uproot.graphed(files, open_files=open_files)
+
+
+@pytest.mark.parametrize(
     ("spelling", "opens"),
     [
         (lambda a, b: [a, b, a + ":events"], "a"),
@@ -272,3 +291,9 @@ def test_root_write_refusals(tmp_path, monkeypatch):
     monkeypatch.setattr(graphed, "__version__", "0.0.6")
     with pytest.raises(ModuleNotFoundError, match="needs graphed 0.0.7 or newer"):
         uproot.root_write(gak.zip({"x": g.x}), str(tmp_path), name=_step_name)
+
+
+@needs_part_write
+def test_root_write_refuses_a_non_graphed_array(tmp_path):
+    with pytest.raises(TypeError, match="root_write expects a uproot.graphed Array"):
+        uproot.root_write(np.arange(3), str(tmp_path), name=str)

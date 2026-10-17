@@ -288,37 +288,50 @@ def _file_and_path(file_path, object_path):
 
 
 def _later_entries(
-    entries, files, opened, is_self, custom_classes, allow_missing, options
+    entries, files, opened, leaf, custom_classes, allow_missing, options
 ):
     """``(file_path, object_path, steps)`` of the entries after the opened one. A file listed once
     stays unopened (a leaf ``TBranch`` path names its parent); a file listed more than once is
     opened, once, and its entries keyed by their resolved ``TTree`` as ``open_files=True`` keys
-    them, so the same tree spelled two ways is a duplicate ``graphed.write`` refuses."""
+    them, so the same tree spelled two ways is a duplicate ``graphed.write`` refuses. ``leaf`` is
+    the opened entry's leaf ``TBranch`` name, or ``None`` for a ``TTree``: every entry must name
+    the same, as ``open_files=True`` requires, or the read would select another branch.
+    """
     listed = collections.Counter(_file_and_path(f, o)[0] for f, o, *_ in files)
     directories = {opened.file.file_path: opened.file.root_directory}
-    for given, given_object_path, *steps in entries:
-        file_path, object_path = _file_and_path(given, given_object_path)
-        if listed[file_path] == 1:
-            yield file_path, (
-                (object_path or "").rpartition("/")[0] if is_self else object_path
-            ), steps
-            continue
-        if file_path not in directories:
-            directories[file_path] = uproot.reading.ReadOnlyFile(
-                file_path,
-                object_cache=None,
-                array_cache=None,
-                custom_classes=custom_classes,
-                **options,
-            ).root_directory
-        obj = uproot._util.object_in_directory(
-            directories[file_path], object_path or None, allow_missing
-        )
-        if obj is None:
-            continue
-        if isinstance(obj, TBranch) and len(obj.keys(recursive=True)) == 0:
-            obj = obj.parent
-        yield obj.file.file_path, obj.object_path, steps
+    try:
+        for given, given_object_path, *steps in entries:
+            file_path, object_path = _file_and_path(given, given_object_path)
+            branch = None
+            if listed[file_path] == 1:
+                if leaf is not None:
+                    object_path, _, branch = (object_path or "").rpartition("/")
+            else:
+                if file_path not in directories:
+                    directories[file_path] = uproot.reading.ReadOnlyFile(
+                        file_path,
+                        array_cache=None,
+                        custom_classes=custom_classes,
+                        **options,
+                    ).root_directory
+                obj = uproot._util.object_in_directory(
+                    directories[file_path], object_path or None, allow_missing
+                )
+                if obj is None:
+                    continue
+                if isinstance(obj, TBranch) and len(obj.keys(recursive=True)) == 0:
+                    branch, obj = obj.name, obj.parent
+                file_path, object_path = obj.file.file_path, obj.object_path
+            if branch != leaf:
+                raise ValueError(
+                    f"{{{file_path!r}: {given_object_path!r}}} does not select the TBranch "
+                    f"{leaf!r} the first file selects; select the same one in every file"
+                )
+            yield file_path, object_path, steps
+    finally:
+        for file_path, directory in directories.items():
+            if file_path != opened.file.file_path:
+                directory.file.close()
 
 
 def _uproot_source(array, what):
@@ -398,9 +411,10 @@ def graphed(
             with ``allow_missing``, a missing ``TTree`` reads as empty. A file listed more than
             once is opened to resolve each entry's ``TTree``, so the same ``TTree`` listed twice
             in two spellings is one input (``uproot.graphed_write`` refuses the duplicate), and
-            with ``allow_missing`` its missing ``TTree`` is dropped rather than read as empty. If True, every file is
-            opened up front, as :doc:`uproot._dask.dask` does by default: the ``TBranches`` are
-            those every file has and a file without the ``TTree`` is dropped.
+            with ``allow_missing`` its missing ``TTree`` is dropped rather than read as empty.
+            If True, every file is opened up front, as :doc:`uproot._dask.dask` does by default:
+            the ``TBranches`` are those every file has and a file without the ``TTree`` is
+            dropped.
         options: Passed through to file opening.
 
     Returns a deferred ``graphed`` ``Array`` for the selected ``TTree``(s). Construction reads only
@@ -484,6 +498,7 @@ def graphed(
             raise NotImplementedError(
                 "align_baskets=True follows TBasket boundaries; an RNTuple has none"
             )
+        leaf = common_keys[0].rpartition("/")[2] if _is_self[0] else None
         common_keys = _normalize_grouped_keys(ttrees[0], common_keys, full_paths)
         base_form = _base_form_of(ttrees[0], common_keys, ak_add_doc, form_mapping)
         file_tree = [(t.file.file_path, t.object_path) for t in ttrees]
@@ -492,7 +507,7 @@ def graphed(
                 entries,
                 files,
                 ttrees[0],
-                _is_self[0],
+                leaf,
                 custom_classes,
                 allow_missing,
                 real_options,

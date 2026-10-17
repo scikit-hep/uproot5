@@ -114,7 +114,9 @@ def _write_partition(
     return [path]
 
 
-def _refuse_fieldless(array, what):
+def _refuse_non_record(array, what):
+    if not isinstance(array, uproot.extras.graphed().Array):
+        raise TypeError(f"{what} expects a uproot.graphed Array")
     if not array.session.form(array).tt.fields:
         raise TypeError(
             f"{what} writes a record's fields as TBranches; this array has no fields. "
@@ -159,17 +161,17 @@ def root_write(
     """
     graphed = uproot.extras.graphed("0.0.7")
 
-    _refuse_fieldless(array, "root_write")
+    _refuse_non_record(array, "root_write")
     codec = _RootCodec(
-        tree_name,
-        title,
-        field_name,
-        initial_basket_capacity,
-        counter_name,
-        resize_factor,
-        compression,
-        compression_level,
-        storage_options,
+        tree_name=tree_name,
+        title=title,
+        field_name=field_name,
+        initial_basket_capacity=initial_basket_capacity,
+        counter_name=counter_name,
+        resize_factor=resize_factor,
+        compression=compression,
+        compression_level=compression_level,
+        storage_options=storage_options,
     )
     return graphed.write.PartWrite(
         array=array, destination=destination, name=name, codec=codec
@@ -252,14 +254,12 @@ def graphed_write(
     """
     graphed = uproot.extras.graphed()
 
-    if not isinstance(array, graphed.Array):
-        raise TypeError("graphed_write expects a uproot.graphed Array")
+    _refuse_non_record(array, "graphed_write")
 
     from uproot._graphed import _uproot_source
 
     session = array.session
     nid, source = _uproot_source(array, "graphed_write")
-    _refuse_fieldless(array, "graphed_write")
 
     compiled = graphed.compile_ir(session, array)
     graphed.refuse_chunk_partials(compiled, as_outputs=True)
@@ -289,15 +289,15 @@ def graphed_write(
         sep=fs.sep,
         name=_PartName(tuple(bases.items()), prefix or "part"),
         codec=_RootCodec(
-            tree_name,
-            title,
-            field_name,
-            initial_basket_capacity,
-            counter_name,
-            resize_factor,
-            compression,
-            compression_level,
-            storage_options,
+            tree_name=tree_name,
+            title=title,
+            field_name=field_name,
+            initial_basket_capacity=initial_basket_capacity,
+            counter_name=counter_name,
+            resize_factor=resize_factor,
+            compression=compression,
+            compression_level=compression_level,
+            storage_options=storage_options,
         ),
         columns=list(source.projected_columns((array,))),
         compiled=compiled,
