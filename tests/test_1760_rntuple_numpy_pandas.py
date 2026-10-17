@@ -9,6 +9,12 @@ import numpy as np
 import pytest
 
 import uproot
+from uproot.behaviors.RNTuple import (
+    _awkward_to_numpy,
+    _form_to_numpy_dtype,
+    _is_string_form,
+    _rntuple_to_numpy,
+)
 
 
 def test_issue1760_reproduce_iterate_numpy_and_pandas(tmp_path):
@@ -125,6 +131,23 @@ def test_rntuple_numpy_struct_form_driven(tmp_path):
     assert arr_np[0]["tag"] == "alpha"
 
 
+def test_rntuple_numpy_regular_array_of_structs(tmp_path):
+    filepath = os.path.join(tmp_path, "reg_struct.root")
+    s = ak.to_regular(ak.Array([[{"a": 1, "b": 2.0}] * 3] * 5), axis=1)
+    with uproot.recreate(filepath) as f:
+        f.mkrntuple("ntuple", ak.Array({"s": s}))
+
+    ntuple = uproot.open(filepath)["ntuple"]
+
+    arr = ntuple["s"].array(library="np")
+    assert arr.shape == (5, 3)
+    assert arr.dtype == np.dtype([("a", "<i8"), ("b", "<f8")])
+
+    empty_arr = arr[:0]
+    assert empty_arr.shape == (0, 3)
+    assert empty_arr.dtype == np.dtype([("a", "<i8"), ("b", "<f8")])
+
+
 def test_rntuple_numpy_optional_fields(tmp_path):
     filepath = os.path.join(tmp_path, "optionals.root")
     data = ak.Array(
@@ -163,6 +186,8 @@ def test_rntuple_empty_slice(tmp_path):
             "x": [[1.0, 2.0], [3.0, 4.0]],
             "s": ["a", "bc"],
             "r": ak.to_regular(ak.Array([[10, 20], [30, 40]])),
+            "opt_l": [None, [1, 2]],
+            "st": [{"a": 1}, {"a": 2}],
         }
     )
     with uproot.recreate(filepath) as f:
@@ -176,3 +201,101 @@ def test_rntuple_empty_slice(tmp_path):
     assert empty_arrays["s"].dtype == np.dtype(object)
     assert empty_arrays["s"].shape == (0,)
     assert empty_arrays["r"].shape == (0, 2)
+    assert empty_arrays["opt_l"].dtype == np.dtype(object)
+    assert empty_arrays["opt_l"].shape == (0,)
+    assert len(empty_arrays["st"]) == 0
+
+
+def test_rntuple_numpy_cannot_convert_union(tmp_path):
+    filepath = os.path.join(tmp_path, "union.root")
+    data = ak.Array({"u": [1, "two"]})
+    with uproot.recreate(filepath) as f:
+        f.mkrntuple("ntuple", data)
+
+    ntuple = uproot.open(filepath)["ntuple"]
+
+    with pytest.raises(ValueError, match="Field u cannot be converted to NumPy/Pandas"):
+        ntuple.arrays(library="np")
+
+    with pytest.raises(ValueError, match="Field u cannot be converted to NumPy/Pandas"):
+        ntuple["u"].array(library="np")
+
+    pytest.importorskip("pandas")
+    with pytest.raises(ValueError, match="Field u cannot be converted to NumPy/Pandas"):
+        ntuple["u"].array(library="pd")
+
+
+def test_rntuple_numpy_helper_branches():
+    # Non ak.Array input
+    assert np.array_equal(_rntuple_to_numpy([1, 2, 3]), np.array([1, 2, 3]))
+
+    # _awkward_to_numpy alias
+    assert np.array_equal(_awkward_to_numpy(ak.Array([1, 2])), np.array([1, 2]))
+
+    # Bytestring
+    arr_bytes = ak.Array([b"abc", b"def"])
+    res_bytes = _rntuple_to_numpy(arr_bytes)
+    assert res_bytes.dtype == object
+    assert res_bytes[0] == b"abc"
+
+    # ByteMasked string
+    bm_str = ak.Array(
+        ak.contents.ByteMaskedArray(
+            ak.index.Index8([0, 1]), ak.Array(["a", "b"]).layout, True
+        )
+    )
+    assert _is_string_form(bm_str.layout.form)
+    res_bm = _rntuple_to_numpy(bm_str)
+    assert res_bm[0] is None
+    assert res_bm[1] == "b"
+
+    # BitMasked string
+    bit_str = ak.Array(
+        ak.contents.BitMaskedArray(
+            ak.index.IndexU8([1]), ak.Array(["a"]).layout, True, 1, True
+        )
+    )
+    assert _is_string_form(bit_str.layout.form)
+    assert _rntuple_to_numpy(bit_str)[0] == "a"
+
+    # Unmasked string
+    unm_str = ak.Array(ak.contents.UnmaskedArray(ak.Array(["a"]).layout))
+    assert _is_string_form(unm_str.layout.form)
+    assert _rntuple_to_numpy(unm_str)[0] == "a"
+
+    # Char string form
+    char_form = ak.forms.ListOffsetForm(
+        "i64", ak.forms.NumpyForm("uint8", parameters={"__array__": "char"})
+    )
+    assert _is_string_form(char_form)
+
+    # ListArray (ListForm)
+    list_arr = ak.Array(
+        ak.contents.ListArray(
+            ak.index.Index64([0]),
+            ak.index.Index64([2]),
+            ak.Array([1.0, 2.0]).layout,
+        )
+    )
+    res_la = _rntuple_to_numpy(list_arr)
+    assert res_la.dtype == object
+    assert np.array_equal(res_la[0], np.array([1.0, 2.0]))
+
+    # Empty option array of non-numpy (struct)
+    empty_opt_struct = ak.Array([None, {"a": 1}])[:0]
+    res_eos = _rntuple_to_numpy(empty_opt_struct)
+    assert res_eos.dtype == object
+    assert len(res_eos) == 0
+
+    # Empty list array
+    empty_list = ak.Array([[1, 2]])[:0]
+    res_el = _rntuple_to_numpy(empty_list)
+    assert res_el.dtype == object
+    assert len(res_el) == 0
+
+    # Form to numpy dtype for RegularForm of RecordForm
+    reg_rec_form = ak.to_regular(
+        ak.Array([[{"a": 1, "b": 2.0}], [{"a": 3, "b": 4.0}]])
+    ).layout.form
+    dt = _form_to_numpy_dtype(reg_rec_form)
+    assert dt == np.dtype(([("a", "<i8"), ("b", "<f8")], (1,)))
