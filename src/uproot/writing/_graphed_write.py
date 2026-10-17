@@ -2,7 +2,8 @@
 """
 This module defines :doc:`uproot.writing._graphed_write.graphed_write`, the ``graphed`` analogue of
 :doc:`uproot.writing._dask_write.dask_write` — and a SPECIALIZATION of the ``graphed.write``
-partitioned-write base.
+partitioned-write base — and :doc:`uproot.writing._graphed_write.root_write`, the same ROOT parts
+as one write of a ``graphed.aggregate_plan`` that also reduces.
 
 **Experimental**: tracks a pre-1.0 ``graphed``; the API may change without a deprecation cycle.
 
@@ -22,6 +23,7 @@ them.
 from __future__ import annotations
 
 import functools
+from dataclasses import dataclass
 
 from fsspec.core import url_to_fs
 from fsspec.implementations.local import LocalFileSystem
@@ -39,27 +41,59 @@ def _default_counter_name(counted):
     return "n" + counted
 
 
+@dataclass(frozen=True, eq=False)
+class _RootCodec:
+    """``root_write``'s codec: the part as one ``TTree`` through ``dask_write``'s ``ak_to_root``."""
+
+    tree_name: str
+    title: str
+    field_name: object
+    initial_basket_capacity: int
+    counter_name: object
+    resize_factor: float
+    compression: str
+    compression_level: int
+    storage_options: object
+
+    def __call__(self, value, path, kv):
+        ak_to_root(path, value, **vars(self))
+
+
+@dataclass(frozen=True)
+class _PartName:
+    """``graphed_write``'s part name, ``{prefix}-{N:05d}.root``: ``N`` = the file's base + this
+    partition's blind step, derived from the partition alone (``graphed.write.blind_part_index``).
+    """
+
+    bases: tuple
+    prefix: str
+
+    def __call__(self, partition):
+        graphed = uproot.extras.graphed()
+
+        index = graphed.write.blind_part_index(partition, dict(self.bases))
+        return f"{self.prefix}-{index:05d}.root"
+
+
 def _write_partition(
     partition,
     resources,
     *,
-    base,
+    destination,
     sep,
-    prefix,
+    name,
+    codec,
     columns,
-    bases,
     compiled,
     backend,
     externals,
     source,
     source_name,
-    root_options,
 ):
     """Read this blind partition's chunk (file opened once per worker), EVALUATE the compiled
     graph over it, and write the evaluated record's fields as ``TBranches`` of its own part file,
-    REPORTING the written path. ``N`` = the file's base + this partition's blind step, derived here
-    from the partition alone (``graphed.write.blind_part_index``). An empty resolved step, or a
-    file without the tree (``allow_missing``), writes nothing."""
+    REPORTING the written path. An empty resolved step, or a file without the tree
+    (``allow_missing``), writes nothing."""
     graphed = uproot.extras.graphed()
 
     tree = source.open_tree(partition, resources)
@@ -75,10 +109,71 @@ def _write_partition(
         {source_name: chunk},
         externals=dict(externals),
     )
-    index = graphed.write.blind_part_index(partition, dict(bases))
-    path = f"{base}{sep}{prefix}-{index:05d}.root"
-    ak_to_root(path, evaluated, **root_options)
+    path = f"{destination}{sep}{name(partition)}"
+    codec(evaluated, path, None)
     return [path]
+
+
+def _refuse_fieldless(array, what):
+    if not array.session.form(array).tt.fields:
+        raise TypeError(
+            f"{what} writes a record's fields as TBranches; this array has no fields. "
+            'Name the result: gak.zip({"name": expr})'
+        )
+
+
+def root_write(
+    array,
+    destination,
+    *,
+    name,
+    tree_name="tree",
+    title="",
+    field_name=_default_field_name,
+    initial_basket_capacity=10,
+    counter_name=_default_counter_name,
+    resize_factor=10.0,
+    compression="zlib",
+    compression_level=1,
+    storage_options=None,
+):
+    """
+    Args:
+        array (``graphed.Array``): A record whose fields become the ``TBranches``, as in
+            :doc:`uproot.writing._graphed_write.graphed_write`.
+        destination (str): Output directory, or an fsspec URL (``storage_options`` reach its
+            filesystem).
+        name (callable): ``name(partition) -> str``, each task's part file name; it must tell
+            every partition apart (a blind partition's entry range is unresolved).
+        tree_name, title, field_name, initial_basket_capacity, counter_name, resize_factor,
+            compression, compression_level, storage_options: As in
+            :doc:`uproot.writing._graphed_write.graphed_write`.
+
+    Returns a ``graphed.write.PartWrite`` for ``graphed.aggregate_plan(..., writes=[...])``: each
+    task writes its part, one ``TTree`` file, from the same read and evaluation as the plan's
+    reductions, and ``reduce`` receives the part's path after the outputs' values. Unlike
+    ``graphed_write``, every task writes a part, an empty one included. Needs graphed 0.0.7 or
+    newer.
+
+    **Experimental**: tracks a pre-1.0 ``graphed``; the API may change without a deprecation cycle.
+    """
+    graphed = uproot.extras.graphed("0.0.7")
+
+    _refuse_fieldless(array, "root_write")
+    codec = _RootCodec(
+        tree_name,
+        title,
+        field_name,
+        initial_basket_capacity,
+        counter_name,
+        resize_factor,
+        compression,
+        compression_level,
+        storage_options,
+    )
+    return graphed.write.PartWrite(
+        array=array, destination=destination, name=name, codec=codec
+    )
 
 
 def _select_executor(executor, max_workers):
@@ -164,11 +259,7 @@ def graphed_write(
 
     session = array.session
     nid, source = _uproot_source(array, "graphed_write")
-    if not session.form(array).tt.fields:
-        raise TypeError(
-            "graphed_write writes a record's fields as TBranches; this array has no fields. "
-            'Name the result: gak.zip({"name": expr})'
-        )
+    _refuse_fieldless(array, "graphed_write")
 
     compiled = graphed.compile_ir(session, array)
     graphed.refuse_chunk_partials(compiled, as_outputs=True)
@@ -192,11 +283,23 @@ def graphed_write(
     process = functools.partial(
         _write_partition,
         # a local destination reports plain paths; a remote one its full URLs
-        base=root if isinstance(fs, LocalFileSystem) else fs.unstrip_protocol(root),
+        destination=(
+            root if isinstance(fs, LocalFileSystem) else fs.unstrip_protocol(root)
+        ),
         sep=fs.sep,
-        prefix=prefix or "part",
+        name=_PartName(tuple(bases.items()), prefix or "part"),
+        codec=_RootCodec(
+            tree_name,
+            title,
+            field_name,
+            initial_basket_capacity,
+            counter_name,
+            resize_factor,
+            compression,
+            compression_level,
+            storage_options,
+        ),
         columns=list(source.projected_columns((array,))),
-        bases=tuple(bases.items()),
         compiled=compiled,
         backend=backend if backend is not None else type(session.backend),
         externals=tuple(
@@ -204,17 +307,6 @@ def graphed_write(
         ),
         source=source,
         source_name=session.source_name(nid),
-        root_options={
-            "tree_name": tree_name,
-            "compression": compression,
-            "compression_level": compression_level,
-            "title": title,
-            "counter_name": counter_name,
-            "field_name": field_name,
-            "initial_basket_capacity": initial_basket_capacity,
-            "resize_factor": resize_factor,
-            "storage_options": storage_options,
-        },
     )
     plan = graphed.write.write_plan(partitions, process)
 

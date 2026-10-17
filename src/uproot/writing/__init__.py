@@ -13,7 +13,7 @@ and :doc:`uproot.writing.writable.update`.
 from __future__ import annotations
 
 from uproot.writing._dask_write import dask_write
-from uproot.writing._graphed_write import graphed_write
+from uproot.writing._graphed_write import graphed_write, root_write
 from uproot.writing.identify import (
     to_TArray,
     to_TH1x,
@@ -45,6 +45,7 @@ __all__ = [
     "dask_write",
     "graphed_write",
     "recreate",
+    "root_write",
     "to_TArray",
     "to_TH1x",
     "to_TH2x",
