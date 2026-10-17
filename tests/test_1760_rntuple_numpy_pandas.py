@@ -143,9 +143,13 @@ def test_rntuple_numpy_regular_array_of_structs(tmp_path):
     assert arr.shape == (5, 3)
     assert arr.dtype == np.dtype([("a", "<i8"), ("b", "<f8")])
 
-    empty_arr = arr[:0]
+    empty_arr = ntuple["s"].array(entry_start=0, entry_stop=0, library="np")
     assert empty_arr.shape == (0, 3)
     assert empty_arr.dtype == np.dtype([("a", "<i8"), ("b", "<f8")])
+
+    res_empty = _rntuple_to_numpy(s[:0])
+    assert res_empty.shape == (0, 3)
+    assert res_empty.dtype == np.dtype([("a", "<i8"), ("b", "<f8")])
 
 
 def test_rntuple_numpy_optional_fields(tmp_path):
@@ -299,3 +303,10 @@ def test_rntuple_numpy_helper_branches():
     ).layout.form
     dt = _form_to_numpy_dtype(reg_rec_form)
     assert dt == np.dtype(([("a", "<i8"), ("b", "<f8")], (1,)))
+
+    # Form to numpy dtype for option forms
+    opt_form = ak.Array([1.0, None]).layout.form
+    assert _form_to_numpy_dtype(opt_form) == np.float64
+
+    opt_struct_form = ak.Array([{"a": 1}, None]).layout.form
+    assert _form_to_numpy_dtype(opt_struct_form) == np.dtype(object)
