@@ -93,7 +93,8 @@ dependencies = [
   "xxhash",
   "numpy",
   "fsspec!=2026.2.0",
-  "packaging"
+  "packaging",
+  "rootfilespec>=0.1.0,<0.2"
 ]
 description = "ROOT I/O in pure Python and NumPy."
 dynamic = [
@@ -212,4 +213,4 @@ write_to = "src/uproot/_version.py"
 
 [tool.uv]
 exclude-newer = "7 days"
-exclude-newer-package = { awkward = false, awkward-cpp = false, scikit-hep-testdata = false, graphed = false, graphed-executors = false }
+exclude-newer-package = { awkward = false, awkward-cpp = false, scikit-hep-testdata = false, graphed = false, graphed-executors = false, rootfilespec = false }

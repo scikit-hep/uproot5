@@ -8,6 +8,7 @@ This test ensures that both v1.0.1.0 files (with attributes) and v1.0.0.0
 files (without attributes) can be read correctly.
 """
 
+import pytest
 import skhep_testdata
 
 import uproot
@@ -33,22 +34,13 @@ def test_rntuple_v1010_footer_parsing():
         assert obj.member("fVersionMinor") == 1
         assert obj.member("fVersionPatch") == 0
 
-        # Access footer - should not raise AssertionError
-        footer = obj.footer
+        # Access footer - should not raise; rootfilespec verifies its checksum
+        with pytest.warns(DeprecationWarning):
+            footer = obj.footer
 
         # Verify footer structure includes linked_attribute_sets
         assert hasattr(footer, "linked_attribute_sets")
         assert isinstance(footer.linked_attribute_sets, list)
-
-        # Verify checksum validation passes
-        import xxhash
-
-        chunk = obj._footer_chunk
-        computed = xxhash.xxh3_64_intdigest(chunk.raw_data[:-8])
-        stored = footer.checksum
-        assert (
-            computed == stored
-        ), f"Footer checksum mismatch: {computed:016x} != {stored:016x}"
 
         # Verify we can retrieve keys (original failing operation)
         keys = obj.keys()
@@ -73,23 +65,14 @@ def test_rntuple_v1000_backward_compatibility():
         assert obj.member("fVersionMinor") == 0
         assert obj.member("fVersionPatch") == 0
 
-        # Access footer - should still work
-        footer = obj.footer
+        # Access footer - should still work; rootfilespec verifies its checksum
+        with pytest.warns(DeprecationWarning):
+            footer = obj.footer
 
         # Footer should have linked_attribute_sets field (but empty)
         assert hasattr(footer, "linked_attribute_sets")
         assert isinstance(footer.linked_attribute_sets, list)
         assert len(footer.linked_attribute_sets) == 0
-
-        # Verify checksum validation still passes
-        import xxhash
-
-        chunk = obj._footer_chunk
-        computed = xxhash.xxh3_64_intdigest(chunk.raw_data[:-8])
-        stored = footer.checksum
-        assert (
-            computed == stored
-        ), f"Footer checksum mismatch: {computed:016x} != {stored:016x}"
 
         # Verify normal operations still work
         keys = obj.keys()

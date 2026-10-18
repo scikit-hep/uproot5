@@ -23,29 +23,37 @@ import uproot.compression
 import uproot.const
 import uproot.reading
 import uproot.serialization
-from uproot.models.RNTuple import (
-    _rntuple_anchor_checksum_format,
-    _rntuple_anchor_format,
-    _rntuple_checksum_format,
-    _rntuple_cluster_group_format,
-    _rntuple_cluster_summary_format,
-    _rntuple_column_compression_settings_format,
-    _rntuple_column_element_offset_format,
-    _rntuple_column_record_format,
-    _rntuple_env_header_format,
-    _rntuple_envlink_size_format,
-    _rntuple_feature_flag_format,
-    _rntuple_field_description_format,
-    _rntuple_first_element_index_format,
-    _rntuple_frame_num_items_format,
-    _rntuple_frame_size_format,
-    _rntuple_locator_offset_format,
-    _rntuple_locator_size_format,
-    _rntuple_page_num_elements_format,
-    _rntuple_repetition_format,
-)
 from uproot.writing._cascade import CascadeLeaf, CascadeNode, Key, String
 
+# https://github.com/root-project/root/blob/8cd9eed6f3a32e55ef1f0f1df8e5462e753c735d/tree/ntuple/v7/doc/BinaryFormatSpecification.md#anchor-schema
+_rntuple_anchor_format = struct.Struct(">HHHHQQQQQQQ")
+_rntuple_anchor_checksum_format = struct.Struct(">Q")
+# https://github.com/root-project/root/blob/8cd9eed6f3a32e55ef1f0f1df8e5462e753c735d/tree/ntuple/v7/doc/BinaryFormatSpecification.md#feature-flags
+_rntuple_feature_flag_format = struct.Struct("<Q")
+# https://github.com/root-project/root/blob/8cd9eed6f3a32e55ef1f0f1df8e5462e753c735d/tree/ntuple/v7/doc/BinaryFormatSpecification.md#frames
+_rntuple_frame_size_format = struct.Struct("<q")
+_rntuple_frame_num_items_format = struct.Struct("<I")
+# https://github.com/root-project/root/blob/8cd9eed6f3a32e55ef1f0f1df8e5462e753c735d/tree/ntuple/v7/doc/BinaryFormatSpecification.md#locators-and-envelope-links
+_rntuple_locator_size_format = struct.Struct("<i")
+_rntuple_locator_offset_format = struct.Struct("<Q")
+_rntuple_envlink_size_format = struct.Struct("<Q")
+# https://github.com/root-project/root/blob/8cd9eed6f3a32e55ef1f0f1df8e5462e753c735d/tree/ntuple/v7/doc/BinaryFormatSpecification.md#envelopes
+_rntuple_env_header_format = struct.Struct("<Q")
+_rntuple_checksum_format = struct.Struct("<Q")
+# https://github.com/root-project/root/blob/8cd9eed6f3a32e55ef1f0f1df8e5462e753c735d/tree/ntuple/v7/doc/BinaryFormatSpecification.md#field-description
+_rntuple_field_description_format = struct.Struct("<IIIHH")
+_rntuple_repetition_format = struct.Struct("<Q")
+# https://github.com/root-project/root/blob/8cd9eed6f3a32e55ef1f0f1df8e5462e753c735d/tree/ntuple/v7/doc/BinaryFormatSpecification.md#column-description
+_rntuple_column_record_format = struct.Struct("<HHIHH")
+_rntuple_first_element_index_format = struct.Struct("<Q")
+# https://github.com/root-project/root/blob/8cd9eed6f3a32e55ef1f0f1df8e5462e753c735d/tree/ntuple/v7/doc/BinaryFormatSpecification.md#cluster-group-record-frame
+_rntuple_cluster_group_format = struct.Struct("<QQI")
+# https://github.com/root-project/root/blob/8cd9eed6f3a32e55ef1f0f1df8e5462e753c735d/tree/ntuple/v7/doc/BinaryFormatSpecification.md#cluster-summary-record-frame
+_rntuple_cluster_summary_format = struct.Struct("<QQ")
+# https://github.com/root-project/root/blob/8cd9eed6f3a32e55ef1f0f1df8e5462e753c735d/tree/ntuple/v7/doc/BinaryFormatSpecification.md#page-locations
+_rntuple_page_num_elements_format = struct.Struct("<i")
+_rntuple_column_element_offset_format = struct.Struct("<q")
+_rntuple_column_compression_settings_format = struct.Struct("<I")
 _rntuple_string_length_format = struct.Struct("<I")
 
 _ak_primitive_to_typename_dict = {

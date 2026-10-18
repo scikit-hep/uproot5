@@ -8,60 +8,20 @@ from __future__ import annotations
 
 import dataclasses
 import re
-import struct
 import sys
+import warnings
 from collections import Counter, defaultdict
 from itertools import groupby
 from typing import Any, NamedTuple
 
 import awkward as ak
 import numpy
-import xxhash
 
 import uproot
+import uproot._rntuple_metadata
 import uproot.behaviors.RNTuple
 import uproot.const
 from uproot.source.cufile_interface import CuFileSource
-
-# https://github.com/root-project/root/blob/8cd9eed6f3a32e55ef1f0f1df8e5462e753c735d/tree/ntuple/v7/doc/BinaryFormatSpecification.md#anchor-schema
-_rntuple_anchor_format = struct.Struct(">HHHHQQQQQQQ")
-_rntuple_anchor_checksum_format = struct.Struct(">Q")
-# https://github.com/root-project/root/blob/8cd9eed6f3a32e55ef1f0f1df8e5462e753c735d/tree/ntuple/v7/doc/BinaryFormatSpecification.md#feature-flags
-_rntuple_feature_flag_format = struct.Struct("<Q")
-# https://github.com/root-project/root/blob/8cd9eed6f3a32e55ef1f0f1df8e5462e753c735d/tree/ntuple/v7/doc/BinaryFormatSpecification.md#frames
-_rntuple_frame_size_format = struct.Struct("<q")
-_rntuple_frame_num_items_format = struct.Struct("<I")
-# https://github.com/root-project/root/blob/8cd9eed6f3a32e55ef1f0f1df8e5462e753c735d/tree/ntuple/v7/doc/BinaryFormatSpecification.md#locators-and-envelope-links
-_rntuple_locator_size_format = struct.Struct("<i")
-_rntuple_large_locator_size_format = struct.Struct("<Q")
-_rntuple_locator_offset_format = struct.Struct("<Q")
-_rntuple_envlink_size_format = struct.Struct("<Q")
-# https://github.com/root-project/root/blob/8cd9eed6f3a32e55ef1f0f1df8e5462e753c735d/tree/ntuple/v7/doc/BinaryFormatSpecification.md#envelopes
-_rntuple_env_header_format = struct.Struct("<Q")
-_rntuple_checksum_format = struct.Struct("<Q")
-# https://github.com/root-project/root/blob/8cd9eed6f3a32e55ef1f0f1df8e5462e753c735d/tree/ntuple/v7/doc/BinaryFormatSpecification.md#field-description
-_rntuple_field_description_format = struct.Struct("<IIIHH")
-_rntuple_repetition_format = struct.Struct("<Q")
-_rntuple_source_field_id_format = struct.Struct("<I")
-_rntuple_root_streamer_checksum_format = struct.Struct("<I")
-# https://github.com/root-project/root/blob/8cd9eed6f3a32e55ef1f0f1df8e5462e753c735d/tree/ntuple/v7/doc/BinaryFormatSpecification.md#column-description
-_rntuple_column_record_format = struct.Struct("<HHIHH")
-_rntuple_first_element_index_format = struct.Struct("<Q")
-_rntuple_column_range_format = struct.Struct("<dd")
-# https://github.com/root-project/root/blob/8cd9eed6f3a32e55ef1f0f1df8e5462e753c735d/tree/ntuple/v7/doc/BinaryFormatSpecification.md#alias-columns
-_rntuple_alias_column_format = struct.Struct("<II")
-# https://github.com/root-project/root/blob/8cd9eed6f3a32e55ef1f0f1df8e5462e753c735d/tree/ntuple/v7/doc/BinaryFormatSpecification.md#extra-type-information
-_rntuple_extra_type_info_format = struct.Struct("<II")
-# https://github.com/root-project/root/blob/8cd9eed6f3a32e55ef1f0f1df8e5462e753c735d/tree/ntuple/v7/doc/BinaryFormatSpecification.md#cluster-group-record-frame
-_rntuple_cluster_group_format = struct.Struct("<QQI")
-# https://github.com/root-project/root/blob/2c80bed03dbe28610c5825d8cd417db2ffc3e1d6/tree/ntuple/doc/BinaryFormatSpecification.md#linked-attribute-set-record-frame
-_rntuple_linked_attribute_set_format = struct.Struct("<HHI")
-# https://github.com/root-project/root/blob/8cd9eed6f3a32e55ef1f0f1df8e5462e753c735d/tree/ntuple/v7/doc/BinaryFormatSpecification.md#cluster-summary-record-frame
-_rntuple_cluster_summary_format = struct.Struct("<QQ")
-# https://github.com/root-project/root/blob/8cd9eed6f3a32e55ef1f0f1df8e5462e753c735d/tree/ntuple/v7/doc/BinaryFormatSpecification.md#page-locations
-_rntuple_page_num_elements_format = struct.Struct("<i")
-_rntuple_column_element_offset_format = struct.Struct("<q")
-_rntuple_column_compression_settings_format = struct.Struct("<I")
 
 # https://github.com/root-project/root/blob/6dc4ff848329eaa3ca433985e709b12321098fe2/core/zip/inc/Compression.h#L93-L105
 compression_settings_dict = {
@@ -78,19 +38,14 @@ def _from_zigzag(n):
     return ((u >> 1) ^ -(u & 1)).view(n.dtype)
 
 
-def _envelop_header(chunk, cursor, context):
-    env_data = cursor.field(chunk, _rntuple_env_header_format, context)
-    env_type_id = uproot.const.RNTupleEnvelopeType(env_data & 0xFFFF)
-    env_length = env_data >> 16
-    return {"env_type_id": env_type_id, "env_length": env_length}
-
-
 class Model_ROOT_3a3a_RNTuple(uproot.behaviors.RNTuple.RNTuple, uproot.model.Model):
     """
     A versionless :doc:`uproot.model.Model` for ``ROOT::RNTuple``.
     """
 
     def read_members(self, chunk, cursor, context, file):
+        import uproot._rootfilespec
+
         if uproot._awkwardforth.get_forth_obj(context) is not None:
             raise uproot.interpretation.objects.CannotBeForth()
         if self.is_memberwise:
@@ -104,48 +59,32 @@ in file {self.file.file_path}"""
                 "RNTuple reading is only supported on little-endian systems"
             )
 
-        (
-            self._members["fVersionEpoch"],
-            self._members["fVersionMajor"],
-            self._members["fVersionMinor"],
-            self._members["fVersionPatch"],
-            self._members["fSeekHeader"],
-            self._members["fNBytesHeader"],
-            self._members["fLenHeader"],
-            self._members["fSeekFooter"],
-            self._members["fNBytesFooter"],
-            self._members["fLenFooter"],
-            self._members["fMaxKeySize"],
-        ) = cursor.fields(chunk, _rntuple_anchor_format, context)
+        # The anchor is the whole uncompressed object of its TKey, including the
+        # byte count and class version that read_numbytes_version has already
+        # read, and its checksum, which is not within the byte count
+        start = self._cursor.index
+        key = context.get("TKey")
+        stop = start + key.data_uncompressed_bytes if key is not None else chunk.stop
+        payload = chunk.get(start, stop, self._cursor, context)
+        with uproot._rootfilespec.translate_errors(
+            self._file.file_path, getattr(key, "object_path", None)
+        ):
+            self._rfs_anchor = uproot._rootfilespec.read_anchor(payload)
+        self._members.update(uproot._rootfilespec.anchor_members(self._rfs_anchor))
+        anchor_checksum_size = 8
+        cursor.move_to(stop - anchor_checksum_size)
 
-        self._anchor_checksum = cursor.field(
-            chunk, _rntuple_anchor_checksum_format, context
-        )
-        assert self._anchor_checksum == xxhash.xxh3_64_intdigest(
-            chunk.raw_data[
-                -_rntuple_anchor_format.size
-                - _rntuple_anchor_checksum_format.size : -_rntuple_anchor_checksum_format.size
-            ]
-        ), "Anchor checksum does not match! File is corrupted or incompatible."
-        cursor.skip(-_rntuple_anchor_checksum_format.size)
+        self._rfs_header, self._rfs_footer, self._rfs_rntuple = None, None, None
 
-        self._header_chunk_ready = False
-        self._footer_chunk_ready = False
-        self._header, self._footer = None, None
-
-        self._field_records = None
+        self._schema = None
         self._field_names = None
-        self._column_records = None
-        self._alias_column_records = None
         self._related_ids_ = None
         self._column_records_dict_ = None
         self._field_metadata_cache = {}
         self._num_entries = None
         self._length = None
 
-        self._page_list_envelopes = []
-        self._cluster_summaries = None
-        self._page_link_list = None
+        self._clusters = None
 
         self._ntuple = self
         self._fields = None
@@ -261,70 +200,63 @@ in file {self.file.file_path}"""
 
         return self._all_fields
 
-    def _prepare_header_chunk(self):
-        context = {}
-        seek, nbytes = self._members["fSeekHeader"], self._members["fNBytesHeader"]
+    @property
+    def _metadata_schema(self):
+        """
+        The :doc:`uproot._rntuple_metadata.Schema` of the RNTuple, from its header
+        and footer.
+        """
+        if self._schema is None:
+            import uproot._rootfilespec
 
-        compressed_header_chunk = self.file.source.chunk(seek, seek + nbytes)
+            with self._translate_errors():
+                header, footer = uproot._rootfilespec.fetch_schema_envelopes(
+                    self.file.source, self._rfs_anchor
+                )
+                schema = uproot._rootfilespec.schema(header, footer)
+            self._rfs_header, self._rfs_footer = header, footer
+            self._schema = schema
+        return self._schema
 
-        if self._members["fNBytesHeader"] == self._members["fLenHeader"]:
-            self._header_chunk = compressed_header_chunk
-            self._header_cursor = uproot.source.cursor.Cursor(
-                self._members["fSeekHeader"]
-            )
-        else:
-            self._header_chunk = uproot.compression.decompress(
-                compressed_header_chunk,
-                uproot.source.cursor.Cursor(self._members["fSeekHeader"]),
-                context,
-                self._members["fNBytesHeader"],
-                self._members["fLenHeader"],
-            )
-            self._header_cursor = uproot.source.cursor.Cursor(0)
-        self._header_chunk_ready = True
+    def _translate_errors(self):
+        import uproot._rootfilespec
 
-    def _prepare_footer_chunk(self):
-        context = {}
-        seek, nbytes = self._members["fSeekFooter"], self._members["fNBytesFooter"]
-
-        compressed_footer_chunk = self.file.source.chunk(seek, seek + nbytes)
-
-        if self._members["fNBytesFooter"] == self._members["fLenFooter"]:
-            self._footer_chunk = compressed_footer_chunk
-            self._footer_cursor = uproot.source.cursor.Cursor(
-                self._members["fSeekFooter"]
-            )
-        else:
-            self._footer_chunk = uproot.compression.decompress(
-                compressed_footer_chunk,
-                uproot.source.cursor.Cursor(self._members["fSeekFooter"]),
-                context,
-                self._members["fNBytesFooter"],
-                self._members["fLenFooter"],
-            )
-            self._footer_cursor = uproot.source.cursor.Cursor(0)
-        self._footer_chunk_ready = True
+        return uproot._rootfilespec.translate_errors(
+            self.file.file_path, getattr(self._parent, "object_path", None)
+        )
 
     @property
     def header(self):
         """
-        The header of the RNTuple.
+        The header of the RNTuple, with the names that earlier versions of Uproot
+        gave its metadata.
 
-        This provides low level access to all the metadata contained in the header.
+        Deprecated: use :ref:`uproot.models.RNTuple.Model_ROOT_3a3a_RNTuple.field_records`,
+        :ref:`uproot.models.RNTuple.Model_ROOT_3a3a_RNTuple.column_records`, and the
+        ``name`` and ``description`` of the RNTuple instead.
         """
-        if self._header is None:
-            if not self._header_chunk_ready:
-                self._prepare_header_chunk()
-            context = {}
-            cursor = self._header_cursor.copy()
+        _warn_deprecated("header")
+        import uproot._rootfilespec
 
-            h = HeaderReader().read(self._header_chunk, cursor, context)
-            self._header = h
-            assert h.checksum == xxhash.xxh3_64_intdigest(
-                self._header_chunk.raw_data[: -_rntuple_checksum_format.size]
-            )
+        schema = self._metadata_schema
+        return uproot._rootfilespec.legacy_header(self._rfs_header, schema)
 
-        return self._header
+    @property
+    def footer(self):
+        """
+        The footer of the RNTuple, with the names that earlier versions of Uproot
+        gave its metadata.
+
+        Deprecated: use :ref:`uproot.models.RNTuple.Model_ROOT_3a3a_RNTuple.clusters`
+        instead.
+        """
+        _warn_deprecated("footer")
+        import uproot._rootfilespec
+
+        schema = self._metadata_schema
+        return uproot._rootfilespec.legacy_footer(
+            self._rfs_header, self._rfs_footer, schema
+        )
 
     @property
     def field_records(self):
@@ -333,10 +265,7 @@ in file {self.file.file_path}"""
 
         This includes the fields from the header and from schema extensions in the footer.
         """
-        if self._field_records is None:
-            self._field_records = list(self.header.field_records)
-            self._field_records.extend(self.footer.extension_links.field_records)
-        return self._field_records
+        return self._metadata_schema.fields
 
     @property
     def field_names(self):
@@ -354,154 +283,143 @@ in file {self.file.file_path}"""
 
         This includes the columns from the header and from schema extensions in the footer.
         """
-        if self._column_records is None:
-            self._column_records = list(self.header.column_records)
-            self._column_records.extend(self.footer.extension_links.column_records)
-            for i, cr in enumerate(self._column_records):
-                cr.idx = i
-        return self._column_records
+        return self._metadata_schema.columns
 
     @property
     def alias_column_records(self):
         """
         The list of alias column records in the RNTuple.
         """
-        if self._alias_column_records is None:
-            self._alias_column_records = list(self.header.alias_column_records)
-            self._alias_column_records.extend(
-                self.footer.extension_links.alias_column_records
-            )
-        return self._alias_column_records
+        return self._metadata_schema.alias_columns
 
     @property
     def _column_records_dict(self):
         if self._column_records_dict_ is None:
-            self._column_records_dict_ = {}
+            column_records_dict = {}
             for cr in self.column_records:
-                if cr.field_id not in self._column_records_dict_:
-                    self._column_records_dict_[cr.field_id] = [cr]
-                else:
-                    self._column_records_dict_[cr.field_id].append(cr)
+                column_records_dict.setdefault(cr.field_id, []).append(cr)
+            # assigned only once complete, so that another thread never sees it partly filled
+            self._column_records_dict_ = column_records_dict
         return self._column_records_dict_
 
     @property
     def _related_ids(self):
         if self._related_ids_ is None:
-            self._related_ids_ = defaultdict(list)
+            related_ids = defaultdict(list)
             for i, el in enumerate(self.field_records):
                 if el.parent_field_id != i:
-                    self._related_ids_[el.parent_field_id].append(i)
+                    related_ids[el.parent_field_id].append(i)
+            # assigned only once complete, so that another thread never sees it partly filled
+            self._related_ids_ = related_ids
         return self._related_ids_
 
     @property
-    def footer(self):
+    def clusters(self):
         """
-        The footer of the RNTuple.
-
-        This provides low level access to all the metadata contained in the footer.
+        The list of :doc:`uproot._rntuple_metadata.Cluster` in the RNTuple, in
+        cluster ID order, each with the pages of every physical column.
         """
-        if self._footer is None:
-            if not self._footer_chunk_ready:
-                self._prepare_footer_chunk()
-            cursor = self._footer_cursor.copy()
-            context = {}
+        if self._clusters is None:
+            import uproot._rootfilespec
 
-            # Pass version information to FooterReader for version-dependent parsing
-            version = (
-                self._members["fVersionEpoch"],
-                self._members["fVersionMajor"],
-                self._members["fVersionMinor"],
-                self._members["fVersionPatch"],
-            )
-            f = FooterReader(version).read(self._footer_chunk, cursor, context)
-            assert (
-                f.header_checksum == self.header.checksum
-            ), f"checksum={self.header.checksum}, header_checksum={f.header_checksum}"
-            self._footer = f
-            assert f.checksum == xxhash.xxh3_64_intdigest(
-                self._footer_chunk.raw_data[: -_rntuple_checksum_format.size]
-            )
+            self._load_rntuple()
+            with self._translate_errors():
+                clusters = uproot._rootfilespec.clusters(self._rfs_rntuple)
+            # assigned only once complete, so that another thread never sees it partly filled
+            self._clusters = clusters
+        return self._clusters
 
-        return self._footer
+    def _load_rntuple(self):
+        if self._rfs_rntuple is None:
+            import uproot._rootfilespec
+
+            self._metadata_schema  # noqa: B018 (fetches the header and the footer)
+            with self._translate_errors():
+                rntuple = uproot._rootfilespec.fetch_rntuple(
+                    self.file.source, self._rfs_header, self._rfs_footer
+                )
+            self._rfs_rntuple = rntuple
 
     @property
     def cluster_summaries(self):
         """
         The list of cluster summaries in the RNTuple.
         """
-        if self._cluster_summaries is None:
-            # assigned only once complete, so that another thread never sees it partly filled
-            cluster_summaries = []
-            for pl in self.page_list_envelopes:
-                cluster_summaries.extend(pl.cluster_summaries)
-            self._cluster_summaries = cluster_summaries
-        return self._cluster_summaries
+        return self.clusters
 
     @property
     def page_link_list(self):
         """
-        The list of page links in the RNTuple.
-        """
-        if self._page_link_list is None:
-            # assigned only once complete, so that another thread never sees it partly filled
-            page_link_list = []
-            for pl in self.page_list_envelopes:
-                page_link_list.extend(pl.pagelinklist)
-            self._page_link_list = page_link_list
-        return self._page_link_list
+        The page locations of every cluster in the RNTuple, with the names that
+        earlier versions of Uproot gave them.
 
-    def read_locator(self, loc, uncomp_size):
+        Deprecated: use :ref:`uproot.models.RNTuple.Model_ROOT_3a3a_RNTuple.clusters`
+        instead.
         """
-        Args:
-            loc (:doc:`uproot.models.RNTuple.MetaData`): The locator of the page.
-            uncomp_size (int): The size in bytes of the uncompressed data.
-            context (dict): Auxiliary data used in deserialization.
+        _warn_deprecated("page_link_list")
+        import uproot._rootfilespec
 
-        Returns a tuple of the decompressed chunk and the updated cursor.
+        self._load_rntuple()
+        page_link_list = []
+        for pl in uproot._rootfilespec.legacy_page_list_envelopes(self._rfs_rntuple):
+            page_link_list.extend(pl.pagelinklist)
+        return page_link_list
+
+    def _read_bytes(self, offset, num_bytes, uncomp_size):
         """
-        cursor = uproot.source.cursor.Cursor(loc.offset)
-        chunk = self.file.source.chunk(loc.offset, loc.offset + loc.num_bytes)
-        if loc.num_bytes < uncomp_size:
+        Returns a tuple of the chunk of ``num_bytes`` at ``offset``, decompressed
+        to ``uncomp_size`` bytes if it is smaller, and a cursor at its start.
+        """
+        cursor = uproot.source.cursor.Cursor(offset)
+        chunk = self.file.source.chunk(offset, offset + num_bytes)
+        if num_bytes < uncomp_size:
             decomp_chunk = uproot.compression.decompress(
-                chunk, cursor, {}, loc.num_bytes, uncomp_size, block_info=None
+                chunk, cursor, {}, num_bytes, uncomp_size, block_info=None
             )
             cursor.move_to(0)
         else:
             decomp_chunk = chunk
         return decomp_chunk, cursor
 
+    def read_locator(self, loc, uncomp_size):
+        """
+        Args:
+            loc: The locator of the page, with an ``offset`` and a ``num_bytes``.
+            uncomp_size (int): The size in bytes of the uncompressed data.
+
+        Returns a tuple of the decompressed chunk and the updated cursor.
+
+        Deprecated.
+        """
+        _warn_deprecated("read_locator")
+        return self._read_bytes(loc.offset, loc.num_bytes, uncomp_size)
+
     @property
     def page_list_envelopes(self):
         """
-        The list of page list envelopes in the RNTuple.
+        The page list envelopes of the RNTuple, with the names that earlier
+        versions of Uproot gave their metadata.
+
+        Deprecated: use :ref:`uproot.models.RNTuple.Model_ROOT_3a3a_RNTuple.clusters`
+        instead.
         """
-        context = {}
+        _warn_deprecated("page_list_envelopes")
+        import uproot._rootfilespec
 
-        if not self._page_list_envelopes:
-            # assigned only once complete, so that another thread never sees it partly filled
-            page_list_envelopes = []
-            for record in self.footer.cluster_group_records:
-                link = record.page_list_link
-                loc = link.locator
-                decomp_chunk, cursor = self.read_locator(loc, link.env_uncomp_size)
-                page_list_envelopes.append(
-                    PageLink().read(decomp_chunk, cursor, context)
-                )
-            self._page_list_envelopes = page_list_envelopes
-
-        return self._page_list_envelopes
+        self._load_rntuple()
+        return uproot._rootfilespec.legacy_page_list_envelopes(self._rfs_rntuple)
 
     def base_col_form(self, cr, parameters=None, is_cardinality=False):
         """
         Args:
-            cr (:doc:`uproot.models.RNTuple.MetaData`): The column record.
+            cr (:doc:`uproot._rntuple_metadata.ColumnRecord`): The column record.
             parameters (dict): The parameters to pass to the ``NumpyForm``.
             is_cardinality (bool): Whether the column is a cardinality column.
 
         Returns an Awkward Form describing the column if applicable, or a form key otherwise.
         """
 
-        form_key = f"column-{cr.idx}" + ("-cardinality" if is_cardinality else "")
+        form_key = f"column-{cr.column_id}" + ("-cardinality" if is_cardinality else "")
         dtype_byte = cr.type
         if dtype_byte == uproot.const.rntuple_col_type_to_num_dict["switch"]:
             return form_key
@@ -552,7 +470,7 @@ in file {self.file.file_path}"""
         ):
             # string field splits->2 in col records
             inner = self.base_col_form(rel_crs[1], parameters={"__array__": "char"})
-            form_key = f"column-{rel_crs[0].idx}"
+            form_key = f"column-{rel_crs[0].column_id}"
             parameters = {"__array__": "string"}
             if extra_parameters is not None:
                 parameters.update(extra_parameters)
@@ -653,7 +571,7 @@ in file {self.file.file_path}"""
                         f"The field_id: {cfid} is missing from the columns records."
                     )
                 )
-            col_id = self._column_records_dict[cfid][0].idx
+            col_id = self._column_records_dict[cfid][0].column_id
             keyname = f"column-{col_id}"
             #  this only has one child
             child_id = self._related_ids[this_id][0]
@@ -725,8 +643,30 @@ in file {self.file.file_path}"""
                 f"Unsplit fields are not supported. {this_record}"
             )
         else:
-            # everything should recurse above this branch
-            raise AssertionError("this should be unreachable")
+            raise NotImplementedError(
+                f"Field {this_record.field_name!r} has the structural role "
+                f"{int(structural_role)}, which Uproot does not know"
+            )
+
+    def _active_column(self, cluster_idx, col_idx):
+        """
+        Args:
+            cluster_idx (int): The index of the cluster.
+            col_idx (int): The column index.
+
+        Returns the index of the column to read for ``col_idx`` in the cluster: the
+        column itself, or the corresponding column of another representation of its
+        field if it is suppressed in this cluster.
+        """
+        columns = self._ntuple.clusters[cluster_idx].columns
+        if not columns[col_idx].suppressed:
+            return col_idx
+        record = self.column_records[col_idx]
+        return next(
+            other.column_id
+            for other in self._column_records_dict[record.field_id]
+            if other.index == record.index and not columns[other.column_id].suppressed
+        )
 
     def read_page(
         self,
@@ -747,8 +687,7 @@ in file {self.file.file_path}"""
 
         Fills the destination array with the data from the page.
         """
-        page_desc = self._ntuple.page_link_list[cluster_idx][col_idx].pages[page_idx]
-        loc = page_desc.locator
+        page = self._ntuple.clusters[cluster_idx].columns[col_idx].pages[page_idx]
         num_elements = len(destination)
         # Pages storing bits, real32trunc, and real32quant need num_elements
         # corrected
@@ -762,7 +701,9 @@ in file {self.file.file_path}"""
             num_elements_toread = num_elements
 
         uncomp_size = num_elements_toread * field_metadata.dtype_toread.itemsize
-        decomp_chunk, cursor = self.read_locator(loc, uncomp_size)
+        decomp_chunk, cursor = self._read_bytes(
+            page.offset, page.num_bytes, uncomp_size
+        )
         content = cursor.array(
             decomp_chunk,
             num_elements_toread,
@@ -796,26 +737,11 @@ in file {self.file.file_path}"""
         for cluster_idx in range(cluster_start, cluster_stop):
             if cluster_idx < 0:
                 continue
-            linklist = self._ntuple.page_link_list[cluster_idx]
-            # Check if the column is suppressed and pick the non-suppressed one if so
-            if col_idx < len(linklist) and linklist[col_idx].suppressed:
-                rel_crs = self._column_records_dict[
-                    self.column_records[col_idx].field_id
-                ]
-                col_idx = next(
-                    cr.idx for cr in rel_crs if not linklist[cr.idx].suppressed
-                )
-                field_metadata = self.get_field_metadata(
-                    col_idx
-                )  # Update metadata if suppressed
-            pagelist = (
-                linklist[field_metadata.ncol].pages
-                if field_metadata.ncol < len(linklist)
-                else []
-            )
-            cluster_length = sum(desc.num_elements for desc in pagelist)
+            # a suppressed column has the elements of the active representation's
             starts.append(total_length)
-            total_length += cluster_length
+            total_length += (
+                self._ntuple.clusters[cluster_idx].columns[col_idx].num_elements
+            )
 
         return total_length, starts, field_metadata.dtype_result
 
@@ -916,18 +842,12 @@ in file {self.file.file_path}"""
                     destination[:] = cached_data
                     return
 
-        linklist = self._ntuple.page_link_list[cluster_idx]
-        # Check if the column is suppressed and pick the non-suppressed one if so
-        if col_idx < len(linklist) and linklist[col_idx].suppressed:
-            rel_crs = self._column_records_dict[self.column_records[col_idx].field_id]
-            col_idx = next(cr.idx for cr in rel_crs if not linklist[cr.idx].suppressed)
+        active_col_idx = self._active_column(cluster_idx, col_idx)
+        if active_col_idx != col_idx:
+            col_idx = active_col_idx
             field_metadata = self.get_field_metadata(col_idx)
-        pagelist = (
-            linklist[field_metadata.ncol].pages
-            if field_metadata.ncol < len(linklist)
-            else []
-        )
-        total_len = numpy.sum([desc.num_elements for desc in pagelist], dtype=int)
+        column_range = self._ntuple.clusters[cluster_idx].columns[col_idx]
+        total_len = column_range.num_elements
         if destination is None:
             return_buffer = True
             destination = numpy.empty(total_len, dtype=field_metadata.dtype_result)
@@ -935,28 +855,34 @@ in file {self.file.file_path}"""
             return_buffer = False
             assert len(destination) == total_len
 
+        # The elements of a deferred column before its first stored one have no
+        # page and read as zeros; the pages hold the rest
+        num_zeros = column_range.num_zero_elements
+        destination[:num_zeros] = 0
+        stored = destination[num_zeros:]
+
         tracker = 0
         cumsum = 0
-        for page_idx, page_desc in enumerate(pagelist):
-            n_elements = page_desc.num_elements
+        for page_idx, page in enumerate(column_range.pages):
+            n_elements = page.num_elements
             tracker_end = tracker + n_elements
             self.read_page(
-                destination[tracker:tracker_end],
+                stored[tracker:tracker_end],
                 cluster_idx,
                 col_idx,
                 page_idx,
                 field_metadata,
             )
             if field_metadata.dtype != field_metadata.dtype_result:
-                destination[tracker:tracker_end] = destination[
-                    tracker:tracker_end
-                ].view(field_metadata.dtype)[: tracker_end - tracker]
+                stored[tracker:tracker_end] = stored[tracker:tracker_end].view(
+                    field_metadata.dtype
+                )[: tracker_end - tracker]
             if field_metadata.delta:
-                destination[tracker] -= cumsum
-                cumsum += numpy.sum(destination[tracker:tracker_end])
+                stored[tracker] -= cumsum
+                cumsum += numpy.sum(stored[tracker:tracker_end])
             tracker = tracker_end
 
-        self.post_process(destination, field_metadata)
+        self.post_process(stored, field_metadata)
 
         # Save a copy in array_cache
         if array_cache is not None:
@@ -1024,30 +950,24 @@ in file {self.file.file_path}"""
         """
         # Get cluster and pages metadatas
         cupy = uproot.extras.cupy()
-        linklist = self._ntuple.page_link_list[cluster_idx]
         col_idx_orig = col_idx
-        if col_idx < len(linklist):
-            if linklist[col_idx].suppressed:
-                rel_crs = self._column_records_dict[
-                    self.column_records[col_idx].field_id
-                ]
-                col_idx = next(
-                    cr.idx for cr in rel_crs if not linklist[cr.idx].suppressed
-                )
-                field_metadata = self.get_field_metadata(col_idx)
-            linklist_col = linklist[col_idx]
-            pagelist = linklist_col.pages
-            compression = linklist_col.compression_settings
+        active_col_idx = self._active_column(cluster_idx, col_idx)
+        if active_col_idx != col_idx:
+            col_idx = active_col_idx
+            field_metadata = self.get_field_metadata(col_idx)
+        column_range = self._ntuple.clusters[cluster_idx].columns[col_idx]
+        pagelist = column_range.pages
+        compression = column_range.compression_settings
+        if compression is not None:
             compression_level = compression % 100
             algorithm = compression // 100
             algorithm_str = compression_settings_dict[algorithm]
         else:
-            pagelist = []
             algorithm_str = None
             compression_level = None
 
         # Prepare full output buffer
-        total_len = numpy.sum([desc.num_elements for desc in pagelist], dtype=int)
+        total_len = numpy.sum([page.num_elements for page in pagelist], dtype=int)
         full_output_buffer = cupy.empty(total_len, dtype=field_metadata.dtype)
 
         # Check if field compressed/decompressed
@@ -1055,7 +975,7 @@ in file {self.file.file_path}"""
             total_len = int(numpy.ceil(total_len / 8))
         elif field_metadata.dtype_str in ("real32trunc", "real32quant"):
             total_len = int(numpy.ceil((total_len * 4 * field_metadata.nbits) / 32))
-        total_raw_bytes = numpy.sum([desc.locator.num_bytes for desc in pagelist])
+        total_raw_bytes = numpy.sum([page.num_bytes for page in pagelist])
         page_is_compressed = (
             total_raw_bytes != total_len * field_metadata.dtype_toread.itemsize
         )
@@ -1068,10 +988,9 @@ in file {self.file.file_path}"""
             compression_level,
         )
         tracker = 0
-        for page_desc in pagelist:
-            num_elements = page_desc.num_elements
-            loc = page_desc.locator
-            n_bytes = loc.num_bytes
+        for page in pagelist:
+            num_elements = page.num_elements
+            n_bytes = page.num_bytes
             if field_metadata.isbit:  # Need to correct length when dtype = bit
                 num_elements = int(numpy.ceil(num_elements / 8))
 
@@ -1082,7 +1001,7 @@ in file {self.file.file_path}"""
             if page_is_compressed:
                 # If LZ4, page contains additional 8-byte checksum
                 header_size = 9 if algorithm_str != "LZ4" else 9 + 8
-                offset = int(loc.offset + header_size)
+                offset = int(page.offset + header_size)
                 read_size = int(n_bytes - header_size)
                 comp_buff = cupy.empty(read_size, dtype="b")
                 filehandle.pread(comp_buff, size=read_size, file_offset=offset)
@@ -1091,7 +1010,7 @@ in file {self.file.file_path}"""
             else:
                 comp_buff = None
                 filehandle.pread(
-                    out_buff, size=int(n_bytes), file_offset=int(loc.offset)
+                    out_buff, size=int(n_bytes), file_offset=int(page.offset)
                 )
 
             cluster_contents._add_page(comp_buff)
@@ -1119,20 +1038,14 @@ in file {self.file.file_path}"""
         across requested clusters organized by column key.
         """
         cupy = uproot.extras.cupy()
-        clusters = self.ntuple.cluster_summaries
-        cluster_starts = numpy.array([c.num_first_entry for c in clusters])
         cluster_range = range(start_cluster_idx, stop_cluster_idx)
 
         col_arrays = {}  # collect content for each col
         for key_nr in clusters_datas.columns:
             ncol = int(key_nr)
             field_metadata = self.get_field_metadata(ncol)
-            # Find how many elements should be padded at the beginning
-            n_padding = self.column_records[key_nr].first_element_index
-            n_padding -= cluster_starts[start_cluster_idx]
-            n_padding = max(n_padding, 0)
             total_length, starts, _ = self._expected_array_length_starts_dtype(
-                ncol, start_cluster_idx, stop_cluster_idx, n_padding
+                ncol, start_cluster_idx, stop_cluster_idx
             )
 
             res = cupy.empty(total_length, field_metadata.dtype_result)
@@ -1152,13 +1065,20 @@ in file {self.file.file_path}"""
                 cluster_buffer = self.gpu_deserialize_pages(
                     cluster_buffer, ncol, cluster_i, field_metadata
                 )
-                # if field_metadata.dtype != field_metadata.dtype_result:
-                res[starts[i] : stop] = cluster_buffer
+                # The elements of a deferred column before its first stored one
+                # have no page and read as zeros; the pages hold the rest
+                active_ncol = self._active_column(cluster_i, ncol)
+                num_zeros = (
+                    self.clusters[cluster_i].columns[active_ncol].num_zero_elements
+                )
+                res[starts[i] : starts[i] + num_zeros] = 0
+                start = starts[i] + num_zeros
+                res[start:stop] = cluster_buffer
 
                 if field_metadata.dtype != field_metadata.dtype_result:
-                    res[starts[i] : stop] = res[starts[i] : stop].view(
-                        field_metadata.dtype
-                    )[: stop - starts[i]]
+                    res[start:stop] = res[start:stop].view(field_metadata.dtype)[
+                        : stop - start
+                    ]
                 i += 1
 
             self.combine_cluster_arrays(res, starts, field_metadata)
@@ -1180,22 +1100,17 @@ in file {self.file.file_path}"""
         """
         # Get pagelist and metadatas
         cupy = uproot.extras.cupy()
-        linklist = self.page_link_list[cluster_i]
-        if ncol < len(linklist):
-            if linklist[ncol].suppressed:
-                rel_crs = self._column_records_dict[self.column_records[ncol].field_id]
-                ncol = next(cr.idx for cr in rel_crs if not linklist[cr.idx].suppressed)
-                field_metadata = self.get_field_metadata(ncol)
-            linklist_col = linklist[ncol]
-            pagelist = linklist_col.pages
-        else:
-            pagelist = []
+        active_ncol = self._active_column(cluster_i, ncol)
+        if active_ncol != ncol:
+            ncol = active_ncol
+            field_metadata = self.get_field_metadata(ncol)
+        pagelist = self.clusters[cluster_i].columns[ncol].pages
 
         # Begin looping through pages
         tracker = 0
         cumsum = 0
-        for page_desc in pagelist:
-            num_elements = page_desc.num_elements
+        for page in pagelist:
+            num_elements = page.num_elements
             tracker_end = tracker + num_elements
             # Get content associated with page
             page_buffer = cluster_buffer[tracker:tracker_end]
@@ -1350,7 +1265,7 @@ in file {self.file.file_path}"""
         rel_crs = self._column_records_dict[self.column_records[ncol].field_id]
         alt_dtype_list = []
         for cr in rel_crs:
-            alt_dtype_byte = self.column_records[cr.idx].type
+            alt_dtype_byte = cr.type
             alt_dtype_str = uproot.const.rntuple_col_num_to_dtype_dict[alt_dtype_byte]
             if alt_dtype_str == "switch":
                 alt_dtype = numpy.dtype([("index", "int64"), ("tag", "int32")])
@@ -1448,371 +1363,14 @@ def _extract_bits(packed, nbits):
     return result
 
 
-# https://github.com/root-project/root/blob/8cd9eed6f3a32e55ef1f0f1df8e5462e753c735d/tree/ntuple/v7/doc/BinaryFormatSpecification.md#page-locations
-class PageDescription:
-    def read(self, chunk, cursor, context):
-        out = MetaData(type(self).__name__)
-        num_elements = cursor.field(chunk, _rntuple_page_num_elements_format, context)
-        out.has_checksum = num_elements < 0
-        out.num_elements = abs(num_elements)
-        out.locator = LocatorReader().read(chunk, cursor, context)
-        return out
-
-
-# https://github.com/root-project/root/blob/8cd9eed6f3a32e55ef1f0f1df8e5462e753c735d/tree/ntuple/v7/doc/BinaryFormatSpecification.md#page-locations
-class ColumnPageListFrameReader:
-    def read(self, chunk, cursor, context):
-        local_cursor = cursor.copy()
-        num_bytes = local_cursor.field(chunk, _rntuple_frame_size_format, context)
-        assert num_bytes < 0, f"num_bytes={num_bytes}"
-        num_items = local_cursor.field(chunk, _rntuple_frame_num_items_format, context)
-        cursor.skip(-num_bytes)
-        out = MetaData("ColumnPages")
-        out.pages = [
-            PageDescription().read(chunk, local_cursor, context)
-            for _ in range(num_items)
-        ]
-        out.element_offset = local_cursor.field(
-            chunk, _rntuple_column_element_offset_format, context
-        )
-        out.suppressed = out.element_offset < 0
-        if not out.suppressed:
-            out.compression_settings = local_cursor.field(
-                chunk, _rntuple_column_compression_settings_format, context
-            )
-        else:
-            out.compression_settings = None
-        return out
-
-
-# https://github.com/root-project/root/blob/8cd9eed6f3a32e55ef1f0f1df8e5462e753c735d/tree/ntuple/v7/doc/BinaryFormatSpecification.md#page-list-envelope
-class PageLink:
-    def __init__(self):
-        self.list_cluster_summaries = ListFrameReader(
-            RecordFrameReader(ClusterSummaryReader())
-        )
-        self.nested_page_locations = ListFrameReader(
-            ListFrameReader(ColumnPageListFrameReader())
-        )
-
-    def read(self, chunk, cursor, context):
-        out = MetaData(type(self).__name__)
-        out.env_header = _envelop_header(chunk, cursor, context)
-        assert (
-            out.env_header["env_type_id"] == uproot.const.RNTupleEnvelopeType.PAGELIST
-        ), f"env_type_id={out.env_header['env_type_id']}"
-        out.header_checksum = cursor.field(chunk, _rntuple_checksum_format, context)
-        out.cluster_summaries = self.list_cluster_summaries.read(chunk, cursor, context)
-        out.pagelinklist = self.nested_page_locations.read(chunk, cursor, context)
-        out.checksum = cursor.field(chunk, _rntuple_checksum_format, context)
-        return out
-
-
-# https://github.com/root-project/root/blob/8cd9eed6f3a32e55ef1f0f1df8e5462e753c735d/tree/ntuple/v7/doc/BinaryFormatSpecification.md#locators-and-envelope-links
-class LocatorReader:
-    def read(self, chunk, cursor, context):
-        out = MetaData("Locator")
-        out.num_bytes = cursor.field(chunk, _rntuple_locator_size_format, context)
-        if out.num_bytes < 0:
-            out.type = uproot.const.RNTupleLocatorType(-out.num_bytes >> 24)
-            if out.type == uproot.const.RNTupleLocatorType.LARGE:
-                out.num_bytes = cursor.field(
-                    chunk, _rntuple_large_locator_size_format, context
-                )
-                out.offset = cursor.field(
-                    chunk, _rntuple_locator_offset_format, context
-                )
-            else:
-                raise NotImplementedError(f"Unknown locator type: {out.type}")
-        else:
-            out.type = uproot.const.RNTupleLocatorType.STANDARD
-            out.offset = cursor.field(chunk, _rntuple_locator_offset_format, context)
-        return out
-
-
-# https://github.com/root-project/root/blob/8cd9eed6f3a32e55ef1f0f1df8e5462e753c735d/tree/ntuple/v7/doc/BinaryFormatSpecification.md#locators-and-envelope-links
-class EnvLinkReader:
-    def read(self, chunk, cursor, context):
-        out = MetaData("EnvLink")
-        out.env_uncomp_size = cursor.field(chunk, _rntuple_envlink_size_format, context)
-        out.locator = LocatorReader().read(chunk, cursor, context)
-        return out
-
-
-class MetaData:
-    def __init__(self, name, **kwargs):
-        self.__dict__["_name"] = name
-        self.__dict__["_fields"] = kwargs
-
-    @property
-    def name(self):
-        return self.__dict__["_name"]
-
-    def __repr__(self):
-        kwargs = ", ".join(f"{k}={v!r}" for k, v in self.__dict__["_fields"].items())
-        return f"MetaData({self.name!r}, {kwargs})"
-
-    def __getattr__(self, name):
-        if not name.startswith("_"):
-            return self.__dict__["_fields"][name]
-        else:
-            return self.__dict__[name]
-
-    def __setattr__(self, name, val):
-        self.__dict__["_fields"][name] = val
-
-
-# https://github.com/root-project/root/blob/8cd9eed6f3a32e55ef1f0f1df8e5462e753c735d/tree/ntuple/v7/doc/BinaryFormatSpecification.md#frames
-class RecordFrameReader:
-    def __init__(self, payload):
-        self.payload = payload
-
-    def read(self, chunk, cursor, context):
-        local_cursor = cursor.copy()
-        num_bytes = local_cursor.field(chunk, _rntuple_frame_size_format, context)
-        assert num_bytes >= 0, f"num_bytes={num_bytes}"
-        cursor.skip(num_bytes)
-        return self.payload.read(chunk, local_cursor, context)
-
-
-class ListFrameReader:
-    def __init__(self, payload):
-        self.payload = payload
-
-    def read(self, chunk, cursor, context):
-        local_cursor = cursor.copy()
-        num_bytes = local_cursor.field(chunk, _rntuple_frame_size_format, context)
-        assert num_bytes < 0, f"num_bytes={num_bytes}"
-        num_items = local_cursor.field(chunk, _rntuple_frame_num_items_format, context)
-        cursor.skip(-num_bytes)
-        return [
-            self.payload.read(chunk, local_cursor, context) for _ in range(num_items)
-        ]
-
-
-# https://github.com/root-project/root/blob/aa513463b0b512517370cb91cca025e53a8b13a2/tree/ntuple/v7/doc/specifications.md#field-description
-class FieldRecordReader:
-    def read(self, chunk, cursor, context):
-        out = MetaData("FieldRecordFrame")
-        (
-            out.field_version,
-            out.type_version,
-            out.parent_field_id,
-            out.struct_role,
-            out.flags,
-        ) = cursor.fields(chunk, _rntuple_field_description_format, context)
-        out.struct_role = uproot.const.RNTupleFieldRole(out.struct_role)
-        out.flags = uproot.const.RNTupleFieldFlags(out.flags)
-        out.field_name, out.type_name, out.type_alias, out.field_desc = (
-            cursor.rntuple_string(chunk, context) for _ in range(4)
-        )
-
-        if out.flags & uproot.const.RNTupleFieldFlags.REPETITIVE:
-            out.repetition = cursor.field(chunk, _rntuple_repetition_format, context)
-        else:
-            out.repetition = 0
-
-        if out.flags & uproot.const.RNTupleFieldFlags.PROJECTED:
-            out.source_field_id = cursor.field(
-                chunk, _rntuple_source_field_id_format, context
-            )
-        else:
-            out.source_field_id = None
-
-        if out.flags & uproot.const.RNTupleFieldFlags.CHECKSUM:
-            out.checksum = cursor.field(
-                chunk, _rntuple_root_streamer_checksum_format, context
-            )
-        else:
-            out.checksum = None
-
-        return out
-
-
-# https://github.com/root-project/root/blob/aa513463b0b512517370cb91cca025e53a8b13a2/tree/ntuple/v7/doc/specifications.md#column-description
-class ColumnRecordReader:
-    def read(self, chunk, cursor, context):
-        out = MetaData("ColumnRecordFrame")
-        out.type, out.nbits, out.field_id, out.flags, out.repr_idx = cursor.fields(
-            chunk, _rntuple_column_record_format, context
-        )
-        out.flags = uproot.const.RNTupleColumnFlags(out.flags)
-        if out.flags & uproot.const.RNTupleColumnFlags.DEFERRED:
-            out.first_element_index = cursor.field(
-                chunk, _rntuple_first_element_index_format, context
-            )
-        else:
-            out.first_element_index = 0
-        if out.flags & uproot.const.RNTupleColumnFlags.RANGE:
-            out.min_value, out.max_value = cursor.fields(
-                chunk, _rntuple_column_range_format, context
-            )
-        else:
-            out.min_value, out.max_value = None, None
-        return out
-
-
-# https://github.com/root-project/root/blob/8cd9eed6f3a32e55ef1f0f1df8e5462e753c735d/tree/ntuple/v7/doc/BinaryFormatSpecification.md#alias-columns
-class AliasColumnReader:
-    def read(self, chunk, cursor, context):
-        out = MetaData("AliasColumn")
-
-        out.physical_id, out.field_id = cursor.fields(
-            chunk, _rntuple_alias_column_format, context
-        )
-        return out
-
-
-# https://github.com/root-project/root/blob/8cd9eed6f3a32e55ef1f0f1df8e5462e753c735d/tree/ntuple/v7/doc/BinaryFormatSpecification.md#extra-type-information
-class ExtraTypeInfoReader:
-    def read(self, chunk, cursor, context):
-        out = MetaData("ExtraTypeInfoReader")
-
-        out.content_id, out.type_ver = cursor.fields(
-            chunk, _rntuple_extra_type_info_format, context
-        )
-        out.content_id = uproot.const.RNTupleExtraTypeIdentifier(out.content_id)
-        out.type_name = cursor.rntuple_string(chunk, context)
-        return out
-
-
-# https://github.com/root-project/root/blob/8cd9eed6f3a32e55ef1f0f1df8e5462e753c735d/tree/ntuple/v7/doc/BinaryFormatSpecification.md#header-envelope
-class HeaderReader:
-    def __init__(self):
-        self.list_field_record_frames = ListFrameReader(
-            RecordFrameReader(FieldRecordReader())
-        )
-        self.list_column_record_frames = ListFrameReader(
-            RecordFrameReader(ColumnRecordReader())
-        )
-        self.list_alias_column_frames = ListFrameReader(
-            RecordFrameReader(AliasColumnReader())
-        )
-        self.list_extra_type_info_reader = ListFrameReader(
-            RecordFrameReader(ExtraTypeInfoReader())
-        )
-
-    def read(self, chunk, cursor, context):
-        out = MetaData(type(self).__name__)
-        out.env_header = _envelop_header(chunk, cursor, context)
-        assert (
-            out.env_header["env_type_id"] == uproot.const.RNTupleEnvelopeType.HEADER
-        ), f"env_type_id={out.env_header['env_type_id']}"
-        out.feature_flag = cursor.field(chunk, _rntuple_feature_flag_format, context)
-        out.ntuple_name, out.ntuple_description, out.writer_identifier = (
-            cursor.rntuple_string(chunk, context) for _ in range(3)
-        )
-
-        out.field_records = self.list_field_record_frames.read(chunk, cursor, context)
-        out.column_records = self.list_column_record_frames.read(chunk, cursor, context)
-        out.alias_column_records = self.list_alias_column_frames.read(
-            chunk, cursor, context
-        )
-        out.extra_type_infos = self.list_extra_type_info_reader.read(
-            chunk, cursor, context
-        )
-        out.checksum = cursor.field(chunk, _rntuple_checksum_format, context)
-
-        return out
-
-
-# https://github.com/root-project/root/blob/8cd9eed6f3a32e55ef1f0f1df8e5462e753c735d/tree/ntuple/v7/doc/BinaryFormatSpecification.md#cluster-summary-record-frame
-class ClusterSummaryReader:
-    def read(self, chunk, cursor, context):
-        out = MetaData("ClusterSummaryRecord")
-        out.num_first_entry, out.num_entries = cursor.fields(
-            chunk, _rntuple_cluster_summary_format, context
-        )
-        out.flags = uproot.const.RNTupleClusterFlags(out.num_entries >> 56)
-        out.num_entries &= 0xFFFFFFFFFFFFFF
-        if out.flags & uproot.const.RNTupleClusterFlags.SHARDED:
-            raise NotImplementedError("Sharded clusters are not supported.")
-        return out
-
-
-# https://github.com/root-project/root/blob/8cd9eed6f3a32e55ef1f0f1df8e5462e753c735d/tree/ntuple/v7/doc/BinaryFormatSpecification.md#page-locations
-class ClusterGroupRecordReader:
-    def read(self, chunk, cursor, context):
-        out = MetaData("ClusterGroupRecord")
-        out.min_entry_num, out.entry_span, out.num_clusters = cursor.fields(
-            chunk, _rntuple_cluster_group_format, context
-        )
-        out.page_list_link = EnvLinkReader().read(chunk, cursor, context)
-        return out
-
-
-# https://github.com/root-project/root/blob/2c80bed03dbe28610c5825d8cd417db2ffc3e1d6/tree/ntuple/doc/BinaryFormatSpecification.md#linked-attribute-set-record-frame
-class LinkedAttributeSetRecordReader:
-    def read(self, chunk, cursor, context):
-        out = MetaData("LinkedAttributeSetRecord")
-        (
-            out.schema_version_major,
-            out.schema_version_minor,
-            out.anchor_uncompressed_size,
-        ) = cursor.fields(chunk, _rntuple_linked_attribute_set_format, context)
-        out.locator = LocatorReader().read(chunk, cursor, context)
-        out.name = cursor.rntuple_string(chunk, context)
-        return out
-
-
-# https://github.com/root-project/root/blob/8cd9eed6f3a32e55ef1f0f1df8e5462e753c735d/tree/ntuple/v7/doc/BinaryFormatSpecification.md#schema-extension-record-frame
-class RNTupleSchemaExtension:
-    def read(self, chunk, cursor, context):
-        out = MetaData(type(self).__name__)
-        out.size = cursor.field(chunk, _rntuple_frame_size_format, context)
-        assert out.size >= 0, f"size={out.size}"
-        out.field_records = ListFrameReader(
-            RecordFrameReader(FieldRecordReader())
-        ).read(chunk, cursor, context)
-        out.column_records = ListFrameReader(
-            RecordFrameReader(ColumnRecordReader())
-        ).read(chunk, cursor, context)
-        out.alias_column_records = ListFrameReader(
-            RecordFrameReader(AliasColumnReader())
-        ).read(chunk, cursor, context)
-        out.extra_type_info = ListFrameReader(
-            RecordFrameReader(ExtraTypeInfoReader())
-        ).read(chunk, cursor, context)
-        return out
-
-
-# https://github.com/root-project/root/blob/8cd9eed6f3a32e55ef1f0f1df8e5462e753c735d/tree/ntuple/v7/doc/BinaryFormatSpecification.md#footer-envelope
-class FooterReader:
-    def __init__(self, version=(1, 0, 0, 0)):
-        self.version = version
-        self.extension_header_links = RNTupleSchemaExtension()
-        self.cluster_group_record_frames = ListFrameReader(
-            RecordFrameReader(ClusterGroupRecordReader())
-        )
-        # Linked attribute sets were added in RNTuple v1.0.1.0
-        if version >= (1, 0, 1, 0):
-            self.linked_attribute_sets = ListFrameReader(
-                RecordFrameReader(LinkedAttributeSetRecordReader())
-            )
-        else:
-            self.linked_attribute_sets = None
-
-    def read(self, chunk, cursor, context):
-        out = MetaData("Footer")
-        out.env_header = _envelop_header(chunk, cursor, context)
-        assert (
-            out.env_header["env_type_id"] == uproot.const.RNTupleEnvelopeType.FOOTER
-        ), f"env_type_id={out.env_header['env_type_id']}"
-        out.feature_flag = cursor.field(chunk, _rntuple_feature_flag_format, context)
-        out.header_checksum = cursor.field(chunk, _rntuple_checksum_format, context)
-        out.extension_links = self.extension_header_links.read(chunk, cursor, context)
-        out.cluster_group_records = self.cluster_group_record_frames.read(
-            chunk, cursor, context
-        )
-        # Linked attribute sets only exist in v1.0.1.0 and later
-        if self.linked_attribute_sets is not None:
-            out.linked_attribute_sets = self.linked_attribute_sets.read(
-                chunk, cursor, context
-            )
-        else:
-            out.linked_attribute_sets = []
-        out.checksum = cursor.field(chunk, _rntuple_checksum_format, context)
-        return out
+def _warn_deprecated(name):
+    warnings.warn(
+        f"RNTuple.{name} is deprecated and will be removed in a future version "
+        "of Uproot. RNTuple metadata is now parsed by rootfilespec; use "
+        "field_records, column_records, and clusters instead.",
+        DeprecationWarning,
+        stacklevel=3,
+    )
 
 
 class RField(uproot.behaviors.RNTuple.HasFields):
