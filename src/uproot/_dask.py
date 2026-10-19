@@ -223,6 +223,7 @@ def dask(
       array from ``TTrees``.
     """
 
+    uproot._util._check_unknown_options(options)
     files = uproot._util.regularize_files(files, steps_allowed=True, **options)
 
     is_3arg = [len(x) == 3 for x in files]
