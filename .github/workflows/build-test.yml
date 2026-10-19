@@ -159,7 +159,8 @@ jobs:
       - name: Pip install the package
         run: |
           uv venv
-          uv pip install -e. 'numpy<2' --group test
+          # pyarrow 26 requires NumPy 2
+          uv pip install -e. 'numpy<2' 'pyarrow<26' --group test
 
       - name: Run pytest
         run: |
