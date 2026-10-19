@@ -165,12 +165,14 @@ class Profile(uproot.behaviors.TH1.Histogram):
         """
         raise NotImplementedError(repr(self))
 
-    def errors(self, flow=False, error_mode=""):
+    def errors(self, flow=False, error_mode=None):
         """
         Args:
             flow (bool): If True, include underflow and overflow bins before and
                 after the normal (finite-width) bins.
-            error_mode (str): Choose a method for calculating the errors (see below).
+            error_mode (None or str): Choose a method for calculating the errors
+                (see below). If None, use the profile's own error option
+                (``fErrorMode``), as ROOT's ``GetBinError`` does.
 
         Errors (uncertainties) in the :ref:`uproot.behaviors.TH1.Histogram.values`
         as a 1, 2, or 3 dimensional ``numpy.ndarray`` of ``numpy.float64``.
@@ -185,17 +187,24 @@ class Profile(uproot.behaviors.TH1.Histogram):
 
         following `ROOT's profile documentation <https://root.cern.ch/doc/master/classTProfile.html>`__.
 
+        Note that these follow ROOT's conventions, which differ from those of
+        boost-histogram's ``variances()`` (for example, after ``to_hist``):
+        ROOT does not apply Bessel's correction to the spread, and gives zero
+        error (rather than NaN) for bins with a single entry.
+
         Setting ``flow=True`` increases the length of each dimension by two.
         """
-        _values, errors = self._values_errors(flow, error_mode)
+        _values, errors = self._values_errors(flow, self._error_mode(error_mode))
         return errors
 
-    def variances(self, flow=False, error_mode=""):
+    def variances(self, flow=False, error_mode=None):
         """
         Args:
             flow (bool): If True, include underflow and overflow bins before and
                 after the normal (finite-width) bins.
-            error_mode (str): Choose a method for calculating the errors (see below).
+            error_mode (None or str): Choose a method for calculating the errors
+                (see below). If None, use the profile's own error option
+                (``fErrorMode``), as ROOT's ``GetBinError`` does.
 
         Variances (uncertainties squared) in the
         :ref:`uproot.behaviors.TH1.Histogram.values` as a 1, 2, or 3
@@ -211,10 +220,19 @@ class Profile(uproot.behaviors.TH1.Histogram):
 
         following `ROOT's profile documentation <https://root.cern.ch/doc/master/classTProfile.html>`__.
 
+        See :ref:`uproot.behaviors.TProfile.Profile.errors` for how these
+        conventions differ from boost-histogram's.
+
         Setting ``flow=True`` increases the length of each dimension by two.
         """
-        _values, errors = self._values_errors(flow, error_mode)
+        _values, errors = self._values_errors(flow, self._error_mode(error_mode))
         return numpy.square(errors)
+
+    def _error_mode(self, error_mode):
+        if error_mode is None:
+            return self.member("fErrorMode", none_if_missing=True)
+        else:
+            return error_mode
 
 
 class TProfile(Profile):
@@ -295,6 +313,22 @@ class TProfile(Profile):
             return values[1:-1], errors[1:-1]
 
     def to_boost(self, metadata=boost_metadata, axis_metadata=boost_axis_metadata):
+        """
+        Args:
+            metadata (dict of str \u2192 str): Metadata to collect (keys) and
+                their C++ class member names (values).
+            axis_metadata (dict of str \u2192 str): Metadata to collect from
+                each axis.
+
+        Converts the profile into a ``boost-histogram`` object with ``Mean``
+        storage, or ``WeightedMean`` storage if the profile is weighted.
+
+        The per-bin sums are carried over exactly, but boost-histogram computes
+        ``variances()`` with its own conventions, which differ from
+        :ref:`uproot.behaviors.TProfile.Profile.variances`: it applies Bessel's
+        correction, gives NaN for bins with a single entry, and ignores the
+        profile's error option (which is kept in ``metadata["fErrorMode"]``).
+        """
         boost_histogram = uproot.extras.boost_histogram()
 
         sum_of_bin_weights = numpy.asarray(
