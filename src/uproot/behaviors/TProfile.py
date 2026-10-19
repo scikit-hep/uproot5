@@ -342,7 +342,7 @@ class TProfile(Profile):
         for k, v in metadata.items():
             setattr(out, k, self.member(v))
 
-        if self.member("fXaxis").member("fLabels") is not None:
+        if self.member("fXaxis").traits.discrete:
             # ROOT's categorical axes (with fLabels) always have an underflow bin (bin 0).
             # boost-histogram's Category axes do not have underflow.
             # We slice off the first ROOT bin (underflow) to align with boost-histogram.

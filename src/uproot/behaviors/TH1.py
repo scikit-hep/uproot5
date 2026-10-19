@@ -21,13 +21,12 @@ def _boost_axis(axis, metadata):
     fNbins = axis.member("fNbins")
     fXbins = axis.member("fXbins", none_if_missing=True)
 
-    fLabels = axis.member("fLabels", none_if_missing=True)
-    if fLabels is not None:
+    labels = axis._bin_labels()
+    if labels is not None:
         try:
-            labels = [int(x) for x in fLabels]
+            labels = [int(x) for x in labels]
             category_cls = boost_histogram.axis.IntCategory
         except ValueError:
-            labels = [str(x) for x in fLabels]
             category_cls = boost_histogram.axis.StrCategory
         out = category_cls(labels)
 
