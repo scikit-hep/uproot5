@@ -234,6 +234,18 @@ class Profile(uproot.behaviors.TH1.Histogram):
         else:
             return error_mode
 
+    def _values_variances(self, flow):
+        return self.values(flow=flow), self.variances(flow=flow)
+
+    def _fBinSumw2(self):
+        # TProfile class versions before 6 (ROOT < 5.26) have no fBinSumw2;
+        # ROOT treats them like an empty fBinSumw2 (unweighted)
+        fBinSumw2 = self.member("fBinSumw2", none_if_missing=True)
+        if fBinSumw2 is None:
+            return numpy.array([], dtype=numpy.float64)
+        else:
+            return numpy.asarray(fBinSumw2)
+
 
 class TProfile(Profile):
     """
@@ -260,7 +272,7 @@ class TProfile(Profile):
     def counts(self, flow=False):
         out = _effective_counts_1d(
             self.member("fBinEntries"),
-            self.member("fBinSumw2"),
+            self._fBinSumw2(),
             self.member("fNcells"),
         )
         if flow:
@@ -302,7 +314,7 @@ class TProfile(Profile):
                 root_cont,
                 fSumw2,
                 self.member("fNcells"),
-                numpy.asarray(self.member("fBinSumw2")),
+                self._fBinSumw2(),
             )
             self._values = values
             setattr(self, attr, errors)
@@ -337,9 +349,8 @@ class TProfile(Profile):
         # ROOT's effective entries are sum(w)**2 / fBinSumw2, so fBinSumw2 is the
         # sum of squared weights (0, not 0/0, in empty bins)
         # https://github.com/root-project/root/blob/ffc7c588ac91aca30e75d356ea971129ee6a836a/hist/hist/src/TProfileHelper.h#L141-L163
-        fBinSumw2 = self.member("fBinSumw2", none_if_missing=True)
         sum_of_bin_weights_squared = numpy.asarray(
-            [] if fBinSumw2 is None else fBinSumw2, dtype=numpy.float64
+            self._fBinSumw2(), dtype=numpy.float64
         )
         raw_values = numpy.asarray(self._bases[0]._bases[-1], dtype=numpy.float64)
         fSumw2_member = self.member("fSumw2", none_if_missing=True)
@@ -360,9 +371,10 @@ class TProfile(Profile):
         else:
             fSumw2 = numpy.array([], dtype=numpy.float64)
         if len(fSumw2) == fNcells:
-            sum_sq_dev = numpy.maximum(
-                fSumw2 - sum_of_bin_weights * mean_values**2, 0.0
-            )
+            # This can be legitimately negative with negative weights (ROOT takes
+            # its absolute value when computing errors), so only clamp round-off.
+            sum_sq_dev = fSumw2 - sum_of_bin_weights * mean_values**2
+            sum_sq_dev[(sum_sq_dev < 0) & (-sum_sq_dev <= 1e-10 * abs(fSumw2))] = 0.0
         else:
             sum_sq_dev = numpy.zeros(len(raw_values), dtype=numpy.float64)
 

@@ -48,7 +48,7 @@ class TProfile3D(uproot.behaviors.TProfile.Profile):
         zaxis_fNbins = self.member("fZaxis").member("fNbins")
         out = uproot.behaviors.TProfile._effective_counts_1d(
             numpy.asarray(self.member("fBinEntries")).reshape(-1),
-            numpy.asarray(self.member("fBinSumw2")).reshape(-1),
+            self._fBinSumw2().reshape(-1),
             self.member("fNcells"),
         )
         out = numpy.transpose(
@@ -99,7 +99,7 @@ class TProfile3D(uproot.behaviors.TProfile.Profile):
                 root_cont.reshape(-1),
                 fSumw2,
                 self.member("fNcells"),
-                numpy.asarray(self.member("fBinSumw2")).reshape(-1),
+                self._fBinSumw2().reshape(-1),
             )
             xaxis_fNbins = self.member("fXaxis").member("fNbins")
             yaxis_fNbins = self.member("fYaxis").member("fNbins")
