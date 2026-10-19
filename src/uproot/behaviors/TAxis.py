@@ -64,7 +64,12 @@ class TAxis:
         if fLabels is not None and len(fLabels) == fNbins:
             return str(fLabels[where])
 
-        elif fXbins is None or len(fXbins) != fNbins + 1:
+        if where < 0:
+            where += fNbins
+        if not 0 <= where < fNbins:
+            raise IndexError("axis index out of range")
+
+        if fXbins is None or len(fXbins) != fNbins + 1:
             fXmin, fXmax = self.member("fXmin"), self.member("fXmax")
             low = (fXmax - fXmin) * (where) / float(fNbins) + fXmin
             high = (fXmax - fXmin) * (where + 1) / float(fNbins) + fXmin
