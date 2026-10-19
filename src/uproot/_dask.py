@@ -14,6 +14,7 @@ import numpy
 import uproot
 from uproot._util import no_filter, unset
 from uproot.behaviors.RNTuple import (
+    _OPTION_FORMS,
     HasFields,
     _filter_field_by_key,
     _form_to_numpy_dtype,
@@ -544,6 +545,22 @@ class _UprootReadNumpy:
             decompression_executor=self.decompression_executor,
             interpretation_executor=self.interpretation_executor,
         )
+        if (
+            self.expected_dtype is not None
+            and self.expected_dtype == numpy.dtype(object)
+            and (arr.dtype != object or arr.ndim > 1)
+        ):
+            out = numpy.empty(len(arr), dtype=object)
+            for j, row in enumerate(arr):
+                out[j] = (
+                    None
+                    if (
+                        isinstance(arr, numpy.ma.MaskedArray)
+                        and numpy.ma.is_masked(arr[j])
+                    )
+                    else row
+                )
+            arr = out
         return arr
 
 
@@ -560,10 +577,7 @@ def _branch_or_field_numpy_dtype(branch):
                         awkward.forms.ListOffsetForm,
                         awkward.forms.ListForm,
                         awkward.forms.RegularForm,
-                        awkward.forms.IndexedOptionForm,
-                        awkward.forms.ByteMaskedForm,
-                        awkward.forms.BitMaskedForm,
-                        awkward.forms.UnmaskedForm,
+                        *_OPTION_FORMS,
                     ),
                 ):
                     # Any list boundary means the result is a jagged array.
@@ -671,6 +685,22 @@ which has {num_entries} entries"""
             decompression_executor=self.decompression_executor,
             interpretation_executor=self.interpretation_executor,
         )
+        if (
+            self.expected_dtype is not None
+            and self.expected_dtype == numpy.dtype(object)
+            and (arr.dtype != object or arr.ndim > 1)
+        ):
+            out = numpy.empty(len(arr), dtype=object)
+            for j, row in enumerate(arr):
+                out[j] = (
+                    None
+                    if (
+                        isinstance(arr, numpy.ma.MaskedArray)
+                        and numpy.ma.is_masked(arr[j])
+                    )
+                    else row
+                )
+            arr = out
         return arr
 
 

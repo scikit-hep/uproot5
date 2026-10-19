@@ -927,7 +927,17 @@ class HasFields(Mapping):
                 pandas_index = uproot.interpretation.library._pandas_basic_index(
                     pd, entry_start, entry_start + len(arrays)
                 )
-                pandas_data = pd.DataFrame(numpy_data, index=pandas_index)
+                try:
+                    pandas_dict = {}
+                    for f, arr in numpy_data.items():
+                        if getattr(arr, "ndim", 1) > 1:
+                            pandas_dict[f] = list(arr)
+                        else:
+                            pandas_dict[f] = arr
+                    pandas_data = pd.DataFrame(pandas_dict, index=pandas_index)
+                except Exception:
+                    msg = f"Field {f} cannot be converted to NumPy/Pandas"
+                    raise ValueError(msg) from None
                 arrays = pandas_data
             else:
                 arrays = numpy_data
@@ -1090,8 +1100,9 @@ class HasFields(Mapping):
             )
             if report:
                 sub_entry_stop = min(start + step_size, entry_stop)
-                yield arrays, uproot.behaviors.TBranch.Report(
-                    self, start, sub_entry_stop
+                yield (
+                    arrays,
+                    uproot.behaviors.TBranch.Report(self, start, sub_entry_stop),
                 )
             else:
                 yield arrays
@@ -2062,17 +2073,17 @@ def _fill_container_dict(container_dict, content, key, dtype_byte, dtype):
             container_dict[f"{key}-offsets"] = content
 
 
+_OPTION_FORMS = (
+    ak.forms.IndexedOptionForm,
+    ak.forms.ByteMaskedForm,
+    ak.forms.BitMaskedForm,
+    ak.forms.UnmaskedForm,
+)
+
+
 def _is_string_form(form):
     curr = form
-    while isinstance(
-        curr,
-        (
-            ak.forms.IndexedOptionForm,
-            ak.forms.ByteMaskedForm,
-            ak.forms.BitMaskedForm,
-            ak.forms.UnmaskedForm,
-        ),
-    ):
+    while isinstance(curr, _OPTION_FORMS):
         curr = curr.content
     if isinstance(curr, (ak.forms.ListOffsetForm, ak.forms.ListForm)):
         if curr.parameters.get("__array__") in ("string", "bytestring"):
@@ -2088,22 +2099,8 @@ def _is_string_form(form):
 def _form_to_numpy_dtype(form, initial_sizes=()):
     sizes = list(initial_sizes)
     curr = form
-    is_optional = False
-
-    while isinstance(
-        curr,
-        (
-            ak.forms.RegularForm,
-            ak.forms.IndexedOptionForm,
-            ak.forms.ByteMaskedForm,
-            ak.forms.BitMaskedForm,
-            ak.forms.UnmaskedForm,
-        ),
-    ):
-        if isinstance(curr, ak.forms.RegularForm):
-            sizes.append(curr.size)
-        else:
-            is_optional = True
+    while isinstance(curr, ak.forms.RegularForm):
+        sizes.append(curr.size)
         curr = curr.content
 
     if isinstance(curr, ak.forms.NumpyForm):
@@ -2113,7 +2110,7 @@ def _form_to_numpy_dtype(form, initial_sizes=()):
             return numpy.dtype((inner_dt, shape))
         return inner_dt
 
-    if not is_optional and isinstance(curr, ak.forms.RecordForm):
+    if isinstance(curr, ak.forms.RecordForm):
         field_dtypes = []
         for field in curr.fields:
             content_form = curr.content(field)
@@ -2123,14 +2120,18 @@ def _form_to_numpy_dtype(form, initial_sizes=()):
             return numpy.dtype((record_dtype, tuple(sizes)))
         return record_dtype
 
+    if sizes:
+        return numpy.dtype((numpy.dtype(object), tuple(sizes)))
     return numpy.dtype(object)
 
 
 def _rntuple_to_numpy(data):
-    if not isinstance(data, (ak.Array, ak.contents.Content)):
+    if isinstance(data, ak.contents.Content):
+        data = ak.Array(data)
+    elif not isinstance(data, ak.Array):
         return numpy.asarray(data)
 
-    form = data.layout.form if isinstance(data, ak.Array) else data.form
+    form = data.layout.form
 
     if _is_string_form(form):
         lst = ak.to_list(data)
@@ -2138,26 +2139,9 @@ def _rntuple_to_numpy(data):
         out[:] = lst
         return out
 
-    if isinstance(
-        form,
-        (
-            ak.forms.IndexedOptionForm,
-            ak.forms.ByteMaskedForm,
-            ak.forms.BitMaskedForm,
-            ak.forms.UnmaskedForm,
-        ),
-    ):
+    if isinstance(form, _OPTION_FORMS):
         curr = form
-        while isinstance(
-            curr,
-            (
-                ak.forms.RegularForm,
-                ak.forms.IndexedOptionForm,
-                ak.forms.ByteMaskedForm,
-                ak.forms.BitMaskedForm,
-                ak.forms.UnmaskedForm,
-            ),
-        ):
+        while isinstance(curr, (ak.forms.RegularForm, *_OPTION_FORMS)):
             curr = curr.content
         if isinstance(curr, ak.forms.NumpyForm):
             return ak.to_numpy(data)
@@ -2175,8 +2159,7 @@ def _rntuple_to_numpy(data):
     if isinstance(form, (ak.forms.ListOffsetForm, ak.forms.ListForm)):
         if len(data) == 0:
             return numpy.empty(0, dtype=object)
-        layout = data.layout if isinstance(data, ak.Array) else data
-        lo = layout.to_ListOffsetArray64(False)
+        lo = data.layout.to_ListOffsetArray64(False)
         offsets = numpy.asarray(lo.offsets)
         start = offsets[0]
         stop = offsets[-1]
@@ -2188,7 +2171,7 @@ def _rntuple_to_numpy(data):
 
     if isinstance(form, ak.forms.RegularForm):
         curr = form
-        while isinstance(curr, ak.forms.RegularForm):
+        while isinstance(curr, (ak.forms.RegularForm, *_OPTION_FORMS)):
             curr = curr.content
         if isinstance(curr, ak.forms.NumpyForm):
             return ak.to_numpy(data)
@@ -2202,16 +2185,25 @@ def _rntuple_to_numpy(data):
             return flat_out.reshape((len(data), form.size, *flat_out.shape[1:]))
 
     if isinstance(form, ak.forms.RecordForm):
+        try:
+            return ak.to_numpy(data)
+        except Exception:
+            pass
+
         record_dtype = _form_to_numpy_dtype(form)
         out = numpy.empty(len(data), dtype=record_dtype)
         for field in form.fields:
-            out[field] = _rntuple_to_numpy(data[field])
+            c = _rntuple_to_numpy(data[field])
+            if record_dtype[field] == numpy.dtype(object) and isinstance(
+                c, numpy.ma.MaskedArray
+            ):
+                c_obj = numpy.empty(len(c), dtype=object)
+                mask = numpy.ma.getmaskarray(c)
+                for i in range(len(c)):
+                    c_obj[i] = None if mask[i] else c.data[i]
+                out[field] = c_obj
+            else:
+                out[field] = c
         return out
 
-    if isinstance(form, ak.forms.NumpyForm):
-        return ak.to_numpy(data)
-
     return ak.to_numpy(data)
-
-
-_awkward_to_numpy = _rntuple_to_numpy

@@ -10,7 +10,6 @@ import pytest
 
 import uproot
 from uproot.behaviors.RNTuple import (
-    _awkward_to_numpy,
     _form_to_numpy_dtype,
     _is_string_form,
     _rntuple_to_numpy,
@@ -233,8 +232,12 @@ def test_rntuple_numpy_helper_branches():
     # Non ak.Array input
     assert np.array_equal(_rntuple_to_numpy([1, 2, 3]), np.array([1, 2, 3]))
 
-    # _awkward_to_numpy alias
-    assert np.array_equal(_awkward_to_numpy(ak.Array([1, 2])), np.array([1, 2]))
+    # ak.contents.Content input normalization
+    cont_arr = ak.Array([None, [1, 2]]).layout
+    res_cont = _rntuple_to_numpy(cont_arr)
+    assert res_cont.dtype == object
+    assert res_cont[0] is None
+    assert np.array_equal(res_cont[1], np.array([1, 2]))
 
     # Bytestring
     arr_bytes = ak.Array([b"abc", b"def"])
@@ -304,9 +307,104 @@ def test_rntuple_numpy_helper_branches():
     dt = _form_to_numpy_dtype(reg_rec_form)
     assert dt == np.dtype(([("a", "<i8"), ("b", "<f8")], (1,)))
 
-    # Form to numpy dtype for option forms
+    # Form to numpy dtype for option forms returns object
     opt_form = ak.Array([1.0, None]).layout.form
-    assert _form_to_numpy_dtype(opt_form) == np.float64
+    assert _form_to_numpy_dtype(opt_form) == np.dtype(object)
 
     opt_struct_form = ak.Array([{"a": 1}, None]).layout.form
     assert _form_to_numpy_dtype(opt_struct_form) == np.dtype(object)
+
+
+def test_rntuple_struct_optional_subfield_preserves_mask(tmp_path):
+    filepath = os.path.join(tmp_path, "rec_opt.root")
+    data = ak.Array(
+        {
+            "rec": [{"a": 1, "b": None}, {"a": 2, "b": 5}],
+        }
+    )
+    with uproot.recreate(filepath) as f:
+        f.mkrntuple("ntuple", data)
+
+    ntuple = uproot.open(filepath)["ntuple"]
+    arr = ntuple["rec"].array(library="np")
+    assert isinstance(arr, np.ma.MaskedArray)
+    assert arr.dtype == np.dtype([("a", "<i8"), ("b", "<i8")])
+    assert arr["a"][0] == 1
+    assert arr["a"][1] == 2
+    assert arr.mask["b"][0]
+    assert not arr.mask["b"][1]
+    assert arr["b"][1] == 5
+
+
+def test_rntuple_struct_holding_fixed_size_array_of_lists(tmp_path):
+    filepath = os.path.join(tmp_path, "recreg.root")
+    regl = ak.to_regular(ak.Array([[[1], [2, 3]], [[4], [5]]]), axis=1)
+    data = ak.Array({"st": {"r": regl}})
+    with uproot.recreate(filepath) as f:
+        f.mkrntuple("ntuple", data)
+
+    ntuple = uproot.open(filepath)["ntuple"]
+    arr = ntuple["st"].array(library="np")
+    assert arr.shape == (2,)
+    assert arr.dtype == np.dtype([("r", "O", (2,))])
+    assert arr["r"].shape == (2, 2)
+    assert np.array_equal(arr["r"][0, 0], np.array([1]))
+    assert np.array_equal(arr["r"][0, 1], np.array([2, 3]))
+
+    # Empty slice of top-level field preserves inner shape (0, 2)
+    empty_slice = ntuple["st"]["r"].array(entry_start=0, entry_stop=0, library="np")
+    assert empty_slice.shape == (0, 2)
+    assert empty_slice.dtype == np.dtype(object)
+
+
+def test_rntuple_pandas_fixed_size_arrays(tmp_path):
+    pd = pytest.importorskip("pandas")
+    filepath = os.path.join(tmp_path, "reg_pandas.root")
+    regl = ak.to_regular(ak.Array([[[1], [2, 3]], [[4], [5]]]), axis=1)
+    regs = ak.to_regular(ak.Array([["x", "yz"], ["abc", "d"]]), axis=1)
+    regn = ak.to_regular(ak.Array([[1.0, 2.0], [3.0, 4.0]]), axis=1)
+    data = ak.Array({"regl": regl, "regs": regs, "regn": regn})
+    with uproot.recreate(filepath) as f:
+        f.mkrntuple("ntuple", data)
+
+    ntuple = uproot.open(filepath)["ntuple"]
+
+    df = ntuple.arrays(library="pd")
+    assert isinstance(df, pd.DataFrame)
+    assert len(df) == 2
+    assert list(df.columns) == ["regl", "regs", "regn"]
+
+    s_regl = ntuple["regl"].array(library="pd")
+    assert isinstance(s_regl, pd.Series)
+    assert len(s_regl) == 2
+
+    s_regs = ntuple["regs"].array(library="pd")
+    assert isinstance(s_regs, pd.Series)
+    assert len(s_regs) == 2
+
+    s_regn = ntuple["regn"].array(library="pd")
+    assert isinstance(s_regn, pd.Series)
+    assert len(s_regn) == 2
+
+
+def test_rntuple_dask_fixed_size_and_optionals(tmp_path):
+    pytest.importorskip("dask.array")
+    filepath = os.path.join(tmp_path, "dask_reg.root")
+    regl = ak.to_regular(ak.Array([[[1], [2, 3]], [[4], [5]]]), axis=1)
+    opt_num = ak.Array([1.0, None])
+    data = ak.Array({"regl": regl, "opt_num": opt_num})
+    with uproot.recreate(filepath) as f:
+        f.mkrntuple("ntuple", data)
+
+    dask_dict = uproot.dask(filepath + ":ntuple", library="np")
+
+    d_regl = dask_dict["regl"]
+    assert d_regl.shape == (2, 2)
+    comp_regl = d_regl.compute()
+    assert comp_regl.shape == (2, 2)
+
+    d_opt = dask_dict["opt_num"]
+    assert d_opt.dtype == np.dtype(object)
+    comp_opt = d_opt.compute()
+    assert comp_opt[0] == 1.0
+    assert comp_opt[1] is None

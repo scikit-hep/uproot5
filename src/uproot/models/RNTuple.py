@@ -414,9 +414,9 @@ in file {self.file.file_path}"""
                 self._members["fVersionPatch"],
             )
             f = FooterReader(version).read(self._footer_chunk, cursor, context)
-            assert (
-                f.header_checksum == self.header.checksum
-            ), f"checksum={self.header.checksum}, header_checksum={f.header_checksum}"
+            assert f.header_checksum == self.header.checksum, (
+                f"checksum={self.header.checksum}, header_checksum={f.header_checksum}"
+            )
             self._footer = f
             assert f.checksum == xxhash.xxh3_64_intdigest(
                 self._footer_chunk.raw_data[: -_rntuple_checksum_format.size]
@@ -2054,16 +2054,20 @@ class RField(uproot.behaviors.RNTuple.HasFields):
         if library.name in ("np", "pd"):
             try:
                 numpy_data = uproot.behaviors.RNTuple._rntuple_to_numpy(arrays)
+                if library.name == "pd":
+                    pd = uproot.extras.pandas()
+                    pandas_index = uproot.interpretation.library._pandas_basic_index(
+                        pd, entry_start, entry_start + len(arrays)
+                    )
+                    if getattr(numpy_data, "ndim", 1) > 1:
+                        pandas_series_data = list(numpy_data)
+                    else:
+                        pandas_series_data = numpy_data
+                    pandas_data = pd.Series(pandas_series_data, index=pandas_index)
+                    return pandas_data
             except Exception:
                 msg = f"Field {self.name} cannot be converted to NumPy/Pandas"
                 raise ValueError(msg) from None
-            if library.name == "pd":
-                pd = uproot.extras.pandas()
-                pandas_index = uproot.interpretation.library._pandas_basic_index(
-                    pd, entry_start, entry_start + len(arrays)
-                )
-                pandas_data = pd.Series(numpy_data, index=pandas_index)
-                return pandas_data
             return numpy_data
 
         return arrays
