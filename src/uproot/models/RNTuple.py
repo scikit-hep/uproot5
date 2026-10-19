@@ -414,9 +414,9 @@ in file {self.file.file_path}"""
                 self._members["fVersionPatch"],
             )
             f = FooterReader(version).read(self._footer_chunk, cursor, context)
-            assert f.header_checksum == self.header.checksum, (
-                f"checksum={self.header.checksum}, header_checksum={f.header_checksum}"
-            )
+            assert (
+                f.header_checksum == self.header.checksum
+            ), f"checksum={self.header.checksum}, header_checksum={f.header_checksum}"
             self._footer = f
             assert f.checksum == xxhash.xxh3_64_intdigest(
                 self._footer_chunk.raw_data[: -_rntuple_checksum_format.size]
