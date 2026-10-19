@@ -297,9 +297,15 @@ class TProfile(Profile):
     def to_boost(self, metadata=boost_metadata, axis_metadata=boost_axis_metadata):
         boost_histogram = uproot.extras.boost_histogram()
 
-        effective_counts = self.counts(flow=True)
         sum_of_bin_weights = numpy.asarray(
             self.member("fBinEntries"), dtype=numpy.float64
+        )
+        # ROOT's effective entries are sum(w)**2 / fBinSumw2, so fBinSumw2 is the
+        # sum of squared weights (0, not 0/0, in empty bins)
+        # https://github.com/root-project/root/blob/ffc7c588ac91aca30e75d356ea971129ee6a836a/hist/hist/src/TProfileHelper.h#L141-L163
+        fBinSumw2 = self.member("fBinSumw2", none_if_missing=True)
+        sum_of_bin_weights_squared = numpy.asarray(
+            [] if fBinSumw2 is None else fBinSumw2, dtype=numpy.float64
         )
         raw_values = numpy.asarray(self._bases[0]._bases[-1], dtype=numpy.float64)
         fSumw2_member = self.member("fSumw2", none_if_missing=True)
@@ -340,10 +346,10 @@ class TProfile(Profile):
             # ROOT's categorical axes (with fLabels) always have an underflow bin (bin 0).
             # boost-histogram's Category axes do not have underflow.
             # We slice off the first ROOT bin (underflow) to align with boost-histogram.
-            effective_counts = effective_counts[1:]
             mean_values = mean_values[1:]
             sum_sq_dev = sum_sq_dev[1:]
             sum_of_bin_weights = sum_of_bin_weights[1:]
+            sum_of_bin_weights_squared = sum_of_bin_weights_squared[1:]
 
         # TODO: This should only be needed for weighted storage, but there seems to be some bug in Uproot's serialization of fBinSumw2
         # that causes weighted TProfiles to appear unweighted when read back in.
@@ -352,11 +358,7 @@ class TProfile(Profile):
         }
         view = out.view(flow=True)
 
-        # https://github.com/root-project/root/blob/ffc7c588ac91aca30e75d356ea971129ee6a836a/hist/hist/src/TProfileHelper.h#L668-L671
         if self.weighted:
-            with numpy.errstate(divide="ignore", invalid="ignore"):
-                sum_of_bin_weights_squared = (sum_of_bin_weights**2) / effective_counts
-
             # TODO: Drop this when boost-histogram has a way to set using the constructor.
             # New version should look something like this:
             # view[...] = np.stack(sum_of_bin_weights, sum_of_bin_weights_squared, mean_values, sum_sq_dev)
