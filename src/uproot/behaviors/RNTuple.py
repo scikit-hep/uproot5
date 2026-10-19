@@ -1629,7 +1629,7 @@ class HasFields(Mapping):
                 raise uproot.KeyInFileError(
                     original_where,
                     keys=self.keys(recursive=recursive),
-                    file_path=self.ntuple.parent._file.file_path,
+                    file_path=self.ntuple.file.file_path,
                     object_path=self.path,
                 ) from None
             return this
@@ -1642,7 +1642,7 @@ class HasFields(Mapping):
                 raise uproot.KeyInFileError(
                     original_where,
                     keys=self.keys(recursive=recursive),
-                    file_path=self.ntuple.parent._file.file_path,
+                    file_path=self.ntuple.file.file_path,
                     object_path=self.path,
                 )
 
@@ -1650,7 +1650,7 @@ class HasFields(Mapping):
             raise uproot.KeyInFileError(
                 original_where,
                 keys=self.keys(recursive=recursive),
-                file_path=self.ntuple.parent._file.file_path,
+                file_path=self.ntuple.file.file_path,
                 object_path=self.path,
             )
 
@@ -1802,9 +1802,7 @@ class RNTuple(HasFields):
         String that uniquely specifies this ``RNTuple`` in its path, to use as
         part of object and array cache keys.
         """
-        if self._cache_key is None:
-            self._cache_key = f"{self.parent.cache_key}{self.name};{self.parent.fCycle}"
-        return self._cache_key
+        return self.parent.cache_key
 
     @property
     def attributes(self):
@@ -1832,7 +1830,7 @@ class RNTuple(HasFields):
             >>> my_ntuple.attributes["Calibration"].ranges
             array([(0, 500), (500, 500)], dtype=[('start', '<u8'), ('length', '<u8')])
         """
-        if self._attributes is None:
+        if getattr(self, "_attributes", None) is None:
             self._attributes = {
                 record.attribute_set_name: uproot.models.RNTuple.RNTupleAttributeSet(
                     record, self

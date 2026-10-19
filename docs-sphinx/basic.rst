@@ -970,7 +970,7 @@ There are still significant work required to achieve feature-parity with TTrees,
 Attributes
 ~~~~~~~~~~
 
-An RNTuple may carry user-defined metadata in named *attribute sets*, which ROOT writes as separate RNTuples linked from the main one. Attributes are not ordinary fields: each record of an attribute set applies to a *range of entries* rather than to a single entry, so attribute sets are not included in ``keys()`` and do not appear in the arrays returned by ``arrays()``. They are available through :ref:`uproot.behaviors.RNTuple.RNTuple.attributes`, which is an empty dict for RNTuples that have no attributes.
+An RNTuple may carry user-defined metadata in named *attribute sets*, which ROOT writes as separate RNTuples linked from the main one. Attributes are not ordinary fields: each entry of an attribute set applies to a *range of entries* rather than to a single entry, so attribute sets are not included in ``keys()`` and do not appear in the arrays returned by ``arrays()``. They are available through :ref:`uproot.behaviors.RNTuple.RNTuple.attributes`, which is an empty dict for RNTuples that have no attributes. As in ROOT, this interface is experimental and may change.
 
 The examples below are for an RNTuple named ``Events`` that ROOT wrote with an attribute set named ``Calibration``, holding one string attribute ``tag`` for each of two entry ranges.
 
@@ -985,20 +985,30 @@ The examples below are for an RNTuple named ``Events`` that ROOT wrote with an a
     >>> calibration.arrays()
     <Array [{tag: 'first'}, {tag: 'second'}] type='2 * {tag: string}'>
 
+An attribute set has the same methods as an RNTuple, such as ``keys()``, ``arrays()``, ``iterate()``, and ``show()``, but their entries are attribute entries: ``calibration.num_entries`` is 2, not the number of entries in ``Events``.
+
 Nothing is read from the file until an attribute set is used, so an attribute set written with a schema that Uproot does not support raises only when it is accessed, leaving the other attribute sets of the same RNTuple readable.
 
-The entry range that each record applies to is given by :ref:`uproot.models.RNTuple.RNTupleAttributeSet.ranges`, and the records that apply to a given entry or range of entries can be looked up by index. These entry numbers are absolute entry numbers of the RNTuple the attributes are linked to.
+The range of entries that each attribute entry applies to is given by :ref:`uproot.models.RNTuple.RNTupleAttributeSet.ranges`, in the same order as ``arrays()``. Three methods, named after their counterparts in ROOT, take entries of the RNTuple the attributes are linked to and return the indices of the matching attribute entries, sorted by the start of their ranges:
+
+- :ref:`uproot.models.RNTuple.RNTupleAttributeSet.get_attributes` finds the attribute entries whose range contains a given entry, or all of them if no entry is given.
+- :ref:`uproot.models.RNTuple.RNTupleAttributeSet.get_attributes_containing_range` finds those whose range contains a whole range of entries.
+- :ref:`uproot.models.RNTuple.RNTupleAttributeSet.get_attributes_in_range` finds those whose range lies entirely within a range of entries.
 
 .. code-block:: python
 
     >>> calibration.ranges
     array([(0, 5), (5, 3)], dtype=[('start', '<u8'), ('length', '<u8')])
-    >>> calibration.for_entry(6)
+    >>> calibration.get_attributes(6)
     array([1])
-    >>> calibration.arrays()[calibration.for_entry(6)]
+    >>> calibration.arrays()[calibration.get_attributes(6)]
     <Array [{tag: 'second'}] type='1 * {tag: string}'>
+    >>> calibration.get_attributes_containing_range(4, 6)
+    array([], dtype=int64)
+    >>> calibration.get_attributes_in_range(0, 8)
+    array([0, 1])
 
-Ranges are allowed to overlap and to be empty, so any number of records may apply to a given entry. Empty ranges are never returned by :ref:`uproot.models.RNTuple.RNTupleAttributeSet.for_entry` or :ref:`uproot.models.RNTuple.RNTupleAttributeSet.for_entries`.
+Ranges of entries include the start and exclude the end, like a Python slice. They are allowed to overlap and to be empty, so any number of attribute entries may apply to a given entry. Empty ranges are only returned by ``get_attributes()`` without an argument.
 
 Writing attributes is not supported yet.
 

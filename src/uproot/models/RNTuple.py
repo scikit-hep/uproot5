@@ -21,7 +21,6 @@ import xxhash
 import uproot
 import uproot.behaviors.RNTuple
 import uproot.const
-from uproot._util import no_filter
 from uproot.source.cufile_interface import CuFileSource
 
 # https://github.com/root-project/root/blob/8cd9eed6f3a32e55ef1f0f1df8e5462e753c735d/tree/ntuple/v7/doc/BinaryFormatSpecification.md#anchor-schema
@@ -153,7 +152,6 @@ in file {self.file.file_path}"""
         self._fields = None
         self._all_fields = None
         self._lookup = None
-        self._cache_key = None
 
     @property
     def all_fields(self):
@@ -487,11 +485,14 @@ in file {self.file.file_path}"""
 
         return self._page_list_envelopes
 
-    def read_attribute_ntuple(self, record):
+    def read_attribute_ntuple(self, record, parent):
         """
         Args:
             record (:doc:`uproot.models.RNTuple.MetaData`): A linked attribute set
                 record from the footer.
+            parent (:doc:`uproot.models.RNTuple.RNTupleAttributeSet`): The attribute
+                set that the record describes, which becomes the parent of the
+                returned ``RNTuple``.
 
         Returns the ``RNTuple`` that holds the data of a linked attribute set, read
         from the anchor that the record's locator points at. That anchor is not in
@@ -500,12 +501,9 @@ in file {self.file.file_path}"""
         chunk, cursor = self.read_locator(
             record.locator, record.anchor_uncompressed_size
         )
-        ntuple = Model_ROOT_3a3a_RNTuple.read(
-            chunk, cursor, {}, self._file, self._file, self._parent
+        return Model_ROOT_3a3a_RNTuple.read(
+            chunk, cursor, {}, self._file, self._file, parent
         )
-        # Use a separate array cache key for the linked RNTuple.
-        ntuple._cache_key = f"{self.cache_key}{record.attribute_set_name};"
-        return ntuple
 
     def base_col_form(self, cr, parameters=None, is_cardinality=False):
         """
@@ -2085,7 +2083,7 @@ class RField(uproot.behaviors.RNTuple.HasFields):
         return arrays
 
 
-class RNTupleAttributeSet:
+class RNTupleAttributeSet(uproot.behaviors.RNTuple.HasFields):
     """
     Args:
         record (:doc:`uproot.models.RNTuple.MetaData`): Attribute set record from
@@ -2095,11 +2093,15 @@ class RNTupleAttributeSet:
 
     A named set of user-defined metadata linked to an
     :doc:`uproot.behaviors.RNTuple.RNTuple`, obtained from
-    :ref:`uproot.behaviors.RNTuple.RNTuple.attributes`.
+    :ref:`uproot.behaviors.RNTuple.RNTuple.attributes`. As in ROOT, this interface
+    is experimental and may change.
 
-    Each record applies to a range of entries rather than to a single entry, so the
-    number of records is unrelated to the number of entries. Ranges may overlap and
-    may be empty.
+    Each attribute entry applies to a range of entries of the linked ``RNTuple``
+    rather than to a single entry, so
+    :ref:`uproot.behaviors.RNTuple.HasFields.num_entries`,
+    :ref:`uproot.behaviors.RNTuple.HasFields.arrays`, and
+    :ref:`uproot.behaviors.RNTuple.HasFields.iterate` count attribute entries, not
+    entries of the linked ``RNTuple``. Ranges may overlap and may be empty.
 
     Square bracket syntax extracts the :doc:`uproot.models.RNTuple.RField` of an
     attribute, in the same way as for an ``RNTuple``:
@@ -2113,7 +2115,11 @@ class RNTupleAttributeSet:
         self._record = record
         self._parent = parent
         self._ntuple = None
+        self._fields = None
+        self._lookup = None
         self._ranges = None
+        self._order = None
+        self._sorted_ranges = None
 
     def __repr__(self):
         return f"<RNTupleAttributeSet {self.name!r} at 0x{id(self):012x}>"
@@ -2131,6 +2137,23 @@ class RNTupleAttributeSet:
         Major and minor version of the attribute schema, as a 2-tuple of integers.
         """
         return self._record.schema_version_major, self._record.schema_version_minor
+
+    @property
+    def object_path(self):
+        """
+        Object path of the attribute set. Its ``RNTuple`` is not in any
+        ``TDirectory``, so this is a message with the seek position of its anchor, as
+        in :ref:`uproot.reading.ReadOnlyKey.object_path`.
+        """
+        return f"(seek pos {self._record.locator.offset})/{self.name}"
+
+    @property
+    def cache_key(self):
+        """
+        String that uniquely specifies this attribute set in its file, to use as
+        part of object and array cache keys.
+        """
+        return f"{self._parent.file.hex_uuid}:{self._record.locator.offset}"
 
     @property
     def ntuple(self):
@@ -2151,7 +2174,7 @@ class RNTupleAttributeSet:
                     f"but only version {supported_major}.x is supported"
                 )
 
-            ntuple = self._parent.read_attribute_ntuple(self._record)
+            ntuple = self._parent.read_attribute_ntuple(self._record, self)
             meta_names = uproot.const.rntuple_attribute_meta_field_names
             field_names = [f.name for f in ntuple.fields]
             # minor versions may append meta-fields, so only check the known prefix
@@ -2168,27 +2191,48 @@ class RNTupleAttributeSet:
     def _user_field(self):
         return self.ntuple[uproot.const.rntuple_attribute_meta_field_names[-1]]
 
+    @property
+    def fields(self):
+        return self._user_field.fields
+
+    @property
+    def path(self):
+        return "."
+
+    @property
+    def typename(self):
+        """
+        The C++ class name of the ``RNTuple`` that holds the attributes.
+        """
+        return self.ntuple.classname
+
+    @property
+    def description(self):
+        """
+        Description of the ``RNTuple`` that holds the attributes.
+        """
+        return self.ntuple.description
+
+    def to_akform(self, **kwargs):
+        form, _ = self._user_field.to_akform(**kwargs)
+        return form.content(self._user_field.name), None
+
+    def iteritems(self, **kwargs):
+        return self._user_field.iteritems(**kwargs)
+
     def __getitem__(self, where):
         return self._user_field[where]
-
-    def __contains__(self, where):
-        return where in self._user_field
-
-    def __iter__(self):
-        return iter(self._user_field)
-
-    def __len__(self):
-        return len(self._user_field)
 
     @property
     def ranges(self):
         """
-        The entry ranges that the records apply to, as a NumPy structured array with
-        ``"start"`` and ``"length"`` fields.
+        The entry ranges that the attribute entries apply to, as a NumPy structured
+        array with ``"start"`` and ``"length"`` fields.
 
-        Record ``i`` of :ref:`uproot.models.RNTuple.RNTupleAttributeSet.arrays`
+        Attribute entry ``i`` of :ref:`uproot.behaviors.RNTuple.HasFields.arrays`
         applies to entries ``start <= entry < start + length`` of the linked
-        ``RNTuple``.
+        ``RNTuple``. The ranges are in the order in which they were written, which
+        need not be sorted by ``start``.
         """
         if self._ranges is None:
             range_start, range_len = uproot.const.rntuple_attribute_meta_field_names[:2]
@@ -2202,162 +2246,98 @@ class RNTupleAttributeSet:
             self._ranges = ranges
         return self._ranges
 
-    def keys(
-        self,
-        *,
-        filter_name=no_filter,
-        filter_typename=no_filter,
-        filter_field=no_filter,
-        recursive=True,
-        full_paths=True,
-        ignore_duplicates=False,
-    ):
+    def _sorted(self):
+        if self._order is None:
+            self._order = numpy.argsort(self.ranges["start"], kind="stable")
+            self._sorted_ranges = self.ranges[self._order]
+        return self._order, self._sorted_ranges
+
+    def get_attributes(self, entry_index=None):
         """
         Args:
-            filter_name (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
-                filter to select attributes by name.
-            filter_typename (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
-                filter to select attributes by type.
-            filter_field (None or function of :doc:`uproot.models.RNTuple.RField` \u2192 bool): A
-                filter to select attributes using the full
-                :doc:`uproot.models.RNTuple.RField` object.
-            recursive (bool): If True, descend into any nested subfields.
-                If False, only return the names of the top-level attributes.
-            full_paths (bool): If True, include the full path to each subfield
-                with periods (``.``); otherwise, use the descendant's name as
-                the output name.
-            ignore_duplicates (bool): If True, return a set of the keys; otherwise,
-                return the full list of keys.
+            entry_index (None or int): An entry of the linked ``RNTuple``. If None,
+                return all attribute entries.
 
-        Returns the names of the attributes as a list of strings.
-        """
-        return self._user_field.keys(
-            filter_name=filter_name,
-            filter_typename=filter_typename,
-            filter_field=filter_field,
-            recursive=recursive,
-            full_paths=full_paths,
-            ignore_duplicates=ignore_duplicates,
-        )
+        Returns the indices of the attribute entries whose range contains
+        ``entry_index``, as a NumPy array sorted by the start of their ranges. Empty
+        ranges contain no entries, but they are included if ``entry_index`` is None.
 
-    def typenames(
-        self,
-        *,
-        filter_name=no_filter,
-        filter_typename=no_filter,
-        filter_field=no_filter,
-        recursive=True,
-        full_paths=True,
-    ):
-        """
-        Args:
-            filter_name (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
-                filter to select attributes by name.
-            filter_typename (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
-                filter to select attributes by type.
-            filter_field (None or function of :doc:`uproot.models.RNTuple.RField` \u2192 bool): A
-                filter to select attributes using the full
-                :doc:`uproot.models.RNTuple.RField` object.
-            recursive (bool): If True, descend into any nested subfields.
-                If False, only return the names of the top-level attributes.
-            full_paths (bool): If True, include the full path to each subfield
-                with periods (``.``); otherwise, use the descendant's name as
-                the output name.
-
-        Returns (name, typename) pairs of the attributes as a dict of
-        str \u2192 str.
-        """
-        return self._user_field.typenames(
-            filter_name=filter_name,
-            filter_typename=filter_typename,
-            filter_field=filter_field,
-            recursive=recursive,
-            full_paths=full_paths,
-        )
-
-    def arrays(
-        self,
-        *,
-        filter_name=no_filter,
-        filter_typename=no_filter,
-        filter_field=no_filter,
-        array_cache="inherit",
-        library="ak",
-        ak_add_doc=False,
-    ):
-        """
-        Args:
-            filter_name (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
-                filter to select attributes by name.
-            filter_typename (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
-                filter to select attributes by type.
-            filter_field (None or function of :doc:`uproot.models.RNTuple.RField` \u2192 bool): A
-                filter to select attributes using the full
-                :doc:`uproot.models.RNTuple.RField` object.
-            array_cache ("inherit", None, MutableMapping, or memory size): Cache of arrays;
-                if "inherit", use the file's cache; if None, do not use a cache;
-                if a memory size, create a new cache of this size.
-            library (str or :doc:`uproot.interpretation.library.Library`): The library
-                that is used to represent arrays. Options are ``"np"`` for NumPy,
-                ``"ak"`` for Awkward Array, and ``"pd"`` for Pandas.
-            ak_add_doc (bool | dict): If True and ``library="ak"``, add the ``RField``
-                ``description`` to the Awkward ``__doc__`` parameter of the array.
-                if dict = {key:value} and ``library="ak"``, add the ``RField`` ``value``
-                to the Awkward ``key`` parameter of the array.
-
-        Returns the attributes as an array with one record per entry range. The ranges
-        themselves are in :ref:`uproot.models.RNTuple.RNTupleAttributeSet.ranges`.
-        """
-        user_field = self._user_field
-        return user_field.arrays(
-            filter_name=filter_name,
-            filter_typename=filter_typename,
-            filter_field=filter_field,
-            array_cache=array_cache,
-            library=library,
-            ak_add_doc=ak_add_doc,
-        )[user_field.name]
-
-    def for_entry(self, entry_index):
-        """
-        Args:
-            entry_index (int): Absolute entry number of the linked ``RNTuple``.
-
-        Returns the indices of the records whose range contains ``entry_index``, as
-        a NumPy array. Empty ranges never match.
+        ``entry_index`` is an entry of the linked ``RNTuple``. The returned indices
+        are attribute entries, which is what
+        :ref:`uproot.behaviors.RNTuple.HasFields.num_entries`,
+        :ref:`uproot.behaviors.RNTuple.HasFields.arrays`, and
+        :ref:`uproot.behaviors.RNTuple.HasFields.iterate` count. As in ROOT, this
+        method is experimental.
 
         For example:
 
         .. code-block:: python
 
             >>> attributes = my_ntuple.attributes["Calibration"]
-            >>> attributes.arrays()[attributes.for_entry(10)]
+            >>> attributes.arrays()[attributes.get_attributes(10)]
             <Array [{tag: 'v3'}] type='1 * {tag: string}'>
         """
-        return self.for_entries(entry_index, entry_index + 1)
+        if entry_index is None:
+            order, _ = self._sorted()
+            return order.copy()
+        return self.get_attributes_containing_range(entry_index, entry_index + 1)
 
-    def for_entries(self, entry_start, entry_stop):
+    def get_attributes_containing_range(self, start_entry, end_entry):
         """
         Args:
-            entry_start (int): The first entry to include.
-            entry_stop (int): The first entry to exclude.
+            start_entry (int): The first entry of the linked ``RNTuple`` to include.
+            end_entry (int): The first entry of the linked ``RNTuple`` to exclude.
 
-        Returns the indices of the records whose range overlaps
-        ``entry_start <= entry < entry_stop``, as a NumPy array. Empty ranges never
-        match.
+        Returns the indices of the attribute entries whose range contains all of
+        ``start_entry <= entry < end_entry``, as a NumPy array sorted by the start of
+        their ranges. Empty ranges never match, and nothing matches if
+        ``end_entry <= start_entry``.
 
-        Both are absolute entry numbers of the linked ``RNTuple``; unlike the
-        ``entry_start`` and ``entry_stop`` of
-        :ref:`uproot.behaviors.RNTuple.HasFields.arrays`, negative values do not
-        count from the end.
+        Both arguments are entries of the linked ``RNTuple``, and negative values do
+        not count from the end. The returned indices are attribute entries, which is
+        what :ref:`uproot.behaviors.RNTuple.HasFields.num_entries`,
+        :ref:`uproot.behaviors.RNTuple.HasFields.arrays`, and
+        :ref:`uproot.behaviors.RNTuple.HasFields.iterate` count. As in ROOT, this
+        method is experimental.
         """
-        if entry_stop <= entry_start:
+        if end_entry <= start_entry:
             return numpy.empty(0, dtype=numpy.intp)
-        ranges = self.ranges
-        start, length = ranges["start"], ranges["length"]
-        return numpy.nonzero(
-            (length > 0) & (start < entry_stop) & (start + length > entry_start)
-        )[0]
+        order, ranges = self._sorted()
+        stop = numpy.searchsorted(ranges["start"], start_entry, side="right")
+        ranges = ranges[:stop]
+        matches = (ranges["length"] > 0) & (
+            ranges["start"] + ranges["length"] >= end_entry
+        )
+        return order[:stop][matches]
+
+    def get_attributes_in_range(self, start_entry, end_entry):
+        """
+        Args:
+            start_entry (int): The first entry of the linked ``RNTuple`` to include.
+            end_entry (int): The first entry of the linked ``RNTuple`` to exclude.
+
+        Returns the indices of the attribute entries whose range lies entirely within
+        ``start_entry <= entry < end_entry``, as a NumPy array sorted by the start of
+        their ranges. Empty ranges never match, and nothing matches if
+        ``end_entry <= start_entry``.
+
+        Both arguments are entries of the linked ``RNTuple``, and negative values do
+        not count from the end. The returned indices are attribute entries, which is
+        what :ref:`uproot.behaviors.RNTuple.HasFields.num_entries`,
+        :ref:`uproot.behaviors.RNTuple.HasFields.arrays`, and
+        :ref:`uproot.behaviors.RNTuple.HasFields.iterate` count. As in ROOT, this
+        method is experimental.
+        """
+        if end_entry <= start_entry:
+            return numpy.empty(0, dtype=numpy.intp)
+        order, ranges = self._sorted()
+        start = numpy.searchsorted(ranges["start"], start_entry, side="left")
+        stop = numpy.searchsorted(ranges["start"], end_entry, side="left")
+        ranges = ranges[start:stop]
+        matches = (ranges["length"] > 0) & (
+            ranges["start"] + ranges["length"] <= end_entry
+        )
+        return order[start:stop][matches]
 
 
 # No cupy version of numpy.insert() provided

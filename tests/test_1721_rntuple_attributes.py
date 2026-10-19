@@ -1,5 +1,7 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot5/blob/main/LICENSE
+import io
 import os
+import pickle
 import struct
 
 import numpy
@@ -137,6 +139,19 @@ def test_attribute_ntuple(tmp_path):
     assert linked.keys(recursive=False) == ["_rangeStart", "_rangeLen", "_userData"]
 
 
+def test_parent_and_object_path(tmp_path):
+    filepath = os.path.join(tmp_path, "test.root")
+    ntuple, attributes = _one_set(filepath, [(0, 20)], TAGS[:1])
+    offset = uproot.open(filepath).key("Calibration").data_cursor.index
+
+    # the linked RNTuple is not in any TDirectory, so it must not claim the path of
+    # the RNTuple it is linked to
+    assert attributes.ntuple.parent is attributes
+    assert attributes.object_path == f"(seek pos {offset})/Calibration"
+    assert attributes.ntuple.object_path == attributes.object_path
+    assert ntuple.object_path == "/Events;1"
+
+
 def test_attribute_ntuple_compressed_anchor():
     # the anchor written by ROOT is compressed, unlike the one Uproot writes
     with uproot.open(
@@ -146,7 +161,9 @@ def test_attribute_ntuple_compressed_anchor():
         key = file.key("Staff")
         assert key.data_compressed_bytes < key.data_uncompressed_bytes
 
-        linked = staff.read_attribute_ntuple(_attribute_set_record(key, "Whatever"))
+        record = _attribute_set_record(key, "Whatever")
+        attributes = uproot.models.RNTuple.RNTupleAttributeSet(record, staff)
+        linked = staff.read_attribute_ntuple(record, attributes)
         assert linked.name == "Staff"
         assert linked.num_entries == staff.num_entries
 
@@ -184,8 +201,12 @@ def test_user_fields(tmp_path):
 
     # the meta fields of the attribute schema stay out of the attribute interface
     assert "_rangeStart" not in attributes
+    assert attributes.get("_rangeStart") is None
     assert len(attributes) == 2
     assert [field.name for field in attributes] == ["tag", "index"]
+    assert [name for name, _ in attributes.items()] == ["tag", "index"]
+    assert [field.name for field in attributes.values()] == ["tag", "index"]
+    assert attributes.get("tag") is attributes["tag"]
     assert attributes["tag"].array().tolist() == ["v1", "v2"]
 
 
@@ -200,7 +221,61 @@ def test_filters(tmp_path):
     assert attributes.typenames(filter_name="index") == {"index": "std::int64_t"}
     assert attributes.arrays(filter_name="tag").tolist() == [{"tag": "v1"}]
     assert attributes.arrays(filter_typename="std::int64_t").tolist() == [{"index": 1}]
-    assert attributes.arrays(library="np").tolist() == [("v1", 1)]
+
+    arrays = attributes.arrays(library="np")
+    assert list(arrays) == ["tag", "index"]
+    assert arrays["tag"].tolist() == ["v1"]
+    assert arrays["index"].tolist() == [1]
+
+
+def test_pandas(tmp_path):
+    pytest.importorskip("pandas")
+    _, attributes = _one_set(
+        os.path.join(tmp_path, "test.root"),
+        [(0, 10), (10, 10)],
+        [{"tag": "v1", "index": 1}, {"tag": "v2", "index": 2}],
+    )
+
+    df = attributes.arrays(library="pd")
+    assert list(df.columns) == ["tag", "index"]
+    assert df["tag"].tolist() == ["v1", "v2"]
+    assert df["index"].tolist() == [1, 2]
+    assert "v2" in repr(df)
+    assert attributes.arrays(library="pd", entry_start=1).index.tolist() == [1]
+
+
+def test_entry_start_stop(tmp_path):
+    _, attributes = _one_set(os.path.join(tmp_path, "test.root"))
+
+    # these count attribute entries, not entries of the linked RNTuple
+    assert attributes.num_entries == len(RANGES)
+    assert attributes.arrays(entry_start=1, entry_stop=3).tag.tolist() == ["b", "c"]
+    assert attributes.arrays(entry_start=-1).tag.tolist() == ["d"]
+
+
+def test_iterate(tmp_path):
+    _, attributes = _one_set(os.path.join(tmp_path, "test.root"))
+
+    assert [arrays.tag.tolist() for arrays in attributes.iterate(step_size=3)] == [
+        ["a", "b", "c"],
+        ["d"],
+    ]
+
+
+def test_show(tmp_path):
+    _, attributes = _one_set(
+        os.path.join(tmp_path, "test.root"),
+        [(0, 20)],
+        [{"tag": "v1", "index": 1}],
+    )
+
+    stream = io.StringIO()
+    attributes.show(stream=stream)
+    assert stream.getvalue() == (
+        "Calibration (ROOT::RNTuple)\n"
+        "├─ tag (std::string)\n"
+        "└─ index (std::int64_t)\n"
+    )
 
 
 def test_ranges(tmp_path):
@@ -216,45 +291,108 @@ def test_no_records(tmp_path):
     assert attributes.keys() == ["tag"]
     assert attributes.ranges.tolist() == []
     assert attributes.arrays().tolist() == []
-    assert attributes.for_entry(0).tolist() == []
+    assert attributes.get_attributes().tolist() == []
+    assert attributes.get_attributes(0).tolist() == []
 
 
-def test_for_entry(tmp_path):
+def test_get_attributes(tmp_path):
     _, attributes = _one_set(os.path.join(tmp_path, "test.root"))
 
-    assert attributes.for_entry(0).tolist() == [0]
-    assert attributes.for_entry(9).tolist() == [0, 2]
-    assert attributes.for_entry(11).tolist() == [2]
-    assert attributes.for_entry(19).tolist() == [3]
+    # without an entry, every attribute entry is returned, including empty ranges
+    assert attributes.get_attributes().tolist() == [0, 1, 2, 3]
+    assert attributes.get_attributes(0).tolist() == [0]
+    assert attributes.get_attributes(9).tolist() == [0, 2]
+    assert attributes.get_attributes(11).tolist() == [2]
+    assert attributes.get_attributes(19).tolist() == [3]
     # the empty range starting at 5 never matches, and neither does an unused entry
-    assert attributes.for_entry(5).tolist() == [0, 2]
-    assert attributes.for_entry(100).tolist() == []
+    assert attributes.get_attributes(5).tolist() == [0, 2]
+    assert attributes.get_attributes(100).tolist() == []
 
-    assert attributes.arrays()[attributes.for_entry(11)].tag.tolist() == ["c"]
+    assert attributes.arrays()[attributes.get_attributes(11)].tag.tolist() == ["c"]
 
 
-def test_for_entries(tmp_path):
+def test_get_attributes_containing_range(tmp_path):
     _, attributes = _one_set(os.path.join(tmp_path, "test.root"))
 
-    assert attributes.for_entries(0, 20).tolist() == [0, 2, 3]
-    assert attributes.for_entries(0, 1).tolist() == [0]
-    assert attributes.for_entries(10, 12).tolist() == [2]
-    assert attributes.for_entries(20, 30).tolist() == []
-    # an empty range of entries matches nothing, not even the ranges around it
-    assert attributes.for_entries(5, 5).tolist() == []
+    assert attributes.get_attributes_containing_range(0, 1).tolist() == [0]
+    assert attributes.get_attributes_containing_range(5, 10).tolist() == [0, 2]
+    assert attributes.get_attributes_containing_range(10, 12).tolist() == [2]
+    # overlapping these entries is not enough, a range has to cover all of them
+    assert attributes.get_attributes_containing_range(5, 13).tolist() == []
+    assert attributes.get_attributes_containing_range(0, 20).tolist() == []
+    assert attributes.get_attributes_containing_range(5, 5).tolist() == []
+    assert attributes.get_attributes_containing_range(8, 3).tolist() == []
+
+
+def test_get_attributes_in_range(tmp_path):
+    _, attributes = _one_set(os.path.join(tmp_path, "test.root"))
+
+    assert attributes.get_attributes_in_range(0, 20).tolist() == [0, 2, 3]
+    assert attributes.get_attributes_in_range(0, 10).tolist() == [0]
+    assert attributes.get_attributes_in_range(5, 20).tolist() == [2, 3]
+    # overlapping these entries is not enough, a range has to lie within them
+    assert attributes.get_attributes_in_range(5, 10).tolist() == []
+    # the empty range at 5 lies within these entries, but empty ranges never match
+    assert attributes.get_attributes_in_range(5, 12).tolist() == [2]
+    assert attributes.get_attributes_in_range(5, 5).tolist() == []
+    assert attributes.get_attributes_in_range(20, 0).tolist() == []
+
+
+def test_sorted_by_start(tmp_path):
+    # ROOT writes a range when it is committed, so nested ranges are out of order
+    ranges = [(10, 5), (0, 20), (10, 0), (0, 5)]
+    _, attributes = _one_set(os.path.join(tmp_path, "test.root"), ranges)
+
+    assert attributes.ranges.tolist() == ranges
+    assert attributes.arrays().tag.tolist() == ["a", "b", "c", "d"]
+    # ties keep the order in which the ranges were written
+    assert attributes.get_attributes().tolist() == [1, 3, 0, 2]
+    assert attributes.get_attributes(12).tolist() == [1, 0]
+    assert attributes.get_attributes_containing_range(0, 3).tolist() == [1, 3]
+    assert attributes.get_attributes_in_range(0, 20).tolist() == [1, 3, 0]
+    assert attributes.arrays()[attributes.get_attributes(12)].tag.tolist() == [
+        "b",
+        "a",
+    ]
 
 
 def test_cache_key(tmp_path):
     ntuple, attributes = _one_set(
         os.path.join(tmp_path, "test.root"), [(0, 20)], TAGS[:1]
     )
-    assert attributes.ntuple.cache_key != ntuple.cache_key
+    assert attributes.ntuple.cache_key == attributes.cache_key
+    assert attributes.cache_key != ntuple.cache_key
 
     # the two RNTuples share the file's array cache, so colliding cache keys would
     # make them read each other's pages
     assert ntuple.arrays().x.tolist() == list(range(20))
     assert attributes.ranges.tolist() == [(0, 20)]
     assert attributes.arrays().tag.tolist() == ["a"]
+    assert ntuple.arrays().x.tolist() == list(range(20))
+
+
+def test_cache_key_ignores_name(tmp_path):
+    filepath = os.path.join(tmp_path, "test.root")
+    events = ak.Array({"x": numpy.arange(20, dtype=numpy.int64)})
+    with uproot.recreate(filepath) as file:
+        file.mkrntuple("Events", events.layout.form).extend(events)
+        for name, tag in [("first", "a"), ("second", "b")]:
+            data = _attribute_data([(0, 20)], [{"tag": tag}])
+            file.mkrntuple(name, data.layout.form).extend(data)
+
+    file = uproot.open(filepath)
+    ntuple = file["Events"]
+    # attribute set names are free text and can look like parts of a cache key
+    names = ["Events;1", "Events;1:"]
+    ntuple.footer.linked_attribute_sets = [
+        _attribute_set_record(file.key("first"), names[0]),
+        _attribute_set_record(file.key("second"), names[1]),
+    ]
+    first, second = (ntuple.attributes[name] for name in names)
+
+    assert len({ntuple.cache_key, first.cache_key, second.cache_key}) == 3
+    assert first.arrays().tag.tolist() == ["a"]
+    assert second.arrays().tag.tolist() == ["b"]
     assert ntuple.arrays().x.tolist() == list(range(20))
 
 
@@ -324,6 +462,22 @@ def test_arrays_are_unaffected(tmp_path):
     assert ntuple.arrays().x.tolist() == list(range(20))
 
 
+def test_unpickle_without_attributes(tmp_path):
+    filepath = os.path.join(tmp_path, "test.root")
+    data = ak.Array({"x": numpy.arange(5, dtype=numpy.int64)})
+    with uproot.recreate(filepath) as file:
+        file.mkrntuple("Events", data.layout.form).extend(data)
+
+    ntuple = uproot.open(filepath)["Events"]
+    # RNTuples pickled by older versions of Uproot have no _attributes
+    del ntuple.__dict__["_attributes"]
+    unpickled = pickle.loads(pickle.dumps(ntuple))
+
+    assert unpickled.attributes == {}
+    assert unpickled.cache_key == ntuple.cache_key
+    assert unpickled.arrays().x.tolist() == list(range(5))
+
+
 def test_ROOT(tmp_path):
     ROOT = pytest.importorskip("ROOT")
     if ROOT.gROOT.GetVersionInt() < 64000:
@@ -332,6 +486,7 @@ def test_ROOT(tmp_path):
     filepath = os.path.join(tmp_path, "test.root")
 
     assert ROOT.gInterpreter.Declare("""
+        #include <ROOT/RNTupleAttrReading.hxx>
         #include <ROOT/RNTupleAttrWriting.hxx>
         #include <ROOT/RNTupleModel.hxx>
         #include <ROOT/RNTupleWriter.hxx>
@@ -340,6 +495,7 @@ def test_ROOT(tmp_path):
         #include <memory>
         #include <string>
         #include <utility>
+        #include <vector>
 
         void uproot_write_rntuple_attributes(const char *path)
         {
@@ -353,30 +509,71 @@ def test_ROOT(tmp_path):
             auto pTag = attrModel->MakeField<std::string>("tag");
             auto attrs = writer->CreateAttributeSet(std::move(attrModel), "Calibration");
 
-            auto first = attrs->BeginRange();
-            for (std::int64_t i = 0; i < 5; ++i) { *pX = i; writer->Fill(); }
-            *pTag = "first";
-            attrs->CommitRange(std::move(first));
+            std::int64_t next = 0;
+            auto fill = [&](std::int64_t stop) {
+                for (; next < stop; ++next) { *pX = next; writer->Fill(); }
+            };
 
-            auto second = attrs->BeginRange();
-            for (std::int64_t i = 5; i < 8; ++i) { *pX = i; writer->Fill(); }
-            *pTag = "second";
-            attrs->CommitRange(std::move(second));
+            // ranges are written when committed, so these end up out of start order
+            auto outer = attrs->BeginRange();
+            fill(5);
+            auto inner = attrs->BeginRange();
+            fill(8);
+            *pTag = "inner";
+            attrs->CommitRange(std::move(inner));
+            auto empty = attrs->BeginRange();
+            *pTag = "empty";
+            attrs->CommitRange(std::move(empty));
+            fill(10);
+            *pTag = "outer";
+            attrs->CommitRange(std::move(outer));
 
             writer.reset();
             file->Close();
         }
+
+        std::vector<std::uint64_t> uproot_collect(ROOT::Experimental::RNTupleAttrEntryIterable indices)
+        {
+            std::vector<std::uint64_t> out;
+            for (auto index : indices)
+                out.push_back(index);
+            return out;
+        }
         """)
     ROOT.uproot_write_rntuple_attributes(filepath)
+
+    reader = ROOT.RNTupleReader.Open("Events", filepath)
+    expected = reader.OpenAttributeSet("Calibration")
 
     ntuple = uproot.open(filepath)["Events"]
     attributes = ntuple.attributes["Calibration"]
 
     assert attributes.schema_version == (1, 0)
     assert attributes.keys() == ["tag"]
-    assert attributes.ranges.tolist() == [(0, 5), (5, 3)]
-    assert attributes.arrays().tag.tolist() == ["first", "second"]
-    assert attributes.for_entry(2).tolist() == [0]
-    assert attributes.for_entry(6).tolist() == [1]
-    assert attributes.for_entries(4, 6).tolist() == [0, 1]
-    assert ntuple.arrays().x.tolist() == list(range(8))
+    assert attributes.num_entries == expected.GetNEntries() == 3
+    assert attributes.ranges.tolist() == [(5, 3), (8, 0), (0, 10)]
+    assert attributes.arrays().tag.tolist() == ["inner", "empty", "outer"]
+    assert ntuple.arrays().x.tolist() == list(range(10))
+
+    assert attributes.get_attributes().tolist() == [2, 0, 1]
+    assert attributes.get_attributes(6).tolist() == [2, 0]
+    assert attributes.get_attributes_containing_range(4, 7).tolist() == [2]
+    assert attributes.get_attributes_in_range(4, 10).tolist() == [0]
+
+    def from_ROOT(indices):
+        return list(ROOT.uproot_collect(indices))
+
+    assert attributes.get_attributes().tolist() == from_ROOT(expected.GetAttributes())
+    for entry in range(11):
+        assert attributes.get_attributes(entry).tolist() == from_ROOT(
+            expected.GetAttributes(entry)
+        )
+    # ROOT logs a warning for each empty or reversed range, so only check a few
+    ranges = [(start, stop) for start in range(11) for stop in range(start + 1, 12)]
+    for start, stop in [*ranges, (8, 8), (8, 3)]:
+        assert attributes.get_attributes_containing_range(
+            start, stop
+        ).tolist() == from_ROOT(expected.GetAttributesContainingRange(start, stop))
+        assert attributes.get_attributes_in_range(start, stop).tolist() == from_ROOT(
+            expected.GetAttributesInRange(start, stop)
+        )
