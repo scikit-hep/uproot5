@@ -110,6 +110,7 @@ class Tree:
 
         self._branch_data = []
         self._branch_lookup = {}
+        record_fields = set()
         for branch_name, branch_type in branch_types_items:
             branch_dict = None
             branch_dtype = None
@@ -149,6 +150,7 @@ class Tree:
                     branch_dtype = self._branch_ak_to_np(branch_datashape)
 
             if branch_dict is not None:
+                self._check_not_counter(branch_name)
                 if branch_name not in self._branch_lookup:
                     self._branch_lookup[branch_name] = len(self._branch_data)
                     self._branch_data.append(
@@ -167,12 +169,17 @@ class Tree:
                             raise TypeError(
                                 f"values of a dict must be NumPy types\n\n    key {key!r} has type {content!r}"
                             ) from err
-                        self._branch_lookup[subname] = len(self._branch_data)
-                        self._branch_data.append(
-                            self._branch_np(subname, content, dtype)
-                        )
+                        self._check_not_counter(subname)
+                        record_fields.add(subname)
+                        if subname not in self._branch_lookup:
+                            self._branch_lookup[subname] = len(self._branch_data)
+                            self._branch_data.append(
+                                self._branch_np(subname, content, dtype)
+                            )
 
             elif branch_dtype is not None:
+                if branch_dtype.subdtype is not None or branch_dtype.kind not in "iu":
+                    self._check_not_counter(branch_name)
                 if branch_name not in self._branch_lookup:
                     self._branch_lookup[branch_name] = len(self._branch_data)
                     self._branch_data.append(
@@ -185,6 +192,7 @@ class Tree:
                     parameters = {}
 
                 if parameters.get("__array__") == "string":
+                    self._check_not_counter(branch_name)
                     if branch_name not in self._branch_lookup:
                         self._branch_lookup[branch_name] = len(self._branch_data)
                         self._branch_data.append(
@@ -204,10 +212,35 @@ class Tree:
                         counter_name, counter_dtype, counter_dtype, kind="counter"
                     )
                     if counter_name in self._branch_lookup:
-                        # counters always replace non-counters
-                        del self._branch_data[self._branch_lookup[counter_name]]
-                    self._branch_lookup[counter_name] = len(self._branch_data)
-                    self._branch_data.append(counter)
+                        index = self._branch_lookup[counter_name]
+                        existing = self._branch_data[index]
+                        if existing["kind"] == "counter":
+                            # jagged branches that share a counter share its datum
+                            counter = existing
+                        elif (
+                            existing["kind"] == "normal"
+                            and existing["counter"] is None
+                            and existing["shape"] == ()
+                            and existing["dtype"].kind in "iu"
+                            and counter_name not in record_fields
+                        ):
+                            # counters replace scalar integer branches; replace the
+                            # datum in place, because deleting it would shift every
+                            # later datum down by one and invalidate the indices
+                            # that self._branch_lookup already holds for them
+                            self._branch_data[index] = counter
+                        else:
+                            raise ValueError(
+                                f"counter {counter_name!r} for jagged branch {branch_name!r} "
+                                f"collides with a branch of the same name that is not a "
+                                f"scalar integer; rename one of them or choose a "
+                                f"different counter_name"
+                            )
+                    else:
+                        self._branch_lookup[counter_name] = len(self._branch_data)
+                        self._branch_data.append(counter)
+
+                    self._check_not_counter(branch_name)
 
                     if type(content).__name__ == "RecordType":
                         if hasattr(content, "contents"):
@@ -233,6 +266,7 @@ class Tree:
                                     raise TypeError(
                                         f"fields of a record must be NumPy types, though the record itself may be in a jagged array\n\n    field {key!r} has type {cont!s}"
                                     )
+                                self._check_not_counter(subname)
                                 if subname not in self._branch_lookup:
                                     self._branch_lookup[subname] = len(
                                         self._branch_data
@@ -266,6 +300,7 @@ class Tree:
                     if keys is None:
                         keys = [str(x) for x in range(len(contents))]
 
+                    self._check_not_counter(branch_name)
                     if branch_name not in self._branch_lookup:
                         self._branch_lookup[branch_name] = len(self._branch_data)
                         self._branch_data.append(
@@ -279,6 +314,8 @@ class Tree:
                                 raise TypeError(
                                     f"fields of a record must be NumPy types, though the record itself may be in a jagged array\n\n    field {key!r} has type {content!s}"
                                 )
+                            self._check_not_counter(subname)
+                            record_fields.add(subname)
                             if subname not in self._branch_lookup:
                                 self._branch_lookup[subname] = len(self._branch_data)
                                 self._branch_data.append(
@@ -313,6 +350,15 @@ class Tree:
             "fEstimate": 1000000,
         }
         self._key = None
+
+    def _check_not_counter(self, name):
+        index = self._branch_lookup.get(name)
+        if index is not None and self._branch_data[index]["kind"] == "counter":
+            raise ValueError(
+                f"branch {name!r} collides with a generated counter of the same "
+                f"name; rename one of them or choose a different counter_name or "
+                f"field_name"
+            )
 
     def _branch_ak_to_np(self, branch_datashape):
         if type(branch_datashape).__name__ == "UnknownType":
@@ -601,7 +647,7 @@ class Tree:
                     kk = self._counter_name(k)
                     vv = numpy.asarray(awkward.num(v, axis=1), dtype=">u4")
                     if kk in provided and not numpy.array_equal(
-                        vv, awkward.to_numpy(provided[kk])
+                        vv, numpy.asarray(provided[kk])
                     ):
                         raise ValueError(
                             f"branch {kk!r} provided both as an explicit array and generated as a counter, and they disagree"

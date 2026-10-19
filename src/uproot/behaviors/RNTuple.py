@@ -586,6 +586,8 @@ class HasFields(Mapping):
             filter_field=filter_field,
             filter_branch=filter_branch,
         )
+        # A selected field comes with all of its subfields
+        keys = _with_subfield_keys(self, keys)
         rntuple = self.ntuple
 
         top_names = []
@@ -603,7 +605,9 @@ class HasFields(Mapping):
                         rntuple.field_form(field.field_id, keys, ak_add_doc=ak_add_doc)
                     )
         else:
-            # If it is a subfield of a collection, we need to include the collection in the keys
+            # If it is a subfield of a collection or a std::array (a LEAF with a nonzero
+            # repetition), we need to include the outermost one in the keys so that the
+            # dimensions they add are not lost
             path_keys = self.path.split(".")
             top_collection = None
             tmp_field = self.ntuple
@@ -613,6 +617,7 @@ class HasFields(Mapping):
                 if (
                     tmp_field.record.struct_role
                     == uproot.const.RNTupleFieldRole.COLLECTION
+                    or tmp_field.record.repetition > 0
                 ):
                     top_collection = tmp_field
                     field_path = path_keys[i:]
@@ -743,6 +748,10 @@ class HasFields(Mapping):
 
         Returns a group of arrays from the ``RNTuple``.
 
+        A selected ``RField`` is read with all of its subfields, even if the
+        filters also select some of them. If only a subfield is selected, its
+        parents are included with nothing but the path down to it.
+
         For example:
 
         .. code-block:: python
@@ -802,6 +811,10 @@ class HasFields(Mapping):
             [c.num_entries for c in clusters[start_cluster_idx:stop_cluster_idx]],
             dtype=int,
         )
+        # the buffers below start at the first cluster that is read
+        cluster_offset = (
+            cluster_starts[start_cluster_idx] if start_cluster_idx >= 0 else 0
+        )
 
         array_cache = _regularize_array_cache(array_cache, self.ntuple._file)
 
@@ -836,10 +849,7 @@ class HasFields(Mapping):
                 key_nr = int(key.split("-")[1])
                 # Find how many elements should be padded at the beginning
                 n_padding = self.ntuple.column_records[key_nr].first_element_index
-                n_padding -= (
-                    cluster_starts[start_cluster_idx] if start_cluster_idx >= 0 else 0
-                )
-                n_padding = max(n_padding, 0)
+                n_padding = max(n_padding - cluster_offset, 0)
                 dtype = None
                 if interpreter == "cpu":
                     content_generator = partial(
@@ -876,17 +886,12 @@ class HasFields(Mapping):
                 dtype_byte = self.ntuple.column_records[key_nr].type
                 _fill_container_dict(container_dict, content, key, dtype_byte, dtype)
 
-        cluster_offset = (
-            cluster_starts[start_cluster_idx] if start_cluster_idx >= 0 else 0
-        )
-        entry_start -= cluster_offset
-        entry_stop -= cluster_offset
         arrays = ak.from_buffers(
             form,
             cluster_num_entries,
             container_dict,
             backend="cuda" if interpreter == "gpu" and backend == "cuda" else "cpu",
-        )[entry_start:entry_stop]
+        )[entry_start - cluster_offset : entry_stop - cluster_offset]
 
         arrays = ak.to_backend(arrays, backend=backend)
         # no longer needed; save memory
@@ -922,8 +927,8 @@ class HasFields(Mapping):
                         raise ValueError(msg) from None
             if library.name == "pd":
                 pd = uproot.extras.pandas()
-                pandas_index = pd.RangeIndex(
-                    start=entry_start, stop=entry_start + len(arrays)
+                pandas_index = uproot.interpretation.library._pandas_basic_index(
+                    pd, entry_start, entry_start + len(arrays)
                 )
                 pandas_data = pd.DataFrame(numpy_data, index=pandas_index)
                 arrays = pandas_data
@@ -1846,11 +1851,44 @@ def _filter_name_deep(filter_name, hasfields, field):
         return True
     while field is not hasfields:
         field = field.parent
-        if field is not hasfields:
+        # the spelling ``keys()`` shows: a collection's anonymous item field adds no segment
+        if field is not hasfields and not (field.is_anonymous or field.in_variant):
             name = field.name + "." + name
     if name != shallow and filter_name(name):
         return True
     return filter_name("." + name)
+
+
+def _with_subfield_keys(hasfields, keys):
+    """
+    Returns ``keys`` extended with the keys of all subfields of the fields in ``keys``,
+    so that selecting a field selects its whole subtree.
+    """
+    selected = set(keys)
+    if len(selected) == 0:
+        return keys
+    out = list(keys)
+    for key in hasfields.keys():
+        if key in selected:
+            continue
+        pos = key.find(".")
+        while pos != -1:
+            if key[:pos] in selected:
+                out.append(key)
+                break
+            pos = key.find(".", pos + 1)
+    return out
+
+
+def _filter_field_by_key(hasfields, keys):
+    """
+    Returns a ``filter_field`` that selects exactly the fields that ``hasfields.keys()``
+    lists as ``keys``. Unlike passing ``keys`` as a ``filter_name``, a key doesn't select
+    the fields that only share their name with it, such as ``rec.x`` for the key ``x``.
+    """
+    keys = set(keys)
+    field_ids = {field.field_id for key, field in hasfields.iteritems() if key in keys}
+    return lambda field: field.field_id in field_ids
 
 
 def _get_recursive(hasfields, where):

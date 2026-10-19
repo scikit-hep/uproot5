@@ -967,39 +967,47 @@ def regularize_object_path(
     if isinstance(file_path, HasBranches):
         return _NoClose(file_path)
 
-    else:
-        file = ReadOnlyFile(
-            file_path,
-            object_cache=None,
-            array_cache=None,
-            custom_classes=custom_classes,
-            **options,
-        ).root_directory
-        if object_path is None:
-            trees = file.keys(filter_classname="TTree", cycle=False)
-            if len(trees) == 0:
-                if allow_missing:
-                    return None
-                else:
-                    raise ValueError(f"no TTrees found\nin file {file_path}")
-            elif len(trees) == 1:
-                return file[trees[0]]
+    directory = ReadOnlyFile(
+        file_path,
+        object_cache=None,
+        array_cache=None,
+        custom_classes=custom_classes,
+        **options,
+    ).root_directory
+    return object_in_directory(directory, object_path, allow_missing)
+
+
+def object_in_directory(directory, object_path, allow_missing):
+    """
+    Returns the object at ``object_path`` in an open ``directory`` — the file's single ``TTree``
+    when ``object_path`` is None — or None when ``allow_missing`` and it is absent.
+    """
+    file_path = directory.file.file_path
+    if object_path is None:
+        trees = directory.keys(filter_classname="TTree", cycle=False)
+        if len(trees) == 0:
+            if allow_missing:
+                return None
             else:
-                ttree_str = ", ".join(repr(x) for x in trees)
-                raise ValueError(
-                    """TTree object paths must be specified in the 'files' """
-                    """as {"filenames*.root": "path"} if any files have """
-                    f"""more than one TTree
+                raise ValueError(f"no TTrees found\nin file {file_path}")
+        elif len(trees) == 1:
+            return directory[trees[0]]
+        else:
+            ttree_str = ", ".join(repr(x) for x in trees)
+            raise ValueError(
+                """TTree object paths must be specified in the 'files' """
+                """as {"filenames*.root": "path"} if any files have """
+                f"""more than one TTree
 
     TTrees: {ttree_str}
 
 in file {file_path}"""
-                )
+            )
 
-        else:
-            if allow_missing and object_path not in file:
-                return None
-            return file[object_path]
+    else:
+        if allow_missing and object_path not in directory:
+            return None
+        return directory[object_path]
 
 
 def _content_cls_from_name(awkward, name):

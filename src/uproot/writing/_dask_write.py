@@ -105,6 +105,7 @@ def dask_write(
             path=path,
             npartitions=array.npartitions,
             prefix=prefix,
+            storage_options=storage_options,
             tree_name=tree_name,
             compression=compression,
             compression_level=compression_level,

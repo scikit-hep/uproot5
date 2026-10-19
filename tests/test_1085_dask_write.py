@@ -73,7 +73,7 @@ def test_compute(tmp_path):
     with uproot.open(skhep_testdata.data_path("uproot-HZZ.root")) as f:
         arr = f["events"].arrays()
     dask_arr = dask_awkward.from_awkward(ak.from_iter(arr), partitions)
-    with Client():
+    with Client(dashboard_address=":0"):
         graph = uproot.dask_write(
             dask_arr, str(tmp_path), prefix="distribute", compute=False
         )
