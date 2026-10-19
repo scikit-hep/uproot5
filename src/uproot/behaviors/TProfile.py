@@ -351,10 +351,11 @@ class TProfile(Profile):
             sum_of_bin_weights = sum_of_bin_weights[1:]
             sum_of_bin_weights_squared = sum_of_bin_weights_squared[1:]
 
-        # TODO: This should only be needed for weighted storage, but there seems to be some bug in Uproot's serialization of fBinSumw2
-        # that causes weighted TProfiles to appear unweighted when read back in.
+        # boost-histogram does not track the number of fills (ROOT's fEntries)
+        # or the error option, so keep them in the metadata for writing back to ROOT.
         out.metadata = {
             "fEntries": self.member("fEntries"),
+            "fErrorMode": self.member("fErrorMode"),
         }
         view = out.view(flow=True)
 

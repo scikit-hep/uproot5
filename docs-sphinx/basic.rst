@@ -1067,6 +1067,7 @@ Empty directories can be made with the :ref:`uproot.writing.writable.WritableDir
     * profile plots: TProfile, TProfile2D, TProfile3D
     * NumPy histograms created with `np.histogram <https://numpy.org/doc/stable/reference/generated/numpy.histogram.html>`__, `np.histogram2d <https://numpy.org/doc/stable/reference/generated/numpy.histogram2d.html>`__, and `np.histogramdd <https://numpy.org/doc/stable/reference/generated/numpy.histogramdd.html>`__ with 3 dimensions or fewer
     * histograms that satisfy the `Universal Histogram Interface <https://uhi.readthedocs.io/>`__ (UHI) with 3 dimensions or fewer; this includes `boost-histogram <https://boost-histogram.readthedocs.io/>`__ and `hist <https://hist.readthedocs.io/>`__
+    * boost-histogram and hist histograms with ``Mean`` or ``WeightedMean`` storage, written as TProfile (1 dimension only); ``Mean`` storage does not track the sum of squared weights, so use ``WeightedMean`` if you fill with weights; ``WeightedMean`` does not track the number of fills, so ``GetEntries()`` in ROOT is the sum of weights
     * PyROOT objects
 
 Here is an example using hist:
