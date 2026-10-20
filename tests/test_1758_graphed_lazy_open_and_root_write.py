@@ -132,6 +132,32 @@ def test_unopened_files_resolve_a_leaf_branch_and_a_duplicate_like_the_opened_on
     ]
 
 
+@pytest.mark.parametrize("open_files", [False, True])
+@pytest.mark.parametrize(
+    "spellings",
+    [("events:x", "events:x"), ("events/x", "events:x"), ("events:x", "events/x")],
+    ids=["colon-twice", "slash-then-colon", "colon-then-slash"],
+)
+def test_colon_and_slash_spellings_of_a_leaf_resolve_alike(
+    tmp_path, spellings, open_files
+):
+    a, b = (_make_tree(os.path.join(tmp_path, f"{x}.root")) for x in "ab")
+    g = uproot.graphed(dict(zip((a, b), spellings)), open_files=open_files)
+    assert _keys(g) == [(a, "/events;1"), (b, "/events;1")]
+    assert _run(_sum_plan(g.x)) == 90.0
+
+
+@pytest.mark.parametrize("open_files", [False, True])
+@pytest.mark.parametrize("later", ["events:x", "events/x"])
+def test_a_later_file_without_the_colon_selected_tree_is_refused(
+    tmp_path, later, open_files
+):
+    a = _make_tree(os.path.join(tmp_path, "a.root"))
+    b = _make_tree(os.path.join(tmp_path, "b.root"), name="other")
+    with pytest.raises(uproot.KeyInFileError, match="not found: 'events'"):
+        uproot.graphed({a: "events:x", b: later}, open_files=open_files)
+
+
 @pytest.mark.parametrize(
     "later",
     [
@@ -184,6 +210,17 @@ def test_an_rntuple_read_with_align_baskets_names_its_file(tmp_path):
         _run(_sum_plan(lazy.x))
     with pytest.raises(NotImplementedError, match="align_baskets"):
         uproot.graphed(files, align_baskets=True, open_files=True)
+
+
+def test_an_rntuple_opened_to_resolve_an_entry_is_refused_with_align_baskets(tmp_path):
+    a = _make_tree(os.path.join(tmp_path, "a.root"))
+    nt = os.path.join(tmp_path, "nt.root")
+    with uproot.recreate(nt) as f:
+        f["events"] = ak.Array([{"x": 1.0, "y": 2.0}])
+    with pytest.raises(NotImplementedError, match="an RNTuple has none"):
+        uproot.graphed(
+            [a + ":events", nt + ":events", nt + ":events;1"], align_baskets=True
+        )
 
 
 @pytest.mark.parametrize(
@@ -357,7 +394,7 @@ def test_root_write_creates_its_destination_with_storage_options(tmp_path, monke
         name=_step_name,
         storage_options={"token": "t"},
     )
-    assert made == [("/u1758", {"token": "t"})]
+    assert made == []
     (path,) = _run(
         graphed.aggregate_plan(
             g.x,
@@ -368,7 +405,7 @@ def test_root_write_creates_its_destination_with_storage_options(tmp_path, monke
         )
     )
     assert path == "memory:///u1758/part-00000.root"
-    assert made == [("/u1758", {"token": "t"})] * 3
+    assert made == [("/u1758", {"token": "t"})] * 2
     assert MemoryFileSystem().cat_file("/u1758/part-00000.root")[:4] == b"root"
 
 
@@ -394,8 +431,8 @@ def test_root_write_reports_a_relative_destination_absolute(tmp_path, monkeypatc
     g = uproot.graphed(_make_tree(os.path.join(tmp_path, "in.root"), n=4))
     monkeypatch.chdir(tmp_path)
     write = uproot.root_write(gak.zip({"x": g.x}), "rel", name=_step_name)
-    assert os.path.isabs(write.destination)
-    assert os.path.samefile(write.destination, tmp_path / "rel")
+    assert write.destination == os.path.join(os.getcwd(), "rel")
+    assert not (tmp_path / "rel").exists()
 
 
 def test_a_filter_matching_nothing_names_the_one_opened_file(tmp_path):

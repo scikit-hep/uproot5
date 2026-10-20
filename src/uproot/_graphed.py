@@ -307,9 +307,10 @@ def _resolve_entries(
 
     A file is opened when it holds the first entry that has the object, with ``open_files``, when
     it is listed more than once (so the same ``TTree`` spelled two ways resolves to one
-    ``tree_path``), or when its object path is not the first entry's and has a ``/``, which could
-    end in a ``TTree`` or in a ``TBranch``; any other path names a ``TTree``, or the first entry's
-    leaf ``TBranch`` when it is the first entry's path. Every entry must select the first entry's
+    ``tree_path``), when its object path has a ``:``, which names a ``TBranch`` or is a literal
+    name depending on the file's keys, or when its object path is not the first entry's and has a
+    ``/``, which could end in a ``TTree`` or in a ``TBranch``; any other path names a ``TTree``,
+    or the first entry's leaf ``TBranch`` when it is the first entry's path. Every entry must select the first entry's
     leaf ``TBranch``, or none when the first names a ``TTree``."""
     listed = collections.Counter(_file_and_path(f, o)[0] for f, o, *_ in files)
     first_path = leaf = unset
@@ -322,6 +323,7 @@ def _resolve_entries(
             first_path is unset
             or open_files
             or listed[file_path] > 1
+            or ":" in (object_path or "")
             or (object_path != first_path and "/" in (object_path or "").strip("/"))
         ):
             if file_path not in directories:
@@ -529,7 +531,9 @@ def graphed(
                 full_paths,
                 first_of=None if open_files else len(files),
             )
-            if align_baskets and any(isinstance(t, HasFields) for t in ttrees):
+            if align_baskets and any(
+                isinstance(t, HasFields) for t in [*ttrees, *(f for (f,) in found)]
+            ):
                 raise NotImplementedError(
                     "align_baskets=True follows TBasket boundaries; an RNTuple has none"
                 )

@@ -154,8 +154,8 @@ def root_write(
     Args:
         array (``graphed.Array``): A record whose fields become the ``TBranches``, as in
             :doc:`uproot.writing._graphed_write.graphed_write`.
-        destination (path-like): Output directory, or an fsspec URL, created here with
-            ``storage_options``, which also reach each part's directory and write.
+        destination (path-like): Output directory, or an fsspec URL, created with the first
+            part when the plan runs; ``storage_options`` reach each part's directory and write.
         name (callable): ``name(partition) -> str``, each task's part file name; it must tell
             every partition apart (a blind partition's entry range is unresolved).
         tree_name, title, field_name, initial_basket_capacity, counter_name, resize_factor,
@@ -175,7 +175,6 @@ def root_write(
     _refuse_non_record(array, "root_write")
     codec = _RootCodec.of(locals())
     fs, root = url_to_fs(os.fspath(destination), **(storage_options or {}))
-    fs.mkdirs(root, exist_ok=True)
     # graphed joins a local part with os.sep, so the absolute root is given in the OS's spelling
     if isinstance(fs, LocalFileSystem):
         destination = os.path.normpath(root)
