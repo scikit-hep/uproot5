@@ -23,6 +23,7 @@ them.
 from __future__ import annotations
 
 import functools
+import os
 from dataclasses import dataclass
 
 from fsspec.core import url_to_fs
@@ -55,8 +56,18 @@ class _RootCodec:
     compression_level: int
     storage_options: object
 
+    @classmethod
+    def of(cls, arguments):
+        """The codec for a writer's keyword ``arguments`` (its ``locals()``)."""
+        return cls(**{field: arguments[field] for field in cls.__dataclass_fields__})
+
     def __call__(self, value, path, kv):
         ak_to_root(path, value, **vars(self))
+
+
+def _reported(fs, root):
+    """A local destination reports plain paths; a remote one its full URLs."""
+    return root if isinstance(fs, LocalFileSystem) else fs.unstrip_protocol(root)
 
 
 @dataclass(frozen=True)
@@ -143,8 +154,10 @@ def root_write(
     Args:
         array (``graphed.Array``): A record whose fields become the ``TBranches``, as in
             :doc:`uproot.writing._graphed_write.graphed_write`.
-        destination (str): Output directory, or an fsspec URL (``storage_options`` reach its
-            filesystem).
+        destination (path-like): Output directory, or an fsspec URL, created here with
+            ``storage_options``, which also reach each part's write. ``graphed`` creates a part's
+            directory on the filesystem built from its URL alone, so a filesystem that needs
+            ``storage_options`` to connect (S3 with a custom endpoint, sftp) is not supported.
         name (callable): ``name(partition) -> str``, each task's part file name; it must tell
             every partition apart (a blind partition's entry range is unresolved).
         tree_name, title, field_name, initial_basket_capacity, counter_name, resize_factor,
@@ -159,22 +172,14 @@ def root_write(
 
     **Experimental**: tracks a pre-1.0 ``graphed``; the API may change without a deprecation cycle.
     """
-    graphed = uproot.extras.graphed("0.0.7")
+    graphed = uproot.extras.graphed("0.0.7", "uproot.root_write")
 
     _refuse_non_record(array, "root_write")
-    codec = _RootCodec(
-        tree_name=tree_name,
-        title=title,
-        field_name=field_name,
-        initial_basket_capacity=initial_basket_capacity,
-        counter_name=counter_name,
-        resize_factor=resize_factor,
-        compression=compression,
-        compression_level=compression_level,
-        storage_options=storage_options,
-    )
+    codec = _RootCodec.of(locals())
+    fs, root = url_to_fs(os.fspath(destination), **(storage_options or {}))
+    fs.mkdirs(root, exist_ok=True)
     return graphed.write.PartWrite(
-        array=array, destination=destination, name=name, codec=codec
+        array=array, destination=_reported(fs, root), name=name, codec=codec
     )
 
 
@@ -282,23 +287,10 @@ def graphed_write(
     fs.mkdirs(root, exist_ok=True)
     process = functools.partial(
         _write_partition,
-        # a local destination reports plain paths; a remote one its full URLs
-        destination=(
-            root if isinstance(fs, LocalFileSystem) else fs.unstrip_protocol(root)
-        ),
+        destination=_reported(fs, root),
         sep=fs.sep,
         name=_PartName(tuple(bases.items()), prefix or "part"),
-        codec=_RootCodec(
-            tree_name=tree_name,
-            title=title,
-            field_name=field_name,
-            initial_basket_capacity=initial_basket_capacity,
-            counter_name=counter_name,
-            resize_factor=resize_factor,
-            compression=compression,
-            compression_level=compression_level,
-            storage_options=storage_options,
-        ),
+        codec=_RootCodec.of(locals()),
         columns=list(source.projected_columns((array,))),
         compiled=compiled,
         backend=backend if backend is not None else type(session.backend),

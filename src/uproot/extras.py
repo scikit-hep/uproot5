@@ -242,9 +242,10 @@ or
 _GRAPHED_MIN = "0.0.5"
 
 
-def graphed(minimum=_GRAPHED_MIN):
+def graphed(minimum=_GRAPHED_MIN, caller="uproot.graphed"):
     """
-    Imports and returns ``graphed`` (with the submodules Uproot uses), at least version ``minimum``.
+    Imports and returns ``graphed`` (with the submodules Uproot uses), at least version ``minimum``,
+    which ``caller`` needs.
     """
     try:
         import graphed
@@ -261,7 +262,7 @@ def graphed(minimum=_GRAPHED_MIN):
         ) from err
     if parse_version(graphed.__version__) < parse_version(minimum):
         raise ModuleNotFoundError(
-            f"uproot.graphed needs graphed {minimum} or newer; you have graphed {graphed.__version__}"
+            f"{caller} needs graphed {minimum} or newer; you have graphed {graphed.__version__}"
         )
     # a recorded op's provenance is the analyst's line, not the Uproot frame that recorded it
     graphed.provenance.register_internal("uproot")

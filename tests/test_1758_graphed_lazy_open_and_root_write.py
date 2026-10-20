@@ -151,6 +151,30 @@ def test_a_later_entry_selecting_another_branch_is_refused(tmp_path, later, open
         uproot.graphed(files, open_files=open_files)
 
 
+@pytest.mark.parametrize("open_files", [False, True])
+def test_a_later_entry_selecting_a_branch_of_a_whole_tree_is_refused(
+    tmp_path, open_files
+):
+    a, b = (_make_tree(os.path.join(tmp_path, f"{x}.root")) for x in "ab")
+    with pytest.raises(ValueError, match="selects the TBranch 'x', but the first"):
+        uproot.graphed([a + ":events", b + ":events/x"], open_files=open_files)
+
+
+def test_an_rntuple_read_with_align_baskets_names_its_file(tmp_path):
+    a = _make_tree(os.path.join(tmp_path, "a.root"))
+    nt = os.path.join(tmp_path, "nt.root")
+    with uproot.recreate(nt) as f:
+        f["nt"] = ak.Array([{"x": 1.0, "y": 2.0}])
+    files = [a + ":events", nt + ":nt"]
+    lazy = uproot.graphed(files, align_baskets=True)
+    with pytest.raises(
+        NotImplementedError, match=r"the RNTuple in '.*nt\.root' has none"
+    ):
+        _run(_sum_plan(lazy.x))
+    with pytest.raises(NotImplementedError, match="align_baskets"):
+        uproot.graphed(files, align_baskets=True, open_files=True)
+
+
 @pytest.mark.parametrize(
     ("spelling", "opens"),
     [
@@ -289,7 +313,9 @@ def test_root_write_refusals(tmp_path, monkeypatch):
     with pytest.raises(TypeError, match="root_write writes a record's fields"):
         uproot.root_write(g.x, str(tmp_path), name=_step_name)
     monkeypatch.setattr(graphed, "__version__", "0.0.6")
-    with pytest.raises(ModuleNotFoundError, match="needs graphed 0.0.7 or newer"):
+    with pytest.raises(
+        ModuleNotFoundError, match=r"^uproot\.root_write needs graphed 0\.0\.7 or newer"
+    ):
         uproot.root_write(gak.zip({"x": g.x}), str(tmp_path), name=_step_name)
 
 
@@ -297,3 +323,53 @@ def test_root_write_refusals(tmp_path, monkeypatch):
 def test_root_write_refuses_a_non_graphed_array(tmp_path):
     with pytest.raises(TypeError, match="root_write expects a uproot.graphed Array"):
         uproot.root_write(np.arange(3), str(tmp_path), name=str)
+
+
+@needs_part_write
+def test_root_write_creates_its_destination_with_storage_options(tmp_path, monkeypatch):
+    from fsspec.implementations.memory import MemoryFileSystem
+
+    made = []
+    real = MemoryFileSystem.mkdirs
+
+    def spy(self, path, exist_ok=False):
+        made.append((path, self.storage_options))
+        real(self, path, exist_ok=exist_ok)
+
+    monkeypatch.setattr(MemoryFileSystem, "mkdirs", spy)
+    g = uproot.graphed(_make_tree(os.path.join(tmp_path, "in.root"), n=4))
+    write = uproot.root_write(
+        gak.zip({"x": g.x}),
+        "memory://u1758",
+        name=_step_name,
+        storage_options={"token": "t"},
+    )
+    assert made == [("/u1758", {"token": "t"})]
+    (path,) = _run(
+        graphed.aggregate_plan(
+            g.x,
+            reduce=lambda vals: [vals[1]],
+            combine=lambda a, b: a + b,
+            empty=list,
+            writes=[write],
+        )
+    )
+    assert path == "memory:///u1758/part-00000.root"
+    assert MemoryFileSystem().cat_file("/u1758/part-00000.root")[:4] == b"root"
+
+
+@needs_part_write
+def test_root_write_takes_a_path_destination(tmp_path):
+    g = uproot.graphed(_make_tree(os.path.join(tmp_path, "in.root"), n=4))
+    write = uproot.root_write(gak.zip({"x": g.x}), tmp_path / "out", name=_step_name)
+    (path,) = _run(
+        graphed.aggregate_plan(
+            g.x,
+            reduce=lambda vals: [vals[1]],
+            combine=lambda a, b: a + b,
+            empty=list,
+            writes=[write],
+        )
+    )
+    assert path == str(tmp_path / "out" / "part-00000.root")
+    assert uproot.open(path)["tree"]["x"].array().tolist() == [0.0, 1.0, 2.0, 3.0]
