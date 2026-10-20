@@ -57,9 +57,7 @@ class FSSpecSource(uproot.source.chunk.Source):
 
         file_path = _maybe_wrap_remote_url(file_path)
 
-        self._fsspec_options = {
-            k: v for k, v in options.items() if k not in uproot.reading.open.defaults
-        }
+        self._fsspec_options = uproot._util.fsspec_storage_options(options)
         self._file_path_orig = file_path
         self._open()
 

@@ -223,6 +223,7 @@ def dask(
       array from ``TTrees``.
     """
 
+    uproot._util._check_unknown_options(options)
     files = uproot._util.regularize_files(files, steps_allowed=True, **options)
 
     is_3arg = [len(x) == 3 for x in files]
@@ -522,18 +523,20 @@ class _UprootReadNumpy:
         ttrees,
         key,
         interp_options,
+        expected_dtype=None,
         decompression_executor=None,
         interpretation_executor=None,
     ) -> None:
         self.ttrees = ttrees
         self.key = key
         self.interp_options = interp_options
+        self.expected_dtype = expected_dtype
         self.decompression_executor = decompression_executor
         self.interpretation_executor = interpretation_executor
 
     def __call__(self, i_start_stop):
         i, start, stop = i_start_stop
-        return self.ttrees[i][self.key].array(
+        arr = self.ttrees[i][self.key].array(
             entry_start=start,
             entry_stop=stop,
             library="np",
@@ -541,14 +544,88 @@ class _UprootReadNumpy:
             decompression_executor=self.decompression_executor,
             interpretation_executor=self.interpretation_executor,
         )
+        if (
+            self.expected_dtype is not None
+            and self.expected_dtype == numpy.dtype(object)
+            and (arr.dtype != object or arr.ndim > 1)
+        ):
+            out = numpy.empty(len(arr), dtype=object)
+            for i, row in enumerate(arr):
+                out[i] = row
+            arr = out
+        return arr
+
+
+def _form_to_numpy_dtype(form, initial_sizes=()):
+    sizes = list(initial_sizes)
+    curr = form
+    while isinstance(curr, awkward.forms.RegularForm):
+        sizes.append(curr.size)
+        curr = curr.content
+    if isinstance(curr, awkward.forms.NumpyForm):
+        inner_dt = numpy.dtype(curr.primitive)
+        shape = tuple(sizes) + curr.inner_shape
+        if shape:
+            return numpy.dtype((inner_dt, shape))
+        return inner_dt
+    else:
+        return numpy.dtype(object)
+
+
+def _branch_or_field_numpy_dtype(branch):
+    if isinstance(branch, HasFields):
+        form, path = branch.to_akform()
+        sizes = []
+        if path is not None:
+            for p in path:
+                # Step through list/option forms to reach the record inside.
+                while isinstance(
+                    form,
+                    (
+                        awkward.forms.ListOffsetForm,
+                        awkward.forms.ListForm,
+                        awkward.forms.RegularForm,
+                        awkward.forms.IndexedOptionForm,
+                        awkward.forms.ByteMaskedForm,
+                        awkward.forms.BitMaskedForm,
+                        awkward.forms.UnmaskedForm,
+                    ),
+                ):
+                    # Any list boundary means the result is a jagged array.
+                    if isinstance(
+                        form,
+                        (
+                            awkward.forms.ListOffsetForm,
+                            awkward.forms.ListForm,
+                        ),
+                    ):
+                        return numpy.dtype(object)
+                    if isinstance(form, awkward.forms.RegularForm):
+                        sizes.append(form.size)
+                    form = form.content
+                if hasattr(form, "fields") and p in form.fields:
+                    form = form.contents[form.fields.index(p)]
+                else:
+                    raise KeyError(f"field {p!r} not found in form {form!r}")
+        return _form_to_numpy_dtype(form, initial_sizes=sizes)
+    else:
+        return branch.interpretation.numpy_dtype
 
 
 def _check_numpy_dtype(branch, expected_dtype):
-    actual_dtype = branch.interpretation.numpy_dtype
+    actual_dtype = _branch_or_field_numpy_dtype(branch)
     if actual_dtype != expected_dtype:
+        if isinstance(branch, HasFields):
+            item_name = "field"
+            path = branch.path
+            file_path = branch.ntuple.parent._file.file_path
+        else:
+            item_name = "branch"
+            path = branch.object_path
+            file_path = branch.file.file_path
         raise ValueError(
-            f"inconsistent NumPy dtype for branch {branch.object_path!r} in file "
-            f"{branch.file.file_path!r}: expected {expected_dtype!r}, "
+            f"inconsistent NumPy dtype for {item_name} {path!r} in file "
+            f"{file_path!r}: expected {expected_dtype!r}, "
             f"found {actual_dtype!r}"
         )
 
@@ -611,13 +688,41 @@ TTree in path
 which has {num_entries} entries"""
             )
 
-        return ttree[self.key].array(
+        arr = ttree[self.key].array(
             library="np",
             entry_start=start,
             entry_stop=stop,
             ak_add_doc=self.interp_options["ak_add_doc"],
             decompression_executor=self.decompression_executor,
             interpretation_executor=self.interpretation_executor,
+        )
+        if (
+            self.expected_dtype is not None
+            and self.expected_dtype == numpy.dtype(object)
+            and (arr.dtype != object or arr.ndim > 1)
+        ):
+            out = numpy.empty(len(arr), dtype=object)
+            for i, row in enumerate(arr):
+                out[i] = row
+            arr = out
+        return arr
+
+
+def _regularize_tree_step_size(ttree, step_size, entry_start, entry_stop, common_keys):
+    if isinstance(ttree, HasFields):
+        akform, _ = ttree.to_akform(
+            filter_field=_filter_field_by_key(ttree, common_keys)
+        )
+        return _RNTuple_regularize_step_size(
+            ttree, akform, step_size, entry_start, entry_stop
+        )
+    else:
+        branchid_interpretation = {}
+        for key in common_keys:
+            branch = ttree[key]
+            branchid_interpretation[branch.cache_key] = branch.interpretation
+        return _regularize_step_size(
+            ttree, step_size, entry_start, entry_stop, branchid_interpretation
         )
 
 
@@ -662,13 +767,8 @@ def _get_dask_array(
     for ttree in ttrees:
         entry_start = 0
         entry_stop = ttree.num_entries
-
-        branchid_interpretation = {}
-        for key in common_keys:
-            branch = ttree[key]
-            branchid_interpretation[branch.cache_key] = branch.interpretation
-        ttree_step = _regularize_step_size(
-            ttree, step_size, entry_start, entry_stop, branchid_interpretation
+        ttree_step = _regularize_tree_step_size(
+            ttree, step_size, entry_start, entry_stop, common_keys
         )
         step_sum += int(ttree_step)
 
@@ -676,10 +776,10 @@ def _get_dask_array(
     assert entry_step >= 1
 
     for key in common_keys:
-        dt = ttrees[0][key].interpretation.numpy_dtype
+        expected_dtype = _branch_or_field_numpy_dtype(ttrees[0][key])
         for ttree in ttrees[1:]:
-            _check_numpy_dtype(ttree[key], dt)
-        dt, inner_shape = uproot.interpretation.numerical._dtype_shape(dt)
+            _check_numpy_dtype(ttree[key], expected_dtype)
+        dt, inner_shape = uproot.interpretation.numerical._dtype_shape(expected_dtype)
 
         chunks = []
         chunk_args = []
@@ -722,6 +822,7 @@ which has {entry_stop} entries"""
                 ttrees,
                 key,
                 interp_options,
+                expected_dtype,
                 decompression_executor,
                 interpretation_executor,
             ),
@@ -763,14 +864,17 @@ def _get_dask_array_delay_open(
                 "filter_field" if isinstance(obj, HasFields) else "filter_branch"
             ): filter_branch
         },
-        full_paths=full_paths,
+        # an RNTuple form keeps the nesting, so its fields are selected by full path
+        full_paths=True if isinstance(obj, HasFields) else full_paths,
         ignore_duplicates=True,
     )
+    if isinstance(obj, HasFields):
+        common_keys = _with_subfield_keys(obj, common_keys)
 
     dask_dict = {}
 
     for key in common_keys:
-        expected_dtype = obj[key].interpretation.numpy_dtype
+        expected_dtype = _branch_or_field_numpy_dtype(obj[key])
         dt, inner_shape = uproot.interpretation.numerical._dtype_shape(expected_dtype)
 
         partitions = []
@@ -1815,24 +1919,10 @@ def _get_dak_array(
     for ttree in ttrees:
         entry_start = 0
         entry_stop = ttree.num_entries
-
-        if isinstance(ttree, HasFields):
-            akform, _ = ttree.to_akform(
-                filter_field=_filter_field_by_key(ttree, common_keys)
-            )
-            ttree_step = _RNTuple_regularize_step_size(
-                ttree, akform, step_size, entry_start, entry_stop
-            )
-            step_sum += int(ttree_step)
-        else:
-            branchid_interpretation = {}
-            for key in common_keys:
-                branch = ttree[key]
-                branchid_interpretation[branch.cache_key] = branch.interpretation
-            ttree_step = _regularize_step_size(
-                ttree, step_size, entry_start, entry_stop, branchid_interpretation
-            )
-            step_sum += int(ttree_step)
+        ttree_step = _regularize_tree_step_size(
+            ttree, step_size, entry_start, entry_stop, common_keys
+        )
+        step_sum += int(ttree_step)
 
     entry_step = round(step_sum / len(ttrees))
 
