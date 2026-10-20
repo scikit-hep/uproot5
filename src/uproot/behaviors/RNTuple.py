@@ -941,10 +941,10 @@ class HasFields(Mapping):
         return arrays
 
     def __array__(self, *args, **kwargs):
-        if isinstance(self, uproot.behaviors.RNTuple.RNTuple):
-            out = self.arrays(library="np")
-        else:
+        if isinstance(self, uproot.models.RNTuple.RField):
             out = self.array(library="np")
+        else:
+            out = self.arrays(library="np")
         if args == () and kwargs == {}:
             return out
         else:
