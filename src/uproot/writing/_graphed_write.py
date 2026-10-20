@@ -155,10 +155,7 @@ def root_write(
         array (``graphed.Array``): A record whose fields become the ``TBranches``, as in
             :doc:`uproot.writing._graphed_write.graphed_write`.
         destination (path-like): Output directory, or an fsspec URL, created here with
-            ``storage_options``, which also reach each part's write. ``graphed`` creates a part's
-            directory on the filesystem built from its URL alone, so a filesystem that needs
-            ``storage_options`` to connect (S3 with a custom endpoint, sftp) is not supported
-            until ``graphed`` 0.0.9.
+            ``storage_options``, which also reach each part's directory and write.
         name (callable): ``name(partition) -> str``, each task's part file name; it must tell
             every partition apart (a blind partition's entry range is unresolved).
         tree_name, title, field_name, initial_basket_capacity, counter_name, resize_factor,
@@ -168,12 +165,12 @@ def root_write(
     Returns a ``graphed.write.PartWrite`` for ``graphed.aggregate_plan(..., writes=[...])``: each
     task writes its part, one ``TTree`` file, from the same read and evaluation as the plan's
     reductions, and ``reduce`` receives the part's path after the outputs' values. Unlike
-    ``graphed_write``, every task writes a part, an empty one included. Needs graphed 0.0.7 or
+    ``graphed_write``, every task writes a part, an empty one included. Needs graphed 0.0.9 or
     newer.
 
     **Experimental**: tracks a pre-1.0 ``graphed``; the API may change without a deprecation cycle.
     """
-    graphed = uproot.extras.graphed("0.0.7", "uproot.root_write")
+    graphed = uproot.extras.graphed("0.0.9", "uproot.root_write")
 
     _refuse_non_record(array, "root_write")
     codec = _RootCodec.of(locals())
@@ -185,7 +182,11 @@ def root_write(
     else:
         destination = _reported(fs, root)
     return graphed.write.PartWrite(
-        array=array, destination=destination, name=name, codec=codec
+        array=array,
+        destination=destination,
+        name=name,
+        codec=codec,
+        storage_options=storage_options,
     )
 
 

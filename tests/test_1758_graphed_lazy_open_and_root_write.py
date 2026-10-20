@@ -243,7 +243,9 @@ def test_explicit_steps_of_unopened_files_are_their_partitions(tmp_path):
 
 # ---- root_write ----------------------------------------------------------------------------
 needs_part_write = pytest.mark.skipif(
-    not hasattr(graphed.write, "PartWrite"), reason="root_write needs graphed 0.0.7"
+    uproot._util.parse_version(graphed.__version__)
+    < uproot._util.parse_version("0.0.9"),
+    reason="root_write needs graphed 0.0.9",
 )
 
 
@@ -323,9 +325,9 @@ def test_root_write_refusals(tmp_path, monkeypatch):
     g = uproot.graphed(_make_tree(os.path.join(tmp_path, "in.root")))
     with pytest.raises(TypeError, match="root_write writes a record's fields"):
         uproot.root_write(g.x, str(tmp_path), name=_step_name)
-    monkeypatch.setattr(graphed, "__version__", "0.0.6")
+    monkeypatch.setattr(graphed, "__version__", "0.0.8")
     with pytest.raises(
-        ModuleNotFoundError, match=r"^uproot\.root_write needs graphed 0\.0\.7 or newer"
+        ModuleNotFoundError, match=r"^uproot\.root_write needs graphed 0\.0\.9 or newer"
     ):
         uproot.root_write(gak.zip({"x": g.x}), str(tmp_path), name=_step_name)
 
@@ -341,13 +343,13 @@ def test_root_write_creates_its_destination_with_storage_options(tmp_path, monke
     from fsspec.implementations.memory import MemoryFileSystem
 
     made = []
-    real = MemoryFileSystem.mkdirs
+    real = MemoryFileSystem.makedirs
 
     def spy(self, path, exist_ok=False):
         made.append((path, self.storage_options))
         real(self, path, exist_ok=exist_ok)
 
-    monkeypatch.setattr(MemoryFileSystem, "mkdirs", spy)
+    monkeypatch.setattr(MemoryFileSystem, "makedirs", spy)
     g = uproot.graphed(_make_tree(os.path.join(tmp_path, "in.root"), n=4))
     write = uproot.root_write(
         gak.zip({"x": g.x}),
@@ -366,6 +368,7 @@ def test_root_write_creates_its_destination_with_storage_options(tmp_path, monke
         )
     )
     assert path == "memory:///u1758/part-00000.root"
+    assert made == [("/u1758", {"token": "t"})] * 3
     assert MemoryFileSystem().cat_file("/u1758/part-00000.root")[:4] == b"root"
 
 
