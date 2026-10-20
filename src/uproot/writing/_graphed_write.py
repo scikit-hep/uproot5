@@ -179,8 +179,13 @@ def root_write(
     codec = _RootCodec.of(locals())
     fs, root = url_to_fs(os.fspath(destination), **(storage_options or {}))
     fs.mkdirs(root, exist_ok=True)
+    # graphed joins a local part with os.sep, so the absolute root is given in the OS's spelling
+    if isinstance(fs, LocalFileSystem):
+        destination = os.path.normpath(root)
+    else:
+        destination = _reported(fs, root)
     return graphed.write.PartWrite(
-        array=array, destination=_reported(fs, root), name=name, codec=codec
+        array=array, destination=destination, name=name, codec=codec
     )
 
 

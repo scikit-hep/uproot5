@@ -297,11 +297,13 @@ def _selection(leaf):
     return "the whole TTree" if leaf is None else f"the TBranch {leaf!r}"
 
 
-def _resolve_entries(files, open_files, custom_classes, allow_missing, options):
+def _resolve_entries(
+    files, open_files, custom_classes, allow_missing, options, directories
+):
     """Every entry of ``files`` as ``(file_path, tree_path, steps, found)``, where ``found`` is the
-    opened object (a leaf ``TBranch`` included) or ``None`` for a file left unopened, and the
-    files opened, ``{file_path: directory}``. An entry whose file lacks the object is dropped
-    under ``allow_missing``.
+    opened object (a leaf ``TBranch`` included) or ``None`` for a file left unopened; the files
+    opened go in ``directories``, ``{file_path: directory}``, for the caller to close even when
+    this raises. An entry whose file lacks the object is dropped under ``allow_missing``.
 
     A file is opened when it holds the first entry that has the object, with ``open_files``, when
     it is listed more than once (so the same ``TTree`` spelled two ways resolves to one
@@ -310,7 +312,6 @@ def _resolve_entries(files, open_files, custom_classes, allow_missing, options):
     leaf ``TBranch`` when it is the first entry's path. Every entry must select the first entry's
     leaf ``TBranch``, or none when the first names a ``TTree``."""
     listed = collections.Counter(_file_and_path(f, o)[0] for f, o, *_ in files)
-    directories = {}
     first_path = leaf = unset
     resolved = []
     for given, given_path, *steps in files:
@@ -350,7 +351,7 @@ def _resolve_entries(files, open_files, custom_classes, allow_missing, options):
                 f"file selects {_selection(leaf)}; select the same in every file"
             )
         resolved.append((file_path, tree_path, steps, found))
-    return resolved, directories
+    return resolved
 
 
 def _uproot_source(array, what):
@@ -507,10 +508,16 @@ def graphed(
         explicit_chunks = [f[2] for f in files] if all(is_3arg) else None
         name = _name_from_object_path(file_tree)
     else:
-        resolved, directories = _resolve_entries(
-            files, open_files, custom_classes, allow_missing, real_options
-        )
+        directories = {}
         try:
+            resolved = _resolve_entries(
+                files,
+                open_files,
+                custom_classes,
+                allow_missing,
+                real_options,
+                directories,
+            )
             found = [(found,) for *_, found in resolved if found is not None]
             ttrees, common_keys, _, _ = _trees_and_keys(
                 found if open_files else found[:1],

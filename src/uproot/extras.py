@@ -256,10 +256,8 @@ def graphed(minimum=_GRAPHED_MIN, caller="uproot.graphed"):
         import graphed.provenance
         import graphed.write
     except ModuleNotFoundError as err:
-        raise ModuleNotFoundError(
-            """for uproot.graphed, install the 'graphed' package with:
-    pip install graphed"""
-        ) from err
+        raise ModuleNotFoundError(f"""for {caller}, install the 'graphed' package with:
+    pip install graphed""") from err
     if parse_version(graphed.__version__) < parse_version(minimum):
         raise ModuleNotFoundError(
             f"{caller} needs graphed {minimum} or newer; you have graphed {graphed.__version__}"

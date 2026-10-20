@@ -153,11 +153,22 @@ def test_a_later_entry_selecting_another_branch_is_refused(tmp_path, later, open
 
 @pytest.mark.parametrize("open_files", [False, True])
 def test_a_later_entry_selecting_a_branch_of_a_whole_tree_is_refused(
-    tmp_path, open_files
+    tmp_path, open_files, monkeypatch
 ):
+    import uproot._graphed
+
+    opened = []
+    real = uproot._graphed._open_directory
+
+    def spy(*args):
+        opened.append(real(*args))
+        return opened[-1]
+
+    monkeypatch.setattr(uproot._graphed, "_open_directory", spy)
     a, b = (_make_tree(os.path.join(tmp_path, f"{x}.root")) for x in "ab")
     with pytest.raises(ValueError, match="selects the TBranch 'x', but the first"):
         uproot.graphed([a + ":events", b + ":events/x"], open_files=open_files)
+    assert [d.file.closed for d in opened] == [True, True]
 
 
 def test_an_rntuple_read_with_align_baskets_names_its_file(tmp_path):
@@ -373,3 +384,12 @@ def test_root_write_takes_a_path_destination(tmp_path):
     )
     assert path == str(tmp_path / "out" / "part-00000.root")
     assert uproot.open(path)["tree"]["x"].array().tolist() == [0.0, 1.0, 2.0, 3.0]
+
+
+@needs_part_write
+def test_root_write_reports_a_relative_destination_absolute(tmp_path, monkeypatch):
+    g = uproot.graphed(_make_tree(os.path.join(tmp_path, "in.root"), n=4))
+    monkeypatch.chdir(tmp_path)
+    write = uproot.root_write(gak.zip({"x": g.x}), "rel", name=_step_name)
+    assert os.path.isabs(write.destination)
+    assert os.path.samefile(write.destination, tmp_path / "rel")
