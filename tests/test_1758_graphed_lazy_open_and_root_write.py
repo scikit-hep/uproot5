@@ -393,3 +393,16 @@ def test_root_write_reports_a_relative_destination_absolute(tmp_path, monkeypatc
     write = uproot.root_write(gak.zip({"x": g.x}), "rel", name=_step_name)
     assert os.path.isabs(write.destination)
     assert os.path.samefile(write.destination, tmp_path / "rel")
+
+
+def test_a_filter_matching_nothing_names_the_one_opened_file(tmp_path):
+    a = _make_tree(os.path.join(tmp_path, "a.root"))
+    b = _make_tree(os.path.join(tmp_path, "b.root"))
+    with pytest.raises(
+        ValueError, match=r"a\.root.*Only this first file is opened.*all 2 files"
+    ):
+        uproot.graphed([a + ":events", b + ":events"], filter_name="nomatch")
+    with pytest.raises(ValueError, match="have no TBranches in common"):
+        uproot.graphed(
+            [a + ":events", b + ":events"], filter_name="nomatch", open_files=True
+        )

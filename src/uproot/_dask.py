@@ -1727,13 +1727,21 @@ def _resolve_trees_and_keys(
 
 
 def _trees_and_keys(
-    found, files, filter_name, filter_typename, filter_branch, recursive, full_paths
+    found,
+    files,
+    filter_name,
+    filter_typename,
+    filter_branch,
+    recursive,
+    full_paths,
+    first_of=None,
 ):
     """Intersect the keys of ``found``, the ``(object, *steps)`` of the entries of ``files``
     (named in errors) whose object exists; a leaf ``TBranch`` stands for its parent ``TTree`` with
     that one branch selected (``is_self``). Returns ``(ttrees, common_keys, is_self,
     explicit_chunks)``; ``explicit_chunks`` is ``None`` unless every entry carries its own
-    ``steps``."""
+    ``steps``. ``first_of=N`` says ``found`` is only the first of ``N`` files, standing for all.
+    """
     ttrees = []
     explicit_chunks = []
     common_keys = None
@@ -1795,6 +1803,14 @@ def _trees_and_keys(
             )
         )
 
+    if first_of is not None and len(common_keys) == 0:
+        tree = ttrees[0]
+        raise ValueError(
+            f"no TBranches of {{{tree.file.file_path!r}: {tree.object_path!r}}} pass "
+            f"filter_name/filter_typename/filter_branch. Only this first file is opened, and its "
+            f"TBranches stand for all {first_of} files: check the filters, or whether this file "
+            "is representative of the rest (open_files=True checks every file)"
+        )
     if len(common_keys) == 0 or not (all(is_self) or not any(is_self)):
         raise ValueError(
             "TTrees in\n\n    {}\n\nhave no TBranches in common".format(

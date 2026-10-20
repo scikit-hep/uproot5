@@ -527,6 +527,7 @@ def graphed(
                 filter_branch,
                 recursive,
                 full_paths,
+                first_of=None if open_files else len(files),
             )
             if align_baskets and any(isinstance(t, HasFields) for t in ttrees):
                 raise NotImplementedError(
