@@ -58,25 +58,14 @@ class TAxis:
         The indexing assumes that ``flow=False``.
         """
         fNbins = self.member("fNbins")
-        fXbins = self.member("fXbins", none_if_missing=True)
         fLabels = self.member("fLabels", none_if_missing=True)
 
         if fLabels is not None and len(fLabels) == fNbins:
             return str(fLabels[where])
 
-        if where < 0:
-            where += fNbins
-        if not 0 <= where < fNbins:
-            raise IndexError("axis index out of range")
-
-        if fXbins is None or len(fXbins) != fNbins + 1:
-            fXmin, fXmax = self.member("fXmin"), self.member("fXmax")
-            low = (fXmax - fXmin) * (where) / float(fNbins) + fXmin
-            high = (fXmax - fXmin) * (where + 1) / float(fNbins) + fXmin
-            return low, high
-
-        else:
-            return fXbins[where], fXbins[where + 1]
+        # Index into the same intervals that __iter__ yields, so that NumPy
+        # handles negative, out-of-range and array indexes
+        return tuple(self.intervals()[where].T)
 
     def __iter__(self):
         """
@@ -96,7 +85,9 @@ class TAxis:
         Returns True if ``x`` is one of the labels or intervals for this axis;
         False otherwise.
         """
-        return any(x == y for y in self)
+        return any(
+            x == y if isinstance(y, str) else numpy.array_equal(x, y) for y in self
+        )
 
     def __eq__(self, other):
         """

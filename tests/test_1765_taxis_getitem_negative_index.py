@@ -14,11 +14,33 @@ def test_regular_axis_negative_index():
         axis = f["hpx"].axis()
         assert axis[-1] == pytest.approx((3.92, 4.0))
         assert axis[-100] == axis[0]
-        assert axis[-1] == tuple(list(axis)[-1])
+        # axis[i] matches the intervals that iteration yields for every bin
+        bins = list(axis)
+        for i in range(-100, 100):
+            assert axis[i] == tuple(bins[i])
         with pytest.raises(IndexError):
             axis[100]
         with pytest.raises(IndexError):
             axis[-101]
+        with pytest.raises(IndexError):
+            axis[99.5]
+
+
+def test_regular_axis_array_index():
+    with uproot.open(skhep_testdata.data_path("uproot-hepdata-example.root")) as f:
+        axis = f["hpx"].axis()
+        low, high = axis[numpy.arange(3)]
+        assert low == pytest.approx([-4.0, -3.92, -3.84])
+        assert high == pytest.approx([-3.92, -3.84, -3.76])
+        assert axis[numpy.int8(-1)] == axis[99]
+
+
+def test_axis_contains_its_own_bins():
+    with uproot.open(skhep_testdata.data_path("uproot-hepdata-example.root")) as f:
+        axis = f["hpx"].axis()
+        assert axis[0] in axis
+        assert axis[-1] in axis
+        assert (100.0, 200.0) not in axis
 
 
 def test_variable_axis_negative_index(tmp_path):
