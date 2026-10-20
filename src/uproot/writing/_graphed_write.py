@@ -157,7 +157,8 @@ def root_write(
         destination (path-like): Output directory, or an fsspec URL, created here with
             ``storage_options``, which also reach each part's write. ``graphed`` creates a part's
             directory on the filesystem built from its URL alone, so a filesystem that needs
-            ``storage_options`` to connect (S3 with a custom endpoint, sftp) is not supported.
+            ``storage_options`` to connect (S3 with a custom endpoint, sftp) is not supported
+            until ``graphed`` 0.0.9.
         name (callable): ``name(partition) -> str``, each task's part file name; it must tell
             every partition apart (a blind partition's entry range is unresolved).
         tree_name, title, field_name, initial_basket_capacity, counter_name, resize_factor,
