@@ -146,13 +146,20 @@ def open(
     # universal-pathlib). Extract before regularize_path so that if the object
     # ever gains __fspath__ the options aren't lost when it is converted to str.
     # Caller-provided kwargs take precedence over path-embedded options.
+    # Only sources that forward them to fsspec can use these options.
     if hasattr(file_path, "storage_options") and not isinstance(
         file_path, (str, bytes)
     ):
-        options = {**file_path.storage_options, **options}
+        handler = options.get("handler")
+        if handler is None or (
+            isinstance(handler, type)
+            and issubclass(handler, uproot.source.fsspec.FSSpecSource)
+        ):
+            options = {**file_path.storage_options, **options}
         file_path = str(file_path)
 
     file_path = uproot._util.regularize_path(file_path)
+    uproot._util._check_unknown_options(options, file_path)
 
     if not isinstance(file_path, str) and not (
         hasattr(file_path, "read") and hasattr(file_path, "seek")
@@ -181,6 +188,7 @@ def open(
 
 open.defaults = {
     "handler": None,
+    "timeout": None,
     "max_num_elements": None,
     "num_workers": 1,
     "use_threads": sys.platform != "emscripten",
