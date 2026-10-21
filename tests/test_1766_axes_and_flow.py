@@ -103,7 +103,8 @@ def test_labels_partial(tmp_path, make):
     assert axis.labels() is None
     assert not axis.traits.discrete
 
-    out = h.to_hist()
+    with pytest.warns(UserWarning, match="labels for only 2 of its 6 bins"):
+        out = h.to_hist()
     assert out.axes[0].edges.tolist() == [0, 1, 2, 3, 4, 5, 6]
     assert out.values().tolist() == [10, 0, 0, 0, 50, 0]
 
@@ -131,16 +132,19 @@ def test_labels_pyroot(tmp_path):
     for bin_number, label in [(3, "w"), (2, "v"), (1, "u")]:
         h.GetYaxis().SetBinLabel(bin_number, label)
     h.Fill(1.5, 2.5, 7)
-    p = ROOT.TProfile("p_1766_labels", "", 6, 0, 6)
+    # filling a 3-bin axis with a 4th label doubles its bins, leaving 2 unlabeled
+    p = ROOT.TProfile("p_1766_labels", "", 3, 0, 3)
     p.SetDirectory(f)
-    p.GetXaxis().SetBinLabel(2, "b")
-    p.Fill(4.5, 5)
+    for label, y in [("c", 1), ("a", 2), ("b", 3), ("d", 4)]:
+        p.Fill(label, y)
+    expected = [p.GetBinContent(i) for i in range(1, p.GetNbinsX() + 1)]
     f.Write()
     f.Close()
 
     with uproot.open(filepath) as f:
         h = f["h2_1766_labels"].to_hist()
-        p = f["p_1766_labels"].to_hist()
+        with pytest.warns(UserWarning, match="labels for only 4 of its 6 bins"):
+            p = f["p_1766_labels"].to_hist()
 
     assert list(h.axes[0]) == ["x", "y"]
     assert list(h.axes[1]) == ["u", "v", "w"]
@@ -148,7 +152,7 @@ def test_labels_pyroot(tmp_path):
     assert h.values().sum() == 7
 
     assert p.axes[0].edges.tolist() == [0, 1, 2, 3, 4, 5, 6]
-    assert p.values().tolist() == [0, 0, 0, 0, 5, 0]
+    assert p.values().tolist() == expected == [1, 2, 3, 4, 0, 0]
 
 
 @pytest.mark.parametrize(

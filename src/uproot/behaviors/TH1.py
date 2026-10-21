@@ -24,6 +24,17 @@ def _boost_axis(axis, metadata):
     fXbins = axis.member("fXbins", none_if_missing=True)
 
     labels = axis._bin_labels()
+    fLabels = axis.member("fLabels", none_if_missing=True)
+    if labels is None and fLabels is not None and len(fLabels) > 0:
+        # e.g. ROOT extends a labeled axis by doubling its bins when it's filled
+        # with a new label, leaving the added bins unlabeled
+        warnings.warn(
+            f"axis {axis.member('fName')!r} has labels for only {len(fLabels)} "
+            f"of its {fNbins} bins, so it is converted to a numerical axis and "
+            "its labels are dropped",
+            stacklevel=3,
+        )
+
     if labels is not None:
         try:
             labels = [int(x) for x in labels]
