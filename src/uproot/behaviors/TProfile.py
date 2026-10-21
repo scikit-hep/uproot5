@@ -96,7 +96,9 @@ def _values_errors_1d(error_mode, fBinEntries, root_cont, fSumw2, fNcells, fBinS
 
     if error_mode == _kERRORSPREADG:
         out = numpy.zeros(len(root_cont), dtype=numpy.float64)
-        out[nonzero] = 1.0 / numpy.sqrt(root_sum[nonzero])
+        # NaN for a negative sum of weights, as in ROOT
+        with numpy.errstate(invalid="ignore"):
+            out[nonzero] = 1.0 / numpy.sqrt(root_sum[nonzero])
         return root_contsum, out
 
     root_err2 = fSumw2

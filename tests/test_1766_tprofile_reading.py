@@ -65,7 +65,7 @@ def test_error_mode(tmp_path, error_mode, names, expected):
         p.errors(error_mode="x")
 
 
-@pytest.mark.parametrize("weights", ["unweighted", "weighted"])
+@pytest.mark.parametrize("weights", ["unweighted", "weighted", "negative"])
 @pytest.mark.parametrize("option", ["", "s", "i", "g"])
 @pytest.mark.parametrize("ndim", [1, 2, 3])
 def test_errors_pyroot(tmp_path, ndim, option, weights):
@@ -82,9 +82,10 @@ def test_errors_pyroot(tmp_path, ndim, option, weights):
     p.SetDirectory(ROOT.nullptr)
     if weights != "unweighted":
         p.Sumw2()
+    low = -1 if weights == "negative" else 0.5
     for _ in range(2000):
         x = rng.uniform(-0.5, 3.5, 4)
-        w = 1.0 if weights == "unweighted" else rng.uniform(0.5, 2)
+        w = 1.0 if weights == "unweighted" else rng.uniform(low, 2)
         p.Fill(*x[:ndim], rng.normal(5, 2), w)
 
     filepath = os.path.join(tmp_path, "test.root")
@@ -98,6 +99,7 @@ def test_errors_pyroot(tmp_path, ndim, option, weights):
         errors = u.errors(flow=True)
         counts = u.counts(flow=True)
         assert u.weighted == (weights != "unweighted")
+        assert u == u  # even with NaN errors (option "g" with negative weights)
 
     for index in np.ndindex(errors.shape):
         b = p.GetBin(*index)
@@ -116,6 +118,11 @@ def test_equality(tmp_path):
     with uproot.open(skhep_testdata.data_path("uproot-issue-227a.root")) as f:
         key = _key(f, "TProfile2D")
         assert f[key] == f[key]
+
+    # option "g" gives NaN errors for a negative sum of weights, as in ROOT
+    p = _write_and_read(tmp_path, _profile(3, fBinEntries=(0.0, -2.0, 2.0, 0.0)))
+    assert np.isnan(p.errors()[0])
+    assert p == p
 
 
 @pytest.mark.parametrize(

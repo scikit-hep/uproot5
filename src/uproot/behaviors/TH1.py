@@ -91,8 +91,11 @@ class Histogram:
             return False
         self_values, self_variances = self._values_variances(True)
         other_values, other_variances = other._values_variances(True)
-        values_equal = numpy.array_equal(self_values, other_values)
-        variances_equal = numpy.array_equal(self_variances, other_variances)
+        # bins can legitimately be NaN (e.g. profile errors with negative weights)
+        values_equal = numpy.array_equal(self_values, other_values, equal_nan=True)
+        variances_equal = numpy.array_equal(
+            self_variances, other_variances, equal_nan=True
+        )
         return values_equal and variances_equal
 
     @property
