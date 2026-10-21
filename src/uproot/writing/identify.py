@@ -239,6 +239,9 @@ def to_writable(obj):
         if fSumw2 is not None:
             assert data.shape == fSumw2.shape
 
+        # with weights, ROOT's fTsumw2 is the sum of squared weights, not of weights
+        sumw2_noflow = None if fSumw2 is None else obj.variances(flow=False)
+
         # data are stored in transposed order for 2D and 3D
         data = data.T.reshape(-1)
         if fSumw2 is not None:
@@ -375,7 +378,7 @@ def to_writable(obj):
                 )
             else:
                 fTsumw, fTsumw2, fTsumwx, fTsumwx2 = _root_stats_1d(
-                    obj.values(flow=False), obj.axes[0].edges
+                    obj.values(flow=False), obj.axes[0].edges, sumw2_noflow
                 )
                 return to_TH1x(
                     fName=None,
@@ -405,7 +408,10 @@ def to_writable(obj):
                     fTsumwy2,
                     fTsumwxy,
                 ) = _root_stats_2d(
-                    obj.values(flow=False), obj.axes[0].edges, obj.axes[1].edges
+                    obj.values(flow=False),
+                    obj.axes[0].edges,
+                    obj.axes[1].edges,
+                    sumw2_noflow,
                 )
                 return to_TH2x(
                     fName=None,
@@ -447,6 +453,7 @@ def to_writable(obj):
                     obj.axes[0].edges,
                     obj.axes[1].edges,
                     obj.axes[2].edges,
+                    sumw2_noflow,
                 )
                 return to_TH3x(
                     fName=None,
@@ -727,20 +734,22 @@ def _fLabels_maybe_categorical(axis, boost_histogram):
     return labels
 
 
-def _root_stats_1d(entries, edges):
+def _root_stats_1d(entries, edges, sumw2=None):
     centers = (edges[:-1] + edges[1:]) / 2.0
 
-    fTsumw = fTsumw2 = entries.sum()
+    fTsumw = entries.sum()
+    fTsumw2 = fTsumw if sumw2 is None else sumw2.sum()
     fTsumwx = (entries * centers).sum()
     fTsumwx2 = (entries * centers**2).sum()
 
     return fTsumw, fTsumw2, fTsumwx, fTsumwx2
 
 
-def _root_stats_2d(entries, xedges, yedges):
+def _root_stats_2d(entries, xedges, yedges, sumw2=None):
     xcenters = (xedges[:-1] + xedges[1:]) / 2.0
     ycenters = (yedges[:-1] + yedges[1:]) / 2.0
-    fTsumw = fTsumw2 = entries.sum()
+    fTsumw = entries.sum()
+    fTsumw2 = fTsumw if sumw2 is None else sumw2.sum()
     fTsumwx = (entries.T * xcenters).sum()
     fTsumwx2 = (entries.T * xcenters**2).sum()
     fTsumwy = (entries * ycenters).sum()
@@ -749,11 +758,12 @@ def _root_stats_2d(entries, xedges, yedges):
     return fTsumw, fTsumw2, fTsumwx, fTsumwx2, fTsumwy, fTsumwy2, fTsumwxy
 
 
-def _root_stats_3d(entries, xedges, yedges, zedges):
+def _root_stats_3d(entries, xedges, yedges, zedges, sumw2=None):
     xcenters = (xedges[:-1] + xedges[1:]) / 2.0
     ycenters = (yedges[:-1] + yedges[1:]) / 2.0
     zcenters = (zedges[:-1] + zedges[1:]) / 2.0
-    fTsumw = fTsumw2 = entries.sum()
+    fTsumw = entries.sum()
+    fTsumw2 = fTsumw if sumw2 is None else sumw2.sum()
     fTsumwx = (numpy.transpose(entries, (1, 2, 0)) * xcenters).sum()
     fTsumwx2 = (numpy.transpose(entries, (1, 2, 0)) * xcenters**2).sum()
     fTsumwy = (numpy.transpose(entries, (2, 0, 1)) * ycenters).sum()
