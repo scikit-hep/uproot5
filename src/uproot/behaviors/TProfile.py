@@ -196,8 +196,11 @@ class Profile(uproot.behaviors.TH1.Histogram):
 
         Note that these follow ROOT's conventions, which differ from those of
         boost-histogram's ``variances()`` (for example, after ``to_hist``):
-        ROOT does not apply Bessel's correction to the spread, and gives zero
-        error (rather than NaN) for bins with a single entry.
+        ROOT does not apply Bessel's correction to the spread, gives zero
+        error (rather than NaN) for bins with a single entry, and, with weights,
+        divides by the effective number of entries rather than the sum of
+        weights. boost-histogram also always gives the error on the mean,
+        whatever the profile's error option.
 
         Setting ``flow=True`` increases the length of each dimension by two.
         """
@@ -340,8 +343,10 @@ class TProfile(Profile):
         The per-bin sums are carried over exactly, but boost-histogram computes
         ``variances()`` with its own conventions, which differ from
         :ref:`uproot.behaviors.TProfile.Profile.variances`: it applies Bessel's
-        correction, gives NaN for bins with a single entry, and ignores the
-        profile's error option (which is kept in ``metadata["fErrorMode"]``).
+        correction, gives NaN for bins with a single entry, divides by the sum
+        of weights rather than the effective number of entries (for weighted
+        profiles), and ignores the profile's error option (which is kept in
+        ``metadata["fErrorMode"]``).
         """
         boost_histogram = uproot.extras.boost_histogram()
 
