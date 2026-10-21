@@ -52,15 +52,20 @@ public:
 """)
         to_pyroot._Uproot_FromTMessage = ROOT._Uproot_FromTMessage
 
-    serialized = uproot.serialization.serialize_object_any(obj, name)
+    # Objects read from a file have the class versions of the file that wrote
+    # them, which Uproot may not be able to serialize; convert them to the
+    # versions that Uproot writes, as writing them to a file does.
+    serialized = uproot.serialization.serialize_object_any(obj.to_writable(), name)
     buffer = numpy.empty(len(serialized) + 8, numpy.uint8)
     buffer[:8].view(numpy.uint64)[0] = ROOT.kMESS_OBJECT
     buffer[8:] = numpy.frombuffer(serialized, numpy.uint8)
 
     message = to_pyroot._Uproot_FromTMessage(buffer, len(buffer))
-    out = message.ReadObject(message.GetClass())
-    message.DetachBuffer()
-    return out
+    try:
+        return message.ReadObject(message.GetClass())
+    finally:
+        # The buffer belongs to NumPy, so the TMessage must not free it.
+        message.DetachBuffer()
 
 
 to_pyroot._Uproot_FromTMessage = None
