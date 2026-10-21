@@ -159,6 +159,48 @@ pyroot_to_buffer._lock = threading.Lock()
 pyroot_to_buffer._copy = None
 
 
+def _serialize_in_key(obj, key_num_bytes):
+    """
+    Serializes a PyROOT object as ROOT does in a TKey of ``key_num_bytes``,
+    which matters because references to other objects within it (e.g. axis labels
+    or list items) are relative to the start of the key.
+    """
+    import ROOT
+
+    with pyroot_to_buffer._lock:
+        if _serialize_in_key._serialize is None:
+            ROOT.gInterpreter.Declare("""
+#include "TBufferFile.h"
+
+Long64_t _uproot_serialize_in_key(TObject* obj, Int_t keylen, std::vector<char>& out) {
+    // as TKey::TKey(const TObject*, ...) does, after writing the key itself
+    TBufferFile buffer(TBuffer::kWrite, keylen + 10000);
+    buffer.SetBufferOffset(keylen);
+    buffer.MapObject(obj);
+    obj->Streamer(buffer);
+    out.assign(buffer.Buffer() + keylen, buffer.Buffer() + buffer.Length());
+    return out.size();
+}
+
+void _uproot_copy_vector(std::vector<char>& data, size_t out_addr) {
+    memcpy((void*)out_addr, data.data(), data.size());
+}
+""")
+            _serialize_in_key._serialize = ROOT._uproot_serialize_in_key
+            _serialize_in_key._copy = ROOT._uproot_copy_vector
+
+        data = ROOT.std.vector("char")()
+        buffer = numpy.empty(
+            _serialize_in_key._serialize(obj, key_num_bytes, data), numpy.uint8
+        )
+        _serialize_in_key._copy(data, buffer.ctypes.data)
+        return buffer
+
+
+_serialize_in_key._serialize = None
+_serialize_in_key._copy = None
+
+
 class _GetStreamersOnce:
     _custom_classes = None
     _streamers = {}
@@ -340,10 +382,13 @@ class _PyROOTWritable:
     def fTitle(self):
         return self._obj.GetTitle()
 
-    def serialize(self, name=None):
+    # see uproot.writing.identify.add_to_directory
+    references_relative_to_key = True
+
+    def serialize(self, name=None, key_num_bytes=0):
         if name is None or name == self._obj.GetName():
             obj = self._obj
         else:
             obj = self._obj.Clone(name)
 
-        return pyroot_to_buffer(obj)[len(self.classname) + 9 :].tobytes()
+        return _serialize_in_key(obj, key_num_bytes).tobytes()

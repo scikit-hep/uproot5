@@ -70,17 +70,46 @@ def add_to_directory(obj, name, directory, streamers):
             else:
                 streamers.append(rawstreamer)
 
-        uncompressed_data = writable.serialize(name=name)
-        compressed_data = uproot.compression.compress(
-            uncompressed_data, directory.file.compression
-        )
-
         if hasattr(writable, "fTitle"):
             title = writable.fTitle
         elif writable.has_member("fTitle"):
             title = writable.member("fTitle")
         else:
             title = ""
+
+        big = None
+        if getattr(writable, "references_relative_to_key", False):
+            # References to other objects within it (as ROOT serializes them) are
+            # relative to the start of its key, whose size depends on where it goes.
+            # That's known in advance except near 2 GB, where a small key may not
+            # fit; then use a big key (with 8-byte pointers), which fits anywhere.
+            cascading = directory._cascading
+            key_num_bytes = cascading.key_num_bytes(writable.classname, name, title, 0)
+            uncompressed_data = writable.serialize(
+                name=name, key_num_bytes=key_num_bytes
+            )
+            compressed_data = uproot.compression.compress(
+                uncompressed_data, directory.file.compression
+            )
+            if key_num_bytes != cascading.key_num_bytes(
+                writable.classname, name, title, len(compressed_data)
+            ):
+                big = True
+                key_num_bytes = cascading.key_num_bytes(
+                    writable.classname, name, title, 0, big=True
+                )
+                uncompressed_data = writable.serialize(
+                    name=name, key_num_bytes=key_num_bytes
+                )
+                compressed_data = uproot.compression.compress(
+                    uncompressed_data, directory.file.compression
+                )
+
+        else:
+            uncompressed_data = writable.serialize(name=name)
+            compressed_data = uproot.compression.compress(
+                uncompressed_data, directory.file.compression
+            )
 
         directory._cascading.add_object(
             directory.file.sink,
@@ -89,6 +118,7 @@ def add_to_directory(obj, name, directory, streamers):
             title,
             compressed_data,
             len(uncompressed_data),
+            big=big,
         )
 
 

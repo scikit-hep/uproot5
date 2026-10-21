@@ -320,6 +320,8 @@ def test_write_list(tmp_path, kind):
     for i, h in enumerate(hists):
         _assert_same(h, collection.At(slots[i]))
     fin.Close()
+
+
 def test_pyroot_errors_and_copies():
     h = ROOT.TH1D("h_1768_copy", "", 3, 0, 3)
     h.SetDirectory(ROOT.nullptr)
@@ -339,3 +341,76 @@ def test_pyroot_errors_and_copies():
     )
     with pytest.raises(TypeError, match="interpreted class"):
         uproot.from_pyroot(ROOT._uproot_1768_interpreted())
+
+
+@pytest.mark.parametrize("compressed", [False, True])
+def test_write_pyroot(tmp_path, compressed):
+    # PyROOT objects are written as ROOT serializes them, but with references to
+    # other objects within them (labels, list items, ...) relative to their keys
+    labeled = _make("TH1D", f"h_1768_write_labeled_{compressed}", False)
+    labeled.SetDirectory(ROOT.nullptr)
+    labeled.SetStats(False)
+    labeled.SetOption("hist")
+    labeled.GetXaxis().SetRange(2, 4)
+    labeled.GetXaxis().CenterTitle()
+    hists = [_make("TH2D", f"h_1768_write_{compressed}_{i}", True) for i in range(3)]
+    collection = ROOT.TList()
+    for h in hists:
+        h.SetDirectory(ROOT.nullptr)
+        collection.Add(h)
+    graph = ROOT.TGraph(2, np.array([1.0, 2.0]), np.array([3.0, 4.0]))
+    graph.SetNameTitle("graph", "title;x title;y title")
+    graph.GetHistogram()
+    graph.SetEditable(False)
+    poly = ROOT.TH2Poly(f"poly_1768_write_{compressed}", "", 0, 2, 0, 2)
+    poly.SetDirectory(ROOT.nullptr)
+    for a in (0.0, 1.0):
+        x, y = np.array([a, a + 1, a + 1, a]), np.array([a, a, a + 1, a + 1])
+        poly.AddBin(ROOT.TGraph(4, x, y))
+    poly.Fill(1.5, 1.5, 3)
+
+    filename = os.path.join(tmp_path, "uproot_written.root")
+    compression = uproot.ZLIB(1) if compressed else None
+    with uproot.recreate(filename, compression=compression) as fout:
+        fout["labeled"] = labeled
+        fout["collection"] = collection
+        fout["graph"] = graph
+        fout["poly"] = poly
+
+    fin = ROOT.TFile(filename)
+    out = fin.Get("labeled")
+    labeled.SetName("labeled")  # as written
+    _assert_same(labeled, out)
+    assert out.TestBit(ROOT.TH1.kNoStats)
+    assert out.GetOption() == "hist"
+    assert (out.GetXaxis().GetFirst(), out.GetXaxis().GetLast()) == (2, 4)
+    assert out.GetXaxis().GetCenterTitle()
+    assert fin.Get("collection").GetEntries() == 3
+    for i, h in enumerate(hists):
+        _assert_same(h, fin.Get("collection").At(i))
+    assert fin.Get("graph").GetXaxis().GetTitle() == "x title"
+    assert not fin.Get("graph").GetEditable()
+    assert fin.Get("poly").GetBinContent(2) == 3
+    fin.Close()
+
+    # and Uproot reads them
+    with uproot.open(filename) as fin:
+        assert fin["labeled"].axis().labels() == list("abcde")
+        assert len(fin["collection"]) == 3
+
+
+def test_write_pyroot_big_keys(tmp_path, monkeypatch):
+    # keys after 2 GB have 8-byte pointers, so they're bigger; pretend that
+    # starts after 3 kB, so that most of these keys are big
+    monkeypatch.setattr(uproot.const, "kStartBigFile", 3000)
+    hists = [_make("TH1D", f"h_1768_big_{i}", False) for i in range(10)]
+    filename = os.path.join(tmp_path, "uproot_written.root")
+    with uproot.recreate(filename) as fout:
+        for h in hists:
+            h.SetDirectory(ROOT.nullptr)
+            fout[h.GetName()] = h
+
+    fin = ROOT.TFile(filename)
+    for h in hists:
+        _assert_same(h, fin.Get(h.GetName()))
+    fin.Close()
