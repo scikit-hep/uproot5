@@ -4,6 +4,7 @@ import os
 
 import numpy as np
 import pytest
+import skhep_testdata
 
 import uproot
 
@@ -43,3 +44,13 @@ def test_integer_storage(tmp_path, storage, ndim):
     out = _write_and_read(tmp_path, h)
     assert out.classname == f"TH{ndim}D"
     assert out.values(flow=True).tolist() == h.values(flow=True).tolist()
+
+
+def test_write_old_class_version(tmp_path):
+    # TH1 class version 6, which has no fBinStatErrOpt or fStatOverflows
+    with uproot.open(skhep_testdata.data_path("uproot-issue64.root")) as f:
+        h = f["generator/_log_primary_w"]
+        assert h.member("fBinStatErrOpt", none_if_missing=True) is None
+        out = _write_and_read(tmp_path, h)
+        assert out.values(flow=True).tolist() == h.values(flow=True).tolist()
+        assert out.member("fEntries") == h.member("fEntries")
