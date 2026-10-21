@@ -61,17 +61,15 @@ def _error_mode_str(error_mode):
         return "_"
 
 
-# closely follows the ROOT function, using the same names (with 'root_' prepended)
-# https://github.com/root-project/root/blob/ffc7c588ac91aca30e75d356ea971129ee6a836a/hist/hist/src/TProfileHelper.h#L660-L721
-def _values_errors_1d(error_mode, fBinEntries, root_cont, fSumw2, fNcells, fBinSumw2):
+def _error_mode_int(error_mode):
     if error_mode is None or error_mode == _kERRORMEAN or error_mode == "":
-        error_mode = _kERRORMEAN
+        return _kERRORMEAN
     elif error_mode == _kERRORSPREAD or error_mode == "s":
-        error_mode = _kERRORSPREAD
+        return _kERRORSPREAD
     elif error_mode == _kERRORSPREADI or error_mode == "i":
-        error_mode = _kERRORSPREADI
+        return _kERRORSPREADI
     elif error_mode == _kERRORSPREADG or error_mode == "g":
-        error_mode = _kERRORSPREADG
+        return _kERRORSPREADG
     else:
         raise ValueError(
             "error_mode must be None/0/'' for error-on-mean,\n"
@@ -80,8 +78,14 @@ def _values_errors_1d(error_mode, fBinEntries, root_cont, fSumw2, fNcells, fBinS
             "                     or 3/'g' for Gaussian spread\n"
             "                    not "
             + repr(error_mode)
-            + "see https://root.cern.ch/doc/master/classTProfile.html"
+            + "\nsee https://root.cern.ch/doc/master/classTProfile.html"
         )
+
+
+# closely follows the ROOT function, using the same names (with 'root_' prepended)
+# https://github.com/root-project/root/blob/ffc7c588ac91aca30e75d356ea971129ee6a836a/hist/hist/src/TProfileHelper.h#L660-L721
+def _values_errors_1d(error_mode, fBinEntries, root_cont, fSumw2, fNcells, fBinSumw2):
+    error_mode = _error_mode_int(error_mode)
 
     root_sum = fBinEntries
     root_sum = numpy.asarray(root_sum, dtype=numpy.float64)

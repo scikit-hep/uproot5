@@ -333,6 +333,20 @@ def test_error_mode_roundtrip(tmp_path, error_mode):
     assert roundtrip.member("fErrorMode") == error_mode
 
 
+@pytest.mark.parametrize(
+    ("value", "expected"), [("", 0), ("s", 1), ("i", 2), ("g", 3), (2, 2), (None, 0)]
+)
+def test_error_mode_metadata(tmp_path, value, expected):
+    h = hist.Hist(hist.axis.Regular(2, 0, 2), storage=hist.storage.Mean())
+    h.fill([0.5], sample=[1.0])
+    h.metadata = {"fErrorMode": value}
+    assert _write_and_read(tmp_path, h).member("fErrorMode") == expected
+
+    h.metadata = {"fErrorMode": "x"}
+    with pytest.raises(ValueError, match="error_mode must be"):
+        _write_and_read(tmp_path, h)
+
+
 def test_non_dict_metadata(tmp_path):
     h = hist.Hist(
         hist.axis.Regular(3, 0, 3), storage=hist.storage.Mean(), metadata="info"

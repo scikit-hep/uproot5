@@ -23,6 +23,7 @@ from collections.abc import Mapping
 import awkward
 import numpy
 
+import uproot.behaviors.TProfile
 import uproot.compression
 import uproot.extras
 import uproot.pyroot
@@ -341,7 +342,9 @@ def to_writable(obj):
                         or numpy.isclose(fEntries_sumw, _sumw.sum(), rtol=1e-12, atol=0)
                     ):
                         fEntries = obj.metadata["fEntries"]
-                    fErrorMode = obj.metadata.get("fErrorMode", fErrorMode)
+                    fErrorMode = uproot.behaviors.TProfile._error_mode_int(
+                        obj.metadata.get("fErrorMode")
+                    )
 
                 return to_TProfile(
                     fName=None,
