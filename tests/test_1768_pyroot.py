@@ -476,4 +476,36 @@ def test_write_pyroot_side_effects(tmp_path):
     assert (color.GetRed(), color.GetGreen(), color.GetBlue()) == pytest.approx(
         (0.1, 0.7, 0.3)
     )
+
+
+def test_write_bits_and_strings(tmp_path):
+    # TObject bits (e.g. SetStats(0), axis ranges) and TString members (e.g.
+    # the draw option) of objects read from files are kept when written
+    h = ROOT.TH1D("h_1768_bits", "", 5, 0, 5)
+    h.SetDirectory(ROOT.nullptr)
+    h.Fill(1.5)
+    h.SetStats(False)
+    h.SetOption("hist")
+    h.GetXaxis().SetRange(2, 4)
+    h.GetXaxis().CenterTitle()
+    h.GetXaxis().SetTimeFormat("%H:%M")
+
+    root_filename = os.path.join(tmp_path, "root_written.root")
+    fout = ROOT.TFile(root_filename, "RECREATE")
+    h.Write()
+    fout.Close()
+
+    uproot_filename = os.path.join(tmp_path, "uproot_written.root")
+    with uproot.open(root_filename) as fin:
+        with uproot.recreate(uproot_filename) as fout:
+            fout[h.GetName()] = fin[h.GetName()]
+        converted = uproot.to_pyroot(fin[h.GetName()])
+
+    fin = ROOT.TFile(uproot_filename)
+    for out in [fin.Get(h.GetName()), converted]:
+        assert out.TestBit(ROOT.TH1.kNoStats)
+        assert out.GetOption() == "hist"
+        assert (out.GetXaxis().GetFirst(), out.GetXaxis().GetLast()) == (2, 4)
+        assert out.GetXaxis().GetCenterTitle()
+        assert out.GetXaxis().GetTimeFormat() == h.GetXaxis().GetTimeFormat()
     fin.Close()
