@@ -92,6 +92,22 @@ def test_read_from_root_file(tmp_path, kind, weighted):
     fin.Close()
 
 
+@pytest.mark.parametrize("weighted", [False, True])
+@pytest.mark.parametrize("kind", DIMENSIONS)
+def test_from_pyroot(tmp_path, kind, weighted):
+    obj = _make(kind, f"obj_1768_from_pyroot_{kind}_{weighted}", weighted)
+    obj.SetDirectory(ROOT.nullptr)
+    converted = uproot.from_pyroot(obj)
+    _assert_same(obj, uproot.to_pyroot(converted))
+
+    filename = os.path.join(tmp_path, "uproot_written.root")
+    with uproot.recreate(filename) as file:
+        file[obj.GetName()] = converted
+    fin = ROOT.TFile(filename)
+    _assert_same(obj, fin.Get(obj.GetName()))
+    fin.Close()
+
+
 @pytest.mark.parametrize(
     ("ndim", "storage"),
     [

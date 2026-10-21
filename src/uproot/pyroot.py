@@ -156,7 +156,7 @@ pyroot_to_buffer._copy = None
 
 
 class _GetStreamersOnce:
-    _custom_classes = {}
+    _custom_classes = None
     _streamers = {}
     _streamer_dependencies = {}
     _memfile_copy = None
@@ -279,7 +279,9 @@ def from_pyroot(obj):
     """
     buffer = pyroot_to_buffer(obj)
     chunk = uproot.source.chunk.Chunk.wrap(None, buffer)
-    cursor = uproot.source.cursor.Cursor(0)
+    # references in the TMessage are relative to its start, which includes the
+    # 8-byte header that pyroot_to_buffer removes
+    cursor = uproot.source.cursor.Cursor(0, origin=-8)
     maybestreamers = _GetStreamersOnce(obj)
     detatched = _NoFile()
     return uproot.deserialization.read_object_any(
