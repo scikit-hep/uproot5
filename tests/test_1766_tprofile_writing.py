@@ -276,6 +276,18 @@ def test_weighted_empty_bins_pyroot(tmp_path):
     assert r.GetBinEffectiveEntries(2) == pytest.approx(4.0 / 2.5)
 
 
+def test_zero_sum_of_weights(tmp_path):
+    # boost-histogram's mean is undefined in a bin whose weights sum to zero
+    h = hist.Hist(hist.axis.Regular(2, 0, 2), storage=hist.storage.WeightedMean())
+    h.fill([0.5, 0.5, 1.5], sample=[1.0, 3.0, 2.0], weight=[1.0, -1.0, 1.0])
+
+    p = _write_and_read(tmp_path, h)
+    assert p.values(flow=True).tolist() == [0, 0, 2, 0]
+    assert np.isfinite(p.member("fSumw2")).all()
+    assert p.member("fTsumwy") == 2
+    assert p.member("fTsumwy2") == 4
+
+
 def _modified(change):
     # a profile whose fEntries (3, as if from ROOT) is not its sum of weights (3.5)
     def make(tmp_path):

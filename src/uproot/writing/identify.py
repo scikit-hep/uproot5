@@ -300,6 +300,12 @@ def to_writable(obj):
                     )
                 _value = numpy.asarray(_view_flow["value"], dtype=numpy.float64)
 
+                # The mean is undefined (inf or NaN) in bins whose sum of weights is
+                # zero (possible with negative weights), so boost-histogram can't
+                # give sum(w*y) there; write 0, as for an empty bin.
+                _value = numpy.where(_sumw != 0, _value, 0.0)
+                _sum_sq_dev = numpy.where(numpy.isfinite(_sum_sq_dev), _sum_sq_dev, 0.0)
+
                 # ROOT TProfile convention: fSumw2 = sum(w*y^2) = sum_sq_dev + sum(w)*mean^2
                 fSumw2 = _sum_sq_dev + _sumw * _value**2
                 _data = _sumw * _value
