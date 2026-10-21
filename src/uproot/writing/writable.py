@@ -19,6 +19,7 @@ types. Writing and reading are considered separate projects with different capab
 from __future__ import annotations
 
 import datetime
+import difflib
 import itertools
 import queue
 import sys
@@ -75,18 +76,7 @@ def create(file_path: str | Path | IO, **options):
 
     Additional options are passed as ``storage_options`` to the fsspec filesystem
     """
-    file_path = uproot._util.regularize_path(file_path)
-    storage_options = {
-        key: value for key, value in options.items() if key not in create.defaults
-    }
-    if isinstance(file_path, str) and uproot.sink.file.FileSink._file_exists(
-        file_path, **storage_options
-    ):
-        raise FileExistsError(
-            "path exists and refusing to overwrite (use 'uproot.recreate' to "
-            f"overwrite)\n\nfor path {file_path}"
-        )
-    return recreate(file_path, **options)
+    return _create_or_recreate(file_path, "create", options)
 
 
 def recreate(file_path: str | Path | IO, **options):
@@ -120,14 +110,12 @@ def recreate(file_path: str | Path | IO, **options):
 
     Additional options are passed as ``storage_options`` to the fsspec filesystem
     """
+    return _create_or_recreate(file_path, "recreate", options)
 
+
+def _create_or_recreate(file_path, mode, options):
     file_path = uproot._util.regularize_path(file_path)
-    storage_options = {
-        key: value for key, value in options.items() if key not in recreate.defaults
-    }
-    sink = uproot.sink.file.FileSink(file_path, **storage_options)
     compression = options.pop("compression", create.defaults["compression"])
-
     initial_directory_bytes = options.pop(
         "initial_directory_bytes", create.defaults["initial_directory_bytes"]
     )
@@ -135,11 +123,10 @@ def recreate(file_path: str | Path | IO, **options):
         "initial_streamers_bytes", create.defaults["initial_streamers_bytes"]
     )
     uuid_function = options.pop("uuid_function", create.defaults["uuid_function"])
-    if options:
-        raise TypeError(
-            "unrecognized options for uproot.create or uproot.recreate: "
-            + ", ".join(repr(x) for x in options)
-        )
+    # before opening the sink, which may truncate an existing file
+    storage_options = _storage_options(options, "uproot.create or uproot.recreate")
+
+    sink = uproot.sink.file.FileSink(file_path, mode=mode, **storage_options)
     cascading = uproot.writing._cascade.create_empty(
         sink,
         compression,
@@ -181,20 +168,13 @@ def update(file_path: str | Path | IO, **options):
     """
 
     file_path = uproot._util.regularize_path(file_path)
-    storage_options = {
-        key: value for key, value in options.items() if key not in update.defaults
-    }
-    sink = uproot.sink.file.FileSink(file_path, **storage_options)
-
     initial_directory_bytes = options.pop(
         "initial_directory_bytes", create.defaults["initial_directory_bytes"]
     )
     uuid_function = options.pop("uuid_function", create.defaults["uuid_function"])
-    if options:
-        raise TypeError(
-            "unrecognized options for uproot.update: "
-            + ", ".join(repr(x) for x in options)
-        )
+    storage_options = _storage_options(options, "uproot.update")
+
+    sink = uproot.sink.file.FileSink(file_path, mode="update", **storage_options)
     cascading = uproot.writing._cascade.update_existing(
         sink,
         initial_directory_bytes,
@@ -203,6 +183,31 @@ def update(file_path: str | Path | IO, **options):
     return WritableFile(
         sink, cascading, initial_directory_bytes, uuid_function
     ).root_directory
+
+
+def _storage_options(options, function_name):
+    """
+    The options left after removing the ones uproot knows are passed as
+    ``storage_options`` to the fsspec filesystem.
+
+    A filesystem may silently ignore an option it does not know, so an option
+    that is (or closely resembles) an uproot writing option is rejected here
+    rather than passed on, e.g. a misspelled ``compresion``.
+    """
+    mistaken = []
+    for name in options:
+        # a cutoff above the default 0.6, which would reject real fsspec options
+        # such as session or compresslevel for resembling compression
+        matches = difflib.get_close_matches(name, create.defaults, n=1, cutoff=0.8)
+        if matches and matches[0] != name:
+            mistaken.append(f"{name!r} (did you mean {matches[0]!r}?)")
+        elif matches:
+            mistaken.append(repr(name))
+    if mistaken:
+        raise TypeError(
+            f"unrecognized options for {function_name}: " + ", ".join(mistaken)
+        )
+    return options
 
 
 create.defaults = {

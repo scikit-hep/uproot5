@@ -2,7 +2,7 @@
 
 [![PyPI version](https://badge.fury.io/py/uproot.svg)](https://pypi.org/project/uproot)
 [![Conda-Forge](https://img.shields.io/conda/vn/conda-forge/uproot)](https://github.com/conda-forge/uproot-feedstock)
-[![Python 3.10‒3.14](https://img.shields.io/badge/python-3.10%E2%80%923.14-blue)](https://www.python.org)
+[![Python 3.10‒3.15](https://img.shields.io/badge/python-3.10%E2%80%923.15-blue)](https://www.python.org)
 [![BSD-3 Clause License](https://img.shields.io/badge/license-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
 [![Continuous integration tests](https://github.com/scikit-hep/uproot5/actions/workflows/build-test.yml/badge.svg)](https://github.com/scikit-hep/uproot5/actions)
 
@@ -201,6 +201,7 @@ Thanks especially to the gracious help of Uproot contributors (including the [or
     </tr>
     <tr>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/sapunyangkut"><img src="https://avatars.githubusercontent.com/u/302607731?v=4?s=100" width="100px;" alt="sapunyangkut"/><br /><sub><b>sapunyangkut</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot5/commits?author=sapunyangkut" title="Documentation">📖</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/TaiSakuma"><img src="https://avatars.githubusercontent.com/u/1388081?v=4?s=100" width="100px;" alt="Tai Sakuma"/><br /><sub><b>Tai Sakuma</b></sub></a><br /><a href="#infra-TaiSakuma" title="Infrastructure (Hosting, Build-Tools, etc)">🚇</a> <a href="#maintenance-TaiSakuma" title="Maintenance">🚧</a></td>
     </tr>
   </tbody>
 </table>

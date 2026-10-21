@@ -13,7 +13,11 @@ import numpy
 
 import uproot
 from uproot._util import no_filter, unset
-from uproot.behaviors.RNTuple import HasFields
+from uproot.behaviors.RNTuple import (
+    HasFields,
+    _filter_field_by_key,
+    _with_subfield_keys,
+)
 from uproot.behaviors.RNTuple import (
     _regularize_step_size as _RNTuple_regularize_step_size,
 )
@@ -219,6 +223,7 @@ def dask(
       array from ``TTrees``.
     """
 
+    uproot._util._check_unknown_options(options)
     files = uproot._util.regularize_files(files, steps_allowed=True, **options)
 
     is_3arg = [len(x) == 3 for x in files]
@@ -416,6 +421,7 @@ def _dask_array_from_map(
     *iterables,
     chunks,
     dtype,
+    inner_shape=(),
     args=None,
     label=None,
     token=None,
@@ -487,10 +493,13 @@ def _dask_array_from_map(
         produces_tasks=produces_tasks,
     )
 
+    chunks = (*chunks, *((size,) for size in inner_shape))
+    assert all(len(axis_chunks) == 1 for axis_chunks in chunks[1:])
     blockwise_kwargs = {
         "output": name,
-        "output_indices": "i",
-        "indices": [(io_arg_map, "i")],
+        "output_indices": tuple(range(len(chunks))),
+        "indices": [(io_arg_map, (0,))],
+        "new_axes": {axis: chunks[axis] for axis in range(1, len(chunks))},
         "numblocks": {},
         "annotations": None,
     }
@@ -514,24 +523,110 @@ class _UprootReadNumpy:
         ttrees,
         key,
         interp_options,
+        expected_dtype=None,
         decompression_executor=None,
         interpretation_executor=None,
     ) -> None:
         self.ttrees = ttrees
         self.key = key
         self.interp_options = interp_options
+        self.expected_dtype = expected_dtype
         self.decompression_executor = decompression_executor
         self.interpretation_executor = interpretation_executor
 
     def __call__(self, i_start_stop):
         i, start, stop = i_start_stop
-        return self.ttrees[i][self.key].array(
+        arr = self.ttrees[i][self.key].array(
             entry_start=start,
             entry_stop=stop,
             library="np",
             ak_add_doc=self.interp_options["ak_add_doc"],
             decompression_executor=self.decompression_executor,
             interpretation_executor=self.interpretation_executor,
+        )
+        if (
+            self.expected_dtype is not None
+            and self.expected_dtype == numpy.dtype(object)
+            and (arr.dtype != object or arr.ndim > 1)
+        ):
+            out = numpy.empty(len(arr), dtype=object)
+            for i, row in enumerate(arr):
+                out[i] = row
+            arr = out
+        return arr
+
+
+def _form_to_numpy_dtype(form, initial_sizes=()):
+    sizes = list(initial_sizes)
+    curr = form
+    while isinstance(curr, awkward.forms.RegularForm):
+        sizes.append(curr.size)
+        curr = curr.content
+    if isinstance(curr, awkward.forms.NumpyForm):
+        inner_dt = numpy.dtype(curr.primitive)
+        shape = tuple(sizes) + curr.inner_shape
+        if shape:
+            return numpy.dtype((inner_dt, shape))
+        return inner_dt
+    else:
+        return numpy.dtype(object)
+
+
+def _branch_or_field_numpy_dtype(branch):
+    if isinstance(branch, HasFields):
+        form, path = branch.to_akform()
+        sizes = []
+        if path is not None:
+            for p in path:
+                # Step through list/option forms to reach the record inside.
+                while isinstance(
+                    form,
+                    (
+                        awkward.forms.ListOffsetForm,
+                        awkward.forms.ListForm,
+                        awkward.forms.RegularForm,
+                        awkward.forms.IndexedOptionForm,
+                        awkward.forms.ByteMaskedForm,
+                        awkward.forms.BitMaskedForm,
+                        awkward.forms.UnmaskedForm,
+                    ),
+                ):
+                    # Any list boundary means the result is a jagged array.
+                    if isinstance(
+                        form,
+                        (
+                            awkward.forms.ListOffsetForm,
+                            awkward.forms.ListForm,
+                        ),
+                    ):
+                        return numpy.dtype(object)
+                    if isinstance(form, awkward.forms.RegularForm):
+                        sizes.append(form.size)
+                    form = form.content
+                if hasattr(form, "fields") and p in form.fields:
+                    form = form.contents[form.fields.index(p)]
+                else:
+                    raise KeyError(f"field {p!r} not found in form {form!r}")
+        return _form_to_numpy_dtype(form, initial_sizes=sizes)
+    else:
+        return branch.interpretation.numpy_dtype
+
+
+def _check_numpy_dtype(branch, expected_dtype):
+    actual_dtype = _branch_or_field_numpy_dtype(branch)
+    if actual_dtype != expected_dtype:
+        if isinstance(branch, HasFields):
+            item_name = "field"
+            path = branch.path
+            file_path = branch.ntuple.parent._file.file_path
+        else:
+            item_name = "branch"
+            path = branch.object_path
+            file_path = branch.file.file_path
+        raise ValueError(
+            f"inconsistent NumPy dtype for {item_name} {path!r} in file "
+            f"{file_path!r}: expected {expected_dtype!r}, "
+            f"found {actual_dtype!r}"
         )
 
 
@@ -543,6 +638,7 @@ class _UprootOpenAndReadNumpy:
         real_options,
         key,
         interp_options,
+        expected_dtype,
         decompression_executor=None,
         interpretation_executor=None,
     ):
@@ -551,6 +647,7 @@ class _UprootOpenAndReadNumpy:
         self.real_options = real_options
         self.key = key
         self.interp_options = interp_options
+        self.expected_dtype = expected_dtype
         self.decompression_executor = decompression_executor
         self.interpretation_executor = interpretation_executor
 
@@ -569,6 +666,7 @@ class _UprootOpenAndReadNumpy:
             self.allow_missing,
             self.real_options,
         )
+        _check_numpy_dtype(ttree[self.key], self.expected_dtype)
         num_entries = ttree.num_entries
         start, stop = istep_or_start, nsteps_or_stop
         if not ischunk:
@@ -590,13 +688,41 @@ TTree in path
 which has {num_entries} entries"""
             )
 
-        return ttree[self.key].array(
+        arr = ttree[self.key].array(
             library="np",
             entry_start=start,
             entry_stop=stop,
             ak_add_doc=self.interp_options["ak_add_doc"],
             decompression_executor=self.decompression_executor,
             interpretation_executor=self.interpretation_executor,
+        )
+        if (
+            self.expected_dtype is not None
+            and self.expected_dtype == numpy.dtype(object)
+            and (arr.dtype != object or arr.ndim > 1)
+        ):
+            out = numpy.empty(len(arr), dtype=object)
+            for i, row in enumerate(arr):
+                out[i] = row
+            arr = out
+        return arr
+
+
+def _regularize_tree_step_size(ttree, step_size, entry_start, entry_stop, common_keys):
+    if isinstance(ttree, HasFields):
+        akform, _ = ttree.to_akform(
+            filter_field=_filter_field_by_key(ttree, common_keys)
+        )
+        return _RNTuple_regularize_step_size(
+            ttree, akform, step_size, entry_start, entry_stop
+        )
+    else:
+        branchid_interpretation = {}
+        for key in common_keys:
+            branch = ttree[key]
+            branchid_interpretation[branch.cache_key] = branch.interpretation
+        return _regularize_step_size(
+            ttree, step_size, entry_start, entry_stop, branchid_interpretation
         )
 
 
@@ -641,13 +767,8 @@ def _get_dask_array(
     for ttree in ttrees:
         entry_start = 0
         entry_stop = ttree.num_entries
-
-        branchid_interpretation = {}
-        for key in common_keys:
-            branch = ttree[key]
-            branchid_interpretation[branch.cache_key] = branch.interpretation
-        ttree_step = _regularize_step_size(
-            ttree, step_size, entry_start, entry_stop, branchid_interpretation
+        ttree_step = _regularize_tree_step_size(
+            ttree, step_size, entry_start, entry_stop, common_keys
         )
         step_sum += int(ttree_step)
 
@@ -655,9 +776,10 @@ def _get_dask_array(
     assert entry_step >= 1
 
     for key in common_keys:
-        dt = ttrees[0][key].interpretation.numpy_dtype
-        if dt.subdtype is not None:
-            dt, _inner_shape = dt.subdtype
+        expected_dtype = _branch_or_field_numpy_dtype(ttrees[0][key])
+        for ttree in ttrees[1:]:
+            _check_numpy_dtype(ttree[key], expected_dtype)
+        dt, inner_shape = uproot.interpretation.numerical._dtype_shape(expected_dtype)
 
         chunks = []
         chunk_args = []
@@ -700,12 +822,14 @@ which has {entry_stop} entries"""
                 ttrees,
                 key,
                 interp_options,
+                expected_dtype,
                 decompression_executor,
                 interpretation_executor,
             ),
             chunk_args,
             chunks=(tuple(chunks),),
             dtype=dt,
+            inner_shape=inner_shape,
             label=f"{key}-from-uproot",
         )
 
@@ -740,16 +864,18 @@ def _get_dask_array_delay_open(
                 "filter_field" if isinstance(obj, HasFields) else "filter_branch"
             ): filter_branch
         },
-        full_paths=full_paths,
+        # an RNTuple form keeps the nesting, so its fields are selected by full path
+        full_paths=True if isinstance(obj, HasFields) else full_paths,
         ignore_duplicates=True,
     )
+    if isinstance(obj, HasFields):
+        common_keys = _with_subfield_keys(obj, common_keys)
 
     dask_dict = {}
 
     for key in common_keys:
-        dt = obj[key].interpretation.numpy_dtype
-        if dt.subdtype is not None:
-            dt, _inner_shape = dt.subdtype
+        expected_dtype = _branch_or_field_numpy_dtype(obj[key])
+        dt, inner_shape = uproot.interpretation.numerical._dtype_shape(expected_dtype)
 
         partitions = []
         partition_args = []
@@ -792,12 +918,14 @@ def _get_dask_array_delay_open(
                 real_options,
                 key,
                 interp_options,
+                expected_dtype,
                 decompression_executor,
                 interpretation_executor,
             ),
             partition_args,
             chunks=(tuple(partitions),),
             dtype=dt,
+            inner_shape=inner_shape,
             label=f"{key}-from-uproot",
         )
     return dask_dict
@@ -894,23 +1022,24 @@ class TrivialFormMappingInfo(ImplementsFormMappingInfo):
         interpretation_executor,
         options: Any,
     ) -> Mapping[str, AwkArray]:
-        # An RNTuple selects fields by exact dotted name and a matched record adds no children,
-        # so ask for every leaf the projection form keeps under each requested field.
-        read_keys = (
-            [
+        # An RNTuple reads a selected field with all of its subfields, so ask for every leaf
+        # the projection form keeps under each requested field. They are selected by key
+        # because a name like "x" would also select the fields named "x" in other records.
+        if isinstance(tree, HasFields):
+            leaf_keys = [
                 p
                 for key in keys
                 for p in _rntuple_leaf_paths(self._form.content(key), key)
             ]
-            if isinstance(tree, HasFields)
-            else keys
-        )
+            selection = {"filter_field": _filter_field_by_key(tree, leaf_keys)}
+        else:
+            selection = {"expressions": keys}
         # Read the arrays as a top-level awkward RecordArray. Omitting how= (the
         # default) ensures that AsGrouped branches are returned as proper awkward
         # RecordArrays rather than Python tuples of sub-arrays (which how=tuple
         # would produce), allowing awkward.to_buffers() to work correctly below.
         arrays = tree.arrays(
-            read_keys,
+            **selection,
             entry_start=start,
             entry_stop=stop,
             ak_add_doc=options["ak_add_doc"],
@@ -1501,11 +1630,18 @@ def _get_ttree_form(
     common_keys,
     ak_add_doc,
 ):
+    if isinstance(ttree, HasFields):
+        # an RNTuple keeps the nesting of the selected fields under its top-level fields
+        rntuple_form, _ = ttree.to_akform(
+            filter_field=_filter_field_by_key(ttree, common_keys)
+        )
+        common_keys = rntuple_form.fields
+
     contents = []
     for key in common_keys:
         branch = ttree[key]
         if isinstance(branch, HasFields):
-            content_form = branch.to_akform()[0].content(0)
+            content_form = rntuple_form.content(key)
         else:
             content_form = branch.interpretation.awkward_form(ttree.file)
         content_parameters = {}
@@ -1557,6 +1693,14 @@ def _get_ttree_form(
     return awkward.forms.RecordForm(contents, common_keys, parameters=parameters)
 
 
+def _leaf_to_tree(obj):
+    """A leaf ``TBranch`` given as the object path stands for its parent ``TTree`` with that one
+    branch selected: ``(tree, leaf)``, with ``leaf`` ``None`` for any other object."""
+    if isinstance(obj, TBranch) and len(obj.keys(recursive=True)) == 0:
+        return obj.parent, obj
+    return obj, None
+
+
 def _resolve_trees_and_keys(
     files,
     filter_name,
@@ -1568,61 +1712,86 @@ def _resolve_trees_and_keys(
     allow_missing,
     real_options,
 ):
-    """Open every entry of ``files`` and intersect their keys. A leaf ``TBranch`` given as the
-    object path stands for its parent ``TTree`` with that one branch selected (``is_self``).
-    Returns ``(ttrees, common_keys, is_self, explicit_chunks)``; ``explicit_chunks`` is ``None``
-    unless every entry carries its own ``steps``."""
+    """Open every entry of ``files`` and intersect their keys (:func:`_trees_and_keys`)."""
+    found = []
+    for file_object_maybechunks in files:
+        file_path, object_path = file_object_maybechunks[0:2]
+        obj = uproot._util.regularize_object_path(
+            file_path, object_path, custom_classes, allow_missing, real_options
+        )
+        if obj is not None:
+            found.append((obj, *file_object_maybechunks[2:]))
+    return _trees_and_keys(
+        found, files, filter_name, filter_typename, filter_branch, recursive, full_paths
+    )
+
+
+def _trees_and_keys(
+    found,
+    files,
+    filter_name,
+    filter_typename,
+    filter_branch,
+    recursive,
+    full_paths,
+    first_of=None,
+):
+    """Intersect the keys of ``found``, the ``(object, *steps)`` of the entries of ``files``
+    (named in errors) whose object exists; a leaf ``TBranch`` stands for its parent ``TTree`` with
+    that one branch selected (``is_self``). Returns ``(ttrees, common_keys, is_self,
+    explicit_chunks)``; ``explicit_chunks`` is ``None`` unless every entry carries its own
+    ``steps``. ``first_of=N`` says ``found`` is only the first of ``N`` files, standing for all.
+    """
     ttrees = []
     explicit_chunks = []
     common_keys = None
     is_self = []
+    rntuple_keys = []
 
-    for file_object_maybechunks in files:
-        file_path, object_path = file_object_maybechunks[0:2]
+    for given, *steps in found:
+        obj, original = _leaf_to_tree(given)
+        if original is not None:
+            is_self.append(True)
 
-        obj = uproot._util.regularize_object_path(
-            file_path, object_path, custom_classes, allow_missing, real_options
+            def real_filter_branch(branch):
+                return branch is original and filter_branch(branch)  # noqa: B023
+
+        else:
+            is_self.append(False)
+            real_filter_branch = filter_branch
+
+        ttrees.append(obj)
+        if steps:
+            explicit_chunks.append(steps[0])
+        else:
+            explicit_chunks = None  # they all have it or none of them have it
+
+        new_keys = obj.keys(
+            recursive=recursive,
+            filter_name=filter_name,
+            filter_typename=filter_typename,
+            **{
+                (
+                    "filter_field" if isinstance(obj, HasFields) else "filter_branch"
+                ): real_filter_branch
+            },
+            # an RNTuple form keeps the nesting, so its fields are selected by full path
+            full_paths=True if isinstance(obj, HasFields) else full_paths,
+            ignore_duplicates=True,
         )
+        if isinstance(obj, HasFields):
+            # a selected field is read with all of its subfields, so intersect those
+            new_keys = _with_subfield_keys(obj, new_keys)
+            rntuple_keys.append(set(new_keys))
 
-        if obj is not None:
-            if isinstance(obj, TBranch) and len(obj.keys(recursive=True)) == 0:
-                original = obj
-                obj = obj.parent
-                is_self.append(True)
+        if common_keys is None:
+            common_keys = new_keys
+        else:
+            new_keys = set(new_keys)
+            common_keys = [key for key in common_keys if key in new_keys]
 
-                def real_filter_branch(branch):
-                    return branch is original and filter_branch(branch)  # noqa: B023
-
-            else:
-                is_self.append(False)
-                real_filter_branch = filter_branch
-
-            ttrees.append(obj)
-            if len(file_object_maybechunks) == 3:
-                explicit_chunks.append(file_object_maybechunks[2])
-            else:
-                explicit_chunks = None  # they all have it or none of them have it
-
-            new_keys = obj.keys(
-                recursive=recursive,
-                filter_name=filter_name,
-                filter_typename=filter_typename,
-                **{
-                    (
-                        "filter_field"
-                        if isinstance(obj, HasFields)
-                        else "filter_branch"
-                    ): real_filter_branch
-                },
-                full_paths=full_paths,
-                ignore_duplicates=True,
-            )
-
-            if common_keys is None:
-                common_keys = new_keys
-            else:
-                new_keys = set(new_keys)
-                common_keys = [key for key in common_keys if key in new_keys]
+    if len(rntuple_keys) > 1:
+        common_keys = _drop_partly_common_fields(common_keys, rntuple_keys)
 
     if len(ttrees) == 0:
         raise ValueError(
@@ -1634,6 +1803,14 @@ def _resolve_trees_and_keys(
             )
         )
 
+    if first_of is not None and len(common_keys) == 0:
+        tree = ttrees[0]
+        raise ValueError(
+            f"no TBranches of {{{tree.file.file_path!r}: {tree.object_path!r}}} pass "
+            f"filter_name/filter_typename/filter_branch. Only this first file is opened, and its "
+            f"TBranches stand for all {first_of} files: check the filters, or whether this file "
+            "is representative of the rest (open_files=True checks every file)"
+        )
     if len(common_keys) == 0 or not (all(is_self) or not any(is_self)):
         raise ValueError(
             "TTrees in\n\n    {}\n\nhave no TBranches in common".format(
@@ -1645,6 +1822,19 @@ def _resolve_trees_and_keys(
         )
 
     return ttrees, common_keys, is_self, explicit_chunks
+
+
+def _drop_partly_common_fields(common_keys, keys_per_file):
+    """Drop the RNTuple fields that have subfields missing from some of the files, keeping
+    their common subfields. Otherwise, reading a field with all of its subfields would
+    request subfields that some files don't have."""
+    common = set(common_keys)
+    partly_common = set()
+    for keys in keys_per_file:
+        for key in keys - common:
+            parts = key.split(".")
+            partly_common.update(".".join(parts[:i]) for i in range(1, len(parts)))
+    return [key for key in common_keys if key not in partly_common]
 
 
 def _normalize_grouped_keys(ttree, common_keys, full_paths):
@@ -1691,7 +1881,9 @@ def _base_form_of(ttree, common_keys, ak_add_doc, form_mapping):
     """The dataset's base form from one open tree: an ``RNTuple`` keeps its nesting through
     ``to_akform``; a ``TTree`` form carries the branch typenames a mapping may read."""
     if isinstance(ttree, HasFields):
-        base_form, _ = ttree.to_akform(filter_name=common_keys)
+        base_form, _ = ttree.to_akform(
+            filter_field=_filter_field_by_key(ttree, common_keys)
+        )
     else:
         base_form = _get_ttree_form(awkward, ttree, common_keys, ak_add_doc)
         if form_mapping is not None:
@@ -1752,22 +1944,10 @@ def _get_dak_array(
     for ttree in ttrees:
         entry_start = 0
         entry_stop = ttree.num_entries
-
-        if isinstance(ttree, HasFields):
-            akform, _ = ttree.to_akform(filter_name=common_keys)
-            ttree_step = _RNTuple_regularize_step_size(
-                ttree, akform, step_size, entry_start, entry_stop
-            )
-            step_sum += int(ttree_step)
-        else:
-            branchid_interpretation = {}
-            for key in common_keys:
-                branch = ttree[key]
-                branchid_interpretation[branch.cache_key] = branch.interpretation
-            ttree_step = _regularize_step_size(
-                ttree, step_size, entry_start, entry_stop, branchid_interpretation
-            )
-            step_sum += int(ttree_step)
+        ttree_step = _regularize_tree_step_size(
+            ttree, step_size, entry_start, entry_stop, common_keys
+        )
+        step_sum += int(ttree_step)
 
     entry_step = round(step_sum / len(ttrees))
 
@@ -1876,7 +2056,8 @@ def _get_dak_array_delay_open(
                     "filter_field" if isinstance(obj, HasFields) else "filter_branch"
                 ): filter_branch
             },
-            full_paths=full_paths,
+            # an RNTuple form keeps the nesting, so its fields are selected by full path
+            full_paths=True if isinstance(obj, HasFields) else full_paths,
             ignore_duplicates=True,
         )
         common_keys = _normalize_grouped_keys(obj, common_keys, full_paths)
