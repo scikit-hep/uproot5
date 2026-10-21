@@ -59,7 +59,13 @@ in file {self.file.file_path}"""
         out._bases = self._bases
         out._num_bytes = self._num_bytes
         out._instance_version = self._instance_version
+        out._is_memberwise = self._is_memberwise
         return out
+
+    def _to_writable(self, concrete):
+        # Model._to_writable would make an empty str and fill in its members,
+        # but TObjString has only one version, so it's writable as it is.
+        return self
 
     @property
     def fTitle(self):

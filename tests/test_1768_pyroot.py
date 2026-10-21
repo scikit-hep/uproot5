@@ -218,3 +218,23 @@ def test_streamer_info_registration():
         env={**os.environ, "PYTHONPATH": os.pathsep.join(sys.path)},
     )
     assert result.stdout.splitlines()[-1] == "2 g [3.0, 4.0]"
+
+
+def test_tobjstring(tmp_path):
+    root_filename = os.path.join(tmp_path, "root_written.root")
+    fout = ROOT.TFile(root_filename, "RECREATE")
+    fout.WriteObject(ROOT.TObjString("some text"), "string")
+    fout.Close()
+
+    with uproot.open(root_filename) as file:
+        string = file["string"]
+        assert not string.is_memberwise
+        assert uproot.to_pyroot(string).GetString() == "some text"
+
+        uproot_filename = os.path.join(tmp_path, "uproot_written.root")
+        with uproot.recreate(uproot_filename) as fout:
+            fout["string"] = string
+
+    fin = ROOT.TFile(uproot_filename)
+    assert fin.Get("string").GetString() == "some text"
+    fin.Close()
