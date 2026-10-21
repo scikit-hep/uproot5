@@ -7,8 +7,6 @@ This module defines the behaviors of ``TH1`` and its subclasses (not including `
 
 from __future__ import annotations
 
-import warnings
-
 import numpy
 
 import uproot
@@ -28,11 +26,10 @@ def _boost_axis(axis, metadata):
     if labels is None and fLabels is not None and len(fLabels) > 0:
         # e.g. ROOT extends a labeled axis by doubling its bins when it's filled
         # with a new label, leaving the added bins unlabeled
-        warnings.warn(
+        uproot._util.warn_outside_uproot(
             f"axis {axis.member('fName')!r} has labels for only {len(fLabels)} "
             f"of its {fNbins} bins, so it is converted to a numerical axis and "
             "its labels are dropped",
-            stacklevel=3,
         )
 
     if labels is not None:
@@ -64,11 +61,10 @@ def _warn_category_underflow(axis, nonempty):
     # ROOT fills a labeled axis's underflow bin only from numerical fills (unknown
     # labels go to overflow), but boost-histogram categories have no underflow
     if nonempty:
-        warnings.warn(
+        uproot._util.warn_outside_uproot(
             f"the underflow bin of labeled axis {axis.member('fName')!r} is not "
             "empty, but boost-histogram category axes have no underflow bin, so "
             "its contents are dropped",
-            stacklevel=3,
         )
 
 

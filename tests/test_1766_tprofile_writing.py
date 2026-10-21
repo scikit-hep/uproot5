@@ -398,8 +398,9 @@ def test_zero_sum_of_weights(tmp_path):
         fXaxis=to_TAxis(fName="xaxis", fTitle="", fNbins=2, fXmin=0, fXmax=2),
     )
     p = _write_and_read(tmp_path, p, "from_root")
-    with pytest.warns(UserWarning, match="zero sum of weights"):
+    with pytest.warns(UserWarning, match="zero sum of weights") as record:
         h = p.to_hist()
+    assert record[0].filename == __file__
     assert h.view(flow=True)["_sum_of_weighted_deltas_squared"][1] == -8
 
 

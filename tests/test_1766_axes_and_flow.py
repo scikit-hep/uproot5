@@ -103,8 +103,9 @@ def test_labels_partial(tmp_path, make):
     assert axis.labels() is None
     assert not axis.traits.discrete
 
-    with pytest.warns(UserWarning, match="labels for only 2 of its 6 bins"):
+    with pytest.warns(UserWarning, match="labels for only 2 of its 6 bins") as record:
         out = h.to_hist()
+    assert record[0].filename == __file__  # the user's code, not Uproot's
     assert out.axes[0].edges.tolist() == [0, 1, 2, 3, 4, 5, 6]
     assert out.values().tolist() == [10, 0, 0, 0, 50, 0]
 
@@ -115,8 +116,9 @@ def test_labeled_underflow(tmp_path, make):
     _write_and_read(tmp_path, make(3, ABC, [0, 1, 0, 0, 0])).to_hist()
 
     h = _write_and_read(tmp_path, make(3, ABC, [1, 1, 0, 0, 0]))
-    with pytest.warns(UserWarning, match="underflow bin of labeled axis 'xaxis'"):
+    with pytest.warns(UserWarning, match="underflow bin of labeled axis") as record:
         out = h.to_hist()
+    assert record[0].filename == __file__
     assert out.values(flow=True).tolist() == [1, 0, 0, 0]
     if make is _tprofile:
         # ROOT's number of fills is kept, including the dropped underflow's
@@ -190,3 +192,12 @@ def test_partial_flow_bins_2d(tmp_path):
     expected[3, 2] = 1  # x overflow, y="b"
     expected[3, 3] = 1  # x overflow, y overflow
     assert out.values(flow=True).tolist() == expected.tolist()
+
+
+def test_warning_location():
+    # warnings from Uproot, including from its generated models (compiled as
+    # "<dynamic>"), are attributed to the first caller outside of it
+    code = compile("uproot._util.warn_outside_uproot('message')", "<dynamic>", "exec")
+    with pytest.warns(UserWarning, match="message") as record:
+        exec(code, {"uproot": uproot})
+    assert record[0].filename == __file__

@@ -341,6 +341,25 @@ def _edit_distance(a: str, b: str) -> int:
     return rows[len(a)][len(b)]
 
 
+def warn_outside_uproot(message, category=UserWarning):
+    """
+    Like ``warnings.warn``, but attributes the warning to the first caller
+    outside of Uproot, wherever in Uproot it's called from.
+    """
+    # not abspath: code filenames are spelled like the module's __file__
+    uproot_dir = os.path.dirname(__file__) + os.sep
+    frame = sys._getframe(1)
+    stacklevel = 2
+    while frame is not None and (
+        frame.f_code.co_filename.startswith(uproot_dir)
+        # models generated from StreamerInfo, see uproot.deserialization
+        or frame.f_code.co_filename == "<dynamic>"
+    ):
+        frame = frame.f_back
+        stacklevel += 1
+    warnings.warn(message, category, stacklevel=stacklevel)
+
+
 def _check_unknown_options(options: dict, file_path=None, stacklevel: int = 3) -> None:
     """
     Raise on unrecognized options for uproot's own sources and warn about likely
