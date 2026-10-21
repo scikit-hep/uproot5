@@ -651,6 +651,8 @@ class HasFields(Mapping):
                 key: self.__getattribute__(value) for key, value in ak_add_doc.items()
             }
 
+        if top_names and all(name == f"_{i}" for i, name in enumerate(top_names)):
+            top_names = None
         form = ak.forms.RecordForm(
             record_list, top_names, form_key="toplevel", parameters=parameters
         )

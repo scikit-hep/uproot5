@@ -481,7 +481,8 @@ class NTuple_Header(CascadeLeaf):
 
     def generate_field_col_records(self):
         akform = self._akform
-        for field_name, topakform in zip(akform.fields, akform.contents, strict=True):
+        for i, topakform in enumerate(akform.contents):
+            field_name = f"_{i}" if akform.is_tuple else akform.fields[i]
             self._build_field_col_records(
                 topakform,
                 field_name=field_name,
