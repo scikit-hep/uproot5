@@ -51,6 +51,11 @@ class TAxis:
         ROOT keeps the labels in the order they were set, with each label's bin
         number in its ``fUniqueID``.
         """
+        if not hasattr(self, "_cached_bin_labels"):
+            self._cached_bin_labels = self._compute_bin_labels()
+        return self._cached_bin_labels
+
+    def _compute_bin_labels(self):
         fNbins = self.member("fNbins")
         fLabels = self.member("fLabels", none_if_missing=True)
         if fLabels is None:
@@ -201,7 +206,7 @@ class TAxis:
             if flow:
                 return ["underflow", *out, "overflow"]
             else:
-                return out
+                return list(out)  # a copy, so that callers can't modify the cache
         else:
             return None
 

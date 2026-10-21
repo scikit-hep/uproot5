@@ -33,11 +33,6 @@ class TProfile2D(uproot.behaviors.TProfile.Profile):
         else:
             raise ValueError("axis must be 0 (-2), 1 (-1) or 'x', 'y' for a TProfile2D")
 
-    @property
-    def weighted(self):
-        fBinSumw2 = self.member("fBinSumw2", none_if_missing=True)
-        return fBinSumw2 is not None and len(fBinSumw2) == self.member("fNcells")
-
     def counts(self, flow=False):
         xaxis_fNbins = self.member("fXaxis").member("fNbins")
         yaxis_fNbins = self.member("fYaxis").member("fNbins")

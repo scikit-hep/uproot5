@@ -139,6 +139,13 @@ class Profile(uproot.behaviors.TH1.Histogram):
     def kind(self):
         return "MEAN"
 
+    @property
+    def weighted(self):
+        """
+        True if the profile has weights (``fBinSumw2``); False otherwise.
+        """
+        return len(self._fBinSumw2()) == self.member("fNcells")
+
     def counts(self, flow=False):
         """
         Args:
@@ -264,11 +271,6 @@ class TProfile(Profile):
         else:
             raise ValueError("axis must be 0 (-1) or 'x' for a TProfile")
 
-    @property
-    def weighted(self):
-        fBinSumw2 = self.member("fBinSumw2", none_if_missing=True)
-        return fBinSumw2 is not None and len(fBinSumw2) == self.member("fNcells")
-
     def counts(self, flow=False):
         out = _effective_counts_1d(
             self.member("fBinEntries"),
@@ -392,6 +394,10 @@ class TProfile(Profile):
             # ROOT's categorical axes (with fLabels) always have an underflow bin (bin 0).
             # boost-histogram's Category axes do not have underflow.
             # We slice off the first ROOT bin (underflow) to align with boost-histogram.
+            uproot.behaviors.TH1._warn_category_underflow(
+                self.member("fXaxis"),
+                sum_of_bin_weights[0] != 0 or raw_values[0] != 0,
+            )
             mean_values = mean_values[1:]
             sum_sq_dev = sum_sq_dev[1:]
             sum_of_bin_weights = sum_of_bin_weights[1:]
@@ -399,8 +405,11 @@ class TProfile(Profile):
 
         # boost-histogram does not track the number of fills (ROOT's fEntries)
         # or the error option, so keep them in the metadata for writing back to ROOT.
+        # fEntries is only valid for these bin contents, so also keep their total
+        # weight, which tells the writer whether the bins have changed since.
         out.metadata = {
             "fEntries": self.member("fEntries"),
+            "fEntries_sumw": float(sum_of_bin_weights.sum()),
             "fErrorMode": self.member("fErrorMode"),
         }
         view = out.view(flow=True)

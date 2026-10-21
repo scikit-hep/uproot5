@@ -168,62 +168,71 @@ def to_writable(obj):
         if title is None:
             title = ""
 
-        try:
-            # using flow=True if supported
-            data = obj.values(flow=True)
-            fSumw2 = (
-                obj.variances(flow=True)
-                if boost_histogram is None
-                or obj.storage_type == boost_histogram.storage.Weight
-                else None
-            )
-
-            # and flow=True is different from flow=False (obj actually has flow bins)
-            data_noflow = obj.values(flow=False)
-            for flow, noflow in zip(data.shape, data_noflow.shape, strict=True):
-                if flow != noflow + 2:
-                    raise TypeError
-
-        except TypeError:
-            # flow=True is not supported, fallback to allocate-and-fill
-
-            tmp = obj.values()
-            s = tmp.shape
-            d = tmp.dtype.newbyteorder(">")
-            if ndim == 1:
-                data = numpy.zeros(s[0] + 2, dtype=d)
-                data[1:-1] = tmp
-            elif ndim == 2:
-                data = numpy.zeros((s[0] + 2, s[1] + 2), dtype=d)
-                data[1:-1, 1:-1] = tmp
-            elif ndim == 3:
-                data = numpy.zeros((s[0] + 2, s[1] + 2, s[2] + 2), dtype=d)
-                data[1:-1, 1:-1, 1:-1] = tmp
-
-            tmp = (
-                obj.variances()
-                if boost_histogram is None
-                or obj.storage_type == boost_histogram.storage.Weight
-                else None
-            )
+        flow_padding = None
+        if boost_histogram is not None:
+            # ROOT always has an underflow and an overflow bin, but boost-histogram
+            # axes may lack either (categories have no underflow, and any axis can
+            # disable its flow bins), so pad the missing ones with zeros.
+            flow_padding = [
+                (0 if axis.traits.underflow else 1, 0 if axis.traits.overflow else 1)
+                for axis in obj.axes
+            ]
+            data = numpy.pad(obj.values(flow=True), flow_padding)
+            data = data.astype(data.dtype.newbyteorder(">"))
             fSumw2 = None
-            if tmp is not None:
-                s = tmp.shape
-                if ndim == 1:
-                    fSumw2 = numpy.zeros(s[0] + 2, dtype=">f8")
-                    fSumw2[1:-1] = tmp
-                elif ndim == 2:
-                    fSumw2 = numpy.zeros((s[0] + 2, s[1] + 2), dtype=">f8")
-                    fSumw2[1:-1, 1:-1] = tmp
-                elif ndim == 3:
-                    fSumw2 = numpy.zeros((s[0] + 2, s[1] + 2, s[2] + 2), dtype=">f8")
-                    fSumw2[1:-1, 1:-1, 1:-1] = tmp
+            if obj.storage_type == boost_histogram.storage.Weight:
+                fSumw2 = numpy.pad(obj.variances(flow=True), flow_padding)
+                fSumw2 = fSumw2.astype(">f8")
 
         else:
-            # continuing to use flow=True, because it is supported
-            data = data.astype(data.dtype.newbyteorder(">"))
-            if fSumw2 is not None:
-                fSumw2 = fSumw2.astype(">f8")
+            try:
+                # using flow=True if supported
+                data = obj.values(flow=True)
+                fSumw2 = obj.variances(flow=True)
+
+                # and flow=True is different from flow=False (obj actually has flow bins)
+                data_noflow = obj.values(flow=False)
+                for flow, noflow in zip(data.shape, data_noflow.shape, strict=True):
+                    if flow != noflow + 2:
+                        raise TypeError
+
+            except TypeError:
+                # flow=True is not supported, fallback to allocate-and-fill
+
+                tmp = obj.values()
+                s = tmp.shape
+                d = tmp.dtype.newbyteorder(">")
+                if ndim == 1:
+                    data = numpy.zeros(s[0] + 2, dtype=d)
+                    data[1:-1] = tmp
+                elif ndim == 2:
+                    data = numpy.zeros((s[0] + 2, s[1] + 2), dtype=d)
+                    data[1:-1, 1:-1] = tmp
+                elif ndim == 3:
+                    data = numpy.zeros((s[0] + 2, s[1] + 2, s[2] + 2), dtype=d)
+                    data[1:-1, 1:-1, 1:-1] = tmp
+
+                tmp = obj.variances()
+                fSumw2 = None
+                if tmp is not None:
+                    s = tmp.shape
+                    if ndim == 1:
+                        fSumw2 = numpy.zeros(s[0] + 2, dtype=">f8")
+                        fSumw2[1:-1] = tmp
+                    elif ndim == 2:
+                        fSumw2 = numpy.zeros((s[0] + 2, s[1] + 2), dtype=">f8")
+                        fSumw2[1:-1, 1:-1] = tmp
+                    elif ndim == 3:
+                        fSumw2 = numpy.zeros(
+                            (s[0] + 2, s[1] + 2, s[2] + 2), dtype=">f8"
+                        )
+                        fSumw2[1:-1, 1:-1, 1:-1] = tmp
+
+            else:
+                # continuing to use flow=True, because it is supported
+                data = data.astype(data.dtype.newbyteorder(">"))
+                if fSumw2 is not None:
+                    fSumw2 = fSumw2.astype(">f8")
 
         # we're assuming the PlottableHistogram ensures data.shape == weights.shape
         if fSumw2 is not None:
@@ -295,14 +304,7 @@ def to_writable(obj):
                 fSumw2 = _sum_sq_dev + _sumw * _value**2
                 _data = _sumw * _value
 
-                # ROOT always has an underflow and an overflow bin, but
-                # boost-histogram axes may lack either (categories have no
-                # underflow, and any axis can disable its flow bins).
-                traits = getattr(obj.axes[0], "traits", None)
-                pad = (
-                    0 if getattr(traits, "underflow", False) else 1,
-                    0 if getattr(traits, "overflow", False) else 1,
-                )
+                pad = flow_padding[0]
                 _data = numpy.pad(_data, pad)
                 _fBinEntries = numpy.pad(_sumw, pad)
                 fSumw2 = numpy.pad(fSumw2, pad)
@@ -325,7 +327,14 @@ def to_writable(obj):
                 fEntries = _fBinEntries.sum()
                 fErrorMode = 0
                 if "metadata" in obj.__dir__() and isinstance(obj.metadata, Mapping):
-                    fEntries = obj.metadata.get("fEntries", fEntries)
+                    # to_hist records the total weight that its fEntries goes with;
+                    # if the bins have changed since (filled, added, ...), it's stale
+                    fEntries_sumw = obj.metadata.get("fEntries_sumw")
+                    if "fEntries" in obj.metadata and (
+                        fEntries_sumw is None
+                        or numpy.isclose(fEntries_sumw, _sumw.sum(), rtol=1e-12)
+                    ):
+                        fEntries = obj.metadata["fEntries"]
                     fErrorMode = obj.metadata.get("fErrorMode", fErrorMode)
 
                 return to_TProfile(

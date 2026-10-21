@@ -7,6 +7,8 @@ This module defines the behaviors of ``TH1`` and its subclasses (not including `
 
 from __future__ import annotations
 
+import warnings
+
 import numpy
 
 import uproot
@@ -45,6 +47,18 @@ def _boost_axis(axis, metadata):
     for k, v in metadata.items():
         setattr(out, k, axis.member(v))
     return out
+
+
+def _warn_category_underflow(axis, nonempty):
+    # ROOT fills a labeled axis's underflow bin only from numerical fills (unknown
+    # labels go to overflow), but boost-histogram categories have no underflow
+    if nonempty:
+        warnings.warn(
+            f"the underflow bin of labeled axis {axis.member('fName')!r} is not "
+            "empty, but boost-histogram category axes have no underflow bin, so "
+            "its contents are dropped",
+            stacklevel=3,
+        )
 
 
 class Histogram:
@@ -233,6 +247,12 @@ class Histogram:
                 (boost_histogram.axis.IntCategory, boost_histogram.axis.StrCategory),
             ):
                 continue
+            underflow = (slice(None),) * i + (0,)
+            _warn_category_underflow(
+                self.axes[i],
+                numpy.any(values[underflow] != 0)
+                or (sumw2 is not None and numpy.any(sumw2[underflow] != 0)),
+            )
             slicer = (slice(None),) * i + (slice(1, None),)
             values = values[slicer]
             if sumw2 is not None:
