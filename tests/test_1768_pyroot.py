@@ -127,6 +127,23 @@ def test_converted_from_hist(tmp_path, ndim, storage):
 
 GRAPH_ERRORS = {
     "TGraph": [],
+    "TGraphErrors": ["x_errors", "y_errors"],
+    "TGraphAsymmErrors": [
+        "x_errors_low",
+        "x_errors_high",
+        "y_errors_low",
+        "y_errors_high",
+    ],
+}
+GRAPH_GETTERS = {
+    "x": "GetX",
+    "y": "GetY",
+    "x_errors": "GetEX",
+    "y_errors": "GetEY",
+    "x_errors_low": "GetEXlow",
+    "x_errors_high": "GetEXhigh",
+    "y_errors_low": "GetEYlow",
+    "y_errors_high": "GetEYhigh",
 }
 
 
@@ -138,16 +155,7 @@ def _assert_same_graph(expected, actual):
     assert actual.GetMaximum() == expected.GetMaximum()
     n = expected.GetN()
     assert actual.GetN() == n
-    for method in [
-        "GetX",
-        "GetY",
-        "GetEX",
-        "GetEY",
-        "GetEXlow",
-        "GetEXhigh",
-        "GetEYlow",
-        "GetEYhigh",
-    ]:
+    for method in GRAPH_GETTERS.values():
         values_expected = getattr(expected, method)()
         values_actual = getattr(actual, method)()
         if values_expected:
@@ -171,6 +179,12 @@ def test_graph(tmp_path, kind):
     uproot_filename = os.path.join(tmp_path, "uproot_written.root")
     with uproot.recreate(uproot_filename) as file:
         file["graph"] = uproot.as_TGraph(columns, title="title of graph")
+
+    fin = ROOT.TFile(uproot_filename)
+    graph = fin.Get("graph")
+    for column, values in columns.items():
+        assert list(getattr(graph, GRAPH_GETTERS[column])())[:7] == values.tolist()
+    fin.Close()
 
     for filename in [root_filename, uproot_filename]:
         fin = ROOT.TFile(filename)
