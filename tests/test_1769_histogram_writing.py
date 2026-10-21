@@ -17,7 +17,6 @@ def _write_and_read(tmp_path, obj):
     return uproot.open(filepath)["h"]
 
 
-
 @pytest.mark.parametrize("ndim", [1, 2, 3])
 def test_weighted_global_statistics(tmp_path, ndim):
     rng = np.random.default_rng(ndim)
@@ -32,3 +31,15 @@ def test_weighted_global_statistics(tmp_path, ndim):
     assert out.member("fTsumw") == pytest.approx(w[inside].sum())
     # the sum of squared weights, which gives ROOT's effective entries
     assert out.member("fTsumw2") == pytest.approx((w[inside] ** 2).sum())
+
+
+@pytest.mark.parametrize("storage", ["Int64", "AtomicInt64"])
+@pytest.mark.parametrize("ndim", [1, 2])
+def test_integer_storage(tmp_path, storage, ndim):
+    h = hist.Hist(
+        *[hist.axis.Regular(3, 0, 3)] * ndim, storage=getattr(hist.storage, storage)()
+    )
+    h.fill(*[[0.5, 1.5, 1.5, 5]] * ndim)
+    out = _write_and_read(tmp_path, h)
+    assert out.classname == f"TH{ndim}D"
+    assert out.values(flow=True).tolist() == h.values(flow=True).tolist()

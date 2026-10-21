@@ -235,6 +235,11 @@ def to_writable(obj):
                 if fSumw2 is not None:
                     fSumw2 = fSumw2.astype(">f8")
 
+        # ROOT has no 64-bit integer histograms before 6.32 (TH1L, ...), so write
+        # those as doubles, like NumPy histograms (which is exact up to 2**53)
+        if data.dtype.kind == "i" and data.dtype.itemsize == 8:
+            data = data.astype(">f8")
+
         # we're assuming the PlottableHistogram ensures data.shape == weights.shape
         if fSumw2 is not None:
             assert data.shape == fSumw2.shape
@@ -892,17 +897,19 @@ def to_TArray(data):
     if data.ndim != 1:
         raise ValueError("data to convert to TArray must be one-dimensional")
 
-    if issubclass(data.dtype.type, numpy.int8):
+    # by kind and size, not type: e.g. numpy.longlong is not numpy.int64 on macOS
+    kind_size = (data.dtype.kind, data.dtype.itemsize)
+    if kind_size == ("i", 1):
         cls = uproot.models.TArray.Model_TArrayC
-    elif issubclass(data.dtype.type, numpy.int16):
+    elif kind_size == ("i", 2):
         cls = uproot.models.TArray.Model_TArrayS
-    elif issubclass(data.dtype.type, numpy.int32):
+    elif kind_size == ("i", 4):
         cls = uproot.models.TArray.Model_TArrayI
-    elif issubclass(data.dtype.type, numpy.int64):
+    elif kind_size == ("i", 8):
         cls = uproot.models.TArray.Model_TArrayL
-    elif issubclass(data.dtype.type, numpy.float32):
+    elif kind_size == ("f", 4):
         cls = uproot.models.TArray.Model_TArrayF
-    elif issubclass(data.dtype.type, numpy.float64):
+    elif kind_size == ("f", 8):
         cls = uproot.models.TArray.Model_TArrayD
     else:
         raise ValueError(
