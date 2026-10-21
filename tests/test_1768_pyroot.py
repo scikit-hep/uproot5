@@ -320,3 +320,22 @@ def test_write_list(tmp_path, kind):
     for i, h in enumerate(hists):
         _assert_same(h, collection.At(slots[i]))
     fin.Close()
+def test_pyroot_errors_and_copies():
+    h = ROOT.TH1D("h_1768_copy", "", 3, 0, 3)
+    h.SetDirectory(ROOT.nullptr)
+    h.Fill(1.5)
+    copy = uproot.to_pyroot(h, "h_1768_copied")
+    assert copy.GetName() == "h_1768_copied"
+    assert copy.GetBinContent(2) == 1
+
+    tree = ROOT.TTree("t_1768", "")
+    tree.SetDirectory(ROOT.nullptr)
+    with pytest.raises(TypeError, match="TTrees can't be converted"):
+        uproot.from_pyroot(tree)
+
+    ROOT.gInterpreter.Declare(
+        "class _uproot_1768_interpreted : public TObject {"
+        " ClassDef(_uproot_1768_interpreted, 1) };"
+    )
+    with pytest.raises(TypeError, match="interpreted class"):
+        uproot.from_pyroot(ROOT._uproot_1768_interpreted())

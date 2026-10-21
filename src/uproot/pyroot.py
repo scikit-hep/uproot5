@@ -46,6 +46,10 @@ def to_pyroot(obj, name=None):
     """
     import ROOT
 
+    if type(obj).__module__ == "cppyy.gbl":
+        # already a PyROOT object
+        return obj.Clone() if name is None else obj.Clone(name)
+
     # Objects read from a file have the class versions of the file that wrote
     # them, which Uproot may not be able to serialize; convert them to the
     # versions that Uproot writes, as writing them to a file does. This also
@@ -293,6 +297,18 @@ def from_pyroot(obj):
     is necessary for conversion from PyROOT because the object is serialized through a
     ROOT TMessage.
     """
+    if obj.InheritsFrom("TTree"):
+        raise TypeError(
+            "TTrees can't be converted from PyROOT, since their data are in baskets "
+            "in a file: write the TTree to a file and open it with uproot.open"
+        )
+    import ROOT
+
+    if obj.IsA().GetState() == ROOT.TClass.kInterpreted:
+        raise TypeError(
+            f"ROOT can't serialize {obj.ClassName()}, which is an interpreted "
+            "class without a dictionary, so it can't be converted"
+        )
     buffer = pyroot_to_buffer(obj)
     chunk = uproot.source.chunk.Chunk.wrap(None, buffer)
     # references in the TMessage are relative to its start, which includes the
