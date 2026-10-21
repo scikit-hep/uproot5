@@ -158,3 +158,25 @@ def test_missing_fBinSumw2(filename, classname):
         if classname == "TProfile":
             pytest.importorskip("hist")
             assert p.to_hist().values(flow=True) == pytest.approx(values)
+
+
+@pytest.mark.parametrize(
+    "filename, classname",
+    [
+        ("uproot-hepdata-example.root", "TProfile"),
+        ("uproot-issue-227a.root", "TProfile2D"),
+        ("uproot-issue-227b.root", "TProfile3D"),
+    ],
+)
+@pytest.mark.parametrize("flow", [False, True])
+def test_to_numpy(filename, classname, flow):
+    with uproot.open(skhep_testdata.data_path(filename)) as f:
+        p = f[_key(f, classname)]
+        values, *edges = p.to_numpy(flow=flow)
+        dd_values, dd_edges = p.to_numpy(flow=flow, dd=True)
+
+    assert values.tolist() == dd_values.tolist() == p.values(flow=flow).tolist()
+    assert len(edges) == len(dd_edges) == len(p.axes)
+    for axis, e, dd_e in zip(p.axes, edges, dd_edges):
+        assert e.tolist() == dd_e.tolist() == axis.edges(flow=flow).tolist()
+    assert values.shape == tuple(len(e) - 1 for e in edges)

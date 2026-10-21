@@ -246,6 +246,27 @@ class Profile(uproot.behaviors.TH1.Histogram):
         _values, errors = self._values_errors(flow, self._error_mode(error_mode))
         return numpy.square(errors)
 
+    def to_numpy(self, flow=False, dd=False):
+        """
+        Args:
+            flow (bool): If True, include underflow and overflow bins; otherwise,
+                only normal (finite-width) bins are included.
+            dd (bool): If True, the return type follows
+                `numpy.histogramdd <https://numpy.org/doc/stable/reference/generated/numpy.histogramdd.html>`__;
+                otherwise, it follows `numpy.histogram <https://numpy.org/doc/stable/reference/generated/numpy.histogram.html>`__
+                and `numpy.histogram2d <https://numpy.org/doc/stable/reference/generated/numpy.histogram2d.html>`__.
+
+        Converts the profile into a form like the ones produced by the NumPy
+        histogram functions, with the mean of each bin
+        (:ref:`uproot.behaviors.TProfile.Profile.values`) as the bin contents.
+        """
+        values = self.values(flow=flow)
+        edges = tuple(axis.edges(flow=flow) for axis in self.axes)
+        if dd:
+            return values, edges
+        else:
+            return (values, *edges)
+
     def _error_mode(self, error_mode):
         if error_mode is None:
             return self.member("fErrorMode", none_if_missing=True)
