@@ -73,6 +73,23 @@ class Histogram:
     Abstract class for histograms.
     """
 
+    def postprocess(self, chunk, cursor, context, file):
+        # ROOT fills a histogram's buffered entries into its bins when it's first
+        # used (BufferEmpty), but uproot doesn't, so warn if there are any. Only
+        # the concrete object, not a base class's part of it, has all the members.
+        if self._concrete is None:
+            fBuffer = self.member("fBuffer", none_if_missing=True)
+            if fBuffer is not None and len(fBuffer) > 0 and fBuffer[0] >= 1:
+                uproot._util.warn_outside_uproot(
+                    f"{self.classname} {str(self.member('fName'))!r} has "
+                    f"{int(fBuffer[0])} entries in its fill buffer (fBuffer) that "
+                    "were never filled into its bins: ROOT fills them when the "
+                    "histogram is first used, but uproot ignores them, so its bin "
+                    "contents and statistics may be incomplete (and its axis range "
+                    "unset, if ROOT was to choose it from the entries)",
+                )
+        return super().postprocess(chunk, cursor, context, file)
+
     @property
     def name(self):
         """

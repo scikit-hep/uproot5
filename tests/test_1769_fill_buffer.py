@@ -57,3 +57,61 @@ def test_write_fBuffer_read_by_ROOT(tmp_path, profile):
     ]
     assert sum(get(i) for i in range(h.GetNcells())) == sum(weights)
     f.Close()
+
+
+@pytest.mark.parametrize(
+    ("fBuffer", "profile"),
+    [
+        (BUFFER, False),
+        (PROFILE_BUFFER, True),
+        ([], False),  # no buffer
+        ([-3.0, *BUFFER[1:]], False),  # already filled by ROOT
+        ([0.0, *PROFILE_BUFFER[1:]], True),  # emptied
+    ],
+)
+def test_warn_on_unfilled_buffer(tmp_path, fBuffer, profile):
+    with uproot.recreate(tmp_path / "h.root") as f:
+        f["h"] = _buffered(fBuffer, profile)
+    file = uproot.open(tmp_path / "h.root")
+    if len(fBuffer) > 0 and fBuffer[0] > 0:
+        with pytest.warns(
+            UserWarning, match=f"has {fBuffer[0]:.0f} entries in its fill"
+        ) as record:
+            h = file["h"]
+        assert record[0].filename == __file__  # the user's code, not Uproot's
+    else:
+        h = file["h"]  # and no warning, since pytest makes warnings errors
+    # uproot doesn't fill the buffered entries
+    assert not np.any(h.values(flow=True))
+    assert h.member("fEntries") == 0
+
+
+def test_warn_on_unfilled_buffer_from_ROOT(tmp_path):
+    ROOT = pytest.importorskip("ROOT")
+    f = ROOT.TFile(str(tmp_path / "h.root"), "RECREATE")
+    hists = [
+        ROOT.TH1F("h", "", 10, 0, 0),
+        ROOT.TProfile("p", "", 10, 0, 0),
+        ROOT.TH1D("flushed", "", 10, 0, 0),
+    ]
+    for x in [1.0, 2.0, 4.0]:
+        hists[0].Fill(x, 0.5)
+        hists[1].Fill(x, 2 * x)
+        hists[2].Fill(x)
+    hists[2].GetBinContent(1)  # ROOT fills the buffered entries here
+    for h in hists:
+        h.Write()
+    f.Close()
+
+    file = uproot.open(tmp_path / "h.root")
+    for name, classname in [("h", "TH1F"), ("p", "TProfile")]:
+        with pytest.warns(UserWarning, match=f"{classname} '{name}' has 3 entries"):
+            assert file[name].member("fEntries") == 0
+    assert file["flushed"].member("fEntries") == 3
+
+    # also when converted from PyROOT, where the name is a TString
+    h = ROOT.TH1F("h_1769_pyroot", "", 10, 0, 0)
+    h.SetDirectory(ROOT.nullptr)
+    h.Fill(1.0)
+    with pytest.warns(UserWarning, match="TH1F 'h_1769_pyroot' has 1 entries"):
+        uproot.from_pyroot(h)
