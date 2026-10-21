@@ -1,6 +1,7 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot5/blob/main/LICENSE
 
 import os
+import warnings
 
 import numpy as np
 import pytest
@@ -102,15 +103,15 @@ def _root_read(ROOT, tmp_path, obj, name):
     return out
 
 
-def _weighted_profile(fSumw2, fErrorMode=0):
+def _weighted_profile(fSumw2, fErrorMode=0, fTsumw=1.0, fTsumwx=0.5):
     return to_TProfile(
         fName="p",
         fTitle="",
         data=np.array([0.0, 3.0, 0.0], np.float64),
         fEntries=3.0,
-        fTsumw=1.0,
+        fTsumw=fTsumw,
         fTsumw2=5.0,
-        fTsumwx=0.5,
+        fTsumwx=fTsumwx,
         fTsumwx2=0.25,
         fTsumwy=3.0,
         fTsumwy2=fSumw2,
@@ -232,6 +233,98 @@ def test_negative_weights_pyroot(tmp_path):
         assert q.GetBinContent(i) == pytest.approx(p.GetBinContent(i))
         assert q.GetBinError(i) == pytest.approx(p.GetBinError(i))
 
+    # the statistics of the filled x values, not of the bin centers, are kept
+    assert q.GetEntries() == p.GetEntries()
+    p_stats, q_stats = np.zeros(13), np.zeros(13)
+    p.GetStats(p_stats)
+    q.GetStats(q_stats)
+    assert q_stats == pytest.approx(p_stats)
+    # ROOT's own fTsumw, fTsumw2, fTsumwx and fTsumwx2 are kept exactly
+    assert q_stats[:4].tolist() == p_stats[:4].tolist()
+
+
+@pytest.mark.parametrize(
+    "case",
+    [
+        "unchanged",
+        "Merge",
+        "SetStatOverflows",
+        "PutStats",
+        "SetBinContent",
+        "SetBinEntries",
+        "Rebin",
+        "labels",
+    ],
+)
+def test_global_statistics_pyroot(tmp_path, case):
+    ROOT = pytest.importorskip("ROOT")
+
+    rng = np.random.default_rng(0)
+    # labels make the axis [0, 10] when written back, so ROOT's x statistics
+    # don't apply then
+    xmax = 1 if case == "labels" else 10
+    p = ROOT.TProfile(f"p_1766_stats_{case}", "", 10, 0, xmax)
+    p.SetDirectory(ROOT.nullptr)
+    if case == "SetStatOverflows":
+        # ROOT's statistics then include the flow bins
+        p.SetStatOverflows(ROOT.TH1.kConsider)
+    low, high = (0, xmax) if case == "labels" else (-1, 11)
+    for x, y in zip(rng.uniform(low, high, 200), rng.normal(5, 2, 200)):
+        p.Fill(x, y)
+
+    if case == "Merge":
+        # merging with a weighted profile doesn't make fBinSumw2, so fTsumw2 (the
+        # sum of squared weights) can't be recomputed from the bins
+        other = ROOT.TProfile("other_1766_stats", "", 10, 0, 10)
+        other.SetDirectory(ROOT.nullptr)
+        other.Sumw2()
+        for x, y, w in zip(
+            rng.uniform(0, 10, 200), rng.normal(5, 2, 200), rng.uniform(0.5, 2, 200)
+        ):
+            other.Fill(x, y, w)
+        others = ROOT.TList()
+        others.Add(other)
+        p.Merge(others)
+    # these make ROOT's statistics disagree with the bins (or tell ROOT to
+    # recompute them from the bins, which it does with fTsumw = 0)
+    elif case == "PutStats":
+        p.PutStats(np.zeros(13))
+    elif case == "SetBinContent":
+        p.SetBinContent(2, 100)
+    elif case == "SetBinEntries":
+        p.SetBinEntries(2, 1)
+    elif case == "Rebin":
+        # 10 bins don't divide into groups of 3, which ROOT warns about
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            p.Rebin(3)
+    elif case == "labels":
+        for i in range(10):
+            p.GetXaxis().SetBinLabel(i + 1, f"label{i}")
+
+    q = _root_read(
+        ROOT, tmp_path, _root_write_and_read(ROOT, tmp_path, p).to_hist(), "q"
+    )
+    assert q.GetEntries() == p.GetEntries()
+    if case in ("unchanged", "Merge"):
+        assert q.GetMean(1) == pytest.approx(p.GetMean(1))
+        assert q.GetStdDev(1) == pytest.approx(p.GetStdDev(1))
+        assert q.GetEffectiveEntries() == pytest.approx(p.GetEffectiveEntries())
+    else:
+        # recomputed from the bin centers
+        n = q.GetNbinsX()
+        w = np.array([q.GetBinEntries(i) for i in range(1, n + 1)])
+        x = np.array([q.GetBinCenter(i) for i in range(1, n + 1)])
+        assert q.GetMean(1) == pytest.approx((w * x).sum() / w.sum())
+
+
+def test_out_of_date_statistics(tmp_path):
+    # ROOT's fTsumw = 0 means that its statistics must be recomputed from the bins
+    p = _write_and_read(tmp_path, _weighted_profile(10.0, fTsumw=0.0, fTsumwx=7.0))
+    roundtrip = _write_and_read(tmp_path, p.to_hist(), "roundtrip")
+    assert roundtrip.member("fTsumw") == 1.0
+    assert roundtrip.member("fTsumwx") == 0.5
+
 
 @pytest.mark.parametrize(
     "axis", [hist.axis.Regular(3, 0, 3), hist.axis.StrCategory(["a", "b", "c"])]
@@ -311,33 +404,37 @@ def test_zero_sum_of_weights(tmp_path):
 
 
 def _modified(change):
-    # a profile whose fEntries (3, as if from ROOT) is not its sum of weights (3.5)
+    # a profile with statistics as if from ROOT: its fEntries (3) is not its sum
+    # of weights (3.5), and its fTsumwx (1) is not from bin centers (3.25)
     def make(tmp_path):
         h = hist.Hist(hist.axis.Regular(2, 0, 2), storage=hist.storage.WeightedMean())
         h.fill([0.5, 1.5, 1.5], sample=[1.0, 2.0, 4.0], weight=[2.0, 0.5, 1.0])
-        h.metadata = {"fEntries": 3}
+        h.metadata = {"fEntries": 3, "fTsumwx": 1.0, "fTsumwx2": 0.75}
         p = _write_and_read(tmp_path, h)
-        assert p.member("fEntries") == 3  # an explicit fEntries is used
+        # explicit statistics are used
+        assert p.member("fEntries") == 3
+        assert p.member("fTsumwx") == 1.0
         return change(p.to_hist())
 
     return make
 
 
 @pytest.mark.parametrize(
-    ("make", "fEntries"),
+    ("make", "fEntries", "fTsumwx"),
     [
-        (_modified(lambda h: h), 3),
-        (_modified(lambda h: h.copy()), 3),
-        # the bins changed, so fEntries is recomputed (as the sum of weights)
-        (_modified(lambda h: h + h), 7),
-        (_modified(lambda h: h.fill([0.5], sample=[3.0], weight=[1.0])), 4.5),
-        (_modified(lambda h: h.fill([0.5], sample=[3.0], weight=[1e-9])), 3.5),
+        (_modified(lambda h: h), 3, 1.0),
+        (_modified(lambda h: h.copy()), 3, 1.0),
+        # the bins changed, so the statistics are recomputed from the bins
+        (_modified(lambda h: h + h), 7, 6.5),
+        (_modified(lambda h: h.fill([0.5], sample=[3.0], weight=[1.0])), 4.5, 3.75),
+        (_modified(lambda h: h.fill([0.5], sample=[3.0], weight=[1e-9])), 3.5, 3.25),
     ],
     ids=["unchanged", "copy", "added", "filled", "filled-small-weight"],
 )
-def test_stale_statistics(tmp_path, make, fEntries):
+def test_stale_statistics(tmp_path, make, fEntries, fTsumwx):
     p = _write_and_read(tmp_path, make(tmp_path), "roundtrip")
     assert p.member("fEntries") == pytest.approx(fEntries)
+    assert p.member("fTsumwx") == pytest.approx(fTsumwx)
 
 
 def test_unweighted_fEntries(tmp_path):

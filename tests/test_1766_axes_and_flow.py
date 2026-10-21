@@ -118,6 +118,9 @@ def test_labeled_underflow(tmp_path, make):
     with pytest.warns(UserWarning, match="underflow bin of labeled axis 'xaxis'"):
         out = h.to_hist()
     assert out.values(flow=True).tolist() == [1, 0, 0, 0]
+    if make is _tprofile:
+        # ROOT's number of fills is kept, including the dropped underflow's
+        assert _write_and_read(tmp_path, out).member("fEntries") == 2
 
 
 def test_labels_pyroot(tmp_path):

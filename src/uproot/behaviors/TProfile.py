@@ -424,15 +424,34 @@ class TProfile(Profile):
             sum_of_bin_weights = sum_of_bin_weights[1:]
             sum_of_bin_weights_squared = sum_of_bin_weights_squared[1:]
 
-        # boost-histogram does not track the number of fills (ROOT's fEntries)
-        # or the error option, so keep them in the metadata for writing back to ROOT.
-        # fEntries is only valid for these bin contents, so also keep their total
-        # weight, which tells the writer whether the bins have changed since.
+        # boost-histogram does not track the number of fills (ROOT's fEntries),
+        # the error option, or global statistics such as the sums of filled x
+        # values (it only knows bin centers) and of squared weights (which ROOT
+        # can have without fBinSumw2, after merging with a weighted profile), so
+        # keep them in the metadata for writing back to ROOT. These are only
+        # valid for these bin contents, so the writer checks that the bins still
+        # give the same total weight for fEntries, and the same fTsumw for the
+        # global statistics. (ROOT's fTsumw already differs from the bins' if its
+        # statistics are out of date, e.g. after SetBinContent or an uneven Rebin,
+        # or include the flow bins, with SetStatOverflows.)
         out.metadata = {
             "fEntries": self.member("fEntries"),
+            # without a labeled axis's underflow, which was dropped
             "fEntries_sumw": float(sum_of_bin_weights.sum()),
+            "fTsumw": self.member("fTsumw"),
+            "fTsumw2": self.member("fTsumw2"),
             "fErrorMode": self.member("fErrorMode"),
         }
+        # The x sums are in the axis's coordinates, which a labeled axis keeps
+        # only if it spans [0, nbins], since boost-histogram's categories are
+        # written back as bins 0, 1, ...
+        fXaxis = self.member("fXaxis")
+        if not fXaxis.traits.discrete or (
+            fXaxis.member("fXmin") == 0
+            and fXaxis.member("fXmax") == fXaxis.member("fNbins")
+        ):
+            out.metadata["fTsumwx"] = self.member("fTsumwx")
+            out.metadata["fTsumwx2"] = self.member("fTsumwx2")
         view = out.view(flow=True)
 
         if self.weighted:

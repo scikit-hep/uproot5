@@ -334,16 +334,26 @@ def to_writable(obj):
                 fEntries = _fBinEntries.sum()
                 fErrorMode = 0
                 if "metadata" in obj.__dir__() and isinstance(obj.metadata, Mapping):
-                    # to_hist records the total weight that its fEntries goes with;
-                    # if the bins have changed since (filled, added, ...), it's stale
-                    fEntries_sumw = obj.metadata.get("fEntries_sumw")
-                    if "fEntries" in obj.metadata and (
-                        fEntries_sumw is None
-                        or numpy.isclose(fEntries_sumw, _sumw.sum(), rtol=1e-12, atol=0)
-                    ):
-                        fEntries = obj.metadata["fEntries"]
+                    metadata = obj.metadata
+
+                    # to_hist records the sums of weights that its statistics go
+                    # with; if the bins have changed since (filled, added, ...),
+                    # the statistics are stale
+                    def matches(key, sumw):
+                        return key not in metadata or numpy.isclose(
+                            metadata[key], sumw, rtol=1e-12, atol=0
+                        )
+
+                    if "fEntries" in metadata and matches("fEntries_sumw", _sumw.sum()):
+                        fEntries = metadata["fEntries"]
+                    if matches("fTsumw", fTsumw):
+                        # ROOT's, which can differ from the bins' sum by round-off
+                        fTsumw = metadata.get("fTsumw", fTsumw)
+                        fTsumw2 = metadata.get("fTsumw2", fTsumw2)
+                        fTsumwx = metadata.get("fTsumwx", fTsumwx)
+                        fTsumwx2 = metadata.get("fTsumwx2", fTsumwx2)
                     fErrorMode = uproot.behaviors.TProfile._error_mode_int(
-                        obj.metadata.get("fErrorMode")
+                        metadata.get("fErrorMode")
                     )
 
                 return to_TProfile(
