@@ -49,6 +49,8 @@ in file {self.file.file_path}"""
             )
         )
         self._data = cursor.string(chunk, context)
+        # ROOT's name for it, which models generated from StreamerInfo also use
+        self._members["fString"] = self._data
 
     def postprocess(self, chunk, cursor, context, file):
         out = Model_TObjString(self._data)

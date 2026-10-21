@@ -277,7 +277,9 @@ def test_tobjstring(tmp_path):
     with uproot.open(root_filename) as file:
         string = file["string"]
         assert not string.is_memberwise
+        assert string == string.member("fString") == "some text"
         assert uproot.to_pyroot(string).GetString() == "some text"
+        assert uproot.from_pyroot(ROOT.TObjString("other")).member("fString") == "other"
 
         uproot_filename = os.path.join(tmp_path, "uproot_written.root")
         with uproot.recreate(uproot_filename) as fout:
