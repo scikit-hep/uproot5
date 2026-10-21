@@ -243,6 +243,31 @@ def test_streamer_info_registration():
     assert result.stdout.splitlines()[-1] == "2 g [3.0, 4.0]"
 
 
+def test_from_pyroot_nested_classes():
+    # The StreamerInfo for a class is fetched from ROOT with the first object of
+    # that class, so it must be fetched again for a later one that contains
+    # other classes. Check this in a new process, where no other test has
+    # fetched them.
+    script = (
+        "import ROOT, uproot\n"
+        "ROOT.TH1.AddDirectory(False)\n"
+        "uproot.from_pyroot(ROOT.TH1D('plain', '', 3, 0, 3))\n"
+        "h = ROOT.TH1D('with_function', '', 3, 0, 3)\n"
+        "f = ROOT.TF1('f', 'x', 0, 3)\n"
+        "ROOT.SetOwnership(f, False)\n"
+        "h.GetListOfFunctions().Add(f)\n"
+        "print(type(uproot.from_pyroot(h).member('fFunctions')[0]).__name__)\n"
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", script],
+        capture_output=True,
+        text=True,
+        check=True,
+        env={**os.environ, "PYTHONPATH": os.pathsep.join(sys.path)},
+    )
+    assert result.stdout.splitlines()[-1].startswith("Model_TF1_v")
+
+
 def test_tobjstring(tmp_path):
     root_filename = os.path.join(tmp_path, "root_written.root")
     fout = ROOT.TFile(root_filename, "RECREATE")

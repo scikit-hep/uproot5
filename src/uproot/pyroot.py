@@ -160,15 +160,23 @@ class _GetStreamersOnce:
     _streamers = {}
     _streamer_dependencies = {}
     _memfile_copy = None
+    _lock = threading.Lock()
 
     def __init__(self, obj):
         self._obj = obj
+        self._dumped = False
 
     def class_named(self, classname, version=None):
         return uproot.reading.ReadOnlyFile.class_named(self, classname, version)
 
     def streamers_named(self, classname):
-        return uproot.reading.ReadOnlyFile.streamers_named(self, classname)
+        out = uproot.reading.ReadOnlyFile.streamers_named(self, classname)
+        if len(out) == 0 and not self._dumped:
+            # the StreamerInfo may have come from earlier objects of the same
+            # class, which didn't contain this one (e.g. in fFunctions)
+            self._dump()
+            out = uproot.reading.ReadOnlyFile.streamers_named(self, classname)
+        return out
 
     def streamer_named(self, classname, version):
         return uproot.reading.ReadOnlyFile.streamer_named(
@@ -203,6 +211,15 @@ class _GetStreamersOnce:
         obj_classname = tclass.GetName()
         obj_version = tclass.GetClassVersion()
         if self._streamers.get(obj_classname, {}).get(obj_version, None) is None:
+            self._dump()
+        return self._streamers
+
+    def _dump(self):
+        # gets the StreamerInfo of this object and all that it contains
+        tclass = self._obj.IsA()
+        obj_classname = tclass.GetName()
+        obj_version = tclass.GetClassVersion()
+        with _GetStreamersOnce._lock:
             import ROOT
 
             if _GetStreamersOnce._memfile_copy is None:
@@ -233,8 +250,7 @@ Long64_t _uproot_memfile_copyto(TMemFile& mf, size_t out_addr, Long64_t maxsize)
                     for version, streamerinfo in versions.items():
                         self._streamers[classname][version] = streamerinfo
                         dependencies.append(streamerinfo)
-
-        return self._streamers
+        self._dumped = True
 
 
 class _NoFile:
