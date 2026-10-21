@@ -64,12 +64,6 @@ def add_to_directory(obj, name, directory, streamers):
     else:
         writable = to_writable(obj)
 
-        for rawstreamer in writable.class_rawstreamers:
-            if isinstance(rawstreamer, tuple):
-                streamers.append(uproot.writing._cascade.RawStreamerInfo(*rawstreamer))
-            else:
-                streamers.append(rawstreamer)
-
         if hasattr(writable, "fTitle"):
             title = writable.fTitle
         elif writable.has_member("fTitle"):
@@ -110,6 +104,14 @@ def add_to_directory(obj, name, directory, streamers):
             compressed_data = uproot.compression.compress(
                 uncompressed_data, directory.file.compression
             )
+
+        # after serializing, since getting a PyROOT object's StreamerInfo writes it
+        # elsewhere, which can change it (e.g. a TCanvas only writes new colors once)
+        for rawstreamer in writable.class_rawstreamers:
+            if isinstance(rawstreamer, tuple):
+                streamers.append(uproot.writing._cascade.RawStreamerInfo(*rawstreamer))
+            else:
+                streamers.append(rawstreamer)
 
         directory._cascading.add_object(
             directory.file.sink,

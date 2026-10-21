@@ -204,7 +204,7 @@ _serialize_in_key._copy = None
 class _GetStreamersOnce:
     _custom_classes = None
     _streamers = {}
-    _streamer_dependencies = {}
+    _parsed = {}
     _memfile_copy = None
     _lock = threading.Lock()
 
@@ -261,42 +261,64 @@ class _GetStreamersOnce:
         return self._streamers
 
     def _dump(self):
-        # gets the StreamerInfo of this object and all that it contains
-        tclass = self._obj.IsA()
-        obj_classname = tclass.GetName()
-        obj_version = tclass.GetClassVersion()
-        with _GetStreamersOnce._lock:
-            import ROOT
+        # gets (and returns) the StreamerInfo of this object and all it contains
+        import ROOT
 
+        with _GetStreamersOnce._lock:
             if _GetStreamersOnce._memfile_copy is None:
                 ROOT.gInterpreter.Declare("""
-Long64_t _uproot_memfile_copyto(TMemFile& mf, size_t out_addr, Long64_t maxsize) {
-    return mf.CopyTo((void*)out_addr, maxsize);
+#include "TDirectory.h"
+#include "TMemFile.h"
+
+void _uproot_dump_streamer_info(
+    TObject* obj, std::vector<char>& out, std::vector<Long64_t>& info
+) {
+    TDirectory::TContext context;  // TMemFile would change gDirectory
+    TMemFile memfile("noname.root", "new");
+    memfile.SetCompressionLevel(0);
+    memfile.WriteObjectAny(obj, obj->IsA(), "noname");
+    memfile.WriteStreamerInfo();
+    memfile.Close();
+    info = {memfile.GetSeekInfo(), memfile.GetNbytesInfo()};
+    out.resize(memfile.GetEND());
+    memfile.CopyTo(out.data(), out.size());
+}
+
+void _uproot_copy_chars(std::vector<char>& data, size_t out_addr) {
+    memcpy((void*)out_addr, data.data(), data.size());
 }
 """)
-                _GetStreamersOnce._memfile_copy = ROOT._uproot_memfile_copyto
+                _GetStreamersOnce._memfile_copy = (
+                    ROOT._uproot_dump_streamer_info,
+                    ROOT._uproot_copy_chars,
+                )
 
-            memfile = ROOT.TMemFile("noname.root", "new")
-            memfile.SetCompressionLevel(0)
-            memfile.WriteObjectAny(self._obj, self._obj.IsA(), "noname")
-            memfile.WriteStreamerInfo()
-            memfile.Close()
+            data = ROOT.std.vector("char")()
+            info = ROOT.std.vector("Long64_t")()
+            dump, copy = _GetStreamersOnce._memfile_copy
+            dump(self._obj, data, info)
+            buffer = numpy.empty(data.size(), numpy.uint8)
+            copy(data, buffer.ctypes.data)
 
-            buffer = numpy.empty(memfile.GetEND(), numpy.uint8)
-            _GetStreamersOnce._memfile_copy(memfile, buffer.ctypes.data, len(buffer))
+            # parsing the StreamerInfo record is the slow part, so reuse it for
+            # the same record (from its data, after its key, which has a date)
+            seek, nbytes = int(info[0]), int(info[1])
+            keylen = int(buffer[seek + 14 : seek + 16].view(">i2")[0])
+            record = buffer[seek + keylen : seek + nbytes].tobytes()
+            dependencies = _GetStreamersOnce._parsed.get(record)
+            if dependencies is None:
+                dependencies = []
+                with uproot.open(_GetStreamersOnce.ArrayFile(buffer)) as file:
+                    for classname, versions in file.file.streamers.items():
+                        if classname not in self._streamers:
+                            self._streamers[classname] = {}
+                        for version, streamerinfo in versions.items():
+                            self._streamers[classname][version] = streamerinfo
+                            dependencies.append(streamerinfo)
+                _GetStreamersOnce._parsed[record] = dependencies
 
-            with uproot.open(_GetStreamersOnce.ArrayFile(buffer)) as file:
-                dependencies = self._streamer_dependencies[
-                    obj_classname, obj_version
-                ] = []
-
-                for classname, versions in file.file.streamers.items():
-                    if classname not in self._streamers:
-                        self._streamers[classname] = {}
-                    for version, streamerinfo in versions.items():
-                        self._streamers[classname][version] = streamerinfo
-                        dependencies.append(streamerinfo)
         self._dumped = True
+        return dependencies
 
 
 class _NoFile:
@@ -366,12 +388,14 @@ def from_pyroot(obj):
 class _PyROOTWritable:
     def __init__(self, obj):
         self._obj = obj
+        self._class_rawstreamers = None
 
     @property
     def class_rawstreamers(self):
-        tclass = self._obj.IsA()
-        key = (tclass.GetName(), tclass.GetClassVersion())
-        return _GetStreamersOnce._streamer_dependencies.get(key, [])
+        # the StreamerInfo of this object and all that it contains, for the file
+        if self._class_rawstreamers is None:
+            self._class_rawstreamers = _GetStreamersOnce(self._obj)._dump()
+        return self._class_rawstreamers
 
     @property
     def classname(self):

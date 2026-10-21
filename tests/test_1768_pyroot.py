@@ -414,3 +414,66 @@ def test_write_pyroot_big_keys(tmp_path, monkeypatch):
     for h in hists:
         _assert_same(h, fin.Get(h.GetName()))
     fin.Close()
+
+
+def test_write_pyroot_streamer_info(tmp_path):
+    # The file gets the StreamerInfo of everything in a PyROOT object, even if
+    # an earlier object of the same class didn't contain all of it. Check this
+    # in a new process, where no other test has converted these classes.
+    filename = os.path.join(tmp_path, "uproot_written.root")
+    script = (
+        "import sys, ROOT, uproot\n"
+        "ROOT.TH1.AddDirectory(False)\n"
+        "uproot.from_pyroot(ROOT.TH1D('plain', '', 3, 0, 3))\n"
+        "h = ROOT.TH1D('with_function', '', 3, 0, 3)\n"
+        "f = ROOT.TF1('f', 'x', 0, 3)\n"
+        "ROOT.SetOwnership(f, False)\n"
+        "h.GetListOfFunctions().Add(f)\n"
+        "with uproot.recreate(sys.argv[1]) as fout:\n"
+        "    fout['h'] = h\n"
+    )
+    subprocess.run(
+        [sys.executable, "-c", script, filename],
+        check=True,
+        env={**os.environ, "PYTHONPATH": os.pathsep.join(sys.path)},
+    )
+    with uproot.open(filename) as fin:
+        assert "TF1" in fin.file.streamers
+        assert "TH1D" in fin.file.streamers
+
+
+def test_write_pyroot_side_effects(tmp_path):
+    # writing a PyROOT object doesn't change ROOT's current directory
+    root_file = ROOT.TFile(os.path.join(tmp_path, "root_written.root"), "RECREATE")
+    h = ROOT.TH1D("h_1768_side_effects", "", 3, 0, 3)
+    h.SetDirectory(ROOT.nullptr)
+    with uproot.recreate(os.path.join(tmp_path, "uproot_written.root")) as fout:
+        fout["h"] = h
+    assert ROOT.gDirectory.GetName() == root_file.GetName()
+    root_file.Close()
+
+    # and it's written as ROOT would write it, although getting its StreamerInfo
+    # also writes it: a TCanvas writes new colors only the first time. This is in a
+    # new process, so that the color is only known from the file.
+    filename = os.path.join(tmp_path, "canvas.root")
+    script = (
+        "import sys, ROOT, uproot\n"
+        "ROOT.gROOT.SetBatch(True)\n"
+        "color = ROOT.TColor(1768, 0.1, 0.7, 0.3, 'color_1768', 1.0)\n"
+        "canvas = ROOT.TCanvas('canvas_1768', '')\n"
+        "with uproot.recreate(sys.argv[1]) as fout:\n"
+        "    fout['canvas'] = canvas\n"
+    )
+    subprocess.run(
+        [sys.executable, "-c", script, filename],
+        check=True,
+        env={**os.environ, "PYTHONPATH": os.pathsep.join(sys.path)},
+    )
+    assert not ROOT.gROOT.GetColor(1768)
+    fin = ROOT.TFile(filename)
+    fin.Get("canvas")
+    color = ROOT.gROOT.GetColor(1768)
+    assert (color.GetRed(), color.GetGreen(), color.GetBlue()) == pytest.approx(
+        (0.1, 0.7, 0.3)
+    )
+    fin.Close()
