@@ -287,6 +287,28 @@ def test_zero_sum_of_weights(tmp_path):
     assert p.member("fTsumwy") == 2
     assert p.member("fTsumwy2") == 4
 
+    # and from ROOT, where such a bin has a sum of weighted values (-2)
+    p = to_TProfile(
+        fName="p",
+        fTitle="",
+        data=np.array([0.0, -2.0, 2.0, 0.0], np.float64),
+        fEntries=3.0,
+        fTsumw=1.0,
+        fTsumw2=3.0,
+        fTsumwx=1.5,
+        fTsumwx2=2.25,
+        fTsumwy=0.0,
+        fTsumwy2=-4.0,
+        fSumw2=np.array([0.0, -8.0, 4.0, 0.0], np.float64),
+        fBinEntries=np.array([0.0, 0.0, 1.0, 0.0], np.float64),
+        fBinSumw2=np.array([0.0, 2.0, 1.0, 0.0], np.float64),
+        fXaxis=to_TAxis(fName="xaxis", fTitle="", fNbins=2, fXmin=0, fXmax=2),
+    )
+    p = _write_and_read(tmp_path, p, "from_root")
+    with pytest.warns(UserWarning, match="zero sum of weights"):
+        h = p.to_hist()
+    assert h.view(flow=True)["_sum_of_weighted_deltas_squared"][1] == -8
+
 
 def _modified(change):
     # a profile whose fEntries (3, as if from ROOT) is not its sum of weights (3.5)

@@ -6,6 +6,8 @@ This module defines the behavior of ``TProfile``.
 
 from __future__ import annotations
 
+import warnings
+
 import numpy
 
 import uproot
@@ -373,6 +375,14 @@ class TProfile(Profile):
         nonzero = sum_of_bin_weights != 0
         mean_values = numpy.zeros(len(raw_values), dtype=numpy.float64)
         mean_values[nonzero] = raw_values[nonzero] / sum_of_bin_weights[nonzero]
+        if numpy.any(~nonzero & (raw_values != 0)):
+            warnings.warn(
+                "some bins have a zero sum of weights but a nonzero sum of "
+                "weighted values (possible with negative weights), which "
+                "boost-histogram's mean storage can't represent, so those sums "
+                "are dropped",
+                stacklevel=2,
+            )
 
         # Compute sum_sq_dev = sum(y^2) - count * mean^2 directly from fSumw2.
         # fErrorMode is intentionally ignored here: it controls how ROOT displays
