@@ -1,6 +1,8 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot5/blob/main/LICENSE
 
 import os
+import subprocess
+import sys
 
 import numpy as np
 import pytest
@@ -121,3 +123,84 @@ def test_converted_from_hist(tmp_path, ndim, storage):
     fin = ROOT.TFile(filename)
     _assert_same(fin.Get("obj"), uproot.to_pyroot(uproot.to_writable(h), "obj"))
     fin.Close()
+
+
+GRAPH_ERRORS = {
+    "TGraph": [],
+}
+
+
+def _assert_same_graph(expected, actual):
+    assert actual.ClassName() == expected.ClassName()
+    assert actual.GetName() == expected.GetName()
+    assert actual.GetTitle() == expected.GetTitle()
+    assert actual.GetMinimum() == expected.GetMinimum()
+    assert actual.GetMaximum() == expected.GetMaximum()
+    n = expected.GetN()
+    assert actual.GetN() == n
+    for method in [
+        "GetX",
+        "GetY",
+        "GetEX",
+        "GetEY",
+        "GetEXlow",
+        "GetEXhigh",
+        "GetEYlow",
+        "GetEYhigh",
+    ]:
+        values_expected = getattr(expected, method)()
+        values_actual = getattr(actual, method)()
+        if values_expected:
+            assert list(values_actual)[:n] == list(values_expected)[:n]
+        else:
+            assert not values_actual
+
+
+@pytest.mark.parametrize("kind", GRAPH_ERRORS)
+def test_graph(tmp_path, kind):
+    rng = np.random.default_rng(12345)
+    columns = {name: rng.uniform(0, 1, 7) for name in ["x", "y", *GRAPH_ERRORS[kind]]}
+
+    root_filename = os.path.join(tmp_path, "root_written.root")
+    fout = ROOT.TFile(root_filename, "RECREATE")
+    graph = getattr(ROOT, kind)(7, *columns.values())
+    graph.SetNameTitle("graph", "title of graph")
+    graph.Write()
+    fout.Close()
+
+    uproot_filename = os.path.join(tmp_path, "uproot_written.root")
+    with uproot.recreate(uproot_filename) as file:
+        file["graph"] = uproot.as_TGraph(columns, title="title of graph")
+
+    for filename in [root_filename, uproot_filename]:
+        fin = ROOT.TFile(filename)
+        with uproot.open(filename) as file:
+            _assert_same_graph(fin.Get("graph"), uproot.to_pyroot(file["graph"]))
+        fin.Close()
+
+    fin = ROOT.TFile(uproot_filename)
+    _assert_same_graph(
+        fin.Get("graph"),
+        uproot.to_pyroot(uproot.as_TGraph(columns, title="title of graph"), "graph"),
+    )
+    fin.Close()
+
+
+def test_streamer_info_registration():
+    # A TMessage carries no StreamerInfo, so ROOT can't read the TGraph version
+    # that Uproot writes unless to_pyroot registers it. Check this in a new
+    # process, since opening any file written by Uproot would also register it.
+    script = (
+        "import uproot\n"
+        "data = {'x': [1.0, 2.0], 'y': [3.0, 4.0]}\n"
+        "graph = uproot.to_pyroot(uproot.as_TGraph(data), 'g')\n"
+        "print(graph.GetN(), graph.GetName(), list(graph.GetY()))\n"
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", script],
+        capture_output=True,
+        text=True,
+        check=True,
+        env={**os.environ, "PYTHONPATH": os.pathsep.join(sys.path)},
+    )
+    assert result.stdout.splitlines()[-1] == "2 g [3.0, 4.0]"

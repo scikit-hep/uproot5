@@ -43,23 +43,60 @@ def to_pyroot(obj, name=None):
     """
     import ROOT
 
-    if to_pyroot._Uproot_FromTMessage is None:
-        ROOT.gInterpreter.Declare("""
+    # Objects read from a file have the class versions of the file that wrote
+    # them, which Uproot may not be able to serialize; convert them to the
+    # versions that Uproot writes, as writing them to a file does.
+    writable = obj.to_writable()
+
+    with to_pyroot._lock:
+        if to_pyroot._Uproot_FromTMessage is None:
+            ROOT.gInterpreter.Declare("""
+#include "TMessage.h"
+#include "TStreamerInfo.h"
+
 class _Uproot_FromTMessage : public TMessage {
 public:
     _Uproot_FromTMessage(void* buffer, Int_t size): TMessage(buffer, size) { }
 };
+
+void _uproot_register_streamer_info(void* buffer, Int_t size) {
+    _Uproot_FromTMessage message(buffer, size);
+    TObject* obj = message.ReadObject(message.GetClass());
+    message.DetachBuffer();
+    TStreamerInfo* info = dynamic_cast<TStreamerInfo*>(obj);
+    if (info == nullptr) {
+        delete obj;
+        return;
+    }
+    // as TFile::ReadStreamerInfo does: the TClass takes ownership of a new
+    // StreamerInfo and marks a duplicate as deletable
+    info->BuildCheck();
+    if (info->TestBit(kCanDelete)) {
+        delete info;
+    }
+}
 """)
-        to_pyroot._Uproot_FromTMessage = ROOT._Uproot_FromTMessage
+            to_pyroot._Uproot_FromTMessage = ROOT._Uproot_FromTMessage
 
-    # Objects read from a file have the class versions of the file that wrote
-    # them, which Uproot may not be able to serialize; convert them to the
-    # versions that Uproot writes, as writing them to a file does.
-    serialized = uproot.serialization.serialize_object_any(obj.to_writable(), name)
-    buffer = numpy.empty(len(serialized) + 8, numpy.uint8)
-    buffer[:8].view(numpy.uint64)[0] = ROOT.kMESS_OBJECT
-    buffer[8:] = numpy.frombuffer(serialized, numpy.uint8)
+        # A TMessage, unlike a file, carries no StreamerInfo, so ROOT can only read
+        # the class versions it knows. Give it the StreamerInfo of the versions
+        # that Uproot writes, as a file would.
+        for rawstreamer in writable.class_rawstreamers or ():
+            if not isinstance(rawstreamer, tuple):
+                continue
+            _, serialization, classname, class_version = rawstreamer
+            key = (classname, class_version)
+            if key in to_pyroot._registered_streamers:
+                continue
+            tclass = ROOT.TClass.GetClass(classname)
+            if tclass and tclass.GetClassVersion() != class_version:
+                buffer = _tmessage_buffer(ROOT, serialization)
+                ROOT._uproot_register_streamer_info(buffer, len(buffer))
+            to_pyroot._registered_streamers.add(key)
 
+    buffer = _tmessage_buffer(
+        ROOT, uproot.serialization.serialize_object_any(writable, name)
+    )
     message = to_pyroot._Uproot_FromTMessage(buffer, len(buffer))
     try:
         return message.ReadObject(message.GetClass())
@@ -68,7 +105,16 @@ public:
         message.DetachBuffer()
 
 
+def _tmessage_buffer(ROOT, serialized):
+    buffer = numpy.empty(len(serialized) + 8, numpy.uint8)
+    buffer[:8].view(numpy.uint64)[0] = ROOT.kMESS_OBJECT
+    buffer[8:] = numpy.frombuffer(serialized, numpy.uint8)
+    return buffer
+
+
 to_pyroot._Uproot_FromTMessage = None
+to_pyroot._registered_streamers = set()
+to_pyroot._lock = threading.Lock()
 
 
 def pyroot_to_buffer(obj):
