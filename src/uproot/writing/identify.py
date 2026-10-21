@@ -1103,7 +1103,8 @@ def to_TH1x(
         fOption (str or :doc:`uproot.models.TString.Model_TString`): Histogram options.
         fFunctions (None, list, or :doc:`uproot.models.TList.Model_TList`): ->Pointer to
             list of functions (fits and user). None generates an empty list.
-        fBufferSize (None or int): fBuffer size. Computed from ``fBuffer`` if None.
+        fBufferSize (None or int): fBuffer size, which must be the length of
+            ``fBuffer``. Computed from ``fBuffer`` if None.
         fBuffer (None or numpy.ndarray of numpy.float64): Buffer of entries accumulated
             before automatically choosing the binning. (Irrelevant for serialization?)
             None generates an empty array.
@@ -1164,6 +1165,13 @@ def to_TH1x(
         fFunctions = []
     if fBuffer is None:
         fBuffer = numpy.array([], dtype=numpy.float64)
+    fBuffer = numpy.asarray(fBuffer, dtype=">f8")
+    if fBufferSize is None:
+        fBufferSize = len(fBuffer)
+    elif fBufferSize != len(fBuffer):
+        raise ValueError(
+            f"fBufferSize ({fBufferSize}) must be the length of fBuffer ({len(fBuffer)})"
+        )
 
     if isinstance(data, uproot.models.TArray.Model_TArray):
         tarray_data = data
@@ -1215,12 +1223,13 @@ def to_TH1x(
     th1._members["fSumw2"] = tarray_fSumw2
     th1._members["fOption"] = tstring_fOption
     th1._members["fFunctions"] = tlist_fFunctions
-    th1._members["fBufferSize"] = len(fBuffer) if fBufferSize is None else fBufferSize
+    th1._members["fBufferSize"] = fBufferSize
     th1._members["fBuffer"] = fBuffer
     th1._members["fBinStatErrOpt"] = fBinStatErrOpt
     th1._members["fStatOverflows"] = fStatOverflows
 
-    th1._speedbump1 = b"\x00"
+    # ROOT writes the fBuffer array after a 1, or writes only a 0 if it's empty
+    th1._speedbump1 = b"\x01" if len(fBuffer) > 0 else b"\x00"
 
     th1._deeply_writable = tlist_fFunctions._deeply_writable
 
@@ -1323,7 +1332,8 @@ def to_TH2x(
         fOption (str or :doc:`uproot.models.TString.Model_TString`): Histogram options.
         fFunctions (None, list, or :doc:`uproot.models.TList.Model_TList`): ->Pointer to
             list of functions (fits and user). None generates an empty list.
-        fBufferSize (None or int): fBuffer size. Computed from ``fBuffer`` if None.
+        fBufferSize (None or int): fBuffer size, which must be the length of
+            ``fBuffer``. Computed from ``fBuffer`` if None.
         fBuffer (None or numpy.ndarray of numpy.float64): Buffer of entries accumulated
             before automatically choosing the binning. (Irrelevant for serialization?)
             None generates an empty array.
@@ -1494,7 +1504,8 @@ def to_TH3x(
         fOption (str or :doc:`uproot.models.TString.Model_TString`): Histogram options.
         fFunctions (None, list, or :doc:`uproot.models.TList.Model_TList`): ->Pointer to
             list of functions (fits and user). None generates an empty list.
-        fBufferSize (None or int): fBuffer size. Computed from ``fBuffer`` if None.
+        fBufferSize (None or int): fBuffer size, which must be the length of
+            ``fBuffer``. Computed from ``fBuffer`` if None.
         fBuffer (None or numpy.ndarray of numpy.float64): Buffer of entries accumulated
             before automatically choosing the binning. (Irrelevant for serialization?)
             None generates an empty array.
@@ -1674,7 +1685,8 @@ def to_TProfile(
         fOption (str or :doc:`uproot.models.TString.Model_TString`): Histogram options.
         fFunctions (None, list, or :doc:`uproot.models.TList.Model_TList`): ->Pointer to
             list of functions (fits and user). None generates an empty list.
-        fBufferSize (None or int): fBuffer size. Computed from ``fBuffer`` if None.
+        fBufferSize (None or int): fBuffer size, which must be the length of
+            ``fBuffer``. Computed from ``fBuffer`` if None.
         fBuffer (None or numpy.ndarray of numpy.float64): Buffer of entries accumulated
             before automatically choosing the binning. (Irrelevant for serialization?)
             None generates an empty array.
@@ -1852,7 +1864,8 @@ def to_TProfile2D(
         fOption (str or :doc:`uproot.models.TString.Model_TString`): Histogram options.
         fFunctions (None, list, or :doc:`uproot.models.TList.Model_TList`): ->Pointer to
             list of functions (fits and user). None generates an empty list.
-        fBufferSize (None or int): fBuffer size. Computed from ``fBuffer`` if None.
+        fBufferSize (None or int): fBuffer size, which must be the length of
+            ``fBuffer``. Computed from ``fBuffer`` if None.
         fBuffer (None or numpy.ndarray of numpy.float64): Buffer of entries accumulated
             before automatically choosing the binning. (Irrelevant for serialization?)
             None generates an empty array.
@@ -2040,7 +2053,8 @@ def to_TProfile3D(
         fOption (str or :doc:`uproot.models.TString.Model_TString`): Histogram options.
         fFunctions (None, list, or :doc:`uproot.models.TList.Model_TList`): ->Pointer to
             list of functions (fits and user). None generates an empty list.
-        fBufferSize (None or int): fBuffer size. Computed from ``fBuffer`` if None.
+        fBufferSize (None or int): fBuffer size, which must be the length of
+            ``fBuffer``. Computed from ``fBuffer`` if None.
         fBuffer (None or numpy.ndarray of numpy.float64): Buffer of entries accumulated
             before automatically choosing the binning. (Irrelevant for serialization?)
             None generates an empty array.
