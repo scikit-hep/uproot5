@@ -338,7 +338,7 @@ def to_writable(obj):
                     fEntries_sumw = obj.metadata.get("fEntries_sumw")
                     if "fEntries" in obj.metadata and (
                         fEntries_sumw is None
-                        or numpy.isclose(fEntries_sumw, _sumw.sum(), rtol=1e-12)
+                        or numpy.isclose(fEntries_sumw, _sumw.sum(), rtol=1e-12, atol=0)
                     ):
                         fEntries = obj.metadata["fEntries"]
                     fErrorMode = obj.metadata.get("fErrorMode", fErrorMode)

@@ -309,8 +309,9 @@ def _modified(change):
         # the bins changed, so fEntries is recomputed (as the sum of weights)
         (_modified(lambda h: h + h), 7),
         (_modified(lambda h: h.fill([0.5], sample=[3.0], weight=[1.0])), 4.5),
+        (_modified(lambda h: h.fill([0.5], sample=[3.0], weight=[1e-9])), 3.5),
     ],
-    ids=["unchanged", "copy", "added", "filled"],
+    ids=["unchanged", "copy", "added", "filled", "filled-small-weight"],
 )
 def test_stale_statistics(tmp_path, make, fEntries):
     p = _write_and_read(tmp_path, make(tmp_path), "roundtrip")
