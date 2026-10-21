@@ -1,0 +1,56 @@
+# BSD 3-Clause License; see https://github.com/scikit-hep/uproot5/blob/main/LICENSE
+
+import os
+
+import numpy as np
+import pytest
+import skhep_testdata
+
+import uproot
+
+hist = pytest.importorskip("hist")
+
+
+def _write_and_read(tmp_path, obj):
+    filepath = os.path.join(tmp_path, "test.root")
+    with uproot.recreate(filepath) as f:
+        f["h"] = obj
+    return uproot.open(filepath)["h"]
+
+
+@pytest.mark.parametrize("ndim", [1, 2, 3])
+def test_weighted_global_statistics(tmp_path, ndim):
+    rng = np.random.default_rng(ndim)
+    axes = [hist.axis.Regular(3, 0, 3)] * ndim
+    h = hist.Hist(*axes, storage=hist.storage.Weight())
+    x = rng.uniform(-0.5, 3.5, (ndim, 100))
+    w = rng.uniform(0.5, 2, 100)
+    h.fill(*x, weight=w)
+
+    out = _write_and_read(tmp_path, h)
+    inside = ((x >= 0) & (x < 3)).all(axis=0)
+    assert out.member("fTsumw") == pytest.approx(w[inside].sum())
+    # the sum of squared weights, which gives ROOT's effective entries
+    assert out.member("fTsumw2") == pytest.approx((w[inside] ** 2).sum())
+
+
+@pytest.mark.parametrize("storage", ["Int64", "AtomicInt64"])
+@pytest.mark.parametrize("ndim", [1, 2])
+def test_integer_storage(tmp_path, storage, ndim):
+    h = hist.Hist(
+        *[hist.axis.Regular(3, 0, 3)] * ndim, storage=getattr(hist.storage, storage)()
+    )
+    h.fill(*[[0.5, 1.5, 1.5, 5]] * ndim)
+    out = _write_and_read(tmp_path, h)
+    assert out.classname == f"TH{ndim}D"
+    assert out.values(flow=True).tolist() == h.values(flow=True).tolist()
+
+
+def test_write_old_class_version(tmp_path):
+    # TH1 class version 6, which has no fBinStatErrOpt or fStatOverflows
+    with uproot.open(skhep_testdata.data_path("uproot-issue64.root")) as f:
+        h = f["generator/_log_primary_w"]
+        assert h.member("fBinStatErrOpt", none_if_missing=True) is None
+        out = _write_and_read(tmp_path, h)
+        assert out.values(flow=True).tolist() == h.values(flow=True).tolist()
+        assert out.member("fEntries") == h.member("fEntries")

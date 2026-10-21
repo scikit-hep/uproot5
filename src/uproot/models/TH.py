@@ -973,6 +973,9 @@ in file {self.file.file_path}"""
 
     def _to_writable_postprocess(self, original):
         self._speedbump1 = getattr(original, "_speedbump1", b"\x00")
+        # older TH1 versions don't have these; use ROOT's defaults
+        if "fBinStatErrOpt" not in self._members:
+            self._members["fBinStatErrOpt"] = 0
         if "fStatOverflows" not in self._members:
             self._members["fStatOverflows"] = 0
 

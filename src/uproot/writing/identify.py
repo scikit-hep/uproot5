@@ -235,9 +235,17 @@ def to_writable(obj):
                 if fSumw2 is not None:
                     fSumw2 = fSumw2.astype(">f8")
 
+        # ROOT has no 64-bit integer histograms before 6.32 (TH1L, ...), so write
+        # those as doubles, like NumPy histograms (which is exact up to 2**53)
+        if data.dtype.kind == "i" and data.dtype.itemsize == 8:
+            data = data.astype(">f8")
+
         # we're assuming the PlottableHistogram ensures data.shape == weights.shape
         if fSumw2 is not None:
             assert data.shape == fSumw2.shape
+
+        # with weights, ROOT's fTsumw2 is the sum of squared weights, not of weights
+        sumw2_noflow = None if fSumw2 is None else obj.variances(flow=False)
 
         # data are stored in transposed order for 2D and 3D
         data = data.T.reshape(-1)
@@ -375,7 +383,7 @@ def to_writable(obj):
                 )
             else:
                 fTsumw, fTsumw2, fTsumwx, fTsumwx2 = _root_stats_1d(
-                    obj.values(flow=False), obj.axes[0].edges
+                    obj.values(flow=False), obj.axes[0].edges, sumw2_noflow
                 )
                 return to_TH1x(
                     fName=None,
@@ -405,7 +413,10 @@ def to_writable(obj):
                     fTsumwy2,
                     fTsumwxy,
                 ) = _root_stats_2d(
-                    obj.values(flow=False), obj.axes[0].edges, obj.axes[1].edges
+                    obj.values(flow=False),
+                    obj.axes[0].edges,
+                    obj.axes[1].edges,
+                    sumw2_noflow,
                 )
                 return to_TH2x(
                     fName=None,
@@ -447,6 +458,7 @@ def to_writable(obj):
                     obj.axes[0].edges,
                     obj.axes[1].edges,
                     obj.axes[2].edges,
+                    sumw2_noflow,
                 )
                 return to_TH3x(
                     fName=None,
@@ -727,20 +739,22 @@ def _fLabels_maybe_categorical(axis, boost_histogram):
     return labels
 
 
-def _root_stats_1d(entries, edges):
+def _root_stats_1d(entries, edges, sumw2=None):
     centers = (edges[:-1] + edges[1:]) / 2.0
 
-    fTsumw = fTsumw2 = entries.sum()
+    fTsumw = entries.sum()
+    fTsumw2 = fTsumw if sumw2 is None else sumw2.sum()
     fTsumwx = (entries * centers).sum()
     fTsumwx2 = (entries * centers**2).sum()
 
     return fTsumw, fTsumw2, fTsumwx, fTsumwx2
 
 
-def _root_stats_2d(entries, xedges, yedges):
+def _root_stats_2d(entries, xedges, yedges, sumw2=None):
     xcenters = (xedges[:-1] + xedges[1:]) / 2.0
     ycenters = (yedges[:-1] + yedges[1:]) / 2.0
-    fTsumw = fTsumw2 = entries.sum()
+    fTsumw = entries.sum()
+    fTsumw2 = fTsumw if sumw2 is None else sumw2.sum()
     fTsumwx = (entries.T * xcenters).sum()
     fTsumwx2 = (entries.T * xcenters**2).sum()
     fTsumwy = (entries * ycenters).sum()
@@ -749,11 +763,12 @@ def _root_stats_2d(entries, xedges, yedges):
     return fTsumw, fTsumw2, fTsumwx, fTsumwx2, fTsumwy, fTsumwy2, fTsumwxy
 
 
-def _root_stats_3d(entries, xedges, yedges, zedges):
+def _root_stats_3d(entries, xedges, yedges, zedges, sumw2=None):
     xcenters = (xedges[:-1] + xedges[1:]) / 2.0
     ycenters = (yedges[:-1] + yedges[1:]) / 2.0
     zcenters = (zedges[:-1] + zedges[1:]) / 2.0
-    fTsumw = fTsumw2 = entries.sum()
+    fTsumw = entries.sum()
+    fTsumw2 = fTsumw if sumw2 is None else sumw2.sum()
     fTsumwx = (numpy.transpose(entries, (1, 2, 0)) * xcenters).sum()
     fTsumwx2 = (numpy.transpose(entries, (1, 2, 0)) * xcenters**2).sum()
     fTsumwy = (numpy.transpose(entries, (2, 0, 1)) * ycenters).sum()
@@ -882,17 +897,19 @@ def to_TArray(data):
     if data.ndim != 1:
         raise ValueError("data to convert to TArray must be one-dimensional")
 
-    if issubclass(data.dtype.type, numpy.int8):
+    # by kind and size, not type: e.g. numpy.longlong is not numpy.int64 on macOS
+    kind_size = (data.dtype.kind, data.dtype.itemsize)
+    if kind_size == ("i", 1):
         cls = uproot.models.TArray.Model_TArrayC
-    elif issubclass(data.dtype.type, numpy.int16):
+    elif kind_size == ("i", 2):
         cls = uproot.models.TArray.Model_TArrayS
-    elif issubclass(data.dtype.type, numpy.int32):
+    elif kind_size == ("i", 4):
         cls = uproot.models.TArray.Model_TArrayI
-    elif issubclass(data.dtype.type, numpy.int64):
+    elif kind_size == ("i", 8):
         cls = uproot.models.TArray.Model_TArrayL
-    elif issubclass(data.dtype.type, numpy.float32):
+    elif kind_size == ("f", 4):
         cls = uproot.models.TArray.Model_TArrayF
-    elif issubclass(data.dtype.type, numpy.float64):
+    elif kind_size == ("f", 8):
         cls = uproot.models.TArray.Model_TArrayD
     else:
         raise ValueError(
@@ -1086,7 +1103,8 @@ def to_TH1x(
         fOption (str or :doc:`uproot.models.TString.Model_TString`): Histogram options.
         fFunctions (None, list, or :doc:`uproot.models.TList.Model_TList`): ->Pointer to
             list of functions (fits and user). None generates an empty list.
-        fBufferSize (None or int): fBuffer size. Computed from ``fBuffer`` if None.
+        fBufferSize (None or int): fBuffer size, which must be the length of
+            ``fBuffer``. Computed from ``fBuffer`` if None.
         fBuffer (None or numpy.ndarray of numpy.float64): Buffer of entries accumulated
             before automatically choosing the binning. (Irrelevant for serialization?)
             None generates an empty array.
@@ -1147,6 +1165,13 @@ def to_TH1x(
         fFunctions = []
     if fBuffer is None:
         fBuffer = numpy.array([], dtype=numpy.float64)
+    fBuffer = numpy.asarray(fBuffer, dtype=">f8")
+    if fBufferSize is None:
+        fBufferSize = len(fBuffer)
+    elif fBufferSize != len(fBuffer):
+        raise ValueError(
+            f"fBufferSize ({fBufferSize}) must be the length of fBuffer ({len(fBuffer)})"
+        )
 
     if isinstance(data, uproot.models.TArray.Model_TArray):
         tarray_data = data
@@ -1198,12 +1223,13 @@ def to_TH1x(
     th1._members["fSumw2"] = tarray_fSumw2
     th1._members["fOption"] = tstring_fOption
     th1._members["fFunctions"] = tlist_fFunctions
-    th1._members["fBufferSize"] = len(fBuffer) if fBufferSize is None else fBufferSize
+    th1._members["fBufferSize"] = fBufferSize
     th1._members["fBuffer"] = fBuffer
     th1._members["fBinStatErrOpt"] = fBinStatErrOpt
     th1._members["fStatOverflows"] = fStatOverflows
 
-    th1._speedbump1 = b"\x00"
+    # ROOT writes the fBuffer array after a 1, or writes only a 0 if it's empty
+    th1._speedbump1 = b"\x01" if len(fBuffer) > 0 else b"\x00"
 
     th1._deeply_writable = tlist_fFunctions._deeply_writable
 
@@ -1306,7 +1332,8 @@ def to_TH2x(
         fOption (str or :doc:`uproot.models.TString.Model_TString`): Histogram options.
         fFunctions (None, list, or :doc:`uproot.models.TList.Model_TList`): ->Pointer to
             list of functions (fits and user). None generates an empty list.
-        fBufferSize (None or int): fBuffer size. Computed from ``fBuffer`` if None.
+        fBufferSize (None or int): fBuffer size, which must be the length of
+            ``fBuffer``. Computed from ``fBuffer`` if None.
         fBuffer (None or numpy.ndarray of numpy.float64): Buffer of entries accumulated
             before automatically choosing the binning. (Irrelevant for serialization?)
             None generates an empty array.
@@ -1477,7 +1504,8 @@ def to_TH3x(
         fOption (str or :doc:`uproot.models.TString.Model_TString`): Histogram options.
         fFunctions (None, list, or :doc:`uproot.models.TList.Model_TList`): ->Pointer to
             list of functions (fits and user). None generates an empty list.
-        fBufferSize (None or int): fBuffer size. Computed from ``fBuffer`` if None.
+        fBufferSize (None or int): fBuffer size, which must be the length of
+            ``fBuffer``. Computed from ``fBuffer`` if None.
         fBuffer (None or numpy.ndarray of numpy.float64): Buffer of entries accumulated
             before automatically choosing the binning. (Irrelevant for serialization?)
             None generates an empty array.
@@ -1657,7 +1685,8 @@ def to_TProfile(
         fOption (str or :doc:`uproot.models.TString.Model_TString`): Histogram options.
         fFunctions (None, list, or :doc:`uproot.models.TList.Model_TList`): ->Pointer to
             list of functions (fits and user). None generates an empty list.
-        fBufferSize (None or int): fBuffer size. Computed from ``fBuffer`` if None.
+        fBufferSize (None or int): fBuffer size, which must be the length of
+            ``fBuffer``. Computed from ``fBuffer`` if None.
         fBuffer (None or numpy.ndarray of numpy.float64): Buffer of entries accumulated
             before automatically choosing the binning. (Irrelevant for serialization?)
             None generates an empty array.
@@ -1835,7 +1864,8 @@ def to_TProfile2D(
         fOption (str or :doc:`uproot.models.TString.Model_TString`): Histogram options.
         fFunctions (None, list, or :doc:`uproot.models.TList.Model_TList`): ->Pointer to
             list of functions (fits and user). None generates an empty list.
-        fBufferSize (None or int): fBuffer size. Computed from ``fBuffer`` if None.
+        fBufferSize (None or int): fBuffer size, which must be the length of
+            ``fBuffer``. Computed from ``fBuffer`` if None.
         fBuffer (None or numpy.ndarray of numpy.float64): Buffer of entries accumulated
             before automatically choosing the binning. (Irrelevant for serialization?)
             None generates an empty array.
@@ -2023,7 +2053,8 @@ def to_TProfile3D(
         fOption (str or :doc:`uproot.models.TString.Model_TString`): Histogram options.
         fFunctions (None, list, or :doc:`uproot.models.TList.Model_TList`): ->Pointer to
             list of functions (fits and user). None generates an empty list.
-        fBufferSize (None or int): fBuffer size. Computed from ``fBuffer`` if None.
+        fBufferSize (None or int): fBuffer size, which must be the length of
+            ``fBuffer``. Computed from ``fBuffer`` if None.
         fBuffer (None or numpy.ndarray of numpy.float64): Buffer of entries accumulated
             before automatically choosing the binning. (Irrelevant for serialization?)
             None generates an empty array.
