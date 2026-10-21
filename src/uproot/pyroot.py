@@ -33,20 +33,24 @@ import uproot
 def to_pyroot(obj, name=None):
     """
     Args:
-        obj (:doc:`uproot.model.Model`): The Uproot model to convert.
+        obj (:doc:`uproot.model.Model` or other object that Uproot can write):
+            The object to convert, such as an Uproot model, a boost-histogram or
+            hist histogram, or a NumPy histogram.
         name (str or None): A name for the new PyROOT object.
 
-    Converts an :doc:`uproot.model.Model` into a PyROOT object *if it is writable by Uproot*.
-    A minority of Uproot models are writable, mostly just histograms. Writability
-    is necessary for conversion to PyROOT because it is serialized through a
-    ROOT TMessage.
+    Converts an :doc:`uproot.model.Model` (or any object that
+    :doc:`uproot.writing.identify.to_writable` recognizes) into a PyROOT object
+    *if it is writable by Uproot*. A minority of Uproot models are writable,
+    mostly just histograms. Writability is necessary for conversion to PyROOT
+    because it is serialized through a ROOT TMessage.
     """
     import ROOT
 
     # Objects read from a file have the class versions of the file that wrote
     # them, which Uproot may not be able to serialize; convert them to the
-    # versions that Uproot writes, as writing them to a file does.
-    writable = obj.to_writable()
+    # versions that Uproot writes, as writing them to a file does. This also
+    # converts other objects, such as hist histograms.
+    writable = uproot.to_writable(obj)
 
     with to_pyroot._lock:
         if to_pyroot._Uproot_FromTMessage is None:

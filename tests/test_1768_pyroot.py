@@ -121,8 +121,15 @@ def test_converted_from_hist(tmp_path, ndim, storage):
         file["obj"] = h
 
     fin = ROOT.TFile(filename)
-    _assert_same(fin.Get("obj"), uproot.to_pyroot(uproot.to_writable(h), "obj"))
+    _assert_same(fin.Get("obj"), uproot.to_pyroot(h, "obj"))
     fin.Close()
+
+
+def test_converted_from_numpy():
+    counts, edges = np.histogram([0.1, 0.5, 0.5, 0.9], bins=4, range=(0, 1))
+    h = uproot.to_pyroot((counts, edges), "h_1768_numpy")
+    assert [h.GetBinContent(i) for i in range(1, 5)] == counts.tolist()
+    assert h.GetXaxis().GetXmax() == 1
 
 
 GRAPH_ERRORS = {
