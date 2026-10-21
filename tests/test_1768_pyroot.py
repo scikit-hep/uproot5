@@ -261,3 +261,35 @@ def test_tobjstring(tmp_path):
     fin = ROOT.TFile(uproot_filename)
     assert fin.Get("string").GetString() == "some text"
     fin.Close()
+
+
+@pytest.mark.parametrize("kind", ["TList", "TObjArray"])
+def test_write_list(tmp_path, kind):
+    hists = [ROOT.TH1D(f"h_1768_{kind}_{i}", "", 3, 0, 3) for i in range(3)]
+    collection = getattr(ROOT, kind)()
+    # a TObjArray can have empty slots
+    slots = [0, 1, 2] if kind == "TList" else [0, 2, 3]
+    for i, h in enumerate(hists):
+        h.SetDirectory(ROOT.nullptr)
+        h.Fill(i)
+        if kind == "TList":
+            collection.Add(h)
+        else:
+            collection.AddAtAndExpand(h, slots[i])
+
+    root_filename = os.path.join(tmp_path, "root_written.root")
+    fout = ROOT.TFile(root_filename, "RECREATE")
+    fout.WriteObject(collection, "collection", "SingleKey")
+    fout.Close()
+
+    # its items are converted to the versions that Uproot writes
+    uproot_filename = os.path.join(tmp_path, "uproot_written.root")
+    with uproot.open(root_filename) as fin, uproot.recreate(uproot_filename) as fout:
+        fout["collection"] = fin["collection"]
+
+    fin = ROOT.TFile(uproot_filename)
+    collection = fin.Get("collection")
+    assert collection.GetEntries() == 3
+    for i, h in enumerate(hists):
+        _assert_same(h, collection.At(slots[i]))
+    fin.Close()
