@@ -1693,6 +1693,14 @@ def _get_ttree_form(
     return awkward.forms.RecordForm(contents, common_keys, parameters=parameters)
 
 
+def _leaf_to_tree(obj):
+    """A leaf ``TBranch`` given as the object path stands for its parent ``TTree`` with that one
+    branch selected: ``(tree, leaf)``, with ``leaf`` ``None`` for any other object."""
+    if isinstance(obj, TBranch) and len(obj.keys(recursive=True)) == 0:
+        return obj.parent, obj
+    return obj, None
+
+
 def _resolve_trees_and_keys(
     files,
     filter_name,
@@ -1704,67 +1712,83 @@ def _resolve_trees_and_keys(
     allow_missing,
     real_options,
 ):
-    """Open every entry of ``files`` and intersect their keys. A leaf ``TBranch`` given as the
-    object path stands for its parent ``TTree`` with that one branch selected (``is_self``).
-    Returns ``(ttrees, common_keys, is_self, explicit_chunks)``; ``explicit_chunks`` is ``None``
-    unless every entry carries its own ``steps``."""
+    """Open every entry of ``files`` and intersect their keys (:func:`_trees_and_keys`)."""
+    found = []
+    for file_object_maybechunks in files:
+        file_path, object_path = file_object_maybechunks[0:2]
+        obj = uproot._util.regularize_object_path(
+            file_path, object_path, custom_classes, allow_missing, real_options
+        )
+        if obj is not None:
+            found.append((obj, *file_object_maybechunks[2:]))
+    return _trees_and_keys(
+        found, files, filter_name, filter_typename, filter_branch, recursive, full_paths
+    )
+
+
+def _trees_and_keys(
+    found,
+    files,
+    filter_name,
+    filter_typename,
+    filter_branch,
+    recursive,
+    full_paths,
+    first_of=None,
+):
+    """Intersect the keys of ``found``, the ``(object, *steps)`` of the entries of ``files``
+    (named in errors) whose object exists; a leaf ``TBranch`` stands for its parent ``TTree`` with
+    that one branch selected (``is_self``). Returns ``(ttrees, common_keys, is_self,
+    explicit_chunks)``; ``explicit_chunks`` is ``None`` unless every entry carries its own
+    ``steps``. ``first_of=N`` says ``found`` is only the first of ``N`` files, standing for all.
+    """
     ttrees = []
     explicit_chunks = []
     common_keys = None
     is_self = []
     rntuple_keys = []
 
-    for file_object_maybechunks in files:
-        file_path, object_path = file_object_maybechunks[0:2]
+    for given, *steps in found:
+        obj, original = _leaf_to_tree(given)
+        if original is not None:
+            is_self.append(True)
 
-        obj = uproot._util.regularize_object_path(
-            file_path, object_path, custom_classes, allow_missing, real_options
+            def real_filter_branch(branch):
+                return branch is original and filter_branch(branch)  # noqa: B023
+
+        else:
+            is_self.append(False)
+            real_filter_branch = filter_branch
+
+        ttrees.append(obj)
+        if steps:
+            explicit_chunks.append(steps[0])
+        else:
+            explicit_chunks = None  # they all have it or none of them have it
+
+        new_keys = obj.keys(
+            recursive=recursive,
+            filter_name=filter_name,
+            filter_typename=filter_typename,
+            **{
+                (
+                    "filter_field" if isinstance(obj, HasFields) else "filter_branch"
+                ): real_filter_branch
+            },
+            # an RNTuple form keeps the nesting, so its fields are selected by full path
+            full_paths=True if isinstance(obj, HasFields) else full_paths,
+            ignore_duplicates=True,
         )
+        if isinstance(obj, HasFields):
+            # a selected field is read with all of its subfields, so intersect those
+            new_keys = _with_subfield_keys(obj, new_keys)
+            rntuple_keys.append(set(new_keys))
 
-        if obj is not None:
-            if isinstance(obj, TBranch) and len(obj.keys(recursive=True)) == 0:
-                original = obj
-                obj = obj.parent
-                is_self.append(True)
-
-                def real_filter_branch(branch):
-                    return branch is original and filter_branch(branch)  # noqa: B023
-
-            else:
-                is_self.append(False)
-                real_filter_branch = filter_branch
-
-            ttrees.append(obj)
-            if len(file_object_maybechunks) == 3:
-                explicit_chunks.append(file_object_maybechunks[2])
-            else:
-                explicit_chunks = None  # they all have it or none of them have it
-
-            new_keys = obj.keys(
-                recursive=recursive,
-                filter_name=filter_name,
-                filter_typename=filter_typename,
-                **{
-                    (
-                        "filter_field"
-                        if isinstance(obj, HasFields)
-                        else "filter_branch"
-                    ): real_filter_branch
-                },
-                # an RNTuple form keeps the nesting, so its fields are selected by full path
-                full_paths=True if isinstance(obj, HasFields) else full_paths,
-                ignore_duplicates=True,
-            )
-            if isinstance(obj, HasFields):
-                # a selected field is read with all of its subfields, so intersect those
-                new_keys = _with_subfield_keys(obj, new_keys)
-                rntuple_keys.append(set(new_keys))
-
-            if common_keys is None:
-                common_keys = new_keys
-            else:
-                new_keys = set(new_keys)
-                common_keys = [key for key in common_keys if key in new_keys]
+        if common_keys is None:
+            common_keys = new_keys
+        else:
+            new_keys = set(new_keys)
+            common_keys = [key for key in common_keys if key in new_keys]
 
     if len(rntuple_keys) > 1:
         common_keys = _drop_partly_common_fields(common_keys, rntuple_keys)
@@ -1779,6 +1803,14 @@ def _resolve_trees_and_keys(
             )
         )
 
+    if first_of is not None and len(common_keys) == 0:
+        tree = ttrees[0]
+        raise ValueError(
+            f"no TBranches of {{{tree.file.file_path!r}: {tree.object_path!r}}} pass "
+            f"filter_name/filter_typename/filter_branch. Only this first file is opened, and its "
+            f"TBranches stand for all {first_of} files: check the filters, or whether this file "
+            "is representative of the rest (open_files=True checks every file)"
+        )
     if len(common_keys) == 0 or not (all(is_self) or not any(is_self)):
         raise ValueError(
             "TTrees in\n\n    {}\n\nhave no TBranches in common".format(
