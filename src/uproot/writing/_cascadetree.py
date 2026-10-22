@@ -904,6 +904,9 @@ class Tree:
         # update TTree metadata in file
         self._num_entries += num_entries
         self._num_baskets += 1
+        for datum in self._branch_data:
+            if datum["kind"] != "record":
+                datum["fWriteBasket"] = self._num_baskets
         self._metadata["fTotBytes"] += uncompressed_bytes
         self._metadata["fZipBytes"] += compressed_bytes
 
@@ -1035,7 +1038,7 @@ class Tree:
                     fCompress,
                     datum["fBasketSize"],
                     datum["fEntryOffsetLen"],
-                    self._num_baskets,  # fWriteBasket
+                    datum.get("fWriteBasket", self._num_baskets),  # fWriteBasket
                     self._num_entries,  # fEntryNumber
                 )
             )
@@ -1046,7 +1049,7 @@ class Tree:
             out.append(
                 uproot.models.TBranch._tbranch13_format2.pack(
                     datum["fOffset"],
-                    self._basket_capacity,  # fMaxBaskets
+                    datum.get("fMaxBaskets", self._basket_capacity),  # fMaxBaskets
                     datum["fSplitLevel"],
                     self._num_entries,  # fEntries
                     datum["fFirstEntry"],
@@ -1364,7 +1367,7 @@ class Tree:
                     fCompress,
                     datum["fBasketSize"],
                     datum["fEntryOffsetLen"],
-                    self._num_baskets,  # fWriteBasket
+                    datum.get("fWriteBasket", self._num_baskets),  # fWriteBasket
                     self._num_entries,  # fEntryNumber
                 ),
             )
@@ -1374,7 +1377,7 @@ class Tree:
                 position,
                 uproot.models.TBranch._tbranch13_format2.pack(
                     datum["fOffset"],
-                    self._basket_capacity,  # fMaxBaskets
+                    datum.get("fMaxBaskets", self._basket_capacity),  # fMaxBaskets
                     datum["fSplitLevel"],
                     self._num_entries,  # fEntries
                     datum["fFirstEntry"],
