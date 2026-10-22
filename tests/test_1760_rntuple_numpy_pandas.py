@@ -300,6 +300,34 @@ def test_rntuple_numpy_helper_branches():
     assert res_el.dtype == object
     assert len(res_el) == 0
 
+    # Empty regular array of non-numpy (e.g. lists)
+    reg_list_empty = ak.Array(ak.contents.RegularArray(ak.Array([[1], [2]]).layout, 2))[
+        :0
+    ]
+    res_rle = _rntuple_to_numpy(reg_list_empty)
+    assert res_rle.dtype == object
+    assert res_rle.shape == (0, 2)
+
+    # Empty option array of lists
+    empty_opt_list = ak.Array([None, [1, 2]])[:0]
+    res_eol = _rntuple_to_numpy(empty_opt_list)
+    assert res_eol.dtype == object
+    assert len(res_eol) == 0
+
+    # _coerce_numpy_chunk helper branches
+    from uproot._dask import _coerce_numpy_chunk
+
+    assert _coerce_numpy_chunk(np.array([1, 2]), None) is not None
+    unmasked = np.array([1, 2])
+    assert _coerce_numpy_chunk(unmasked, np.dtype(object)).dtype == object
+
+    # Struct with mixed object and non-object fields in chunk coercion
+    exp_struct = np.dtype([("a", "i8"), ("b", "O"), ("c", "O")])
+    rec_arr = np.array([(1, 2, "hello")], dtype=[("a", "i8"), ("b", "i4"), ("c", "O")])
+    coerced_struct = _coerce_numpy_chunk(rec_arr, exp_struct)
+    assert coerced_struct["b"].dtype == object
+    assert coerced_struct["c"].dtype == object
+
     # Form to numpy dtype for RegularForm of RecordForm
     reg_rec_form = ak.to_regular(
         ak.Array([[{"a": 1, "b": 2.0}], [{"a": 3, "b": 4.0}]])
