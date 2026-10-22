@@ -3844,6 +3844,11 @@ def _regularize_step_size(
     hasbranches, step_size, entry_start, entry_stop, branchid_interpretation
 ):
     if uproot._util.isint(step_size):
+        if step_size < 1:
+            raise ValueError(
+                "step_size must be a positive number of entries or a memory size "
+                f"string with units (such as '100 MB'), not {step_size!r}"
+            )
         return step_size
     target_num_bytes = uproot._util.memory_size(
         step_size,
