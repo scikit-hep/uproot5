@@ -2437,6 +2437,8 @@ class WritableTree:
             would silently drop them, so this raises ``NotImplementedError``
             for such trees instead. This mirrors the same restriction on
             :ref:`uproot.writing.writable.WritableTree.extend`.
+            Jagged (variable length) branches are not yet support and hence raise
+            ``NotImplementedError``.
         """
         if self._file.sink.closed:
             raise ValueError("cannot modify a TTree in a closed file")
@@ -2461,6 +2463,16 @@ class WritableTree:
         num_entries = casc._num_entries
 
         for branch_name, branch_data in branches.items():
+            import awkward
+            if (
+                isinstance(branch_data, awkward.Array)
+                and branch_data.ndim > 1
+                and not branch_data.layout.purelist_isregular
+            ):
+                raise NotImplementedError(
+                    f"branch {branch_name!r} is a jagged array; add_branches does not "
+                    "yet support jagged branches therfore it needs a countour branch"
+                )
             arr = numpy.asarray(branch_data)
             if len(arr) != num_entries:
                 raise ValueError(
@@ -2479,18 +2491,7 @@ class WritableTree:
                 "add_branches for files with TBranchElement (or other non-TBranch) "
                 "branches is not yet supported via the cascade approach"
             )
-        if casc._has_divergent_baskets:
-            # this cascade tracks one fWriteBasket/fMaxBaskets pair per tree, not
-            # per branch, but nothing guarantees every branch in a preexisting
-            # tree agrees on either (e.g. a ROOT-written tree whose branches
-            # have different per-entry sizes, and so flush baskets at different
-            # rates); rewriting the branch listing would apply one branch's
-            # basket bookkeeping to every branch, corrupting the others
-            raise NotImplementedError(
-                "add_branches for a TTree whose branches do not all have the same "
-                "number of baskets / basket capacity is not yet supported via the "
-                "cascade approach"
-            )
+        
         if casc._num_baskets > 1:
             # add_branches always back-fills a new branch with exactly one
             # basket spanning every existing entry (see below), regardless of
@@ -2559,6 +2560,7 @@ class WritableTree:
             casc._metadata["fZipBytes"] += zipbytes
 
         casc._num_baskets = old_num_baskets
+        casc._has_divergent_baskets = casc._has_divergent_baskets or old_num_baskets != 1
         casc.write_updates(self._file.sink)
 
         # write_updates() stamps every branch's fWriteBasket with the tree-wide
