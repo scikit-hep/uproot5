@@ -176,6 +176,7 @@ def iterate(
       array from ``RNTuples``.
     * :doc:`uproot._dask.dask`: returns an unevaluated Dask array from ``RNTuples``.
     """
+    uproot._util.check_step_size(step_size)
     files = uproot._util.regularize_files(files, steps_allowed=False, **options)
     library = uproot.interpretation.library._regularize_library(library)
 
@@ -1902,12 +1903,8 @@ def _num_entries_for(ntuple, akform, target_num_bytes, entry_start, entry_stop):
 
 
 def _regularize_step_size(ntuple, akform, step_size, entry_start, entry_stop):
+    uproot._util.check_step_size(step_size)
     if uproot._util.isint(step_size):
-        if step_size < 1:
-            raise ValueError(
-                "step_size must be a positive number of entries or a memory size "
-                f"string with units (such as '100 MB'), not {step_size!r}"
-            )
         return step_size
     target_num_bytes = uproot._util.memory_size(
         step_size,

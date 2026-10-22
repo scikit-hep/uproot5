@@ -640,6 +640,8 @@ def graphed_partitions(
         raise TypeError(
             "step_size and steps_per_file are mutually exclusive; set only one"
         )
+    if have_step_size:
+        uproot._util.check_step_size(step_size)
     n_steps = int(steps_per_file) if have_steps_per_file else 1
 
     real_options = options.copy()
@@ -669,7 +671,7 @@ def graphed_partitions(
         if have_step_size:
             per = (
                 step_size
-                if isinstance(step_size, int)
+                if uproot._util.isint(step_size)
                 else obj.num_entries_for(step_size)
             )
             per = max(1, int(per))
