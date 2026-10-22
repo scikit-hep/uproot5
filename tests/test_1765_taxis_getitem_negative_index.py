@@ -35,6 +35,16 @@ def test_regular_axis_array_index():
         assert axis[numpy.int8(-1)] == axis[99]
 
 
+def test_regular_axis_multidimensional_index():
+    with uproot.open(skhep_testdata.data_path("uproot-hepdata-example.root")) as f:
+        axis = f["hpx"].axis()
+        index = numpy.arange(6).reshape(2, 3)
+        low, high = axis[index]
+        assert low.shape == high.shape == (2, 3)
+        assert low == pytest.approx(axis.intervals()[index, 0])
+        assert high == pytest.approx(axis.intervals()[index, 1])
+
+
 def test_axis_contains_its_own_bins():
     with uproot.open(skhep_testdata.data_path("uproot-hepdata-example.root")) as f:
         axis = f["hpx"].axis()
@@ -52,6 +62,9 @@ def test_variable_axis_negative_index(tmp_path):
         axis = f["h"].axis()
         assert axis[-1] == (3.0, 7.0)
         assert axis[-3] == axis[0] == (0.0, 1.0)
+        low, high = axis[numpy.array([[0, 2], [1, 0]])]
+        assert low.tolist() == [[0.0, 3.0], [1.0, 0.0]]
+        assert high.tolist() == [[1.0, 7.0], [3.0, 1.0]]
         with pytest.raises(IndexError):
             axis[3]
         with pytest.raises(IndexError):

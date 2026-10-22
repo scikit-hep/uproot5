@@ -6,6 +6,8 @@ This module defines the behaviors of ``TAxis``, an axis of a histogram or profil
 
 from __future__ import annotations
 
+import operator
+
 import numpy
 
 
@@ -63,9 +65,30 @@ class TAxis:
         if fLabels is not None and len(fLabels) == fNbins:
             return str(fLabels[where])
 
-        # Index into the same intervals that __iter__ yields, so that NumPy
-        # handles negative, out-of-range and array indexes
-        return tuple(self.intervals()[where].T)
+        try:
+            index = operator.index(where)
+        except TypeError:
+            # arrays and slices: index into the same intervals that __iter__
+            # yields, keeping the shape of the index
+            out = self.intervals()[where]
+            return out[..., 0], out[..., 1]
+
+        # integers: constant time, without building every interval
+        if index < 0:
+            index += fNbins
+        if not 0 <= index < fNbins:
+            raise IndexError(f"bin index {where} out of range for {fNbins} bins")
+
+        fXbins = self.member("fXbins", none_if_missing=True)
+        if fXbins is not None and len(fXbins) == fNbins + 1:
+            return float(fXbins[index]), float(fXbins[index + 1])
+
+        # the same edges as the numpy.linspace in intervals()
+        fXmin, fXmax = self.member("fXmin"), self.member("fXmax")
+        step = (fXmax - fXmin) / fNbins
+        low = index * step + fXmin
+        high = fXmax if index + 1 == fNbins else (index + 1) * step + fXmin
+        return low, high
 
     def __iter__(self):
         """
