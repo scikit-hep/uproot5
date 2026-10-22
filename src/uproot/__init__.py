@@ -124,6 +124,7 @@ from uproot.writing import WritableBranch
 from uproot.writing import to_writable
 from uproot.writing import dask_write
 from uproot.writing import graphed_write
+from uproot.writing import root_write
 
 from uproot.writing.interpret import as_TGraph
 
