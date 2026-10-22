@@ -255,7 +255,7 @@ def dask(
             )
         else:
             # the open_files case uses step_size (only)
-            pass
+            uproot._util.check_step_size(step_size)
     elif steps_per_file is not unset:
         # the not open_files case uses steps_per_file (only)
         # the open_files case converts steps_per_file into step_size

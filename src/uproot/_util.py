@@ -512,6 +512,22 @@ def memory_size(data, error_message=None) -> int:
         raise TypeError(error_message)
 
 
+def check_step_size(step_size) -> None:
+    """
+    Raises an error unless ``step_size`` is a positive number of entries or a
+    positive memory size string with units (such as ``"100 MB"``).
+    """
+    message = (
+        "step_size must be a positive number of entries or a memory size "
+        f"string with units (such as '100 MB'), not {step_size!r}"
+    )
+    if isint(step_size):
+        if step_size < 1:
+            raise ValueError(message)
+    elif memory_size(step_size, message) <= 0:
+        raise ValueError(message)
+
+
 def trim_final(basket_arrays, entry_start, entry_stop, entry_offsets, library, branch):
     """
     Trims the output from a basket_array function and outputs the un-concatenated list of elements.
