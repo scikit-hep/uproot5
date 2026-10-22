@@ -2464,6 +2464,7 @@ class WritableTree:
 
         for branch_name, branch_data in branches.items():
             import awkward
+
             if (
                 isinstance(branch_data, awkward.Array)
                 and branch_data.ndim > 1
@@ -2491,7 +2492,7 @@ class WritableTree:
                 "add_branches for files with TBranchElement (or other non-TBranch) "
                 "branches is not yet supported via the cascade approach"
             )
-        
+
         if casc._num_baskets > 1:
             # add_branches always back-fills a new branch with exactly one
             # basket spanning every existing entry (see below), regardless of
@@ -2560,7 +2561,9 @@ class WritableTree:
             casc._metadata["fZipBytes"] += zipbytes
 
         casc._num_baskets = old_num_baskets
-        casc._has_divergent_baskets = casc._has_divergent_baskets or old_num_baskets != 1
+        casc._has_divergent_baskets = (
+            casc._has_divergent_baskets or old_num_baskets != 1
+        )
         casc.write_updates(self._file.sink)
 
         # write_updates() stamps every branch's fWriteBasket with the tree-wide

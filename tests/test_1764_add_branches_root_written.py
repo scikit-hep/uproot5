@@ -8,6 +8,7 @@ import uproot
 
 awkward = pytest.importorskip("awkward")
 
+
 def test_unequal_baskets(tmp_path):
     path = str(tmp_path / "hzz.root")
     with open(skhep_testdata.data_path("uproot-HZZ.root"), "rb") as src:
@@ -23,7 +24,8 @@ def test_unequal_baskets(tmp_path):
 
     with uproot.open(path) as f:
         np.testing.assert_array_equal(
-            f["events"]["new"].array(library="np"), np.arange(n))
+            f["events"]["new"].array(library="np"), np.arange(n)
+        )
         np.testing.assert_array_equal(f["events"]["NJet"].array(library="np"), before)
 
 
