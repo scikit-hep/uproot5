@@ -519,6 +519,39 @@ def _dask_array_from_map(
     return da.core.Array(hlg, name, chunks, dtype=dtype)
 
 
+def _coerce_numpy_chunk(arr, expected_dtype):
+    if expected_dtype is None:
+        return arr
+    if expected_dtype.names is not None:
+        if arr.dtype != expected_dtype:
+            out = numpy.empty(len(arr), dtype=expected_dtype)
+            for name in expected_dtype.names:
+                col = arr[name]
+                if expected_dtype[name].base == numpy.dtype(object):
+                    if numpy.ma.isMaskedArray(col):
+                        col_obj = col.data.astype(object)
+                        col_obj[numpy.ma.getmaskarray(col)] = None
+                        out[name] = col_obj
+                    elif col.dtype != object:
+                        out[name] = col.astype(object)
+                    else:
+                        out[name] = col
+                else:
+                    out[name] = col
+            return out
+        return arr
+    if expected_dtype.base == numpy.dtype(object) and (
+        arr.dtype != object or arr.ndim > 1
+    ):
+        if numpy.ma.isMaskedArray(arr):
+            out = arr.data.astype(object)
+            out[numpy.ma.getmaskarray(arr)] = None
+            return out
+        if arr.dtype != object:
+            return arr.astype(object)
+    return arr
+
+
 class _UprootReadNumpy:
     def __init__(
         self,
@@ -546,23 +579,7 @@ class _UprootReadNumpy:
             decompression_executor=self.decompression_executor,
             interpretation_executor=self.interpretation_executor,
         )
-        if (
-            self.expected_dtype is not None
-            and self.expected_dtype == numpy.dtype(object)
-            and (arr.dtype != object or arr.ndim > 1)
-        ):
-            out = numpy.empty(len(arr), dtype=object)
-            for j, row in enumerate(arr):
-                out[j] = (
-                    None
-                    if (
-                        isinstance(arr, numpy.ma.MaskedArray)
-                        and numpy.ma.is_masked(arr[j])
-                    )
-                    else row
-                )
-            arr = out
-        return arr
+        return _coerce_numpy_chunk(arr, self.expected_dtype)
 
 
 def _branch_or_field_numpy_dtype(branch):
@@ -686,23 +703,7 @@ which has {num_entries} entries"""
             decompression_executor=self.decompression_executor,
             interpretation_executor=self.interpretation_executor,
         )
-        if (
-            self.expected_dtype is not None
-            and self.expected_dtype == numpy.dtype(object)
-            and (arr.dtype != object or arr.ndim > 1)
-        ):
-            out = numpy.empty(len(arr), dtype=object)
-            for j, row in enumerate(arr):
-                out[j] = (
-                    None
-                    if (
-                        isinstance(arr, numpy.ma.MaskedArray)
-                        and numpy.ma.is_masked(arr[j])
-                    )
-                    else row
-                )
-            arr = out
-        return arr
+        return _coerce_numpy_chunk(arr, self.expected_dtype)
 
 
 def _regularize_tree_step_size(ttree, step_size, entry_start, entry_stop, common_keys):

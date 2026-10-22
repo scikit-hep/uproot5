@@ -927,16 +927,20 @@ class HasFields(Mapping):
                 pandas_index = uproot.interpretation.library._pandas_basic_index(
                     pd, entry_start, entry_start + len(arrays)
                 )
-                try:
-                    pandas_dict = {}
-                    for f, arr in numpy_data.items():
+                pandas_dict = {}
+                for f, arr in numpy_data.items():
+                    try:
                         if getattr(arr, "ndim", 1) > 1:
                             pandas_dict[f] = list(arr)
                         else:
                             pandas_dict[f] = arr
+                    except Exception:
+                        msg = f"Field {f} cannot be converted to NumPy/Pandas"
+                        raise ValueError(msg) from None
+                try:
                     pandas_data = pd.DataFrame(pandas_dict, index=pandas_index)
                 except Exception:
-                    msg = f"Field {f} cannot be converted to NumPy/Pandas"
+                    msg = "RNTuple fields cannot be converted to NumPy/Pandas"
                     raise ValueError(msg) from None
                 arrays = pandas_data
             else:
@@ -2194,13 +2198,11 @@ def _rntuple_to_numpy(data):
         out = numpy.empty(len(data), dtype=record_dtype)
         for field in form.fields:
             c = _rntuple_to_numpy(data[field])
-            if record_dtype[field] == numpy.dtype(object) and isinstance(
-                c, numpy.ma.MaskedArray
-            ):
-                c_obj = numpy.empty(len(c), dtype=object)
-                mask = numpy.ma.getmaskarray(c)
-                for i in range(len(c)):
-                    c_obj[i] = None if mask[i] else c.data[i]
+            if record_dtype[field].base == numpy.dtype(
+                object
+            ) and numpy.ma.isMaskedArray(c):
+                c_obj = c.data.astype(object)
+                c_obj[numpy.ma.getmaskarray(c)] = None
                 out[field] = c_obj
             else:
                 out[field] = c

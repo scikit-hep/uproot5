@@ -392,7 +392,16 @@ def test_rntuple_dask_fixed_size_and_optionals(tmp_path):
     filepath = os.path.join(tmp_path, "dask_reg.root")
     regl = ak.to_regular(ak.Array([[[1], [2, 3]], [[4], [5]]]), axis=1)
     opt_num = ak.Array([1.0, None])
-    data = ak.Array({"regl": regl, "opt_num": opt_num})
+    reg_opt = ak.Array(ak.contents.RegularArray(ak.Array([1, None, None, 3]).layout, 2))
+    num_opt_rec = ak.Array([{"a": 1, "b": None}, {"a": 2, "b": 3}])
+    data = ak.Array(
+        {
+            "regl": regl,
+            "opt_num": opt_num,
+            "reg_opt": reg_opt,
+            "num_opt_rec": num_opt_rec,
+        }
+    )
     with uproot.recreate(filepath) as f:
         f.mkrntuple("ntuple", data)
 
@@ -406,5 +415,63 @@ def test_rntuple_dask_fixed_size_and_optionals(tmp_path):
     d_opt = dask_dict["opt_num"]
     assert d_opt.dtype == np.dtype(object)
     comp_opt = d_opt.compute()
+    assert comp_opt.dtype == np.dtype(object)
     assert comp_opt[0] == 1.0
     assert comp_opt[1] is None
+
+    d_reg_opt = dask_dict["reg_opt"]
+    assert d_reg_opt.dtype == np.dtype(object)
+    assert d_reg_opt.shape == (2, 2)
+    comp_reg_opt = d_reg_opt.compute()
+    assert comp_reg_opt.dtype == np.dtype(object)
+    assert comp_reg_opt.shape == (2, 2)
+    assert comp_reg_opt[0, 0] == 1
+    assert comp_reg_opt[0, 1] is None
+    assert comp_reg_opt[1, 0] is None
+    assert comp_reg_opt[1, 1] == 3
+
+    d_rec = dask_dict["num_opt_rec"]
+    assert d_rec.dtype == np.dtype([("a", "<i8"), ("b", "O")])
+    assert d_rec.shape == (2,)
+    comp_rec = d_rec.compute()
+    assert comp_rec.dtype == np.dtype([("a", "<i8"), ("b", "O")])
+    assert comp_rec["a"][0] == 1
+    assert comp_rec["b"][0] is None
+    assert comp_rec["a"][1] == 2
+    assert comp_rec["b"][1] == 3
+
+
+def test_rntuple_struct_jagged_and_fixed_size_optional_array(tmp_path):
+    filepath = os.path.join(tmp_path, "rec_jagged_opt.root")
+    r_layout = ak.contents.RegularArray(ak.Array([1, None, None, 3]).layout, 2)
+    a_layout = ak.contents.ListOffsetArray(
+        ak.index.Index64(np.array([0, 2, 3], dtype=np.int64)),
+        ak.Array([1, 2, 3]).layout,
+    )
+    rec = ak.Array(ak.contents.RecordArray([a_layout, r_layout], ["a", "r"]))
+    data = ak.Array({"rec": rec})
+
+    with uproot.recreate(filepath) as f:
+        f.mkrntuple("ntuple", data)
+
+    ntuple = uproot.open(filepath)["ntuple"]
+
+    arr = ntuple["rec"].array(library="np")
+    assert arr.dtype == np.dtype([("a", "O"), ("r", "O", (2,))])
+    assert np.array_equal(arr["a"][0], np.array([1, 2]))
+    assert np.array_equal(arr["a"][1], np.array([3]))
+    assert arr["r"][0, 0] == 1
+    assert arr["r"][0, 1] is None
+    assert arr["r"][1, 0] is None
+    assert arr["r"][1, 1] == 3
+
+    pytest.importorskip("dask.array")
+    d_dict = uproot.dask(filepath + ":ntuple", library="np")
+    d_rec = d_dict["rec"]
+    assert d_rec.dtype == np.dtype([("a", "O"), ("r", "O", (2,))])
+    comp_rec = d_rec.compute()
+    assert comp_rec.dtype == np.dtype([("a", "O"), ("r", "O", (2,))])
+    assert comp_rec["r"][0, 0] == 1
+    assert comp_rec["r"][0, 1] is None
+    assert comp_rec["r"][1, 0] is None
+    assert comp_rec["r"][1, 1] == 3
