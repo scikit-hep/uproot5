@@ -2198,12 +2198,34 @@ def _rntuple_to_numpy(data):
         out = numpy.empty(len(data), dtype=record_dtype)
         for field in form.fields:
             c = _rntuple_to_numpy(data[field])
-            if record_dtype[field].base == numpy.dtype(
-                object
-            ) and numpy.ma.isMaskedArray(c):
-                c_obj = c.data.astype(object)
-                c_obj[numpy.ma.getmaskarray(c)] = None
-                out[field] = c_obj
+            field_dt = record_dtype[field]
+            if field_dt.base == numpy.dtype(object):
+                if field_dt.shape == () and c.ndim > 1:
+                    c_out = numpy.empty(len(c), dtype=object)
+                    if numpy.ma.isMaskedArray(c):
+                        mask = numpy.ma.getmaskarray(c)
+                        for i in range(len(c)):
+                            m = mask[i]
+                            if m.all():
+                                c_out[i] = None
+                            elif m.any():
+                                row = c.data[i].astype(object)
+                                row[m] = None
+                                c_out[i] = row
+                            else:
+                                c_out[i] = c.data[i]
+                    else:
+                        for i in range(len(c)):
+                            c_out[i] = c[i]
+                    out[field] = c_out
+                elif numpy.ma.isMaskedArray(c):
+                    c_obj = c.data.astype(object)
+                    c_obj[numpy.ma.getmaskarray(c)] = None
+                    out[field] = c_obj
+                elif c.dtype != object:
+                    out[field] = c.astype(object)
+                else:
+                    out[field] = c
             else:
                 out[field] = c
         return out

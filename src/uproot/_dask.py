@@ -519,6 +519,44 @@ def _dask_array_from_map(
     return da.core.Array(hlg, name, chunks, dtype=dtype)
 
 
+def _coerce_field(col, target_dtype):
+    if target_dtype.base == numpy.dtype(object):
+        if target_dtype.shape == () and col.ndim > 1:
+            col_out = numpy.empty(len(col), dtype=object)
+            if numpy.ma.isMaskedArray(col):
+                mask = numpy.ma.getmaskarray(col)
+                for i in range(len(col)):
+                    m = mask[i]
+                    if m.all():
+                        col_out[i] = None
+                    elif m.any():
+                        row = col.data[i].astype(object)
+                        row[m] = None
+                        col_out[i] = row
+                    else:
+                        col_out[i] = col.data[i]
+            else:
+                for i in range(len(col)):
+                    col_out[i] = col[i]
+            return col_out
+        elif numpy.ma.isMaskedArray(col):
+            col_obj = col.data.astype(object)
+            col_obj[numpy.ma.getmaskarray(col)] = None
+            return col_obj
+        elif col.dtype != object:
+            return col.astype(object)
+        else:
+            return col
+    else:
+        if target_dtype.shape and col.shape[1:] == target_dtype.shape:
+            if col.dtype != target_dtype.base:
+                return col.astype(target_dtype.base)
+            return col
+        if col.dtype != target_dtype:
+            return col.astype(target_dtype)
+        return col
+
+
 def _coerce_numpy_chunk(arr, expected_dtype):
     if expected_dtype is None:
         return arr
@@ -526,30 +564,10 @@ def _coerce_numpy_chunk(arr, expected_dtype):
         if arr.dtype != expected_dtype:
             out = numpy.empty(len(arr), dtype=expected_dtype)
             for name in expected_dtype.names:
-                col = arr[name]
-                if expected_dtype[name].base == numpy.dtype(object):
-                    if numpy.ma.isMaskedArray(col):
-                        col_obj = col.data.astype(object)
-                        col_obj[numpy.ma.getmaskarray(col)] = None
-                        out[name] = col_obj
-                    elif col.dtype != object:
-                        out[name] = col.astype(object)
-                    else:
-                        out[name] = col
-                else:
-                    out[name] = col
+                out[name] = _coerce_field(arr[name], expected_dtype[name])
             return out
         return arr
-    if expected_dtype.base == numpy.dtype(object) and (
-        arr.dtype != object or arr.ndim > 1
-    ):
-        if numpy.ma.isMaskedArray(arr):
-            out = arr.data.astype(object)
-            out[numpy.ma.getmaskarray(arr)] = None
-            return out
-        if arr.dtype != object:
-            return arr.astype(object)
-    return arr
+    return _coerce_field(arr, expected_dtype)
 
 
 class _UprootReadNumpy:

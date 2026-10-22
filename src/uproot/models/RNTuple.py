@@ -2059,7 +2059,10 @@ class RField(uproot.behaviors.RNTuple.HasFields):
                     pandas_index = uproot.interpretation.library._pandas_basic_index(
                         pd, entry_start, entry_start + len(arrays)
                     )
-                    if getattr(numpy_data, "ndim", 1) > 1:
+                    if (
+                        getattr(numpy_data, "ndim", 1) > 1
+                        or getattr(numpy_data.dtype, "names", None) is not None
+                    ):
                         pandas_series_data = list(numpy_data)
                     else:
                         pandas_series_data = numpy_data
