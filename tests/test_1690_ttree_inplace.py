@@ -534,21 +534,13 @@ def test_add_branch_does_not_reload_tree_from_disk(tmp_path):
         assert calls == []
 
 
-def test_add_branch_after_multiple_extends_raises(tmp_path):
-    """add_branches() on a tree that already has more than one basket must refuse up front.
+def test_add_branch_after_multiple_extends_succeeds(tmp_path):
+    """add_branches() on a tree that already has more than one basket succeeds (#1764).
 
-    Regression test: add_branches() always back-fills a new branch with
-    exactly one basket spanning every existing entry, regardless of how many
-    baskets the tree's other branches already have. On a tree with only one
-    basket that coincidentally matches (fWriteBasket needed correcting to 1
-    for the new branch -- see test_add_branch_then_extend_same_session, which
-    covers exactly that case and a follow-up extend() succeeding). But on any
-    tree with more than one basket, silently proceeding would create the
-    exact divergent-basket-count state the extend()-side guard exists to
-    reject -- turning every future extend() on this tree into a permanent
-    NotImplementedError, with no warning at add_branches() time. Every
-    existing add_branches test happened to extend() exactly once first, so
-    this never surfaced. Now add_branches() itself refuses up front instead.
+    Follow-up to #1690 (#1764): add_branches() back-fills a new branch with its own
+    basket and basket metadata. Adding a branch to a tree with multiple baskets succeeds
+    and reads back correctly, and subsequent extend() cleanly raises NotImplementedError
+    due to divergent basket counts.
     """
     path = os.path.join(tmp_path, "test.root")
     with uproot.recreate(path) as f:
@@ -557,15 +549,25 @@ def test_add_branch_after_multiple_extends_raises(tmp_path):
         f["tree"].extend({"x": np.full(100, 2.0, dtype=np.float32)})
 
     with uproot.update(path) as f:
-        with pytest.raises(NotImplementedError):
-            f["tree"].add_branches({"new_branch": np.full(200, 9.0, dtype=np.float32)})
+        f["tree"].add_branches({"new_branch": np.full(200, 9.0, dtype=np.float32)})
 
-    # the rejected call must not have corrupted the existing branch
+    # both existing and new branches must read back accurately
     with uproot.open(path) as f:
         assert f["tree"].num_entries == 200
         x = f["tree"]["x"].array()
         assert np.all(x[:100] == 1.0)
         assert np.all(x[100:] == 2.0)
+        new_b = f["tree"]["new_branch"].array()
+        assert np.all(new_b == 9.0)
+
+    # subsequent extend() refuses due to divergent basket counts
+    with uproot.update(path) as f, pytest.raises(NotImplementedError):
+        f["tree"].extend(
+            {
+                "x": np.full(1, 3.0, dtype=np.float32),
+                "new_branch": np.full(1, 9.0, dtype=np.float32),
+            }
+        )
 
 
 def test_extend_root_written_tree(tmp_path):
