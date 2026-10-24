@@ -25,6 +25,7 @@ recorded graph does not touch standing in as placeholders. The source DECLARES t
 from __future__ import annotations
 
 import bisect
+import collections
 import itertools
 
 import uproot
@@ -33,10 +34,11 @@ import uproot.interpretation.library
 import uproot.reading
 from uproot._dask import (
     _base_form_of,
+    _leaf_to_tree,
     _mapping_of,
     _normalize_grouped_keys,
     _read_tree,
-    _resolve_trees_and_keys,
+    _trees_and_keys,
 )
 from uproot._util import no_filter, unset
 from uproot.behaviors.RNTuple import HasFields
@@ -49,8 +51,6 @@ _DASK_ONLY = {
     "result to graphed.aggregate_plan(partitions=...)",
     "steps_per_file": "pass steps_per_file= where the plan is built: graphed.aggregate_plan, "
     "graphed.awkward.to_parquet or uproot.graphed_write",
-    "open_files": "uproot.graphed opens files only to read the form; pass known_base_form= to "
-    "open none",
     "allow_read_errors_with_report": "a failed partition is dead-lettered and retried by "
     "graphed.checkpoint.run_resumable",
 }
@@ -99,13 +99,7 @@ class _GraphedTTreeSource:
 
     # ---- opening -------------------------------------------------------------------------
     def _open_directory(self, file_path):
-        return uproot.reading.ReadOnlyFile(
-            file_path,
-            # the object cache keeps the TTree across a worker's partitions; arrays are not held
-            array_cache=None,
-            custom_classes=self._custom_classes,
-            **self._options,
-        ).root_directory
+        return _open_directory(file_path, self._custom_classes, self._options)
 
     def _tree_in(self, directory, object_path):
         return uproot._util.object_in_directory(
@@ -213,7 +207,8 @@ class _GraphedTTreeSource:
             return start, stop
         if isinstance(tree, HasFields):
             raise NotImplementedError(
-                "align_baskets=True follows TBasket boundaries; an RNTuple has none"
+                f"align_baskets=True follows TBasket boundaries; the RNTuple in "
+                f"{partition.uri!r} has none (open_files=True refuses it in uproot.graphed)"
             )
         memo_key = (partition.uri, partition.tree, tuple(keys))
         if memo_key not in self._offsets_memo:
@@ -288,6 +283,79 @@ def _file_and_path(file_path, object_path):
     return file_path, object_path
 
 
+def _open_directory(file_path, custom_classes, options):
+    return uproot.reading.ReadOnlyFile(
+        file_path,
+        # the object cache keeps the TTree across a worker's partitions; arrays are not held
+        array_cache=None,
+        custom_classes=custom_classes,
+        **options,
+    ).root_directory
+
+
+def _selection(leaf):
+    return "the whole TTree" if leaf is None else f"the TBranch {leaf!r}"
+
+
+def _resolve_entries(
+    files, open_files, custom_classes, allow_missing, options, directories
+):
+    """Every entry of ``files`` as ``(file_path, tree_path, steps, found)``, where ``found`` is the
+    opened object (a leaf ``TBranch`` included) or ``None`` for a file left unopened; the files
+    opened go in ``directories``, ``{file_path: directory}``, for the caller to close even when
+    this raises. An entry whose file lacks the object is dropped under ``allow_missing``.
+
+    A file is opened when it holds the first entry that has the object, with ``open_files``, when
+    it is listed more than once (so the same ``TTree`` spelled two ways resolves to one
+    ``tree_path``), when its object path has a ``:``, which names a ``TBranch`` or is a literal
+    name depending on the file's keys, or when its object path is not the first entry's and has a
+    ``/``, which could end in a ``TTree`` or in a ``TBranch``; any other path names a ``TTree``,
+    or the first entry's leaf ``TBranch`` when it is the first entry's path. Every entry must select the first entry's
+    leaf ``TBranch``, or none when the first names a ``TTree``."""
+    listed = collections.Counter(_file_and_path(f, o)[0] for f, o, *_ in files)
+    first_path = leaf = unset
+    resolved = []
+    for given, given_path, *steps in files:
+        file_path, object_path = _file_and_path(given, given_path)
+        if isinstance(given, HasBranches):
+            found = given
+        elif (
+            first_path is unset
+            or open_files
+            or listed[file_path] > 1
+            or ":" in (object_path or "")
+            or (object_path != first_path and "/" in (object_path or "").strip("/"))
+        ):
+            if file_path not in directories:
+                directories[file_path] = _open_directory(
+                    file_path, custom_classes, options
+                )
+            found = uproot._util.object_in_directory(
+                directories[file_path], object_path or None, allow_missing
+            )
+            if found is None:
+                continue
+        else:
+            found = None
+        if found is not None:
+            tree, branch = _leaf_to_tree(found)
+            branch = None if branch is None else branch.name
+            file_path, tree_path = tree.file.file_path, tree.object_path
+        elif object_path == first_path and leaf is not None:
+            tree_path, branch = object_path.rpartition("/")[0], leaf
+        else:
+            tree_path, branch = object_path, None
+        if first_path is unset:
+            first_path, leaf = object_path, branch
+        elif branch != leaf:
+            raise ValueError(
+                f"{{{file_path!r}: {given_path!r}}} selects {_selection(branch)}, but the first "
+                f"file selects {_selection(leaf)}; select the same in every file"
+            )
+        resolved.append((file_path, tree_path, steps, found))
+    return resolved
+
+
 def _uproot_source(array, what):
     """The one ``uproot.graphed`` source behind ``array``, as ``(node_id, source)``."""
     sources = [
@@ -322,6 +390,7 @@ def graphed(
     decompression_executor=None,
     interpretation_executor=None,
     align_baskets=False,
+    open_files=False,
     **options,
 ):
     """
@@ -358,6 +427,22 @@ def graphed(
             no ``TBasket`` is decompressed by two partitions. The partition count is unchanged;
             a partition can come out empty. Incompatible with explicit ``"steps"``; ``TTrees``
             only.
+        open_files (bool): If False (default), only the first file that has the ``TTree`` is
+            opened, for the form and the ``TBranch`` names; the files after it are listed by path
+            and opened only when read, so a missing ``TBranch`` in one of them fails the read and,
+            with ``allow_missing``, a missing ``TTree`` reads as empty. A file listed more than
+            once is opened to resolve each entry's ``TTree``, so the same ``TTree`` listed twice
+            in two spellings is one input (``uproot.graphed_write`` refuses the duplicate), and
+            with ``allow_missing`` its missing ``TTree`` is dropped rather than read as empty.
+            A file whose object path has a ``/`` and differs from the first file's is opened too:
+            the path could end in a ``TTree`` or in a ``TBranch``. An unopened
+            file is validated only when it is read: without ``allow_missing``, a missing ``TTree``
+            (or, with ``align_baskets``, an RNTuple) fails that partition's read, after other
+            partitions may have written their parts.
+            If True, every file is opened up front, as :doc:`uproot._dask.dask` does by default:
+            the ``TBranches`` are those every file has, a file without the ``TTree`` is
+            dropped (or refused without ``allow_missing``), and an RNTuple is refused with
+            ``align_baskets``.
         options: Passed through to file opening.
 
     Returns a deferred ``graphed`` ``Array`` for the selected ``TTree``(s). Construction reads only
@@ -366,7 +451,7 @@ def graphed(
     the read, partition by partition, fetching only the ``TBranches`` the recorded graph touches.
 
     Partitioning is decided where a plan is built (``steps_per_file=`` there), not here, so
-    ``step_size``, ``steps_per_file`` and ``open_files`` are refused by name; ``align_baskets=``
+    ``step_size`` and ``steps_per_file`` are refused by name; ``align_baskets=``
     decides that the boundaries follow ``TBaskets``. For one task per ``TBasket``-sparse file,
     pass ``partitions=uproot._graphed.graphed_partitions(..., align_baskets=True)`` where the
     plan is built.
@@ -380,6 +465,7 @@ def graphed(
             raise TypeError(
                 f"uproot.graphed() got {name}=, which belongs to uproot.dask; {instead}"
             )
+    uproot._util._check_unknown_options(options)
     library = uproot.interpretation.library._regularize_library(library)
     if library.name != "ak":
         raise NotImplementedError(
@@ -413,6 +499,10 @@ def graphed(
             "with explicit 'steps' in 'files'"
         )
 
+    if known_base_form is not None and open_files:
+        raise TypeError(
+            "uproot.graphed: known_base_form= opens no file; drop open_files=True"
+        )
     if known_base_form is not None:  # the form is given: nothing is opened
         common_keys = list(dict.fromkeys(known_base_form.fields))
         base_form = known_base_form
@@ -420,24 +510,42 @@ def graphed(
         explicit_chunks = [f[2] for f in files] if all(is_3arg) else None
         name = _name_from_object_path(file_tree)
     else:
-        ttrees, common_keys, _is_self, explicit_chunks = _resolve_trees_and_keys(
-            files,
-            filter_name,
-            filter_typename,
-            filter_branch,
-            recursive,
-            full_paths,
-            custom_classes,
-            allow_missing,
-            real_options,
-        )
-        if align_baskets and any(isinstance(t, HasFields) for t in ttrees):
-            raise NotImplementedError(
-                "align_baskets=True follows TBasket boundaries; an RNTuple has none"
+        directories = {}
+        try:
+            resolved = _resolve_entries(
+                files,
+                open_files,
+                custom_classes,
+                allow_missing,
+                real_options,
+                directories,
             )
-        common_keys = _normalize_grouped_keys(ttrees[0], common_keys, full_paths)
-        base_form = _base_form_of(ttrees[0], common_keys, ak_add_doc, form_mapping)
-        file_tree = [(t.file.file_path, t.object_path) for t in ttrees]
+            found = [(found,) for *_, found in resolved if found is not None]
+            ttrees, common_keys, _, _ = _trees_and_keys(
+                found if open_files else found[:1],
+                files,
+                filter_name,
+                filter_typename,
+                filter_branch,
+                recursive,
+                full_paths,
+                first_of=None if open_files else len(files),
+            )
+            if align_baskets and any(
+                isinstance(t, HasFields) for t in [*ttrees, *(f for (f,) in found)]
+            ):
+                raise NotImplementedError(
+                    "align_baskets=True follows TBasket boundaries; an RNTuple has none"
+                )
+            common_keys = _normalize_grouped_keys(ttrees[0], common_keys, full_paths)
+            base_form = _base_form_of(ttrees[0], common_keys, ak_add_doc, form_mapping)
+        finally:
+            for directory in directories.values():
+                directory.file.close()
+        file_tree = [(file_path, tree_path) for file_path, tree_path, _, _ in resolved]
+        explicit_chunks = (
+            [steps[0] for _, _, steps, _ in resolved] if all(is_3arg) else None
+        )
         name = getattr(ttrees[0], "name", None) or _name_from_object_path(file_tree)
     expected_form, info = _mapping_of(form_mapping, base_form)
     typetracer = awkward.typetracer.typetracer_from_form(
@@ -514,6 +622,7 @@ def graphed_partitions(
       read with ``uproot.graphed(align_baskets=True)`` follows only the branches each
       partition reads. Needs ``open_files=True``; ``TTrees`` only.
     """
+    uproot._util._check_unknown_options(options)
     graphed = uproot.extras.graphed()
 
     have_step_size = not isinstance(step_size, uproot._util._Unset)
@@ -531,6 +640,8 @@ def graphed_partitions(
         raise TypeError(
             "step_size and steps_per_file are mutually exclusive; set only one"
         )
+    if have_step_size:
+        uproot._util.check_step_size(step_size)
     n_steps = int(steps_per_file) if have_steps_per_file else 1
 
     real_options = options.copy()
@@ -560,7 +671,7 @@ def graphed_partitions(
         if have_step_size:
             per = (
                 step_size
-                if isinstance(step_size, int)
+                if uproot._util.isint(step_size)
                 else obj.num_entries_for(step_size)
             )
             per = max(1, int(per))

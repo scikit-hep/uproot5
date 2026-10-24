@@ -201,6 +201,8 @@ def iterate(
       array from ``TTrees``.
     * :doc:`uproot._dask.dask`: returns an unevaluated Dask array from ``TTrees``.
     """
+    uproot._util._check_unknown_options(options)
+    uproot._util.check_step_size(step_size)
     files = uproot._util.regularize_files(files, steps_allowed=False, **options)
     decompression_executor, interpretation_executor = _regularize_executors(
         decompression_executor, interpretation_executor, None
@@ -414,6 +416,7 @@ def concatenate(
       single concatenated array from ``TTrees``.
     * :doc:`uproot._dask.dask`: returns an unevaluated Dask array from ``TTrees``.
     """
+    uproot._util._check_unknown_options(options)
     files = uproot._util.regularize_files(files, steps_allowed=False, **options)
     decompression_executor, interpretation_executor = _regularize_executors(
         decompression_executor, interpretation_executor, None
@@ -1476,6 +1479,7 @@ class HasBranches(Mapping):
         See also :doc:`uproot.behaviors.TBranch.iterate` to iterate over many
         files.
         """
+        uproot._util.check_step_size(step_size)
         keys = _keys_deep(self)
         if isinstance(self, TBranch) and expressions is None and len(keys) == 0:
             filter_branch = uproot._util.regularize_filter(filter_branch)
@@ -3841,6 +3845,7 @@ def _hasbranches_num_entries_for(
 def _regularize_step_size(
     hasbranches, step_size, entry_start, entry_stop, branchid_interpretation
 ):
+    uproot._util.check_step_size(step_size)
     if uproot._util.isint(step_size):
         return step_size
     target_num_bytes = uproot._util.memory_size(

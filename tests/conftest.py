@@ -38,9 +38,10 @@ def _data_path(filename, raise_missing=True, cache_dir=None):
                 if path.startswith(tmp) and os.path.isfile(path):
                     target.parent.mkdir(parents=True, exist_ok=True)
                     try:
-                        os.replace(path, target)
+                        # not os.replace: on Windows, replacing a file that
+                        # another worker is reading makes its next open fail
+                        os.rename(path, target)
                     except OSError:
-                        # on Windows, another worker may already have it open
                         if not target.exists():
                             raise
     return _skhep_data_path(filename, raise_missing, cache_dir)

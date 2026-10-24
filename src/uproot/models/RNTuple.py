@@ -2053,20 +2053,24 @@ class RField(uproot.behaviors.RNTuple.HasFields):
         # TODO: The conversion would be ideally be fully handled by Awkward.
         if library.name in ("np", "pd"):
             try:
-                numpy_data = arrays.to_numpy()
-            except (ValueError, TypeError):
-                try:
-                    numpy_data = uproot.behaviors.RNTuple._awkward_to_numpy(arrays)
-                except Exception:
-                    msg = f"Field {self.name} cannot be converted to NumPy/Pandas"
-                    raise ValueError(msg) from None
-            if library.name == "pd":
-                pd = uproot.extras.pandas()
-                pandas_index = uproot.interpretation.library._pandas_basic_index(
-                    pd, entry_start, entry_start + len(arrays)
-                )
-                pandas_data = pd.Series(numpy_data, index=pandas_index)
-                return pandas_data
+                numpy_data = uproot.behaviors.RNTuple._rntuple_to_numpy(arrays)
+                if library.name == "pd":
+                    pd = uproot.extras.pandas()
+                    pandas_index = uproot.interpretation.library._pandas_basic_index(
+                        pd, entry_start, entry_start + len(arrays)
+                    )
+                    if (
+                        getattr(numpy_data, "ndim", 1) > 1
+                        or getattr(numpy_data.dtype, "names", None) is not None
+                    ):
+                        pandas_series_data = list(numpy_data)
+                    else:
+                        pandas_series_data = numpy_data
+                    pandas_data = pd.Series(pandas_series_data, index=pandas_index)
+                    return pandas_data
+            except Exception:
+                msg = f"Field {self.name} cannot be converted to NumPy/Pandas"
+                raise ValueError(msg) from None
             return numpy_data
 
         return arrays
