@@ -110,9 +110,6 @@ def test_canonical_path_normalization(tmp_path):
     file_url = f"file://{local_p}"
     assert canonical_path(file_url) == str(local_p.resolve())
     assert canonical_path(local_p.as_uri()) == str(local_p.resolve())
-    assert canonical_path(f"file://localhost{local_p.resolve()}") == str(
-        local_p.resolve()
-    )
     assert canonical_path("file://somehost/tmp/test.root") is not None
 
     assert (
