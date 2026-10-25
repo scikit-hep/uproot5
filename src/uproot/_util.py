@@ -285,50 +285,50 @@ def regularize_path(path):
 def canonical_path(file_path):
     """
     Returns a canonical identity key for a file path or URL for deduplication.
-    Local paths are normalized via ``os.path.realpath``; remote URLs are
-    normalized via ``fsspec``'s ``unstrip_protocol`` and path regularization.
+    Local paths and file:// URLs are normalized via ``os.path.realpath``; remote URLs
+    are normalized via URL splitting and ``posixpath.normpath``.
     """
     if not isinstance(file_path, (str, bytes, os.PathLike)):
         return file_path
 
     if isinstance(file_path, bytes):
         file_path = os.fsdecode(file_path)
-    file_path = regularize_path(file_path)
+    if isinstance(file_path, os.PathLike):
+        file_path = os.fspath(file_path)
+
     parsed = urllib.parse.urlsplit(file_path)
     if not ("://" in file_path and parsed.scheme not in ("", "file", "local")):
-        path = (
-            urllib.request.url2pathname(parsed.path)
-            if parsed.scheme in ("file", "local")
-            else file_path
-        )
-        return os.path.realpath(os.path.expanduser(path))
-    try:
-        import fsspec.core
+        netloc = parsed.netloc
+        path = parsed.path
+        if netloc and len(netloc) == 2 and netloc[1] == ":":
+            rest = netloc + path
+        elif "\\" in netloc:
+            rest = netloc + path
+        elif netloc in ("", "localhost"):
+            rest = path
+        elif parsed.scheme in ("file", "local"):
+            rest = "//" + netloc + path
+        else:
+            rest = file_path
 
-        fs, path = fsspec.core.url_to_fs(file_path)
-        unstripped = fs.unstrip_protocol(path)
-        u_parsed = urllib.parse.urlsplit(unstripped)
-        norm_path = posixpath.normpath(u_parsed.path)
-        return urllib.parse.urlunsplit(
-            (
-                u_parsed.scheme.lower(),
-                u_parsed.netloc.lower(),
-                norm_path,
-                u_parsed.query,
-                u_parsed.fragment,
-            )
+        if parsed.scheme in ("file", "local"):
+            p = urllib.request.url2pathname(rest)
+            if len(p) >= 3 and p[0] == "/" and p[2] == ":":
+                p = p[1:]
+        else:
+            p = rest
+        return os.path.realpath(os.path.expanduser(p))
+
+    norm_path = posixpath.normpath(parsed.path)
+    return urllib.parse.urlunsplit(
+        (
+            parsed.scheme.lower(),
+            parsed.netloc.lower(),
+            norm_path,
+            parsed.query,
+            parsed.fragment,
         )
-    except Exception:
-        norm_path = posixpath.normpath(parsed.path)
-        return urllib.parse.urlunsplit(
-            (
-                parsed.scheme.lower(),
-                parsed.netloc.lower(),
-                norm_path,
-                parsed.query,
-                parsed.fragment,
-            )
-        )
+    )
 
 
 def file_object_path_split(urlpath: str) -> tuple[str, str | None]:

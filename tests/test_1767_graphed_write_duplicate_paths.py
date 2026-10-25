@@ -109,11 +109,24 @@ def test_canonical_path_normalization(tmp_path):
 
     file_url = f"file://{local_p}"
     assert canonical_path(file_url) == str(local_p.resolve())
-
-    assert canonical_path("http://example.com/foo/../bar.root") == canonical_path(
-        "http://example.com/bar.root"
+    assert canonical_path(local_p.as_uri()) == str(local_p.resolve())
+    assert canonical_path(f"file://localhost{local_p.resolve()}") == str(
+        local_p.resolve()
     )
 
-    assert canonical_path("root://server.cern.ch//a/../b.root") == canonical_path(
-        "root://server.cern.ch//b.root"
+    assert canonical_path("file://C:/test/file.root") == os.path.realpath(
+        "C:/test/file.root"
+    )
+    assert canonical_path(r"file://C:\test\file.root") == os.path.realpath(
+        r"C:\test\file.root"
+    )
+
+    assert (
+        canonical_path("http://example.com/foo/../bar.root")
+        == "http://example.com/bar.root"
+    )
+
+    assert (
+        canonical_path("root://server.cern.ch//a/../b.root")
+        == "root://server.cern.ch//b.root"
     )
