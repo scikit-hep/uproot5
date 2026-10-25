@@ -312,26 +312,27 @@ def _resolve_entries(
     ``/``, which could end in a ``TTree`` or in a ``TBranch``; any other path names a ``TTree``,
     or the first entry's leaf ``TBranch`` when it is the first entry's path. Every entry must select the first entry's
     leaf ``TBranch``, or none when the first names a ``TTree``."""
-    listed = collections.Counter(_file_and_path(f, o)[0] for f, o, *_ in files)
+    listed = collections.Counter(
+        uproot._util.canonical_path(_file_and_path(f, o)[0]) for f, o, *_ in files
+    )
     first_path = leaf = unset
     resolved = []
     for given, given_path, *steps in files:
         file_path, object_path = _file_and_path(given, given_path)
+        canon = uproot._util.canonical_path(file_path)
         if isinstance(given, HasBranches):
             found = given
         elif (
             first_path is unset
             or open_files
-            or listed[file_path] > 1
+            or listed[canon] > 1
             or ":" in (object_path or "")
             or (object_path != first_path and "/" in (object_path or "").strip("/"))
         ):
-            if file_path not in directories:
-                directories[file_path] = _open_directory(
-                    file_path, custom_classes, options
-                )
+            if canon not in directories:
+                directories[canon] = _open_directory(file_path, custom_classes, options)
             found = uproot._util.object_in_directory(
-                directories[file_path], object_path or None, allow_missing
+                directories[canon], object_path or None, allow_missing
             )
             if found is None:
                 continue

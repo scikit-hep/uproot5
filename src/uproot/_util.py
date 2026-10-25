@@ -12,8 +12,11 @@ import glob
 import itertools
 import numbers
 import os
+import posixpath
 import re
 import sys
+import urllib.parse
+import urllib.request
 import warnings
 from collections.abc import Iterable
 from pathlib import Path
@@ -277,6 +280,53 @@ def regularize_path(path):
         path = _fix_url_path.sub(r"\1/\3", os.fspath(path))
 
     return path
+
+
+def canonical_path(file_path):
+    """
+    Returns a canonical identity key for a file path or URL for deduplication.
+    Local paths are normalized via ``os.path.realpath``; remote URLs are
+    normalized via ``fsspec``'s ``unstrip_protocol`` and path regularization.
+    """
+    if not isinstance(file_path, (str, bytes, os.PathLike)):
+        return file_path
+
+    file_path = regularize_path(file_path)
+    parsed = urllib.parse.urlsplit(file_path)
+    if not ("://" in file_path and parsed.scheme not in ("", "file", "local")):
+        path = (
+            urllib.request.url2pathname(parsed.path)
+            if parsed.scheme in ("file", "local")
+            else file_path
+        )
+        return os.path.realpath(os.path.expanduser(path))
+    try:
+        import fsspec.core
+
+        fs, path = fsspec.core.url_to_fs(file_path)
+        unstripped = fs.unstrip_protocol(path)
+        u_parsed = urllib.parse.urlsplit(unstripped)
+        norm_path = posixpath.normpath(u_parsed.path)
+        return urllib.parse.urlunsplit(
+            (
+                u_parsed.scheme.lower(),
+                u_parsed.netloc.lower(),
+                norm_path,
+                u_parsed.query,
+                u_parsed.fragment,
+            )
+        )
+    except Exception:
+        norm_path = posixpath.normpath(parsed.path)
+        return urllib.parse.urlunsplit(
+            (
+                parsed.scheme.lower(),
+                parsed.netloc.lower(),
+                norm_path,
+                parsed.query,
+                parsed.fragment,
+            )
+        )
 
 
 def file_object_path_split(urlpath: str) -> tuple[str, str | None]:
