@@ -298,26 +298,16 @@ def canonical_path(file_path):
 
     parsed = urllib.parse.urlsplit(file_path)
     if not ("://" in file_path and parsed.scheme not in ("", "file", "local")):
-        netloc = parsed.netloc
-        path = parsed.path
-        if netloc and len(netloc) == 2 and netloc[1] == ":":
-            rest = netloc + path
-        elif "\\" in netloc:
-            rest = netloc + path
-        elif netloc in ("", "localhost"):
-            rest = path
-        elif parsed.scheme in ("file", "local"):
-            rest = "//" + netloc + path
-        else:
-            rest = file_path
-
         if parsed.scheme in ("file", "local"):
-            p = urllib.request.url2pathname(rest)
-            if len(p) >= 3 and p[0] == "/" and p[2] == ":":
-                p = p[1:]
-        else:
-            p = rest
-        return os.path.realpath(os.path.expanduser(p))
+            path_str = parsed.path
+            if parsed.netloc and parsed.netloc != "localhost":
+                path_str = (
+                    f"{parsed.netloc}/{path_str.lstrip('/')}"
+                    if path_str
+                    else parsed.netloc
+                )
+            file_path = urllib.request.url2pathname(path_str)
+        return os.path.realpath(os.path.expanduser(file_path))
 
     norm_path = posixpath.normpath(parsed.path)
     return urllib.parse.urlunsplit(

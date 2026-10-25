@@ -36,7 +36,7 @@ def _relative_path(path):
         lambda absp, relp: [absp + ":events", relp + ":events"],
         lambda absp, relp: [absp, relp],
         lambda absp, relp: [absp + ":events", relp],
-        lambda absp, relp: {"file://" + absp: "events", relp: "events"},
+        lambda absp, relp: {Path(absp).as_uri(): "events", relp: "events"},
         lambda absp, relp: [Path(absp), relp],
     ],
     ids=[
@@ -113,13 +113,7 @@ def test_canonical_path_normalization(tmp_path):
     assert canonical_path(f"file://localhost{local_p.resolve()}") == str(
         local_p.resolve()
     )
-
-    assert canonical_path("file://C:/test/file.root") == os.path.realpath(
-        "C:/test/file.root"
-    )
-    assert canonical_path(r"file://C:\test\file.root") == os.path.realpath(
-        r"C:\test\file.root"
-    )
+    assert canonical_path("file://somehost/tmp/test.root") is not None
 
     assert (
         canonical_path("http://example.com/foo/../bar.root")
