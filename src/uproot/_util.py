@@ -291,6 +291,8 @@ def canonical_path(file_path):
     if not isinstance(file_path, (str, bytes, os.PathLike)):
         return file_path
 
+    if isinstance(file_path, bytes):
+        file_path = os.fsdecode(file_path)
     file_path = regularize_path(file_path)
     parsed = urllib.parse.urlsplit(file_path)
     if not ("://" in file_path and parsed.scheme not in ("", "file", "local")):

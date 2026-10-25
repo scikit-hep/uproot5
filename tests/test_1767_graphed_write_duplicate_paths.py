@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import os
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -35,8 +36,17 @@ def _relative_path(path):
         lambda absp, relp: [absp + ":events", relp + ":events"],
         lambda absp, relp: [absp, relp],
         lambda absp, relp: [absp + ":events", relp],
+        lambda absp, relp: {"file://" + absp: "events", relp: "events"},
+        lambda absp, relp: [Path(absp), relp],
     ],
-    ids=["dict-spelling", "colon-list", "bare-list", "colon-and-bare"],
+    ids=[
+        "dict-spelling",
+        "colon-list",
+        "bare-list",
+        "colon-and-bare",
+        "file-protocol-dict",
+        "path-object",
+    ],
 )
 def test_same_file_under_two_path_spellings_is_refused(tmp_path, spelling):
     absp = _make_tree(tmp_path / "a.root")
@@ -85,3 +95,27 @@ def test_different_trees_in_same_file_under_two_path_spellings_are_accepted(tmp_
     g = uproot.graphed([absp + ":events", relp + ":other"])
     paths = uproot.graphed_write(g, str(tmp_path / "out4"), executor="thread")
     assert len(paths) == 2
+
+
+def test_canonical_path_normalization(tmp_path):
+    from uproot._util import canonical_path
+
+    assert canonical_path(None) is None
+    assert canonical_path(123) == 123
+
+    local_p = tmp_path / "test.root"
+    assert canonical_path(local_p) == str(local_p.resolve())
+    assert canonical_path(str(local_p).encode()) == str(local_p.resolve())
+
+    file_url = f"file://{local_p}"
+    assert canonical_path(file_url) == str(local_p.resolve())
+
+    assert (
+        canonical_path("http://example.com/foo/../bar.root")
+        == "http://example.com/bar.root"
+    )
+
+    assert (
+        canonical_path("root://server.cern.ch//a/../b.root")
+        == "root://server.cern.ch//b.root"
+    )
