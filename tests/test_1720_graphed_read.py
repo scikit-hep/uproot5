@@ -121,15 +121,15 @@ def test_a_read_into_another_reads_session_joins_with_it(tmp_path):
     left = uproot.graphed(
         _keyed_tree(os.path.join(tmp_path, "a.root"), "x", [1.0, 2.0, 3.0])
     )
-    right = uproot.graphed(
-        _keyed_tree(os.path.join(tmp_path, "b.root"), "z", [10.0, 20.0]),
-        session=left.session,
-    )
+    friends = _keyed_tree(os.path.join(tmp_path, "b.root"), "z", [10.0, 20.0])
     session = left.session
+    with pytest.raises(ValueError, match="pass name= to name this one"):
+        uproot.graphed(friends, session=session)
+    right = uproot.graphed(friends, session=session, name="friends")
     assert right.session is session
     assert [session.source_name(nid) for nid in session.source_ids()] == [
         "events",
-        "events#1",
+        "friends",
     ]
     assert session.form(right).describe() == "## * {k: int64, z: float64}"
 
@@ -142,6 +142,17 @@ def test_a_read_into_another_reads_session_joins_with_it(tmp_path):
     )
     assert _run(plan) == [11.0, 22.0]
     assert uproot.graphed_head(right.z, 5).tolist() == [10.0, 20.0]
+
+
+def test_equal_reads_are_equal_sources_and_one_slot(tmp_path):
+    path = _keyed_tree(os.path.join(tmp_path, "a.root"), "x", [1.0, 2.0])
+    a = uproot.graphed(path)
+    again = uproot.graphed(path, session=a.session)
+    assert again.node_id == a.node_id
+    assert _source_of(a) == _source_of(uproot.graphed(path))
+    assert hash(_source_of(a)) == hash(_source_of(uproot.graphed(path)))
+    assert _source_of(a) != _source_of(uproot.graphed(path, filter_name=["k"]))
+    assert _source_of(a) != object()
 
 
 # ---- resolution shared with uproot.dask ------------------------------------------------

@@ -97,6 +97,23 @@ class _GraphedTTreeSource:
     def __getstate__(self):
         return {**self.__dict__, "_offsets_memo": {}}
 
+    def __eq__(self, other):
+        """Equal sources read the same data, whatever the ``graphed`` slot they are bound to."""
+        return isinstance(other, _GraphedTTreeSource) and (
+            self._file_tree,
+            self._common_keys,
+            self._explicit_chunks,
+            self._expected_form,
+        ) == (
+            other._file_tree,
+            other._common_keys,
+            other._explicit_chunks,
+            other._expected_form,
+        )
+
+    def __hash__(self):
+        return hash((tuple(self._file_tree), tuple(self._common_keys)))
+
     # ---- opening -------------------------------------------------------------------------
     def _open_directory(self, file_path):
         return _open_directory(file_path, self._custom_classes, self._options)
@@ -393,6 +410,7 @@ def graphed(
     known_base_form=None,
     backend=None,
     session=None,
+    name=None,
     decompression_executor=None,
     interpretation_executor=None,
     align_baskets=False,
@@ -429,9 +447,11 @@ def graphed(
         session (graphed Session or None): Record into this existing ``Session`` (and on its
             backend) instead of a new one, so the result can be combined with arrays already
             recorded there, e.g. ``graphed.join(events, uproot.graphed(friends,
-            session=events.session), on=[...])``. The source is named after the ``TTree``, with
-            ``#1``, ``#2``, ... appended when the ``Session`` already has a source of that name.
-            Exclusive with ``backend=`` and ``behavior=``.
+            session=events.session, name="friends"), on=[...])``. Exclusive with ``backend=`` and
+            ``behavior=``.
+        name (str or None): The ``graphed`` source's name, its slot in the recorded graph; default
+            the ``TTree``'s name. A ``Session`` binds one name to one read: reading other data
+            under a name the ``Session`` already has is refused.
         decompression_executor, interpretation_executor: As in :doc:`uproot._dask.dask`; every
             partition read uses them.
         align_baskets (bool): If True, each blind partition's entry range moves, when it is
@@ -472,10 +492,10 @@ def graphed(
 
     This is the ``graphed`` analogue of :doc:`uproot._dask.dask`.
     """
-    for name, instead in _DASK_ONLY.items():
-        if name in options:
+    for option, instead in _DASK_ONLY.items():
+        if option in options:
             raise TypeError(
-                f"uproot.graphed() got {name}=, which belongs to uproot.dask; {instead}"
+                f"uproot.graphed() got {option}=, which belongs to uproot.dask; {instead}"
             )
     uproot._util._check_unknown_options(options)
     library = uproot.interpretation.library._regularize_library(library)
@@ -528,7 +548,7 @@ def graphed(
         base_form = known_base_form
         file_tree = [_file_and_path(f, o) for f, o, *_ in files]
         explicit_chunks = [f[2] for f in files] if all(is_3arg) else None
-        name = _name_from_object_path(file_tree)
+        tree_name = _name_from_object_path(file_tree)
     else:
         directories = {}
         try:
@@ -566,7 +586,9 @@ def graphed(
         explicit_chunks = (
             [steps[0] for _, _, steps, _ in resolved] if all(is_3arg) else None
         )
-        name = getattr(ttrees[0], "name", None) or _name_from_object_path(file_tree)
+        tree_name = getattr(ttrees[0], "name", None) or _name_from_object_path(
+            file_tree
+        )
     expected_form, info = _mapping_of(form_mapping, base_form)
     typetracer = awkward.typetracer.typetracer_from_form(
         expected_form, highlevel=True, behavior=info.behavior
@@ -577,12 +599,8 @@ def graphed(
                 behavior=behavior if form_mapping is None else info.behavior
             )
         session = graphed.Session(backend)
-    # graphed binds sources by name, so a second TTree of this name needs its own
-    taken = {session.source_name(nid) for nid in session.source_ids()}
-    base, ordinal = name, 0
-    while name in taken:
-        ordinal += 1
-        name = f"{base}#{ordinal}"
+    if name is None:
+        name = tree_name
     source = _GraphedTTreeSource(
         file_tree,
         list(base_form.fields),
@@ -598,6 +616,12 @@ def graphed(
         explicit_chunks=explicit_chunks,
         align_baskets=align_baskets,
     )
+    for nid, held in session.sources().items():
+        if session.source_name(nid) == name and held != source:
+            raise ValueError(
+                f"uproot.graphed: this Session already has a source named {name!r} that reads "
+                "other data; pass name= to name this one"
+            )
     return session.source(
         name, form=graphed.awkward.AwkwardForm(typetracer), data=source
     )
