@@ -1680,7 +1680,9 @@ def _get_ttree_form(
                 }
             )
         if len(content_parameters.keys()) != 0:
-            content_form = content_form.copy(parameters=content_parameters)
+            content_form = content_form.copy(
+                parameters={**content_form.parameters, **content_parameters}
+            )
         contents.append(content_form)
 
     if isinstance(ak_add_doc, bool):
@@ -1894,16 +1896,11 @@ def _normalize_grouped_keys(ttree, common_keys, full_paths):
 
 
 def _base_form_of(ttree, common_keys, ak_add_doc, form_mapping):
-    """The dataset's base form from one open tree: an ``RNTuple`` keeps its nesting through
-    ``to_akform``; a ``TTree`` form carries the branch typenames a mapping may read."""
-    if isinstance(ttree, HasFields):
-        base_form, _ = ttree.to_akform(
-            filter_field=_filter_field_by_key(ttree, common_keys)
-        )
-    else:
-        base_form = _get_ttree_form(awkward, ttree, common_keys, ak_add_doc)
-        if form_mapping is not None:
-            base_form.parameters["typenames"] = ttree.typenames()
+    """The dataset's base form from one open tree, with ``ak_add_doc`` applied; a ``TTree`` form
+    also carries the branch typenames a mapping may read."""
+    base_form = _get_ttree_form(awkward, ttree, common_keys, ak_add_doc)
+    if form_mapping is not None and not isinstance(ttree, HasFields):
+        base_form.parameters["typenames"] = ttree.typenames()
     return base_form
 
 
