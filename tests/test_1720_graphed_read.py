@@ -97,6 +97,53 @@ def test_behavior_is_refused_beside_backend():
         uproot.graphed(_zmumu(), behavior={}, backend=AwkwardBackend())
 
 
+def test_session_and_backend_are_exclusive():
+    from graphed.awkward import AwkwardBackend
+
+    with pytest.raises(TypeError, match="pass backend= or session=, not both"):
+        uproot.graphed(
+            _zmumu(), backend=AwkwardBackend(), session=uproot.graphed(_zmumu()).session
+        )
+    with pytest.raises(TypeError, match="behavior= is for the default backend"):
+        uproot.graphed(_zmumu(), behavior={}, session=uproot.graphed(_zmumu()).session)
+
+
+def _keyed_tree(path, field, values):
+    with uproot.recreate(path) as f:
+        f["events"] = {
+            "k": np.arange(len(values), dtype="i8"),
+            field: np.asarray(values, "f8"),
+        }
+    return path + ":events"
+
+
+def test_a_read_into_another_reads_session_joins_with_it(tmp_path):
+    left = uproot.graphed(
+        _keyed_tree(os.path.join(tmp_path, "a.root"), "x", [1.0, 2.0, 3.0])
+    )
+    right = uproot.graphed(
+        _keyed_tree(os.path.join(tmp_path, "b.root"), "z", [10.0, 20.0]),
+        session=left.session,
+    )
+    session = left.session
+    assert right.session is session
+    assert [session.source_name(nid) for nid in session.source_ids()] == [
+        "events",
+        "events#1",
+    ]
+    assert session.form(right).describe() == "## * {k: int64, z: float64}"
+
+    joined = graphed.join(left, right, on=["k"])
+    plan = graphed.join_plan(
+        joined.x + joined.z,
+        reduce=lambda vals: sorted(ak.to_list(vals[0])),
+        combine=lambda a, b: sorted(a + b),
+        empty=list,
+    )
+    assert _run(plan) == [11.0, 22.0]
+    assert uproot.graphed_head(right.z, 5).tolist() == [10.0, 20.0]
+
+
 # ---- resolution shared with uproot.dask ------------------------------------------------
 def test_a_single_tree_file_needs_no_object_path(tmp_path):
     path = _make_tree(os.path.join(tmp_path, "t.root"))

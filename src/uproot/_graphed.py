@@ -356,12 +356,17 @@ def _resolve_entries(
     return resolved
 
 
-def _uproot_source(array, what):
-    """The one ``uproot.graphed`` source behind ``array``, as ``(node_id, source)``."""
+def _uproot_source(array, compiled, what):
+    """The one ``uproot.graphed`` source ``array``'s ``compiled`` graph reads, as
+    ``(node_id, source)``; its ``Session`` may hold others."""
+    graphed = uproot.extras.graphed()
+    session = array.session
+    nodes = graphed.core.GraphStore.deserialize(bytes(compiled.ir)).nodes()
+    read = {node["name"] for node in nodes if node["kind"] == "source"}
     sources = [
         (nid, s)
-        for nid, s in array.session.sources().items()
-        if isinstance(s, _GraphedTTreeSource)
+        for nid, s in session.sources().items()
+        if isinstance(s, _GraphedTTreeSource) and session.source_name(nid) in read
     ]
     if len(sources) != 1:
         raise TypeError(
@@ -387,6 +392,7 @@ def graphed(
     form_mapping=None,
     known_base_form=None,
     backend=None,
+    session=None,
     decompression_executor=None,
     interpretation_executor=None,
     align_baskets=False,
@@ -420,6 +426,12 @@ def graphed(
             records on, in place of the default ``graphed.awkward.AwkwardBackend`` — the route for
             a caller's own ``Array`` subclass. Its behavior (and, with ``form_mapping``, the
             mapping info's) is then the caller's business, so ``behavior=`` is refused beside it.
+        session (graphed Session or None): Record into this existing ``Session`` (and on its
+            backend) instead of a new one, so the result can be combined with arrays already
+            recorded there, e.g. ``graphed.join(events, uproot.graphed(friends,
+            session=events.session), on=[...])``. The source is named after the ``TTree``, with
+            ``#1``, ``#2``, ... appended when the ``Session`` already has a source of that name.
+            Exclusive with ``backend=`` and ``behavior=``.
         decompression_executor, interpretation_executor: As in :doc:`uproot._dask.dask`; every
             partition read uses them.
         align_baskets (bool): If True, each blind partition's entry range moves, when it is
@@ -471,10 +483,18 @@ def graphed(
         raise NotImplementedError(
             f"uproot.graphed currently supports only library='ak', not {library.name!r}"
         )
-    if behavior is not None and (backend is not None or form_mapping is not None):
+    if behavior is not None and (
+        backend is not None or session is not None or form_mapping is not None
+    ):
         raise TypeError(
             "uproot.graphed: behavior= is for the default backend and the unmapped form; with "
-            "backend= the behavior belongs to that backend, with form_mapping= to its mapping info"
+            "backend= or session= the behavior belongs to that backend, with form_mapping= to its "
+            "mapping info"
+        )
+    if backend is not None and session is not None:
+        raise TypeError(
+            "uproot.graphed: session= records on that Session's backend; pass backend= or "
+            "session=, not both"
         )
 
     import awkward
@@ -551,6 +571,18 @@ def graphed(
     typetracer = awkward.typetracer.typetracer_from_form(
         expected_form, highlevel=True, behavior=info.behavior
     )
+    if session is None:
+        if backend is None:
+            backend = graphed.awkward.AwkwardBackend(
+                behavior=behavior if form_mapping is None else info.behavior
+            )
+        session = graphed.Session(backend)
+    # graphed binds sources by name, so a second TTree of this name needs its own
+    taken = {session.source_name(nid) for nid in session.source_ids()}
+    base, ordinal = name, 0
+    while name in taken:
+        ordinal += 1
+        name = f"{base}#{ordinal}"
     source = _GraphedTTreeSource(
         file_tree,
         list(base_form.fields),
@@ -566,11 +598,7 @@ def graphed(
         explicit_chunks=explicit_chunks,
         align_baskets=align_baskets,
     )
-    if backend is None:
-        backend = graphed.awkward.AwkwardBackend(
-            behavior=behavior if form_mapping is None else info.behavior
-        )
-    return graphed.Session(backend).source(
+    return session.source(
         name, form=graphed.awkward.AwkwardForm(typetracer), data=source
     )
 
@@ -751,9 +779,9 @@ def graphed_head(array, n=5):
     graphed = uproot.extras.graphed()
 
     session = array.session
-    nid, source = _uproot_source(array, "graphed_head")
-    columns = list(source.projected_columns((array,)))
     compiled = graphed.compile_ir(session, array)
+    nid, source = _uproot_source(array, compiled, "graphed_head")
+    columns = list(source.projected_columns((array,)))
     externals = graphed.aggregate.external_evaluators(session, compiled)
     source_name = session.source_name(nid)
 
