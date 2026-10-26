@@ -1108,7 +1108,10 @@ def _select_keys(form, keys):
     selected = keys | {key[:i] for key in keys for i, c in enumerate(key) if c == "."}
 
     def impl(form, path):
-        if path in keys:
+        # no key reaches beneath a leaf or a union
+        if path in keys or not (
+            form.is_record or form.is_list or form.is_option or form.is_indexed
+        ):
             return form
         if form.is_record:
             prefix = "" if path is None else f"{path}."
@@ -1117,9 +1120,7 @@ def _select_keys(form, keys):
                 fields=kept,
                 contents=[impl(form.content(f), f"{prefix}{f}") for f in kept],
             )
-        if form.is_list or form.is_option or form.is_indexed:
-            return form.copy(content=impl(form.content, path))
-        return form
+        return form.copy(content=impl(form.content, path))
 
     return impl(form, None)
 
