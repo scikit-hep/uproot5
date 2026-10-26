@@ -144,15 +144,16 @@ def test_a_read_into_another_reads_session_joins_with_it(tmp_path):
     assert uproot.graphed_head(right.z, 5).tolist() == [10.0, 20.0]
 
 
-def test_equal_reads_are_equal_sources_and_one_slot(tmp_path):
+def test_a_name_the_session_has_is_refused(tmp_path):
     path = _keyed_tree(os.path.join(tmp_path, "a.root"), "x", [1.0, 2.0])
     a = uproot.graphed(path)
-    again = uproot.graphed(path, session=a.session)
-    assert again.node_id == a.node_id
-    assert _source_of(a) == _source_of(uproot.graphed(path))
-    assert hash(_source_of(a)) == hash(_source_of(uproot.graphed(path)))
-    assert _source_of(a) != _source_of(uproot.graphed(path, filter_name=["k"]))
-    assert _source_of(a) != object()
+    for name in (None, "events"):
+        with pytest.raises(ValueError, match="already has a source named 'events'"):
+            uproot.graphed(path, session=a.session, name=name)
+    mine = uproot.graphed(path, name="mine")
+    assert [mine.session.source_name(nid) for nid in mine.session.source_ids()] == [
+        "mine"
+    ]
 
 
 # ---- resolution shared with uproot.dask ------------------------------------------------

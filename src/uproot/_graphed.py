@@ -97,23 +97,6 @@ class _GraphedTTreeSource:
     def __getstate__(self):
         return {**self.__dict__, "_offsets_memo": {}}
 
-    def __eq__(self, other):
-        """Equal sources read the same data, whatever the ``graphed`` slot they are bound to."""
-        return isinstance(other, _GraphedTTreeSource) and (
-            self._file_tree,
-            self._common_keys,
-            self._explicit_chunks,
-            self._expected_form,
-        ) == (
-            other._file_tree,
-            other._common_keys,
-            other._explicit_chunks,
-            other._expected_form,
-        )
-
-    def __hash__(self):
-        return hash((tuple(self._file_tree), tuple(self._common_keys)))
-
     # ---- opening -------------------------------------------------------------------------
     def _open_directory(self, file_path):
         return _open_directory(file_path, self._custom_classes, self._options)
@@ -450,8 +433,7 @@ def graphed(
             session=events.session, name="friends"), on=[...])``. Exclusive with ``backend=`` and
             ``behavior=``.
         name (str or None): The ``graphed`` source's name, its slot in the recorded graph; default
-            the ``TTree``'s name. A ``Session`` binds one name to one read: reading other data
-            under a name the ``Session`` already has is refused.
+            the ``TTree``'s name. A name the ``Session`` already has is refused.
         decompression_executor, interpretation_executor: As in :doc:`uproot._dask.dask`; every
             partition read uses them.
         align_baskets (bool): If True, each blind partition's entry range moves, when it is
@@ -616,12 +598,11 @@ def graphed(
         explicit_chunks=explicit_chunks,
         align_baskets=align_baskets,
     )
-    for nid, held in session.sources().items():
-        if session.source_name(nid) == name and held != source:
-            raise ValueError(
-                f"uproot.graphed: this Session already has a source named {name!r} that reads "
-                "other data; pass name= to name this one"
-            )
+    if name in {session.source_name(nid) for nid in session.source_ids()}:
+        raise ValueError(
+            f"uproot.graphed: this Session already has a source named {name!r}; "
+            "pass name= to name this one"
+        )
     return session.source(
         name, form=graphed.awkward.AwkwardForm(typetracer), data=source
     )
