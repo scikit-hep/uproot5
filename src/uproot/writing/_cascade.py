@@ -1166,9 +1166,7 @@ class DirectoryData(CascadeLeaf):
             if old.name.string == key.name.string and old.cycle == key.cycle:
                 self._keys_num_bytes += key.allocation - old.allocation
                 keys = self._keys_by_name[key.name.string]
-                for j in range(len(keys)):
-                    if keys[j].cycle == key.cycle:
-                        del keys[j]
+                keys[:] = [k for k in keys if k.cycle != key.cycle]
                 keys.append(key)
                 self._keys[i] = key
                 return
@@ -1182,9 +1180,9 @@ class DirectoryData(CascadeLeaf):
             if old.name.string == key.name.string and old.cycle == key.cycle:
                 self._keys_num_bytes -= old.allocation
                 keys = self._keys_by_name[key.name.string]
-                for j in range(len(keys)):
-                    if keys[j].cycle == key.cycle:
-                        del keys[j]
+                keys[:] = [k for k in keys if k.cycle != key.cycle]
+                if len(keys) == 0:
+                    del self._keys_by_name[key.name.string]
                 del self._keys[i]
                 return
         else:
