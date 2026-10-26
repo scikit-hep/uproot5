@@ -1599,7 +1599,9 @@ class HasFields(Mapping):
         if len(akform.contents) == 0:
             return
 
-        return _num_entries_for(self, akform, target_num_bytes, entry_start, entry_stop)
+        return _num_entries_for(
+            self.ntuple, akform, target_num_bytes, entry_start, entry_stop
+        )
 
     def __getitem__(self, where):
         original_where = where
