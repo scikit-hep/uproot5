@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import functools
 import math
+import re
 import socket
 import time
 from collections.abc import Callable, Iterable, Mapping
@@ -980,6 +981,7 @@ class TrivialFormMappingInfo(ImplementsFormMappingInfo):
         self._form = form
         self._subfields = subfields
         self._form_key_to_key = self.build_form_key_to_key(form, subfields)
+        self._field_paths = _field_paths(form)
 
     @property
     def behavior(self) -> None:
@@ -1039,7 +1041,10 @@ class TrivialFormMappingInfo(ImplementsFormMappingInfo):
         # An RNTuple reads every leaf beneath a requested key, selected by key because a name
         # like "x" would also select the fields named "x" in other records.
         if isinstance(tree, HasFields):
-            form = self._form.select_columns(keys)
+            # by field-name tuple, so a name's dots, braces, and glob characters are literal
+            form = self._form.select_columns(
+                [tuple(map(_glob_escape, self._field_paths[k])) for k in keys]
+            )
             projection_subforms = {f: form.content(f) for f in form.fields}
             leaf_keys = [
                 p
@@ -1048,13 +1053,12 @@ class TrivialFormMappingInfo(ImplementsFormMappingInfo):
             ]
             selection = {"filter_field": _filter_field_by_key(tree, leaf_keys)}
         else:
-            if subfields := sorted(set(keys) - set(self._form.fields)):
-                raise ValueError(
-                    f"{tree.object_path!r} is a TTree, which is read by whole branch, "
-                    f"not by subfield: {subfields}"
-                )
-            projection_subforms = {key: self._form.content(key) for key in keys}
-            selection = {"expressions": keys}
+            fields = list(keys)
+            if self._subfields:  # a TTree reads the whole branches the keys are under
+                above = _ancestors(keys)
+                fields = [f for f in self._form.fields if f in keys or f in above]
+            projection_subforms = {f: self._form.content(f) for f in fields}
+            selection = {"expressions": fields}
         # Read the arrays as a top-level awkward RecordArray. Omitting how= (the
         # default) ensures that AsGrouped branches are returned as proper awkward
         # RecordArrays rather than Python tuples of sub-arrays (which how=tuple
@@ -1084,7 +1088,8 @@ class TrivialFormMappingInfo(ImplementsFormMappingInfo):
                 projection_subform.expected_from_buffers(self.buffer_key).items(),
                 strict=True,
             ):
-                assert src_dtype == dst_dtype  # Sanity check!
+                if src_dtype != dst_dtype:
+                    raise TypeError(f"Data type mismatch: {src_dtype} != {dst_dtype}")
                 container[dst] = ttree_container[src]
 
         return container
@@ -1103,16 +1108,22 @@ def _ancestors(keys):
     return {key[:i] for key in keys for i, c in enumerate(key) if c == "."}
 
 
-def _subfield_paths(form, path=None):
-    """The dotted paths of the record fields beneath ``form``'s top-level fields."""
+def _field_paths(form, path=None, names=()):
+    """Each record field's dotted key, as ``build_form_key_to_key`` names it, mapped to its
+    field names, which may themselves contain dots."""
+    out = {}
     if form.is_record:
         for field in form.fields:
             subpath = field if path is None else f"{path}.{field}"
-            if path is not None:
-                yield subpath
-            yield from _subfield_paths(form.content(field), subpath)
+            out[subpath] = (*names, field)
+            out.update(_field_paths(form.content(field), subpath, (*names, field)))
     elif form.is_list or form.is_option or form.is_indexed:
-        yield from _subfield_paths(form.content, path)
+        out.update(_field_paths(form.content, path, names))
+    return out
+
+
+def _glob_escape(name):
+    return re.sub(r"[*?[]", r"[\g<0>]", name)
 
 
 def _covered(key, keys):
@@ -1242,7 +1253,7 @@ def _read_tree(
     keys = frozenset(keys)
     # a dotted RNTuple key names a subfield, read with everything beneath it and the
     # structure above it; a dotted TTree branch name is just a name
-    if isinstance(tree, HasFields):
+    if isinstance(tree, HasFields) or getattr(form_mapping_info, "_subfields", False):
         above = _ancestors(keys)
         read = lambda key: key in above or _covered(key, keys)  # noqa: E731
     else:
@@ -1400,7 +1411,9 @@ class UprootReadMixin:
 
         # Determine which TTree keys need to be read; an RNTuple's are read by subfield too
         common_keys = frozenset(self.common_keys)
-        subfields = frozenset(_subfield_paths(self.base_form))
+        subfields = {
+            k for k, names in _field_paths(self.base_form).items() if len(names) > 1
+        }
         return frozenset(
             key
             for key in form_info.keys_for_buffer_keys(data_buffers)

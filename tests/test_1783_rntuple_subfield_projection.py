@@ -216,12 +216,12 @@ def test_a_dataset_with_a_ttree_reads_whole_fields(rntuple_and_ttree):
     assert ak.array_equal(fE[:20], uproot.open(rntuple_and_ttree[0]).arrays().jetp4.fE)
 
 
-def test_a_ttree_refuses_subfield_keys(rntuple_and_ttree):
+def test_a_ttree_reads_the_fields_its_subfield_keys_are_under(rntuple_and_ttree):
     pytest.importorskip("dask_awkward")
     # without open_files, only the first file says whether the dataset is an RNTuple
     ev = uproot.dask(rntuple_and_ttree, filter_name="jetp4", open_files=False)
-    with pytest.raises(ValueError, match="read by whole branch"):
-        ev.jetp4.fE.compute()
+    fE = ev.jetp4.fE.compute()
+    assert ak.array_equal(fE[20:], uproot.open(rntuple_and_ttree[1]).arrays().jetp4.fE)
 
 
 def test_rntuple_buffers_are_keyed_by_their_own_node():
@@ -281,3 +281,17 @@ def test_rntuple_buffers_are_keyed_by_their_own_node():
     assert TrivialFormMappingInfo(form, subfields=True).keys_for_buffer_keys(
         buffers
     ) == {"jets.eta"}
+
+
+@pytest.mark.parametrize("name", ["[ab]", "{a,b}", "d.e", "x*"])
+def test_a_field_name_is_selected_literally(tmp_path, monkeypatch, name):
+    where, arr = _rntuple(
+        tmp_path,
+        ak.Array(
+            [{"rec": {name: k, "a": 2 * k, "b": 3 * k, "x1": 4 * k}} for k in range(4)]
+        ),
+    )
+    ev = uproot.dask(where)
+    read = _columns_read(monkeypatch)
+    assert ak.array_equal(ev["rec", name].compute(), arr["rec", name])
+    assert len(read) == 1
