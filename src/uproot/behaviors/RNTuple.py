@@ -595,15 +595,15 @@ class HasFields(Mapping):
         record_list = []
         if self is rntuple:
             field_path = None
+            key_prefixes = uproot.models.RNTuple._key_prefixes(keys)
             for field in self.fields:
                 # the field needs to be in the keys or be a parent of a field in the keys
-                if any(
-                    key.startswith(f"{field.name}.") or key == field.name
-                    for key in keys
-                ):
+                if field.name in key_prefixes:
                     top_names.append(field.name)
                     record_list.append(
-                        rntuple.field_form(field.field_id, keys, ak_add_doc=ak_add_doc)
+                        rntuple._field_form(
+                            field.field_id, key_prefixes, ak_add_doc=ak_add_doc
+                        )
                     )
         else:
             # If it is a subfield of a collection or a std::array (a LEAF with a nonzero
