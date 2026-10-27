@@ -1,38 +1,98 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot5/blob/main/LICENSE
 
+from __future__ import annotations
+
+import awkward as ak
 import pytest
 import skhep_testdata
 
 import uproot
 
-files = {skhep_testdata.data_path("ntpl001_staff_rntuple_v1-0-0-0.root"): "Staff"}
+pytest.importorskip("dask_awkward")
+
+readers = pytest.mark.parametrize("reader", ["dask-delayed", "dask-open", "graphed"])
 add_docs = pytest.mark.parametrize(
-    "ak_add_doc", [True, {"__doc__": "title", "typename": "typename"}]
+    "ak_add_doc", [True, {"__doc__": "description", "typename": "typename"}]
 )
 
 
-def _check(form, reference):
-    division = form.contents[form.fields.index("Division")]
-    assert division.parameters["__array__"] == "string"
-    assert "__doc__" in division.parameters
-    assert "__doc__" in form.parameters
-    assert form.is_equal_to(reference, all_parameters=True)
+def _lazy(reader, files, **options):
+    if reader == "graphed":
+        pytest.importorskip("graphed")
+        return uproot.graphed(files, **options)
+    return uproot.dask(files, open_files=reader == "dask-open", **options)
 
 
-def _dask_form(ak_add_doc, open_files):
-    return uproot.dask(files, open_files=open_files, ak_add_doc=ak_add_doc).layout.form
+def _form(reader, array):
+    if reader == "graphed":
+        return array.session.form(array).tt.layout.form
+    return array.layout.form
+
+
+@pytest.fixture(scope="module")
+def documented_rntuple(tmp_path_factory):
+    """Documented top record, field and subfield, plus an undocumented string field."""
+    path = str(tmp_path_factory.mktemp("docs") / "docs.root")
+    numbers = ak.to_layout([1, 2])
+    struct = ak.contents.RecordArray(
+        [numbers.copy(parameters={"__doc__": "a subfield"}), numbers],
+        ["a", "b"],
+        parameters={"__doc__": "a struct"},
+    )
+    data = ak.contents.RecordArray(
+        [
+            numbers.copy(parameters={"__doc__": "an int"}),
+            ak.to_layout(["u", "v"]),
+            struct,
+        ],
+        ["x", "s", "r"],
+        parameters={"__doc__": "top"},
+    )
+    with uproot.recreate(path) as file:
+        file.mkrntuple("ntpl", ak.Array(data))
+    return {path: "ntpl"}
 
 
 @add_docs
-@pytest.mark.parametrize("open_files", [False, True])
-def test_dask_adds_the_rntuple_docs(ak_add_doc, open_files):
-    pytest.importorskip("dask_awkward")
-    _check(_dask_form(ak_add_doc, open_files), _dask_form(ak_add_doc, False))
+@readers
+def test_rntuple_form_matches_eager(documented_rntuple, reader, ak_add_doc):
+    ((path, name),) = documented_rntuple.items()
+    eager = uproot.open(path)[name].arrays(ak_add_doc=ak_add_doc)
+    array = _lazy(reader, documented_rntuple, ak_add_doc=ak_add_doc)
+    assert _form(reader, array).is_equal_to(eager.layout.form, all_parameters=True)
+    if reader != "graphed":
+        computed = array.compute()
+        assert computed.layout.form.is_equal_to(eager.layout.form, all_parameters=True)
+        assert ak.array_equal(computed, eager)
 
 
-@add_docs
-def test_graphed_adds_the_rntuple_docs(ak_add_doc):
-    pytest.importorskip("dask_awkward")
-    pytest.importorskip("graphed")
-    array = uproot.graphed(files, ak_add_doc=ak_add_doc)
-    _check(array.session.form(array).tt.layout.form, _dask_form(ak_add_doc, False))
+@readers
+def test_rntuple_missing_doc_attribute_fails_at_build(documented_rntuple, reader):
+    with pytest.raises(AttributeError, match="title"):
+        _lazy(reader, documented_rntuple, ak_add_doc={"__doc__": "title"})
+
+
+@readers
+def test_rntuple_base_form_has_no_typenames(documented_rntuple, reader):
+    seen = []
+
+    def form_mapping(base_form):
+        seen.append(base_form)
+        return uproot._dask._mapping_of(None, base_form)
+
+    _lazy(reader, documented_rntuple, form_mapping=form_mapping)
+    assert seen
+    assert "typenames" not in seen[0].parameters
+
+
+@pytest.mark.parametrize("ak_add_doc", [True, {"__doc__": "title"}])
+@readers
+def test_ttree_string_branch_keeps_its_type_with_docs(reader, ak_add_doc):
+    path = skhep_testdata.data_path("uproot-small-evnt-tree-fullsplit.root")
+    keys = ["StdStr", "I32"]
+    eager = uproot.open(path)["tree"].arrays(keys, ak_add_doc=ak_add_doc).layout.form
+    form = _form(
+        reader, _lazy(reader, {path: "tree"}, filter_name=keys, ak_add_doc=ak_add_doc)
+    )
+    assert form.content("StdStr").parameters["__array__"] == "string"
+    assert form.is_equal_to(eager, all_parameters=True)
