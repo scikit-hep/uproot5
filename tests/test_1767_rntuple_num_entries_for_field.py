@@ -48,6 +48,17 @@ def test_field_matches_ntuple(ntuple, name, entries):
         ) == ntuple.num_entries_for(memory_size, filter_name=name, **entries)
 
 
-def test_field_value(ntuple):
-    # 1 kB holds 125 int64 values
-    assert ntuple["x"].num_entries_for("1 kB") == 125
+@pytest.mark.parametrize(
+    "entries",
+    [
+        {},
+        {"entry_start": 100, "entry_stop": 200},
+        {"entry_start": 0, "entry_stop": 600},
+        {"entry_start": 600, "entry_stop": 1000},
+        {"entry_start": 500, "entry_stop": 700},
+    ],
+)
+def test_field_value(ntuple, entries):
+    # 1 kB holds 125 int64 values in any entry range
+    assert ntuple["x"].num_entries_for("1 kB", **entries) == 125
+    assert ntuple.num_entries_for("1 kB", filter_name="x", **entries) == 125

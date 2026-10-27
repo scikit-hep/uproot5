@@ -1886,13 +1886,16 @@ def _get_recursive(hasfields, where):
 
 
 def _num_entries_for(ntuple, akform, target_num_bytes, entry_start, entry_stop):
+    # a field or a set of fields has the cluster metadata on its RNTuple
+    ntuple = ntuple.ntuple
     clusters = ntuple.cluster_summaries
     cluster_starts = numpy.array([c.num_first_entry for c in clusters])
 
     start_cluster_idx = (
         numpy.searchsorted(cluster_starts, entry_start, side="right") - 1
     )
-    stop_cluster_idx = numpy.searchsorted(cluster_starts, entry_stop, side="right")
+    # a cluster that starts at entry_stop has no entries in the range
+    stop_cluster_idx = numpy.searchsorted(cluster_starts, entry_stop, side="left")
 
     target_cols = []
     _recursive_find(akform, target_cols)
@@ -1906,7 +1909,11 @@ def _num_entries_for(ntuple, akform, target_num_bytes, entry_start, entry_stop):
             )
             total_bytes += n_entries * dt.itemsize
 
-    total_entries = entry_stop - entry_start
+    # the bytes are those of whole clusters, so they are divided over the entries of
+    # those clusters rather than over the entries in the range
+    total_entries = sum(
+        c.num_entries for c in clusters[start_cluster_idx:stop_cluster_idx]
+    )
     if total_bytes == 0:
         num_entries = 0
     else:
