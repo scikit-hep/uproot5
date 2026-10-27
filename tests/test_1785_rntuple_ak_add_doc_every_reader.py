@@ -8,8 +8,6 @@ import skhep_testdata
 
 import uproot
 
-pytest.importorskip("dask_awkward")
-
 readers = pytest.mark.parametrize("reader", ["dask-delayed", "dask-open", "graphed"])
 add_docs = pytest.mark.parametrize(
     "ak_add_doc", [True, {"__doc__": "description", "typename": "typename"}]
@@ -20,6 +18,7 @@ def _lazy(reader, files, **options):
     if reader == "graphed":
         pytest.importorskip("graphed")
         return uproot.graphed(files, **options)
+    pytest.importorskip("dask_awkward")
     return uproot.dask(files, open_files=reader == "dask-open", **options)
 
 
@@ -85,7 +84,9 @@ def test_rntuple_base_form_has_no_typenames(documented_rntuple, reader):
     assert "typenames" not in seen[0].parameters
 
 
-@pytest.mark.parametrize("ak_add_doc", [True, {"__doc__": "title"}])
+@pytest.mark.parametrize(
+    "ak_add_doc", [True, {"__doc__": "title"}, {"__doc__": "name"}]
+)
 @readers
 def test_ttree_string_branch_keeps_its_type_with_docs(reader, ak_add_doc):
     path = skhep_testdata.data_path("uproot-small-evnt-tree-fullsplit.root")
