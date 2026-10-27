@@ -38,9 +38,10 @@ def test_empty_tree_add_branches_then_extend(tmp_path):
         f.mktree("t", {"a": np.int64})
     with uproot.update(path) as f:
         f["t"].add_branches({"b": np.zeros(0)})
-        f["t"].extend({"a": np.arange(3), "b": np.zeros(3)})
+        f["t"].extend({"a": np.arange(3), "b": np.arange(3.0)})
     with uproot.open(path) as f:
         assert f["t"]["a"].array(library="np").tolist() == [0, 1, 2]
+        assert f["t"]["b"].array(library="np").tolist() == [0.0, 1.0, 2.0]
 
 
 def test_accept_new_fields_then_extend(tmp_path):
@@ -51,6 +52,7 @@ def test_accept_new_fields_then_extend(tmp_path):
         f["t"].extend({"a": [3], "b": [3.0]})
     with uproot.open(path) as f:
         assert f["t"]["a"].array(library="np").tolist() == [0, 1, 2, 3]
+        assert f["t"]["b"].array(library="np").tolist() == [0.0, 1.0, 2.0, 3.0]
 
 
 @pytest.mark.parametrize(

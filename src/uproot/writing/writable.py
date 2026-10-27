@@ -2549,24 +2549,27 @@ class WritableTree:
         # redundantly do it again
         casc._needs_relocation_before_extend = False
 
-        # write one basket per new branch
-        for branch_name, branch_data in branches.items():
-            arr = numpy.asarray(branch_data).astype(
-                casc._branch_data[casc._branch_lookup[branch_name]]["dtype"]
-            )
-            totbytes, zipbytes, location = casc.write_np_basket(
-                self._file.sink, branch_name, compression, arr
-            )
-            datum = casc._branch_data[casc._branch_lookup[branch_name]]
-            datum["fTotBytes"] += totbytes
-            datum["fZipBytes"] += zipbytes
-            datum["fBasketBytes"][0] = zipbytes
-            datum["fBasketSeek"][0] = location
-            datum["fBasketEntry"][1] = num_entries
-            datum["arrays_write_start"] = 0
-            datum["arrays_write_stop"] = 1
-            casc._metadata["fTotBytes"] += totbytes
-            casc._metadata["fZipBytes"] += zipbytes
+        # write one basket per new branch, matching the existing branches (the
+        # guard above ensures they have at most one); an empty tree has no
+        # baskets yet, and the next extend() writes basket 0 for every branch
+        if casc._num_baskets == 1:
+            for branch_name, branch_data in branches.items():
+                arr = numpy.asarray(branch_data).astype(
+                    casc._branch_data[casc._branch_lookup[branch_name]]["dtype"]
+                )
+                totbytes, zipbytes, location = casc.write_np_basket(
+                    self._file.sink, branch_name, compression, arr
+                )
+                datum = casc._branch_data[casc._branch_lookup[branch_name]]
+                datum["fTotBytes"] += totbytes
+                datum["fZipBytes"] += zipbytes
+                datum["fBasketBytes"][0] = zipbytes
+                datum["fBasketSeek"][0] = location
+                datum["fBasketEntry"][1] = num_entries
+                datum["arrays_write_start"] = 0
+                datum["arrays_write_stop"] = 1
+                casc._metadata["fTotBytes"] += totbytes
+                casc._metadata["fZipBytes"] += zipbytes
 
         casc.write_updates(self._file.sink)
         self._file.sink.flush()
