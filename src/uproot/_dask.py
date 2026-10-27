@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import functools
+import glob
 import math
-import re
 import socket
 import time
 from collections.abc import Callable, Iterable, Mapping
@@ -1043,7 +1043,7 @@ class TrivialFormMappingInfo(ImplementsFormMappingInfo):
         if isinstance(tree, HasFields):
             # by field-name tuple, so a name's dots, braces, and glob characters are literal
             form = self._form.select_columns(
-                [tuple(map(_glob_escape, self._field_paths[k])) for k in keys]
+                [tuple(map(glob.escape, self._field_paths[k])) for k in keys]
             )
             projection_subforms = {f: form.content(f) for f in form.fields}
             leaf_keys = [
@@ -1120,10 +1120,6 @@ def _field_paths(form, path=None, names=()):
     elif form.is_list or form.is_option or form.is_indexed:
         out.update(_field_paths(form.content, path, names))
     return out
-
-
-def _glob_escape(name):
-    return re.sub(r"[*?[]", r"[\g<0>]", name)
 
 
 def _covered(key, keys):
