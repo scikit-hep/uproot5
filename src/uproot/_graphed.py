@@ -540,7 +540,7 @@ def graphed(
                 )
             common_keys = _normalize_grouped_keys(ttrees[0], common_keys, full_paths)
             base_form = _base_form_of(ttrees[0], common_keys, ak_add_doc, form_mapping)
-            is_rntuple = isinstance(ttrees[0], HasFields)
+            is_rntuple = all(isinstance(t, HasFields) for t in ttrees)
         finally:
             for directory in directories.values():
                 directory.file.close()

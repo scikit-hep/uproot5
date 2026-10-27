@@ -978,6 +978,7 @@ class TrivialFormMappingInfo(ImplementsFormMappingInfo):
         assert isinstance(form, awkward.forms.RecordForm)
 
         self._form = form
+        self._subfields = subfields
         self._form_key_to_key = self.build_form_key_to_key(form, subfields)
 
     @property
@@ -989,34 +990,22 @@ class TrivialFormMappingInfo(ImplementsFormMappingInfo):
         form: Form, subfields: bool = False
     ) -> dict[str, str | None]:
         """The key each form key's buffers are read with: its top-level field, or with
-        ``subfields`` (an RNTuple, which reads each subfield on its own) its leaf's dotted path.
+        ``subfields`` (an RNTuple, which reads each subfield on its own) its own node's dotted
+        path, except that a union is read whole.
         """
-        form_key_to_path: dict[str, str | None] = {form.form_key: None}
+        form_key_to_path: dict[str, str | None] = {}
 
-        def whole(form, key):
-            form_key_to_path[form.form_key] = key
-            for content in _contents(form):
-                whole(content, key)
-
-        def leafwise(form, path):
-            # a list, option or index buffer comes with the first leaf beneath it, and a
-            # union's buffers with its whole field
-            if form.is_union:
-                whole(form, path)
-                return path
-            if form.is_record:
-                leaves = [leafwise(form.content(f), f"{path}.{f}") for f in form.fields]
-                key = leaves[0] if leaves else path
-            elif form.is_list or form.is_option or form.is_indexed:
-                key = leafwise(form.content, path)
+        def impl(form, path, split):
+            form_key_to_path[form.form_key] = path
+            if form.is_record and split:
+                for field in form.fields:
+                    subpath = field if path is None else f"{path}.{field}"
+                    impl(form.content(field), subpath, subfields)
             else:
-                key = path
-            form_key_to_path[form.form_key] = key
-            return key
+                for content in _contents(form):
+                    impl(content, path, split and not form.is_union)
 
-        for field in form.fields:
-            (leafwise if subfields else whole)(form.content(field), field)
-
+        impl(form, None, True)
         return form_key_to_path
 
     buffer_key: Final[str] = "{form_key}-{attribute}"
@@ -1032,6 +1021,9 @@ class TrivialFormMappingInfo(ImplementsFormMappingInfo):
             form_key, _attribute = buffer_key.rsplit("-", maxsplit=1)
             # Identify key from form_key
             keys.add(self._form_key_to_key[form_key])
+        # reading a subfield reads the collections above it, so they need not be read whole
+        if self._subfields:
+            keys -= _ancestors(keys)
         return frozenset(keys)
 
     def load_buffers(
@@ -1047,7 +1039,7 @@ class TrivialFormMappingInfo(ImplementsFormMappingInfo):
         # An RNTuple reads every leaf beneath a requested key, selected by key because a name
         # like "x" would also select the fields named "x" in other records.
         if isinstance(tree, HasFields):
-            form = _select_keys(self._form, keys)
+            form = self._form.select_columns(keys)
             projection_subforms = {f: form.content(f) for f in form.fields}
             leaf_keys = [
                 p
@@ -1056,6 +1048,11 @@ class TrivialFormMappingInfo(ImplementsFormMappingInfo):
             ]
             selection = {"filter_field": _filter_field_by_key(tree, leaf_keys)}
         else:
+            if subfields := sorted(set(keys) - set(self._form.fields)):
+                raise ValueError(
+                    f"{tree.object_path!r} is a TTree, which is read by whole branch, "
+                    f"not by subfield: {subfields}"
+                )
             projection_subforms = {key: self._form.content(key) for key in keys}
             selection = {"expressions": keys}
         # Read the arrays as a top-level awkward RecordArray. Omitting how= (the
@@ -1101,28 +1098,9 @@ def _contents(form):
     return []
 
 
-def _select_keys(form, keys):
-    """``form`` keeping only what the dotted RNTuple ``keys`` select, each with everything
-    beneath it."""
-    keys = frozenset(keys)
-    selected = keys | {key[:i] for key in keys for i, c in enumerate(key) if c == "."}
-
-    def impl(form, path):
-        # no key reaches beneath a leaf or a union
-        if path in keys or not (
-            form.is_record or form.is_list or form.is_option or form.is_indexed
-        ):
-            return form
-        if form.is_record:
-            prefix = "" if path is None else f"{path}."
-            kept = [f for f in form.fields if f"{prefix}{f}" in selected]
-            return form.copy(
-                fields=kept,
-                contents=[impl(form.content(f), f"{prefix}{f}") for f in kept],
-            )
-        return form.copy(content=impl(form.content, path))
-
-    return impl(form, None)
+def _ancestors(keys):
+    """The dotted paths strictly above ``keys``."""
+    return {key[:i] for key in keys for i, c in enumerate(key) if c == "."}
 
 
 def _subfield_paths(form, path=None):
@@ -1177,17 +1155,17 @@ class FormMappingInfoWithVirtualArrays(TrivialFormMappingInfo):
         def generator(tree, buffer_key):
             form_key, _ = self.parse_buffer_key(buffer_key)
             key = self._form_key_to_key[form_key]
-            branch = tree[key]
 
             def _generator():
-                array = branch.array(
-                    entry_start=start,
-                    entry_stop=stop,
-                    interpretation_executor=interpretation_executor,
-                    decompression_executor=decompression_executor,
-                    library="ak",
-                    ak_add_doc=options.get("ak_add_doc"),
-                )
+                array = self.load_buffers(
+                    tree,
+                    frozenset({key}),
+                    start,
+                    stop,
+                    decompression_executor,
+                    interpretation_executor,
+                    options,
+                )[buffer_key]
 
                 # add to access_log
                 access_log = options.get("access_log")
@@ -1199,30 +1177,7 @@ class FormMappingInfoWithVirtualArrays(TrivialFormMappingInfo):
                     else:
                         access_log += [Accessed(branch=key, buffer_key=buffer_key)]
 
-                # Convert the sub-array into buffers
-                ttree_subform, _, ttree_container = awkward.to_buffers(array)
-
-                # Load the associated projection subform
-                projection_subform = self._form.content(key)
-
-                # Correlate each TTree form key with the projection form key
-                for (src, src_dtype), (dst, dst_dtype) in zip(
-                    ttree_subform.expected_from_buffers().items(),
-                    projection_subform.expected_from_buffers(self.buffer_key).items(),
-                    strict=True,
-                ):
-                    # Return the corresponding array from the TTree if buffer key matches
-                    if buffer_key == dst:
-                        if src_dtype != dst_dtype:
-                            raise TypeError(
-                                f"Data type mismatch: {src_dtype} != {dst_dtype}"
-                            )
-                        return ttree_container[src]
-
-                # Raise an error if the buffer key is not found
-                raise ValueError(
-                    f"Buffer key {buffer_key} not found in form {self._form}"
-                )
+                return array
 
             return _generator
 
@@ -1285,12 +1240,13 @@ def _read_tree(
     # Populate container with placeholders if keys aren't required
     # Otherwise, read from disk
     keys = frozenset(keys)
-    # a dotted RNTuple key names a subfield; a dotted TTree branch name is just a name
-    read = (
-        (lambda key: _covered(key, keys))
-        if isinstance(tree, HasFields)
-        else keys.__contains__
-    )
+    # a dotted RNTuple key names a subfield, read with everything beneath it and the
+    # structure above it; a dotted TTree branch name is just a name
+    if isinstance(tree, HasFields):
+        above = _ancestors(keys)
+        read = lambda key: key in above or _covered(key, keys)  # noqa: E731
+    else:
+        read = keys.__contains__
     container = {}
     for buffer_key, dtype in expected_form.expected_from_buffers(
         buffer_key=form_mapping_info.buffer_key
@@ -2078,7 +2034,7 @@ which has {entry_stop} entries"""
         partition_args.append((0, 0, 0))
 
     expected_form, form_mapping_info = _mapping_of(
-        form_mapping, base_form, isinstance(ttrees[0], HasFields)
+        form_mapping, base_form, all(isinstance(t, HasFields) for t in ttrees)
     )
 
     fn = _UprootRead(
