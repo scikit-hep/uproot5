@@ -135,6 +135,16 @@ def test_a_known_taken_name_is_refused_before_any_file_opens(tmp_path):
             uproot.graphed(files, session=session, name=name)
 
 
+def test_a_branch_path_is_not_refused_under_the_branch_name():
+    session = uproot.graphed(_zmumu(), name="px1").session
+    leaf = uproot.graphed(_zmumu() + "/px1", session=session)
+    assert [session.source_name(nid) for nid in session.source_ids()] == [
+        "px1",
+        "events",
+    ]
+    assert leaf.session is session
+
+
 def test_head_finds_its_source_by_node_not_name(tmp_path):
     left, _, _ = _joined(tmp_path)
     session = left.session

@@ -271,6 +271,7 @@ def graphed_write(
 
     session = array.session
     nid, source = _uproot_source(array, "graphed_write")
+
     compiled = graphed.compile_ir(session, array)
     graphed.refuse_chunk_partials(compiled, as_outputs=True)
     partitions = source.partitions(steps_per_file)

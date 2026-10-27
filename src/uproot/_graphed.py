@@ -397,10 +397,10 @@ def _refuse_backend(have, wanted, *, behavior):
         have_text = f"{type(have).__name__} with another behavior"
     else:
         return
+    mapped = " with its form_mapping behavior" if behavior else ""
     raise TypeError(
         f"uproot.graphed: session= records on {have_text}, and this read on "
-        f"{type(wanted).__name__}{' with its form_mapping behavior' if behavior else ''}; "
-        "pass a Session on that backend"
+        f"{type(wanted).__name__}{mapped}; pass a Session on that backend"
     )
 
 
@@ -569,8 +569,13 @@ def graphed(
             "with explicit 'steps' in 'files'"
         )
     if session is not None:  # before any I/O when the name is already known
+        # a path with "/" or ":" may end in a TBranch, and its read is named after the TTree
         tree_names = {
-            o and _name_from_object_path([(f, o)])
+            (
+                _name_from_object_path([(f, o)])
+                if o and ":" not in o and "/" not in o.strip("/")
+                else None
+            )
             for f, o in (_file_and_path(f, o) for f, o, *_ in files)
         }
         if name is not None or (len(tree_names) == 1 and None not in tree_names):
@@ -666,7 +671,7 @@ def graphed(
 
 
 def necessary_columns(array, *, on_fail="raise"):
-    """The ``TBranches`` each ``uproot.graphed`` source ``array`` reads must read for it —
+    """The ``TBranches`` each ``uproot.graphed`` source that ``array`` reads needs for it —
     ``graphed``'s buffer projection walked back through the form mapping (metadata-only). Returns
     ``{source_name: frozenset(branch_names)}``."""
     graphed = uproot.extras.graphed()
@@ -844,8 +849,8 @@ def graphed_head(array, n=5):
 
     session = array.session
     nid, source = _uproot_source(array, "graphed_head")
-    compiled = graphed.compile_ir(session, array)
     columns = list(source.projected_columns((array,)))
+    compiled = graphed.compile_ir(session, array)
     externals = graphed.aggregate.external_evaluators(session, compiled)
     source_name = session.source_name(nid)
 
