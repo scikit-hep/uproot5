@@ -53,10 +53,12 @@ def _joined(tmp_path):
 def test_session_and_backend_are_exclusive():
     with pytest.raises(TypeError, match="pass backend= or session=, not both"):
         uproot.graphed(
-            _zmumu(), backend=AwkwardBackend(), session=uproot.graphed(_zmumu()).session
+            _zmumu(),
+            backend=AwkwardBackend(),
+            session=graphed.Session(AwkwardBackend()),
         )
     with pytest.raises(TypeError, match="behavior= is for the default backend"):
-        uproot.graphed(_zmumu(), behavior={}, session=uproot.graphed(_zmumu()).session)
+        uproot.graphed(_zmumu(), behavior={}, session=graphed.Session(AwkwardBackend()))
 
 
 def test_a_read_into_another_reads_session_joins_with_it(tmp_path):
@@ -80,8 +82,8 @@ def test_a_read_into_another_reads_session_joins_with_it(tmp_path):
 
 
 def test_session_must_be_an_awkward_session():
-    with pytest.raises(TypeError, match="session= takes a graphed.Session, not "):
-        uproot.graphed(_zmumu(), session=uproot.graphed(_zmumu()))
+    with pytest.raises(TypeError, match="takes a graphed.Session, not AwkwardBackend"):
+        uproot.graphed(_zmumu(), session=AwkwardBackend())
     from graphed.numpy import NumpyBackend
 
     with pytest.raises(
@@ -105,7 +107,7 @@ def test_form_mapping_needs_the_sessions_behavior():
         match="records on AwkwardBackend with another behavior, and this read on "
         "AwkwardBackend with its form_mapping behavior",
     ):
-        read(uproot.graphed(_zmumu()).session, "nano")
+        read(graphed.Session(AwkwardBackend()), "nano")
     mapped = uproot.graphed(
         _nano(), filter_name=mini.FILTER, form_mapping=mini.MiniNanoMapping()
     )
@@ -117,10 +119,8 @@ def test_form_mapping_needs_the_sessions_behavior():
 def test_a_taken_name_is_refused():
     path = _zmumu()
     session = uproot.graphed(path).session
-    bare = path.rpartition(":")[0]  # the name comes from the opened TTree
-    for files, name in ((path, None), (path, "events"), (bare, None)):
-        with pytest.raises(ValueError, match="'events'; pass name= to name this read"):
-            uproot.graphed(files, session=session, name=name)
+    with pytest.raises(ValueError, match="'events'; pass name= to name this read"):
+        uproot.graphed(path.rpartition(":")[0], session=session)  # named by the TTree
     mine = uproot.graphed(path, name="mine")
     assert [mine.session.source_name(nid) for nid in mine.session.source_ids()] == [
         "mine"

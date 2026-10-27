@@ -367,8 +367,7 @@ def _read_sources(array):
     """The ``uproot.graphed`` sources ``array`` reads, as ``{node_id: source}``; its ``Session``
     may hold others."""
     session = array.session
-    read = set()
-    session.walk(array, source=read.add, op=lambda *_: None, external=lambda *_: None)
+    read = uproot.extras.graphed().by_label.cone(session, array.node_id)
     return {
         nid: s
         for nid, s in session.sources().items()
@@ -569,17 +568,19 @@ def graphed(
             "with explicit 'steps' in 'files'"
         )
     if session is not None:  # before any I/O when the name is already known
-        # a path with "/" or ":" may end in a TBranch, and its read is named after the TTree
-        tree_names = {
-            (
-                _name_from_object_path([(f, o)])
-                if o and ":" not in o and "/" not in o.strip("/")
-                else None
-            )
-            for f, o in (_file_and_path(f, o) for f, o, *_ in files)
-        }
-        if name is not None or (len(tree_names) == 1 and None not in tree_names):
-            _refuse_taken(session, name or next(iter(tree_names)))
+        known = name
+        if known is None:
+            # a path with "/" or ":" may end in a TBranch, and its read is named after the TTree
+            names = {
+                o
+                and ":" not in o
+                and "/" not in o.strip("/")
+                and _name_from_object_path([(f, o)])
+                for f, o in (_file_and_path(f, o) for f, o, *_ in files)
+            }
+            known = names.pop() if len(names) == 1 else None
+        if known:
+            _refuse_taken(session, known)
 
     if known_base_form is not None and open_files:
         raise TypeError(
