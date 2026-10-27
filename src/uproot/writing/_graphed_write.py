@@ -270,8 +270,8 @@ def graphed_write(
     from uproot._graphed import _uproot_source
 
     session = array.session
+    nid, source = _uproot_source(array, "graphed_write")
     compiled = graphed.compile_ir(session, array)
-    nid, source = _uproot_source(array, compiled, "graphed_write")
     graphed.refuse_chunk_partials(compiled, as_outputs=True)
     partitions = source.partitions(steps_per_file)
     if not all(p.is_blind for p in partitions):

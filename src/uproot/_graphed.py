@@ -233,13 +233,20 @@ class _GraphedTTreeSource:
         """
         graphed = uproot.extras.graphed()
 
+        # one replay of the mapped form for all outputs, not one per output
+        return self._columns_of(
+            graphed.awkward.projection.project_buffers_many(
+                list(outputs), on_fail=on_fail
+            ).read_buffers
+        )
+
+    def _columns_of(self, read_buffers):
+        """This source's ``TBranches`` in a projection's ``read_buffers``."""
+        graphed = uproot.extras.graphed()
+
         info = self._form_mapping_info
         buffer_keys = set()
-        # one replay of the mapped form for all outputs, not one per output
-        needs = graphed.awkward.projection.project_buffers_many(
-            list(outputs), on_fail=on_fail
-        ).read_buffers.get(self._name, {})
-        for path, need in needs.items():
+        for path, need in read_buffers.get(self._name, {}).items():
             buffer_keys.update(
                 _mapped_buffer_keys(
                     self._expected_form,
@@ -356,24 +363,54 @@ def _resolve_entries(
     return resolved
 
 
-def _uproot_source(array, compiled, what):
-    """The one ``uproot.graphed`` source ``array``'s ``compiled`` graph reads, as
-    ``(node_id, source)``; its ``Session`` may hold others."""
-    graphed = uproot.extras.graphed()
+def _read_sources(array):
+    """The ``uproot.graphed`` sources ``array`` reads, as ``{node_id: source}``; its ``Session``
+    may hold others."""
     session = array.session
-    nodes = graphed.core.GraphStore.deserialize(bytes(compiled.ir)).nodes()
-    read = {node["name"] for node in nodes if node["kind"] == "source"}
-    sources = [
-        (nid, s)
+    read = set()
+    session.walk(array, source=read.add, op=lambda *_: None, external=lambda *_: None)
+    return {
+        nid: s
         for nid, s in session.sources().items()
-        if isinstance(s, _GraphedTTreeSource) and session.source_name(nid) in read
-    ]
+        if nid in read and isinstance(s, _GraphedTTreeSource)
+    }
+
+
+def _uproot_source(array, what):
+    """The one ``uproot.graphed`` source ``array`` reads, as ``(node_id, source)``."""
+    sources = list(_read_sources(array).items())
     if len(sources) != 1:
         raise TypeError(
             f"{what} supports exactly one uproot.graphed source per array; "
             f"this array is backed by {len(sources)}"
         )
     return sources[0]
+
+
+def _refuse_backend(have, wanted, *, behavior):
+    """Refuse a ``session=`` on ``have`` for a read recorded on ``wanted``: ``have`` must be a
+    ``type(wanted)`` and, with ``behavior``, carry an equal one (``None`` counts as empty).
+    """
+    if not isinstance(have, type(wanted)):
+        have_text = type(have).__name__
+    elif behavior and (have._behavior or {}) != (wanted._behavior or {}):
+        have_text = f"{type(have).__name__} with another behavior"
+    else:
+        return
+    raise TypeError(
+        f"uproot.graphed: session= records on {have_text}, and this read on "
+        f"{type(wanted).__name__}{' with its form_mapping behavior' if behavior else ''}; "
+        "pass a Session on that backend"
+    )
+
+
+def _refuse_taken(session, name):
+    """Refuse recording under a source name ``session`` already has."""
+    if name in {session.source_name(nid) for nid in session.source_ids()}:
+        raise ValueError(
+            f"uproot.graphed: this Session already has a source named {name!r}; "
+            "pass name= to name this read"
+        )
 
 
 def graphed(
@@ -431,9 +468,11 @@ def graphed(
             backend) instead of a new one, so the result can be combined with arrays already
             recorded there, e.g. ``graphed.join(events, uproot.graphed(friends,
             session=events.session, name="friends"), on=[...])``. Exclusive with ``backend=`` and
-            ``behavior=``.
+            ``behavior=``; its backend must be an ``AwkwardBackend`` and, with ``form_mapping=``,
+            carry the mapping's behavior.
         name (str or None): The ``graphed`` source's name, its slot in the recorded graph; default
-            the ``TTree``'s name. A name the ``Session`` already has is refused.
+            the ``TTree``'s name. A name the ``Session`` already has is refused, before any file
+            is opened when the name is known from ``name=`` or the ``files``' object paths.
         decompression_executor, interpretation_executor: As in :doc:`uproot._dask.dask`; every
             partition read uses them.
         align_baskets (bool): If True, each blind partition's entry range moves, when it is
@@ -503,6 +542,15 @@ def graphed(
 
     graphed = uproot.extras.graphed()
 
+    if session is not None:
+        if not isinstance(session, graphed.Session):
+            raise TypeError(
+                f"uproot.graphed: session= takes a graphed.Session, not {type(session).__name__}"
+            )
+        _refuse_backend(
+            session.backend, graphed.awkward.AwkwardBackend(), behavior=False
+        )
+
     real_options = options.copy()
     real_options.setdefault("num_workers", 1)
     real_options.setdefault("num_fallback_workers", 1)
@@ -520,6 +568,13 @@ def graphed(
             "uproot.graphed: align_baskets=True moves blind partitions; it cannot be used "
             "with explicit 'steps' in 'files'"
         )
+    if session is not None:  # before any I/O when the name is already known
+        tree_names = {
+            o and _name_from_object_path([(f, o)])
+            for f, o in (_file_and_path(f, o) for f, o, *_ in files)
+        }
+        if name is not None or (len(tree_names) == 1 and None not in tree_names):
+            _refuse_taken(session, name or next(iter(tree_names)))
 
     if known_base_form is not None and open_files:
         raise TypeError(
@@ -581,8 +636,15 @@ def graphed(
                 behavior=behavior if form_mapping is None else info.behavior
             )
         session = graphed.Session(backend)
+    elif form_mapping is not None:
+        _refuse_backend(
+            session.backend,
+            graphed.awkward.AwkwardBackend(behavior=info.behavior),
+            behavior=True,
+        )
     if name is None:
         name = tree_name
+    _refuse_taken(session, name)
     source = _GraphedTTreeSource(
         file_tree,
         list(base_form.fields),
@@ -598,26 +660,23 @@ def graphed(
         explicit_chunks=explicit_chunks,
         align_baskets=align_baskets,
     )
-    if name in {session.source_name(nid) for nid in session.source_ids()}:
-        raise ValueError(
-            f"uproot.graphed: this Session already has a source named {name!r}; "
-            "pass name= to name this one"
-        )
     return session.source(
         name, form=graphed.awkward.AwkwardForm(typetracer), data=source
     )
 
 
 def necessary_columns(array, *, on_fail="raise"):
-    """The ``TBranches`` each ``uproot.graphed`` source must read for ``array`` — ``graphed``'s
-    buffer projection walked back through the form mapping (metadata-only). Returns
+    """The ``TBranches`` each ``uproot.graphed`` source ``array`` reads must read for it —
+    ``graphed``'s buffer projection walked back through the form mapping (metadata-only). Returns
     ``{source_name: frozenset(branch_names)}``."""
+    graphed = uproot.extras.graphed()
+
+    read_buffers = graphed.awkward.projection.project_buffers_many(
+        [array], on_fail=on_fail
+    ).read_buffers
     return {
-        array.session.source_name(nid): frozenset(
-            source.projected_columns((array,), on_fail=on_fail)
-        )
-        for nid, source in array.session.sources().items()
-        if isinstance(source, _GraphedTTreeSource)
+        array.session.source_name(nid): frozenset(source._columns_of(read_buffers))
+        for nid, source in _read_sources(array).items()
     }
 
 
@@ -784,8 +843,8 @@ def graphed_head(array, n=5):
     graphed = uproot.extras.graphed()
 
     session = array.session
+    nid, source = _uproot_source(array, "graphed_head")
     compiled = graphed.compile_ir(session, array)
-    nid, source = _uproot_source(array, compiled, "graphed_head")
     columns = list(source.projected_columns((array,)))
     externals = graphed.aggregate.external_evaluators(session, compiled)
     source_name = session.source_name(nid)
