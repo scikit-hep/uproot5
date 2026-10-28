@@ -233,13 +233,20 @@ class _GraphedTTreeSource:
         """
         graphed = uproot.extras.graphed()
 
+        # one replay of the mapped form for all outputs, not one per output
+        return self._columns_of(
+            graphed.awkward.projection.project_buffers_many(
+                list(outputs), on_fail=on_fail
+            ).read_buffers
+        )
+
+    def _columns_of(self, read_buffers):
+        """This source's ``TBranches`` in a projection's ``read_buffers``."""
+        graphed = uproot.extras.graphed()
+
         info = self._form_mapping_info
         buffer_keys = set()
-        # one replay of the mapped form for all outputs, not one per output
-        needs = graphed.awkward.projection.project_buffers_many(
-            list(outputs), on_fail=on_fail
-        ).read_buffers.get(self._name, {})
-        for path, need in needs.items():
+        for path, need in read_buffers.get(self._name, {}).items():
             buffer_keys.update(
                 _mapped_buffer_keys(
                     self._expected_form,
@@ -356,19 +363,53 @@ def _resolve_entries(
     return resolved
 
 
+def _read_sources(array):
+    """The ``uproot.graphed`` sources ``array`` reads, as ``{node_id: source}``; its ``Session``
+    may hold others."""
+    session = array.session
+    read = uproot.extras.graphed().by_label.cone(session, array.node_id)
+    return {
+        nid: s
+        for nid, s in session.sources().items()
+        if nid in read and isinstance(s, _GraphedTTreeSource)
+    }
+
+
 def _uproot_source(array, what):
-    """The one ``uproot.graphed`` source behind ``array``, as ``(node_id, source)``."""
-    sources = [
-        (nid, s)
-        for nid, s in array.session.sources().items()
-        if isinstance(s, _GraphedTTreeSource)
-    ]
+    """The one ``uproot.graphed`` source ``array`` reads, as ``(node_id, source)``."""
+    sources = list(_read_sources(array).items())
     if len(sources) != 1:
         raise TypeError(
             f"{what} supports exactly one uproot.graphed source per array; "
             f"this array is backed by {len(sources)}"
         )
     return sources[0]
+
+
+def _refuse_backend(have, wanted, *, behavior):
+    """Refuse a ``session=`` on ``have`` for a read recorded on ``wanted``: ``have`` must be a
+    ``type(wanted)`` and, with ``behavior``, carry an equal one (``None`` counts as empty).
+    """
+    if not isinstance(have, type(wanted)):
+        have_text = type(have).__name__
+    elif behavior and (have._behavior or {}) != (wanted._behavior or {}):
+        have_text = f"{type(have).__name__} with another behavior"
+    else:
+        return
+    mapped = " with its form_mapping behavior" if behavior else ""
+    raise TypeError(
+        f"uproot.graphed: session= records on {have_text}, and this read on "
+        f"{type(wanted).__name__}{mapped}; pass a Session on that backend"
+    )
+
+
+def _refuse_taken(session, name):
+    """Refuse recording under a source name ``session`` already has."""
+    if name in {session.source_name(nid) for nid in session.source_ids()}:
+        raise ValueError(
+            f"uproot.graphed: this Session already has a source named {name!r}; "
+            "pass name= to name this read"
+        )
 
 
 def graphed(
@@ -387,6 +428,8 @@ def graphed(
     form_mapping=None,
     known_base_form=None,
     backend=None,
+    session=None,
+    name=None,
     decompression_executor=None,
     interpretation_executor=None,
     align_baskets=False,
@@ -420,6 +463,15 @@ def graphed(
             records on, in place of the default ``graphed.awkward.AwkwardBackend`` — the route for
             a caller's own ``Array`` subclass. Its behavior (and, with ``form_mapping``, the
             mapping info's) is then the caller's business, so ``behavior=`` is refused beside it.
+        session (graphed Session or None): Record into this existing ``Session`` (and on its
+            backend) instead of a new one, so the result can be combined with arrays already
+            recorded there, e.g. ``graphed.join(events, uproot.graphed(friends,
+            session=events.session, name="friends"), on=[...])``. Exclusive with ``backend=`` and
+            ``behavior=``; its backend must be an ``AwkwardBackend`` and, with ``form_mapping=``,
+            carry the mapping's behavior.
+        name (str or None): The ``graphed`` source's name, its slot in the recorded graph; default
+            the ``TTree``'s name. A name the ``Session`` already has is refused, before any file
+            is opened when the name is known from ``name=`` or the ``files``' object paths.
         decompression_executor, interpretation_executor: As in :doc:`uproot._dask.dask`; every
             partition read uses them.
         align_baskets (bool): If True, each blind partition's entry range moves, when it is
@@ -460,10 +512,10 @@ def graphed(
 
     This is the ``graphed`` analogue of :doc:`uproot._dask.dask`.
     """
-    for name, instead in _DASK_ONLY.items():
-        if name in options:
+    for option, instead in _DASK_ONLY.items():
+        if option in options:
             raise TypeError(
-                f"uproot.graphed() got {name}=, which belongs to uproot.dask; {instead}"
+                f"uproot.graphed() got {option}=, which belongs to uproot.dask; {instead}"
             )
     uproot._util._check_unknown_options(options)
     library = uproot.interpretation.library._regularize_library(library)
@@ -471,15 +523,32 @@ def graphed(
         raise NotImplementedError(
             f"uproot.graphed currently supports only library='ak', not {library.name!r}"
         )
-    if behavior is not None and (backend is not None or form_mapping is not None):
+    if behavior is not None and (
+        backend is not None or session is not None or form_mapping is not None
+    ):
         raise TypeError(
             "uproot.graphed: behavior= is for the default backend and the unmapped form; with "
-            "backend= the behavior belongs to that backend, with form_mapping= to its mapping info"
+            "backend= or session= the behavior belongs to that backend, with form_mapping= to its "
+            "mapping info"
+        )
+    if backend is not None and session is not None:
+        raise TypeError(
+            "uproot.graphed: session= records on that Session's backend; pass backend= or "
+            "session=, not both"
         )
 
     import awkward
 
     graphed = uproot.extras.graphed()
+
+    if session is not None:
+        if not isinstance(session, graphed.Session):
+            raise TypeError(
+                f"uproot.graphed: session= takes a graphed.Session, not {type(session).__name__}"
+            )
+        _refuse_backend(
+            session.backend, graphed.awkward.AwkwardBackend(), behavior=False
+        )
 
     real_options = options.copy()
     real_options.setdefault("num_workers", 1)
@@ -498,6 +567,20 @@ def graphed(
             "uproot.graphed: align_baskets=True moves blind partitions; it cannot be used "
             "with explicit 'steps' in 'files'"
         )
+    if session is not None:  # before any I/O when the name is already known
+        known = name
+        if known is None:
+            # a path with "/" or ":" may end in a TBranch, and its read is named after the TTree
+            names = {
+                o
+                and ":" not in o
+                and "/" not in o.strip("/")
+                and _name_from_object_path([(f, o)])
+                for f, o in (_file_and_path(f, o) for f, o, *_ in files)
+            }
+            known = names.pop() if len(names) == 1 else None
+        if known:
+            _refuse_taken(session, known)
 
     if known_base_form is not None and open_files:
         raise TypeError(
@@ -508,7 +591,7 @@ def graphed(
         base_form = known_base_form
         file_tree = [_file_and_path(f, o) for f, o, *_ in files]
         explicit_chunks = [f[2] for f in files] if all(is_3arg) else None
-        name = _name_from_object_path(file_tree)
+        tree_name = _name_from_object_path(file_tree)
     else:
         directories = {}
         try:
@@ -546,11 +629,28 @@ def graphed(
         explicit_chunks = (
             [steps[0] for _, _, steps, _ in resolved] if all(is_3arg) else None
         )
-        name = getattr(ttrees[0], "name", None) or _name_from_object_path(file_tree)
+        tree_name = getattr(ttrees[0], "name", None) or _name_from_object_path(
+            file_tree
+        )
     expected_form, info = _mapping_of(form_mapping, base_form)
     typetracer = awkward.typetracer.typetracer_from_form(
         expected_form, highlevel=True, behavior=info.behavior
     )
+    if session is None:
+        if backend is None:
+            backend = graphed.awkward.AwkwardBackend(
+                behavior=behavior if form_mapping is None else info.behavior
+            )
+        session = graphed.Session(backend)
+    elif form_mapping is not None:
+        _refuse_backend(
+            session.backend,
+            graphed.awkward.AwkwardBackend(behavior=info.behavior),
+            behavior=True,
+        )
+    if name is None:
+        name = tree_name
+    _refuse_taken(session, name)
     source = _GraphedTTreeSource(
         file_tree,
         list(base_form.fields),
@@ -566,25 +666,23 @@ def graphed(
         explicit_chunks=explicit_chunks,
         align_baskets=align_baskets,
     )
-    if backend is None:
-        backend = graphed.awkward.AwkwardBackend(
-            behavior=behavior if form_mapping is None else info.behavior
-        )
-    return graphed.Session(backend).source(
+    return session.source(
         name, form=graphed.awkward.AwkwardForm(typetracer), data=source
     )
 
 
 def necessary_columns(array, *, on_fail="raise"):
-    """The ``TBranches`` each ``uproot.graphed`` source must read for ``array`` — ``graphed``'s
-    buffer projection walked back through the form mapping (metadata-only). Returns
+    """The ``TBranches`` each ``uproot.graphed`` source that ``array`` reads needs for it —
+    ``graphed``'s buffer projection walked back through the form mapping (metadata-only). Returns
     ``{source_name: frozenset(branch_names)}``."""
+    graphed = uproot.extras.graphed()
+
+    read_buffers = graphed.awkward.projection.project_buffers_many(
+        [array], on_fail=on_fail
+    ).read_buffers
     return {
-        array.session.source_name(nid): frozenset(
-            source.projected_columns((array,), on_fail=on_fail)
-        )
-        for nid, source in array.session.sources().items()
-        if isinstance(source, _GraphedTTreeSource)
+        array.session.source_name(nid): frozenset(source._columns_of(read_buffers))
+        for nid, source in _read_sources(array).items()
     }
 
 
