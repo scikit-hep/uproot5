@@ -49,7 +49,7 @@ def test_dask_reads_nested_rntuple_fields(tmp_path):
     assert ak.array_equal(ev.jets.pt.compute(), arr.jets.pt)
     assert ak.array_equal(ev.rec.lst.compute(), arr.rec.lst)
     assert ak.array_equal(ev.compute(), arr)
-    assert set(next(iter(dak.necessary_columns(ev.rec.x).values()))) == {"rec"}
+    assert set(next(iter(dak.necessary_columns(ev.rec.x).values()))) == {"rec.x"}
     assert ak.array_equal(
         uproot.dask(where, steps_per_file=3).rec.y.compute(), arr.rec.y
     )
