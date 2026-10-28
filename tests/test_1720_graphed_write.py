@@ -228,6 +228,7 @@ def test_externals_reach_the_write_workers(tmp_path):
     assert ak.array_equal(_back(paths).a, 2 * uproot.open(src).arrays().x)
 
 
+@pytest.mark.filterwarnings("ignore:.*is deprecated; pass session=:DeprecationWarning")
 def test_refusals_happen_before_anything_is_written(tmp_path):
     src = _make_tree(os.path.join(tmp_path, "in.root"))
     out = os.path.join(tmp_path, "out")
