@@ -362,18 +362,28 @@ def canonical_path(file_path, seen_inodes=None):
     parsed = urllib.parse.urlsplit(file_path)
     if parsed.scheme in ("file", "local"):
         if parsed.netloc and parsed.netloc != "localhost":
-            return urllib.parse.urlunsplit(
-                (
-                    parsed.scheme.lower(),
-                    parsed.netloc,
-                    posixpath.normpath(parsed.path),
-                    parsed.query,
-                    parsed.fragment,
-                )
-            )
-        from urllib.request import url2pathname
+            if (
+                sys.platform == "win32"
+                and len(parsed.netloc) >= 2
+                and parsed.netloc[1] == ":"
+            ):
+                from urllib.request import url2pathname
 
-        file_path = url2pathname(parsed.path)
+                file_path = url2pathname(parsed.netloc + parsed.path)
+            else:
+                return urllib.parse.urlunsplit(
+                    (
+                        parsed.scheme.lower(),
+                        parsed.netloc,
+                        posixpath.normpath(parsed.path),
+                        parsed.query,
+                        parsed.fragment,
+                    )
+                )
+        else:
+            from urllib.request import url2pathname
+
+            file_path = url2pathname(parsed.path)
 
     expanded = os.path.expanduser(file_path)
     resolved = os.path.realpath(expanded)

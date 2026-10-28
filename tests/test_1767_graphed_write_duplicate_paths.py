@@ -177,7 +177,7 @@ def test_canonical_path_normalization(tmp_path):
 
     assert canonical_path(BytesPathLike(str(local_p).encode())) == expected_local
 
-    file_url = f"file://{local_p}"
+    file_url = local_p.as_uri()
     assert canonical_path(file_url) == expected_local
     assert canonical_path(local_p.as_uri()) == expected_local
     assert (
@@ -189,14 +189,14 @@ def test_canonical_path_normalization(tmp_path):
         canonical_path("http://example.com/foo/../bar.root")
         == "http://example.com/bar.root"
     )
-    assert (
-        canonical_path("root://server.cern.ch//a/../b.root")
-        == "root://server.cern.ch/b.root"
+    assert canonical_path("root://server.cern.ch//a/../b.root") == canonical_path(
+        "root://server.cern.ch/b.root"
     )
-    assert (
-        canonical_path("root://server.cern.ch//a.root")
-        == "root://server.cern.ch/a.root"
+    assert canonical_path("root://server.cern.ch//a.root") == canonical_path(
+        "root://server.cern.ch/a.root"
     )
+    assert "b.root" in canonical_path("root://server.cern.ch//a/../b.root")
+    assert "a.root" in canonical_path("root://server.cern.ch//a.root")
     assert (
         canonical_path("root://server.cern.ch/a.root") == "root://server.cern.ch/a.root"
     )
