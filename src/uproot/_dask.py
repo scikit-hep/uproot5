@@ -1646,60 +1646,32 @@ def _get_ttree_form(
     common_keys,
     ak_add_doc,
 ):
-    if isinstance(ttree, HasFields):
-        # an RNTuple keeps the nesting of the selected fields under its top-level fields
-        rntuple_form, _ = ttree.to_akform(
-            filter_field=_filter_field_by_key(ttree, common_keys)
-        )
-        common_keys = rntuple_form.fields
-
     contents = []
     for key in common_keys:
         branch = ttree[key]
-        if isinstance(branch, HasFields):
-            content_form = rntuple_form.content(key)
-        else:
-            content_form = branch.interpretation.awkward_form(ttree.file)
+        content_form = branch.interpretation.awkward_form(ttree.file)
         content_parameters = {}
         if isinstance(ak_add_doc, bool):
             if ak_add_doc:
-                content_parameters["__doc__"] = (
-                    branch.description
-                    if isinstance(branch, HasFields)
-                    else branch.title
-                )
+                content_parameters["__doc__"] = branch.title
         elif isinstance(ak_add_doc, dict):
             content_parameters.update(
                 {
-                    key: branch.__getattribute__(
-                        "description"
-                        if isinstance(branch, HasFields) and value == "title"
-                        else value
-                    )
+                    key: branch.__getattribute__(value)
                     for key, value in ak_add_doc.items()
                 }
             )
         if len(content_parameters.keys()) != 0:
-            content_form = content_form.copy(parameters=content_parameters)
+            content_form = content_form.copy(
+                parameters={**content_form.parameters, **content_parameters}
+            )
         contents.append(content_form)
 
     if isinstance(ak_add_doc, bool):
-        parameters = (
-            {
-                "__doc__": (
-                    ttree.description if isinstance(ttree, HasFields) else ttree.title
-                )
-            }
-            if ak_add_doc
-            else None
-        )
+        parameters = {"__doc__": ttree.title} if ak_add_doc else None
     elif isinstance(ak_add_doc, dict):
         parameters = (
-            {
-                "__doc__": (
-                    ttree.description if isinstance(ttree, HasFields) else ttree.title
-                )
-            }
+            {"__doc__": ttree.__getattribute__(ak_add_doc["__doc__"])}
             if "__doc__" in ak_add_doc.keys()
             else None
         )
@@ -1894,16 +1866,17 @@ def _normalize_grouped_keys(ttree, common_keys, full_paths):
 
 
 def _base_form_of(ttree, common_keys, ak_add_doc, form_mapping):
-    """The dataset's base form from one open tree: an ``RNTuple`` keeps its nesting through
-    ``to_akform``; a ``TTree`` form carries the branch typenames a mapping may read."""
+    """The dataset's base form from one open tree, with ``ak_add_doc`` applied; a ``TTree`` form
+    also carries the branch typenames a mapping may read."""
     if isinstance(ttree, HasFields):
-        base_form, _ = ttree.to_akform(
-            filter_field=_filter_field_by_key(ttree, common_keys)
-        )
-    else:
-        base_form = _get_ttree_form(awkward, ttree, common_keys, ak_add_doc)
-        if form_mapping is not None:
-            base_form.parameters["typenames"] = ttree.typenames()
+        # the form an eager RNTuple read builds, keeping the nesting of the selected fields
+        return ttree.to_akform(
+            filter_field=_filter_field_by_key(ttree, common_keys),
+            ak_add_doc=ak_add_doc,
+        )[0]
+    base_form = _get_ttree_form(awkward, ttree, common_keys, ak_add_doc)
+    if form_mapping is not None:
+        base_form.parameters["typenames"] = ttree.typenames()
     return base_form
 
 
@@ -2077,11 +2050,9 @@ def _get_dak_array_delay_open(
             ignore_duplicates=True,
         )
         common_keys = _normalize_grouped_keys(obj, common_keys, full_paths)
-        base_form = _get_ttree_form(
-            awkward, obj, common_keys, interp_options.get("ak_add_doc")
+        base_form = _base_form_of(
+            obj, common_keys, interp_options.get("ak_add_doc"), form_mapping
         )
-        if form_mapping is not None:
-            base_form.parameters["typenames"] = obj.typenames()
 
     divisions = [0]
     partition_args = []
