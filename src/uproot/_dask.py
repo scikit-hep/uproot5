@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import functools
+import glob
 import math
 import socket
 import time
@@ -974,43 +975,39 @@ class ImplementsFormMapping(Protocol):
 
 
 class TrivialFormMappingInfo(ImplementsFormMappingInfo):
-    def __init__(self, form):
+    def __init__(self, form, subfields=False):
         assert isinstance(form, awkward.forms.RecordForm)
 
         self._form = form
-        self._form_key_to_key = self.build_form_key_to_key(form)
+        # whether buffers are keyed by their dotted subfield paths (an RNTuple)
+        self.subfields = subfields
+        self._form_key_to_key = self.build_form_key_to_key(form, subfields)
 
     @property
     def behavior(self) -> None:
         return None
 
     @staticmethod
-    def build_form_key_to_key(form: Form) -> dict[str, str | None]:
+    def build_form_key_to_key(
+        form: Form, subfields: bool = False
+    ) -> dict[str, str | None]:
+        """The key each form key's buffers are read with: its top-level field, or with
+        ``subfields`` (an RNTuple, which reads each subfield on its own) its own node's dotted
+        path, except that a union is read whole.
+        """
         form_key_to_path: dict[str, str | None] = {}
 
-        def impl(form, column_path):
-            # Store columnar path
-            form_key_to_path[form.form_key] = column_path[0] if column_path else None
-
-            if form.is_union:
-                for _i, entry in enumerate(form.contents):
-                    impl(entry, column_path)
-            elif form.is_indexed:
-                impl(form.content, column_path)
-            elif form.is_list:
-                impl(form.content, column_path)
-            elif form.is_option:
-                impl(form.content, column_path)
-            elif form.is_record:
+        def impl(form, path, split):
+            form_key_to_path[form.form_key] = path
+            if form.is_record and split:
                 for field in form.fields:
-                    impl(form.content(field), (*column_path, field))
-            elif form.is_unknown or form.is_numpy:
-                pass
+                    subpath = field if path is None else f"{path}.{field}"
+                    impl(form.content(field), subpath, subfields)
             else:
-                raise AssertionError(form)
+                for content in _contents(form):
+                    impl(content, path, split and not form.is_union)
 
-        impl(form, ())
-
+        impl(form, None, True)
         return form_key_to_path
 
     buffer_key: Final[str] = "{form_key}-{attribute}"
@@ -1026,6 +1023,9 @@ class TrivialFormMappingInfo(ImplementsFormMappingInfo):
             form_key, _attribute = buffer_key.rsplit("-", maxsplit=1)
             # Identify key from form_key
             keys.add(self._form_key_to_key[form_key])
+        # reading a subfield reads the collections above it, so they need not be read whole
+        if self.subfields:
+            keys -= _ancestors(keys)
         return frozenset(keys)
 
     def load_buffers(
@@ -1038,18 +1038,30 @@ class TrivialFormMappingInfo(ImplementsFormMappingInfo):
         interpretation_executor,
         options: Any,
     ) -> Mapping[str, AwkArray]:
-        # An RNTuple reads a selected field with all of its subfields, so ask for every leaf
-        # the projection form keeps under each requested field. They are selected by key
-        # because a name like "x" would also select the fields named "x" in other records.
+        # An RNTuple reads every leaf beneath a requested key, selected by key because a name
+        # like "x" would also select the fields named "x" in other records.
         if isinstance(tree, HasFields):
+            # by field-name tuple, so braces and glob characters in a name are literal; a
+            # top-level field is selected whole, as a dot in its name (which ROOT forbids,
+            # but uproot can write) is only supported there
+            names = ((k,) if self._form.has_field(k) else k.split(".") for k in keys)
+            form = self._form.select_columns(
+                [tuple(map(glob.escape, n)) for n in names]
+            )
+            projection_subforms = {f: form.content(f) for f in form.fields}
             leaf_keys = [
                 p
-                for key in keys
-                for p in _rntuple_leaf_paths(self._form.content(key), key)
+                for field, subform in projection_subforms.items()
+                for p in _rntuple_leaf_paths(subform, field)
             ]
             selection = {"filter_field": _filter_field_by_key(tree, leaf_keys)}
         else:
-            selection = {"expressions": keys}
+            fields = list(keys)
+            if self.subfields:  # a TTree reads the whole branches the keys are under
+                above = _ancestors(keys)
+                fields = [f for f in self._form.fields if f in keys or f in above]
+            projection_subforms = {f: self._form.content(f) for f in fields}
+            selection = {"expressions": fields}
         # Read the arrays as a top-level awkward RecordArray. Omitting how= (the
         # default) ensures that AsGrouped branches are returned as proper awkward
         # RecordArrays rather than Python tuples of sub-arrays (which how=tuple
@@ -1069,12 +1081,9 @@ class TrivialFormMappingInfo(ImplementsFormMappingInfo):
         # subform, as they're derived from `branch.interpretation.awkward_form`
         # Therefore, we can correlate the subform keys using `expected_from_buffers`
         container = {}
-        for key in keys:
+        for key, projection_subform in projection_subforms.items():
             # First, convert the sub-array into buffers
             ttree_subform, _length, ttree_container = awkward.to_buffers(arrays[key])
-
-            # Load the associated projection subform
-            projection_subform = self._form.content(key)
 
             # Correlate each TTree form key with the projection form key
             for (src, src_dtype), (dst, dst_dtype) in zip(
@@ -1082,10 +1091,45 @@ class TrivialFormMappingInfo(ImplementsFormMappingInfo):
                 projection_subform.expected_from_buffers(self.buffer_key).items(),
                 strict=True,
             ):
-                assert src_dtype == dst_dtype  # Sanity check!
+                if src_dtype != dst_dtype:
+                    raise TypeError(f"Data type mismatch: {src_dtype} != {dst_dtype}")
                 container[dst] = ttree_container[src]
 
         return container
+
+
+def _contents(form):
+    if form.is_record or form.is_union:
+        return form.contents
+    if form.is_list or form.is_option or form.is_indexed:
+        return [form.content]
+    return []
+
+
+def _ancestors(keys):
+    """The dotted paths strictly above ``keys``."""
+    return {key[:i] for key in keys for i, c in enumerate(key) if c == "."}
+
+
+def _subfield_paths(form, path=None):
+    """The dotted paths of the record fields beneath ``form``'s top-level fields."""
+    if form.is_record:
+        for field in form.fields:
+            subpath = field if path is None else f"{path}.{field}"
+            if path is not None:
+                yield subpath
+            yield from _subfield_paths(form.content(field), subpath)
+    elif form.is_list or form.is_option or form.is_indexed:
+        yield from _subfield_paths(form.content, path)
+
+
+def _covered(key, keys):
+    """Whether reading ``keys`` reads ``key``: an RNTuple field is read with its subfields."""
+    while key not in keys:
+        key, dot, _ = key.rpartition(".")
+        if not dot:
+            return False
+    return True
 
 
 def _rntuple_leaf_paths(form, prefix):
@@ -1119,17 +1163,17 @@ class FormMappingInfoWithVirtualArrays(TrivialFormMappingInfo):
         def generator(tree, buffer_key):
             form_key, _ = self.parse_buffer_key(buffer_key)
             key = self._form_key_to_key[form_key]
-            branch = tree[key]
 
             def _generator():
-                array = branch.array(
-                    entry_start=start,
-                    entry_stop=stop,
-                    interpretation_executor=interpretation_executor,
-                    decompression_executor=decompression_executor,
-                    library="ak",
-                    ak_add_doc=options.get("ak_add_doc"),
-                )
+                array = self.load_buffers(
+                    tree,
+                    frozenset({key}),
+                    start,
+                    stop,
+                    decompression_executor,
+                    interpretation_executor,
+                    options,
+                )[buffer_key]
 
                 # add to access_log
                 access_log = options.get("access_log")
@@ -1141,30 +1185,7 @@ class FormMappingInfoWithVirtualArrays(TrivialFormMappingInfo):
                     else:
                         access_log += [Accessed(branch=key, buffer_key=buffer_key)]
 
-                # Convert the sub-array into buffers
-                ttree_subform, _, ttree_container = awkward.to_buffers(array)
-
-                # Load the associated projection subform
-                projection_subform = self._form.content(key)
-
-                # Correlate each TTree form key with the projection form key
-                for (src, src_dtype), (dst, dst_dtype) in zip(
-                    ttree_subform.expected_from_buffers().items(),
-                    projection_subform.expected_from_buffers(self.buffer_key).items(),
-                    strict=True,
-                ):
-                    # Return the corresponding array from the TTree if buffer key matches
-                    if buffer_key == dst:
-                        if src_dtype != dst_dtype:
-                            raise TypeError(
-                                f"Data type mismatch: {src_dtype} != {dst_dtype}"
-                            )
-                        return ttree_container[src]
-
-                # Raise an error if the buffer key is not found
-                raise ValueError(
-                    f"Buffer key {buffer_key} not found in form {self._form}"
-                )
+                return array
 
             return _generator
 
@@ -1226,6 +1247,14 @@ def _read_tree(
 
     # Populate container with placeholders if keys aren't required
     # Otherwise, read from disk
+    keys = frozenset(keys)
+    # a dotted RNTuple key names a subfield, read with everything beneath it and the
+    # structure above it; a dotted TTree branch name is just a name
+    if isinstance(tree, HasFields) or getattr(form_mapping_info, "subfields", False):
+        above = _ancestors(keys)
+        read = lambda key: key in above or _covered(key, keys)  # noqa: E731
+    else:
+        read = keys.__contains__
     container = {}
     for buffer_key, dtype in expected_form.expected_from_buffers(
         buffer_key=form_mapping_info.buffer_key
@@ -1238,7 +1267,7 @@ def _read_tree(
         # If reading this buffer loads a permitted key, read from the tree
         # We might not have _all_ keys if e.g. buffer A requires one
         # but not two of the keys required for buffer B
-        if all(k in keys for k in keys_for_buffer):
+        if all(read(k) for k in keys_for_buffer):
             container[buffer_key] = mapping[buffer_key]
         # if the form mapping info provides a replacements, use it
         elif hasattr(form_mapping_info, "buffer_replacements"):
@@ -1377,9 +1406,13 @@ class UprootReadMixin:
             ),
         }
 
-        # Determine which TTree keys need to be read
-        return form_info.keys_for_buffer_keys(data_buffers) & frozenset(
-            self.common_keys
+        # Determine which TTree keys need to be read; an RNTuple's are read by subfield too
+        common_keys = frozenset(self.common_keys)
+        subfields = frozenset(_subfield_paths(self.base_form))
+        return frozenset(
+            key
+            for key in form_info.keys_for_buffer_keys(data_buffers)
+            if key in common_keys or (key in subfields and _covered(key, common_keys))
         )
 
     def project_keys(self: T, keys: frozenset[str]) -> T:
@@ -1880,11 +1913,12 @@ def _base_form_of(ttree, common_keys, ak_add_doc, form_mapping):
     return base_form
 
 
-def _mapping_of(form_mapping, base_form):
-    """``(expected_form, form_mapping_info)``: the trivial mapping when none is given."""
+def _mapping_of(form_mapping, base_form, subfields=False):
+    """``(expected_form, form_mapping_info)``: the trivial mapping when none is given, which
+    reads an RNTuple (``subfields``) by subfield."""
     if form_mapping is None:
         expected_form = awkward.forms.form_with_unique_keys(base_form, ("<root>",))
-        return expected_form, TrivialFormMappingInfo(expected_form)
+        return expected_form, TrivialFormMappingInfo(expected_form, subfields)
     return form_mapping(base_form)
 
 
@@ -1980,7 +2014,9 @@ which has {entry_stop} entries"""
         divisions.append(0)
         partition_args.append((0, 0, 0))
 
-    expected_form, form_mapping_info = _mapping_of(form_mapping, base_form)
+    expected_form, form_mapping_info = _mapping_of(
+        form_mapping, base_form, all(isinstance(t, HasFields) for t in ttrees)
+    )
 
     fn = _UprootRead(
         ttrees,
@@ -2032,6 +2068,7 @@ def _get_dak_array_delay_open(
     if known_base_form is not None:
         common_keys = list(dict.fromkeys(known_base_form.fields))
         base_form = known_base_form
+        is_rntuple = False  # unknown without opening a file: read whole fields
     else:
         obj = uproot._util.regularize_object_path(
             ffile_path, fobject_path, custom_classes, allow_missing, real_options
@@ -2053,6 +2090,7 @@ def _get_dak_array_delay_open(
         base_form = _base_form_of(
             obj, common_keys, interp_options.get("ak_add_doc"), form_mapping
         )
+        is_rntuple = isinstance(obj, HasFields)
 
     divisions = [0]
     partition_args = []
@@ -2087,7 +2125,7 @@ def _get_dak_array_delay_open(
                     )
                 )
 
-    expected_form, form_mapping_info = _mapping_of(form_mapping, base_form)
+    expected_form, form_mapping_info = _mapping_of(form_mapping, base_form, is_rntuple)
 
     fn = _UprootOpenAndRead(
         custom_classes,

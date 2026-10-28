@@ -592,6 +592,7 @@ def graphed(
         file_tree = [_file_and_path(f, o) for f, o, *_ in files]
         explicit_chunks = [f[2] for f in files] if all(is_3arg) else None
         tree_name = _name_from_object_path(file_tree)
+        is_rntuple = False  # unknown without opening a file: read whole fields
     else:
         directories = {}
         try:
@@ -622,6 +623,7 @@ def graphed(
                 )
             common_keys = _normalize_grouped_keys(ttrees[0], common_keys, full_paths)
             base_form = _base_form_of(ttrees[0], common_keys, ak_add_doc, form_mapping)
+            is_rntuple = all(isinstance(t, HasFields) for t in ttrees)
         finally:
             for directory in directories.values():
                 directory.file.close()
@@ -632,7 +634,7 @@ def graphed(
         tree_name = getattr(ttrees[0], "name", None) or _name_from_object_path(
             file_tree
         )
-    expected_form, info = _mapping_of(form_mapping, base_form)
+    expected_form, info = _mapping_of(form_mapping, base_form, is_rntuple)
     typetracer = awkward.typetracer.typetracer_from_form(
         expected_form, highlevel=True, behavior=info.behavior
     )
