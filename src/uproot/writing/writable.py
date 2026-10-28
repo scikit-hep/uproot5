@@ -2432,10 +2432,13 @@ class WritableTree:
         """
         return self._cascading.num_baskets
 
-    def add_branches(self, branches):
+    def add_branches(self, branches, *, counter_name=None):
         """
         Args:
             branches (dict of str -> array): Names and data of new branches.
+            counter_name (callable of str -> str, optional): Function to generate
+                counter-TBranch names for Awkward Arrays of variable-length lists.
+                Defaults to the tree's configured counter_name (typically ``"n" + name``).
 
         Adds new branches to this TTree in-place. Only the new branch data and
         an updated TTree header are written; existing data is never touched.
@@ -2453,9 +2456,6 @@ class WritableTree:
             would silently drop them, so this raises ``NotImplementedError``
             for such trees instead. This mirrors the same restriction on
             :ref:`uproot.writing.writable.WritableTree.extend`.
-
-            Jagged (variable-length) branches are not yet supported and raise
-            ``NotImplementedError``.
         """
         if self._file.sink.closed:
             raise ValueError("cannot modify a TTree in a closed file")
@@ -2474,25 +2474,16 @@ class WritableTree:
         # disk here
         if self._cascading is None:
             raise RuntimeError(
-                "_cascading is None — this should not happen; please report this bug"
+                "_cascading is None: this should not happen; please report this bug"
             )
         casc = self._cascading
-        num_entries = casc._num_entries
 
-        for branch_name, branch_data in branches.items():
-            if _is_jagged(branch_data):
-                raise NotImplementedError(
-                    f"branch {branch_name!r} is a jagged array; add_branches does not "
-                    "yet support jagged branches (which require a counter branch)"
-                )
-            arr = numpy.asarray(branch_data)
-            if len(arr) != num_entries:
-                raise ValueError(
-                    f"branch {branch_name!r} has {len(arr)} entries but TTree has "
-                    f"{num_entries} entries; all new branches must match the tree length"
-                )
-            if branch_name in casc._branch_lookup:
-                raise ValueError(f"branch {branch_name!r} already exists in this TTree")
+        if counter_name is not None and not callable(counter_name):
+            raise TypeError("counter_name must be a callable or None")
+        resolve_counter = (
+            counter_name if counter_name is not None else casc._counter_name
+        )
+        num_entries = casc._num_entries
 
         # _load_existing_ttree leaves TBranchElement (and other non-TBranch)
         # branches out of casc._branch_data entirely, so rewriting the branch
@@ -2503,15 +2494,13 @@ class WritableTree:
                 "add_branches for files with TBranchElement (or other non-TBranch) "
                 "branches is not yet supported via the cascade approach"
             )
+
+        # Divergent basket counts across branches (e.g. extending after
+        # add_branches on a tree that already has multiple baskets) is not
+        # supported via the cascade approach because each new branch would only
+        # ever get one basket, permanently diverging from existing branches'
+        # basket counts and corrupting fBasketEntry synchronization.
         if casc._num_baskets > 1:
-            # add_branches always back-fills a new branch with exactly one
-            # basket spanning every existing entry (see below), regardless of
-            # how many baskets the tree's other branches already have. On a
-            # tree with only one basket that coincidentally matches, but on
-            # any tree with more, it would silently create the very
-            # divergent-basket-count state extend() already refuses to run on
-            # -- turning every future extend() on this tree into a permanent
-            # NotImplementedError, with no warning at add_branches() time.
             raise NotImplementedError(
                 "add_branches for a TTree that already has more than one basket "
                 "is not yet supported via the cascade approach: the new branch "
@@ -2520,70 +2509,232 @@ class WritableTree:
                 "on this tree"
             )
 
-        # add new branch dicts to cascade
-        compression = casc._freesegments.fileheader.compression
+        # Phase 1: Pure Validation & Staging (No mutation of casc yet)
+        validated_branches = {}
+        counters_to_create = {}
+        explicit_counters = []
+
         for branch_name, branch_data in branches.items():
-            arr = numpy.asarray(branch_data)
-            if arr.dtype.kind == "O":
-                raise TypeError(
-                    f"branch {branch_name!r} has object dtype — only simple numeric "
-                    f"types are supported for add_branches"
-                )
-            dtype = arr.dtype.newbyteorder(">")
-            new_bd = casc._branch_np(branch_name, arr.dtype, dtype)
-            new_bd["compression"] = compression
-            casc._branch_data.append(new_bd)
-            casc._branch_lookup[branch_name] = len(casc._branch_data) - 1
+            if branch_name in casc._branch_lookup:
+                raise ValueError(f"branch {branch_name!r} already exists in this TTree")
 
-        # rewrite TTree metadata blob with new branches included -- this relocates
-        # the tree (frees its old space, allocates new space for the larger
-        # blob), so the WritableFile._trees cache needs to move with it, the same
-        # way extend()'s own basket-capacity-expansion relocation does via
-        # file._move_tree(); otherwise a stale entry at the old location lingers
-        # in that cache indefinitely
-        oldloc = casc._key.seek_location
-        casc.write_anew(self._file.sink)
-        self._file._move_tree(oldloc, casc._key.seek_location)
-        # this write_anew() just established Uproot's own canonical layout for
-        # real, so a subsequent extend() on this same cascade doesn't need to
-        # redundantly do it again
-        casc._needs_relocation_before_extend = False
+            is_jag = _is_jagged(branch_data)
+            if is_jag:
+                if not isinstance(branch_data, awkward.Array):
+                    data = awkward.from_iter(branch_data)
+                else:
+                    data = branch_data
 
-        # write one basket per new branch, matching the existing branches (the
-        # guard above ensures they have at most one); an empty tree has no
-        # baskets yet, and the next extend() writes basket 0 for every branch
-        if casc._num_baskets == 1:
-            for branch_name, branch_data in branches.items():
-                arr = numpy.asarray(branch_data).astype(
-                    casc._branch_data[casc._branch_lookup[branch_name]]["dtype"]
-                )
-                totbytes, zipbytes, location = casc.write_np_basket(
-                    self._file.sink, branch_name, compression, arr
-                )
-                datum = casc._branch_data[casc._branch_lookup[branch_name]]
-                datum["fTotBytes"] += totbytes
-                datum["fZipBytes"] += zipbytes
-                datum["fBasketBytes"][0] = zipbytes
-                datum["fBasketSeek"][0] = location
-                datum["fBasketEntry"][1] = num_entries
-                datum["arrays_write_start"] = 0
-                datum["arrays_write_stop"] = 1
-                casc._metadata["fTotBytes"] += totbytes
-                casc._metadata["fZipBytes"] += zipbytes
+                if len(data) != num_entries:
+                    raise ValueError(
+                        f"branch {branch_name!r} has {len(data)} entries but TTree has "
+                        f"{num_entries} entries; all new branches must match the tree length"
+                    )
 
-        casc.write_updates(self._file.sink)
-        self._file.sink.flush()
+                branch_type = data.type
+                if isinstance(branch_type, awkward.types.ArrayType):
+                    branch_type = branch_type.content
 
-        # update in-memory directory cache
-        dir_key_obj = directory._cascading.data.get_key(source)
-        dir_key_obj._seek_location = casc._key.seek_location
+                if type(branch_type).__name__ != "ListType":
+                    raise TypeError(
+                        f"cannot write Awkward Array type to ROOT file:\n\n    {data.type!s}"
+                    )
 
-        # update self._cascading so subsequent extend uses correct metadata
-        writable_tree = uproot.writing.writable.WritableTree(
-            self._path, self._file, casc
-        )
-        self._file._trees[casc._key.seek_location] = writable_tree
-        self._cascading = casc
+                content_type = branch_type.content
+                dt = casc._branch_ak_to_np(content_type)
+                if dt is None:
+                    raise TypeError(
+                        f"cannot write Awkward Array type to ROOT file:\n\n    {data.type!s}"
+                    )
+
+                c_name = resolve_counter(branch_name)
+                counter_arr = numpy.asarray(awkward.num(data, axis=1), dtype=">i4")
+
+                if c_name in casc._branch_lookup:
+                    existing = casc._branch_data[casc._branch_lookup[c_name]]
+                    if existing["kind"] != "counter":
+                        raise ValueError(
+                            f"counter {c_name!r} for jagged branch {branch_name!r} "
+                            f"collides with a branch of the same name that is not a counter branch"
+                        )
+                    if num_entries > 0:
+                        target = (
+                            self._file.file_path
+                            if self._file.file_path is not None
+                            else getattr(self._file.sink, "_file", None)
+                        )
+                        if target is not None:
+                            self._file.sink.flush()
+                            with uproot.open(target) as ro:
+                                ro_tree = ro
+                                for part in self._path:
+                                    ro_tree = ro_tree[part]
+                                existing_counter_vals = numpy.asarray(
+                                    ro_tree[c_name].array(library="np")
+                                )
+                            if not numpy.array_equal(
+                                counter_arr, existing_counter_vals
+                            ):
+                                raise ValueError(
+                                    f"counter {c_name!r} for jagged branch {branch_name!r} "
+                                    f"disagrees with the existing counter branch's lengths"
+                                )
+                elif c_name in branches:
+                    explicit_val = numpy.asarray(branches[c_name])
+                    if not numpy.array_equal(counter_arr, explicit_val):
+                        raise ValueError(
+                            f"branch {c_name!r} provided both as an explicit array "
+                            f"and generated as a counter, and they disagree"
+                        )
+                    if c_name not in explicit_counters:
+                        explicit_counters.append(c_name)
+                elif c_name in counters_to_create:
+                    if not numpy.array_equal(counters_to_create[c_name], counter_arr):
+                        raise ValueError(
+                            f"counter {c_name!r} for jagged branch {branch_name!r} "
+                            f"disagrees with another jagged branch using the same counter"
+                        )
+                else:
+                    counters_to_create[c_name] = counter_arr
+
+                validated_branches[branch_name] = (data, True, c_name, dt)
+            else:
+                arr = numpy.asarray(branch_data)
+                if len(arr) != num_entries:
+                    raise ValueError(
+                        f"branch {branch_name!r} has {len(arr)} entries but TTree has "
+                        f"{num_entries} entries; all new branches must match the tree length"
+                    )
+                if arr.dtype.kind == "O":
+                    raise TypeError(
+                        f"branch {branch_name!r} has object dtype: only simple numeric "
+                        f"types are supported for add_branches"
+                    )
+                validated_branches[branch_name] = (arr, False, None, None)
+
+        # Phase 2: Build Branch Descriptors & Validate Dtypes Upfront
+        compression = casc._freesegments.fileheader.compression
+        counter_dtype = numpy.dtype(numpy.int32)
+
+        def make_counter_bd(c_name):
+            bd = casc._branch_np(c_name, counter_dtype, counter_dtype, kind="counter")
+            bd["compression"] = compression
+            return bd
+
+        staged_counter_bds = {}
+        staged_branch_bds = []
+
+        # 1. Staged auto-generated counters
+        for c_name, counter_arr in counters_to_create.items():
+            if c_name not in casc._branch_lookup:
+                staged_counter_bds[c_name] = (make_counter_bd(c_name), counter_arr)
+
+        # 2. Staged explicit counters (in deterministic insertion order)
+        for c_name in explicit_counters:
+            if c_name not in casc._branch_lookup and c_name not in staged_counter_bds:
+                arr, _, _, _ = validated_branches[c_name]
+                int32_arr = numpy.asarray(arr, dtype=">i4")
+                staged_counter_bds[c_name] = (make_counter_bd(c_name), int32_arr)
+
+        # 3. Staged user-provided branches
+        for branch_name, (data, is_jag, c_name, dt) in validated_branches.items():
+            if branch_name in explicit_counters:
+                continue
+            if is_jag:
+                if c_name in casc._branch_lookup:
+                    counter_bd = casc._branch_data[casc._branch_lookup[c_name]]
+                else:
+                    counter_bd = staged_counter_bds[c_name][0]
+                jagged_bd = casc._branch_np(branch_name, dt, dt, counter=counter_bd)
+                jagged_bd["compression"] = compression
+                staged_branch_bds.append((branch_name, jagged_bd, data, True, False))
+            else:
+                dtype = data.dtype.newbyteorder(">")
+                new_bd = casc._branch_np(branch_name, data.dtype, dtype, kind="normal")
+                new_bd["compression"] = compression
+                staged_branch_bds.append((branch_name, new_bd, data, False, False))
+
+        # Phase 3: Commit to casc (Atomic commit with rollback safety)
+        orig_branch_data_len = len(casc._branch_data)
+        orig_branch_lookup = dict(casc._branch_lookup)
+        all_new_bds = []
+
+        try:
+            for c_name, (counter_bd, counter_arr) in staged_counter_bds.items():
+                casc._branch_data.append(counter_bd)
+                casc._branch_lookup[c_name] = len(casc._branch_data) - 1
+                all_new_bds.append((c_name, counter_arr, False, True))
+
+            for branch_name, bd, data, is_jag, is_counter in staged_branch_bds:
+                casc._branch_data.append(bd)
+                casc._branch_lookup[branch_name] = len(casc._branch_data) - 1
+                all_new_bds.append((branch_name, data, is_jag, is_counter))
+
+            oldloc = casc._key.seek_location
+            casc.write_anew(self._file.sink)
+            self._file._move_tree(oldloc, casc._key.seek_location)
+            casc._needs_relocation_before_extend = False
+
+            if casc._num_baskets == 1:
+                for branch_name, data, is_jag, is_counter in all_new_bds:
+                    datum = casc._branch_data[casc._branch_lookup[branch_name]]
+                    if is_jag:
+                        big_endian, big_endian_offsets = (
+                            uproot.writing._cascadetree._normalize_jagged_array(
+                                data,
+                                datum["dtype"],
+                                datum["shape"],
+                                operation="add_branches",
+                            )
+                        )
+                        totbytes, zipbytes, location = casc.write_jagged_basket(
+                            self._file.sink,
+                            branch_name,
+                            compression,
+                            big_endian.reshape(-1),
+                            big_endian_offsets,
+                        )
+                        datum["fEntryOffsetLen"] = 4 * (len(big_endian_offsets) - 1)
+                    else:
+                        arr = numpy.asarray(data).astype(datum["dtype"])
+                        totbytes, zipbytes, location = casc.write_np_basket(
+                            self._file.sink, branch_name, compression, arr
+                        )
+                        if is_counter and arr.size > 0:
+                            datum["tleaf_maximum_value"] = max(
+                                int(arr.max()), datum["tleaf_maximum_value"]
+                            )
+
+                    datum["fTotBytes"] += totbytes
+                    datum["fZipBytes"] += zipbytes
+                    datum["fBasketBytes"][0] = zipbytes
+                    datum["fBasketSeek"][0] = location
+                    datum["fBasketEntry"][1] = num_entries
+                    datum["arrays_write_start"] = 0
+                    datum["arrays_write_stop"] = 1
+                    casc._metadata["fTotBytes"] += totbytes
+                    casc._metadata["fZipBytes"] += zipbytes
+
+            if casc._num_baskets > 0:
+                casc.write_updates(self._file.sink)
+            self._file.sink.flush()
+
+            # update in-memory directory cache
+            dir_key_obj = directory._cascading.data.get_key(source)
+            dir_key_obj._seek_location = casc._key.seek_location
+
+            # update self._cascading so subsequent extend uses correct metadata
+            writable_tree = uproot.writing.writable.WritableTree(
+                self._path, self._file, casc
+            )
+            self._file._trees[casc._key.seek_location] = writable_tree
+            self._cascading = casc
+
+        except Exception:
+            del casc._branch_data[orig_branch_data_len:]
+            casc._branch_lookup.clear()
+            casc._branch_lookup.update(orig_branch_lookup)
+            raise
 
     def extend(self, data, *, accept_new_fields=False):
         """
@@ -3286,7 +3437,7 @@ class WritableNTuple:
                                     break
                         if found is None:
                             raise ValueError(
-                                f"Field {'.'.join(parts[:part_idx+1])!r} not found in this RNTuple"
+                                f"Field {'.'.join(parts[: part_idx + 1])!r} not found in this RNTuple"
                             )
                         current_parent_id = found[0]
                         parent_field_id = found[0]

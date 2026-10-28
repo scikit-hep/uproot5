@@ -644,7 +644,16 @@ class Tree:
                     and v.ndim > 1
                     and not v.layout.purelist_isregular
                 ):
-                    kk = self._counter_name(k)
+                    if (
+                        k in self._branch_lookup
+                        and self._branch_data[self._branch_lookup[k]].get("counter")
+                        is not None
+                    ):
+                        kk = self._branch_data[self._branch_lookup[k]]["counter"][
+                            "fName"
+                        ]
+                    else:
+                        kk = self._counter_name(k)
                     vv = numpy.asarray(awkward.num(v, axis=1), dtype=">u4")
                     if kk in provided and not numpy.array_equal(
                         vv, numpy.asarray(provided[kk])
@@ -800,57 +809,9 @@ class Tree:
                         )
 
             else:
-                layout = branch_array.layout
-                while not isinstance(layout, awkward.contents.ListOffsetArray):
-                    if isinstance(layout, awkward.contents.IndexedArray):
-                        layout = layout.project()
-
-                    elif isinstance(layout, awkward.contents.ListArray):
-                        layout = layout.to_ListOffsetArray64(False)
-
-                    else:
-                        raise AssertionError(
-                            "how did this pass the type check?\n\n" + repr(layout)
-                        )
-
-                content = layout.content
-                offsets = numpy.asarray(layout.offsets)
-
-                if offsets[0] != 0:
-                    content = content[offsets[0] :]
-                    offsets = offsets - offsets[0]
-                if len(content) > offsets[-1]:
-                    content = content[: offsets[-1]]
-
-                shape = [len(content)]
-                while not isinstance(content, awkward.contents.NumpyArray):
-                    if isinstance(content, awkward.contents.IndexedArray):
-                        content = content.project()
-
-                    elif isinstance(content, awkward.contents.EmptyArray):
-                        content = content.to_NumpyArray(dtype=numpy.float64)
-
-                    elif isinstance(content, awkward.contents.RegularArray):
-                        shape.append(content.size)
-                        content = content.content
-
-                    else:
-                        raise AssertionError(
-                            "how did this pass the type check?\n\n" + repr(content)
-                        )
-
-                big_endian = numpy.asarray(content.data, dtype=datum["dtype"])
-                shape = tuple(shape) + big_endian.shape[1:]
-
-                if shape[1:] != datum["shape"]:
-                    raise ValueError(
-                        "'extend' must fill branches with a consistent shape: has {}, trying to fill with {}".format(
-                            datum["shape"],
-                            shape[1:],
-                        )
-                    )
-                big_endian_offsets = offsets.astype(">i4", copy=True)
-
+                big_endian, big_endian_offsets = _normalize_jagged_array(
+                    branch_array, datum["dtype"], datum["shape"], operation="extend"
+                )
                 tofill.append(
                     (
                         branch_name,
@@ -1714,3 +1675,54 @@ def recarray_to_dict(array):
         else:
             out[field_name] = field
     return out
+
+
+def _normalize_jagged_array(
+    branch_array, target_dtype, target_shape, operation="extend"
+):
+    import awkward
+
+    layout = branch_array.layout
+    while not isinstance(layout, awkward.contents.ListOffsetArray):
+        if isinstance(layout, awkward.contents.IndexedArray):
+            layout = layout.project()
+
+        elif isinstance(layout, awkward.contents.ListArray):
+            layout = layout.to_ListOffsetArray64(False)
+
+        else:
+            raise AssertionError(f"how did this pass the type check?\n\n{layout!r}")
+
+    content = layout.content
+    offsets = numpy.asarray(layout.offsets)
+
+    if offsets[0] != 0:
+        content = content[offsets[0] :]
+        offsets = offsets - offsets[0]
+    if len(content) > offsets[-1]:
+        content = content[: offsets[-1]]
+
+    shape = [len(content)]
+    while not isinstance(content, awkward.contents.NumpyArray):
+        if isinstance(content, awkward.contents.IndexedArray):
+            content = content.project()
+
+        elif isinstance(content, awkward.contents.EmptyArray):
+            content = content.to_NumpyArray(dtype=numpy.float64)
+
+        elif isinstance(content, awkward.contents.RegularArray):
+            shape.append(content.size)
+            content = content.content
+
+        else:
+            raise AssertionError(f"how did this pass the type check?\n\n{content!r}")
+
+    big_endian = numpy.asarray(content.data, dtype=target_dtype)
+    shape = tuple(shape) + big_endian.shape[1:]
+
+    if shape[1:] != target_shape:
+        raise ValueError(
+            f"'{operation}' must fill branches with a consistent shape: has {target_shape}, trying to fill with {shape[1:]}"
+        )
+    big_endian_offsets = offsets.astype(">i4", copy=True)
+    return big_endian, big_endian_offsets
