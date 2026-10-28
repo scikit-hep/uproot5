@@ -285,6 +285,7 @@ def test_rntuple_buffers_are_keyed_by_their_own_node():
 
 @pytest.mark.parametrize("name", ["[ab]", "{a,b}", "d.e", "x*"])
 def test_a_field_name_is_selected_literally(tmp_path, monkeypatch, name):
+    pytest.importorskip("dask_awkward")
     where, arr = _rntuple(
         tmp_path,
         ak.Array(
@@ -295,3 +296,24 @@ def test_a_field_name_is_selected_literally(tmp_path, monkeypatch, name):
     read = _columns_read(monkeypatch)
     assert ak.array_equal(ev["rec", name].compute(), arr["rec", name])
     assert len(read) == 1
+
+
+def test_a_buffer_of_the_wrong_dtype_is_an_error(tmp_path):
+    from uproot._dask import TrivialFormMappingInfo
+    from uproot.source.futures import TrivialExecutor
+
+    where, _ = _nested_rntuple(tmp_path)
+    nt = uproot.open(where)
+    form = nt.to_akform()[0].to_dict()
+    form["contents"][form["fields"].index("z")]["primitive"] = "int32"
+    expected = ak.forms.form_with_unique_keys(ak.forms.from_dict(form), ("<root>",))
+    with pytest.raises(TypeError, match="Data type mismatch"):
+        TrivialFormMappingInfo(expected, subfields=True).load_buffers(
+            nt,
+            frozenset({"z"}),
+            0,
+            nt.num_entries,
+            TrivialExecutor(),
+            TrivialExecutor(),
+            {"ak_add_doc": False},
+        )
