@@ -70,6 +70,7 @@ class _GraphedTTreeSource:
         name,
         expected_form,
         form_mapping_info,
+        form_mapping=None,
         interp_options,
         custom_classes,
         allow_missing,
@@ -84,6 +85,7 @@ class _GraphedTTreeSource:
         self._name = name  # the graphed source name, which the projection answers under
         self._expected_form = expected_form
         self._form_mapping_info = form_mapping_info
+        self._form_mapping = form_mapping
         self._interp_options = interp_options
         self._custom_classes = custom_classes
         self._allow_missing = allow_missing
@@ -96,6 +98,23 @@ class _GraphedTTreeSource:
 
     def __getstate__(self):
         return {**self.__dict__, "_offsets_memo": {}}
+
+    def source_identity(self):
+        """What this source reads beyond its form, compared with ``==``: ``graphed``'s
+        ``Session.source`` reuses a name's binding for an equal identity and refuses any other.
+        """
+        mapping = self._form_mapping
+        own = getattr(mapping, "source_identity", None)
+        return (
+            tuple(self._file_tree),
+            self._explicit_chunks,
+            self._allow_missing,
+            self._align_baskets,
+            self._custom_classes,
+            own() if callable(own) else _Same(mapping),
+            _Same(self._decompression_executor),
+            _Same(self._interpretation_executor),
+        )
 
     # ---- opening -------------------------------------------------------------------------
     def _open_directory(self, file_path):
@@ -258,6 +277,20 @@ class _GraphedTTreeSource:
         return tuple(sorted(info.keys_for_buffer_keys(frozenset(buffer_keys))))
 
 
+class _Same:
+    """Equal only to a wrapper of the same object, for parts whose ``==`` is not "reads alike"."""
+
+    __slots__ = ("obj",)
+
+    def __init__(self, obj):
+        self.obj = obj
+
+    def __eq__(self, other):
+        return isinstance(other, _Same) and other.obj is self.obj
+
+    __hash__ = None
+
+
 def _mapped_buffer_keys(form, path, data, buffer_key):
     """The mapped form's buffer keys for one projected ``path``: every structure crossed on the
     way down to it, plus the endpoint's own — recursively when its ``data`` is read, and the list
@@ -386,20 +419,25 @@ def _uproot_source(array, what):
     return sources[0]
 
 
-def _refuse_backend(have, wanted, *, behavior):
-    """Refuse a ``session=`` on ``have`` for a read recorded on ``wanted``: ``have`` must be a
-    ``type(wanted)`` and, with ``behavior``, carry an equal one (``None`` counts as empty).
-    """
+def _refuse_backend(have, wanted, *, behavior, where="session="):
+    """Refuse the Session ``where`` names, on ``have``, for a read recorded on ``wanted``: ``have``
+    must be a ``type(wanted)`` and, when ``behavior`` names the read's behavior, carry an equal one
+    (``None`` counts as empty)."""
     if not isinstance(have, type(wanted)):
         have_text = type(have).__name__
     elif behavior and (have._behavior or {}) != (wanted._behavior or {}):
         have_text = f"{type(have).__name__} with another behavior"
     else:
         return
-    mapped = " with its form_mapping behavior" if behavior else ""
+    wanted_text = type(wanted).__name__ + (f" with {behavior}" if behavior else "")
+    fix = "pass a Session on that backend"
+    if where != "session=":
+        fix += (
+            " with session=, call graphed.new_session(<that backend>), or read inside "
+            "`with graphed.Session(<that backend>):`"
+        )
     raise TypeError(
-        f"uproot.graphed: session= records on {have_text}, and this read on "
-        f"{type(wanted).__name__}{mapped}; pass a Session on that backend"
+        f"uproot.graphed: {where} records on {have_text}, and this read on {wanted_text}; {fix}"
     )
 
 
@@ -464,14 +502,23 @@ def graphed(
             a caller's own ``Array`` subclass. Its behavior (and, with ``form_mapping``, the
             mapping info's) is then the caller's business, so ``behavior=`` is refused beside it.
         session (graphed Session or None): Record into this existing ``Session`` (and on its
-            backend) instead of a new one, so the result can be combined with arrays already
-            recorded there, e.g. ``graphed.join(events, uproot.graphed(friends,
-            session=events.session, name="friends"), on=[...])``. Exclusive with ``backend=`` and
-            ``behavior=``; its backend must be an ``AwkwardBackend`` and, with ``form_mapping=``,
-            carry the mapping's behavior.
+            backend), so the result can be combined with arrays already recorded there, e.g.
+            ``graphed.join(events, uproot.graphed(friends, session=events.session,
+            name="friends"), on=[...])``. Exclusive with ``backend=`` and ``behavior=``; its
+            backend must be an ``AwkwardBackend`` and, with ``form_mapping=``, carry the mapping's
+            behavior. Without it, the read records into ``graphed.current_session()``: the
+            innermost open ``with session:`` scope, else the default Session, which this read
+            creates on its own backend when there is none; so ``with events.session:
+            uproot.graphed(friends, name="friends")`` joins too. That Session must be an instance
+            of the read's backend class and, when ``behavior=``, ``backend=`` or ``form_mapping=``
+            names a behavior, carry an equal one; any other is refused at the read. With a
+            ``graphed`` that has no ``current_session``, each such read gets a new ``Session``.
         name (str or None): The ``graphed`` source's name, its slot in the recorded graph; default
-            the ``TTree``'s name. A name the ``Session`` already has is refused, before any file
-            is opened when the name is known from ``name=`` or the ``files``' object paths.
+            the ``TTree``'s name. Reading the same files and branches with the same options under
+            a name the ``Session`` already has returns that source again; any other read under it
+            is refused. With a ``graphed`` that has no ``current_session``, every read under a
+            taken name is refused, before any file is opened when the name is known from
+            ``name=`` or the ``files``' object paths.
         decompression_executor, interpretation_executor: As in :doc:`uproot._dask.dask`; every
             partition read uses them.
         align_baskets (bool): If True, each blind partition's entry range moves, when it is
@@ -540,6 +587,8 @@ def graphed(
     import awkward
 
     graphed = uproot.extras.graphed()
+    # feature detection: graphed 0.0.9 has no current Session and no one-binding-per-name rule
+    current_session = getattr(graphed, "current_session", None)
 
     if session is not None:
         if not isinstance(session, graphed.Session):
@@ -547,7 +596,7 @@ def graphed(
                 f"uproot.graphed: session= takes a graphed.Session, not {type(session).__name__}"
             )
         _refuse_backend(
-            session.backend, graphed.awkward.AwkwardBackend(), behavior=False
+            session.backend, graphed.awkward.AwkwardBackend(), behavior=None
         )
 
     real_options = options.copy()
@@ -567,7 +616,8 @@ def graphed(
             "uproot.graphed: align_baskets=True moves blind partitions; it cannot be used "
             "with explicit 'steps' in 'files'"
         )
-    if session is not None:  # before any I/O when the name is already known
+    # before any I/O when the name is already known
+    if session is not None and current_session is None:
         known = name
         if known is None:
             # a path with "/" or ":" may end in a TBranch, and its read is named after the TTree
@@ -636,27 +686,44 @@ def graphed(
     typetracer = awkward.typetracer.typetracer_from_form(
         expected_form, highlevel=True, behavior=info.behavior
     )
+    mapped = "its form_mapping behavior" if form_mapping is not None else None
     if session is None:
-        if backend is None:
-            backend = graphed.awkward.AwkwardBackend(
+        if backend is not None:
+            requested, checked = backend, "the backend='s behavior"
+        else:
+            requested = graphed.awkward.AwkwardBackend(
                 behavior=behavior if form_mapping is None else info.behavior
             )
-        session = graphed.Session(backend)
-    elif form_mapping is not None:
+            checked = mapped or (
+                "the behavior= given" if behavior is not None else None
+            )
+        if current_session is None:
+            session = graphed.Session(requested)
+        else:
+            session = current_session(requested)
+            _refuse_backend(
+                session.backend,
+                requested,
+                behavior=checked,
+                where="the current Session",
+            )
+    elif mapped:
         _refuse_backend(
             session.backend,
             graphed.awkward.AwkwardBackend(behavior=info.behavior),
-            behavior=True,
+            behavior=mapped,
         )
     if name is None:
         name = tree_name
-    _refuse_taken(session, name)
+    if current_session is None:
+        _refuse_taken(session, name)
     source = _GraphedTTreeSource(
         file_tree,
         list(base_form.fields),
         name=name,
         expected_form=expected_form,
         form_mapping_info=info,
+        form_mapping=form_mapping,
         interp_options=interp_options,
         custom_classes=custom_classes,
         allow_missing=allow_missing,
