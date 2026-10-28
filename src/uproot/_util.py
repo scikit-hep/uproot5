@@ -16,12 +16,10 @@ import posixpath
 import re
 import sys
 import urllib.parse
-import urllib.request
 import warnings
 from collections.abc import Iterable
 from pathlib import Path
 from typing import IO
-from urllib.parse import urlparse
 
 import awkward
 import fsspec
@@ -282,43 +280,132 @@ def regularize_path(path):
     return path
 
 
-def canonical_path(file_path):
+def is_remote_url(file_path: str) -> bool:
     """
-    Returns a canonical identity key for a file path or URL for deduplication.
-    Local paths and file:// URLs are normalized via ``os.path.realpath``; remote URLs
-    are normalized via URL splitting and ``posixpath.normpath``.
+    Returns True if file_path is a URL with a remote scheme (not file or local).
     """
-    if not isinstance(file_path, (str, bytes, os.PathLike)):
-        return file_path
+    if "://" not in file_path:
+        return False
+    parsed = urllib.parse.urlsplit(file_path)
+    return parsed.scheme not in ("", "file", "local")
 
-    if isinstance(file_path, bytes):
-        file_path = os.fsdecode(file_path)
-    if isinstance(file_path, os.PathLike):
-        file_path = os.fspath(file_path)
+
+def _normalize_remote_url(file_path: str) -> str:
+    try:
+        fs, path = fsspec.core.url_to_fs(file_path)
+        file_path = fs.unstrip_protocol(path)
+    except Exception:
+        pass
 
     parsed = urllib.parse.urlsplit(file_path)
-    if not ("://" in file_path and parsed.scheme not in ("", "file", "local")):
-        if parsed.scheme in ("file", "local"):
-            path_str = parsed.path
-            if parsed.netloc and parsed.netloc != "localhost":
-                path_str = (
-                    f"{parsed.netloc}/{path_str.lstrip('/')}"
-                    if path_str
-                    else parsed.netloc
-                )
-            file_path = urllib.request.url2pathname(path_str)
-        return os.path.realpath(os.path.expanduser(file_path))
+    auth = ""
+    if parsed.username is not None:
+        auth = parsed.username
+        if parsed.password is not None:
+            auth += f":{parsed.password}"
+        auth += "@"
+    host = parsed.hostname.lower() if parsed.hostname else ""
+    if parsed.port is not None:
+        host += f":{parsed.port}"
+    netloc = f"{auth}{host}" if (auth or host) else parsed.netloc
 
-    norm_path = posixpath.normpath(parsed.path)
+    path = "/" + parsed.path.lstrip("/") if parsed.path else ""
+    norm_path = posixpath.normpath(path) if path else ""
+
     return urllib.parse.urlunsplit(
         (
             parsed.scheme.lower(),
-            parsed.netloc.lower(),
+            netloc,
             norm_path,
             parsed.query,
             parsed.fragment,
         )
     )
+
+
+def _macos_real_casing(path: str) -> str:
+    if sys.platform != "darwin":
+        return path
+    try:
+        import fcntl
+
+        fd = os.open(path, os.O_RDONLY)
+    except OSError:
+        return path
+    try:
+        buf = b"\x00" * 1024
+        res = fcntl.fcntl(fd, 50, buf)
+        return res.decode("utf-8").partition("\0")[0]
+    except OSError:
+        return path
+    finally:
+        os.close(fd)
+
+
+def canonical_path(file_path, seen_inodes=None):
+    """
+    Returns a canonical identity key for a file path or URL for deduplication.
+    Local paths and file:// URLs are normalized via ``os.path.realpath``; remote URLs
+    are normalized via fsspec and URL normalization.
+    """
+    if not isinstance(file_path, (str, bytes, os.PathLike)):
+        return file_path
+
+    if isinstance(file_path, os.PathLike):
+        file_path = os.fspath(file_path)
+    if isinstance(file_path, bytes):
+        file_path = os.fsdecode(file_path)
+
+    if is_remote_url(file_path):
+        return _normalize_remote_url(file_path)
+
+    parsed = urllib.parse.urlsplit(file_path)
+    if parsed.scheme in ("file", "local"):
+        if parsed.netloc and parsed.netloc != "localhost":
+            return urllib.parse.urlunsplit(
+                (
+                    parsed.scheme.lower(),
+                    parsed.netloc,
+                    posixpath.normpath(parsed.path),
+                    parsed.query,
+                    parsed.fragment,
+                )
+            )
+        from urllib.request import url2pathname
+
+        file_path = url2pathname(parsed.path)
+
+    expanded = os.path.expanduser(file_path)
+    resolved = os.path.realpath(expanded)
+    if sys.platform == "darwin":
+        resolved = _macos_real_casing(resolved)
+
+    if seen_inodes is not None:
+        try:
+            st = os.stat(resolved)
+            key = (st.st_dev, st.st_ino)
+            if key in seen_inodes:
+                return seen_inodes[key]
+            seen_inodes[key] = resolved
+        except OSError:
+            pass
+
+    return resolved
+
+
+def canonical_object_path(object_path, default=None):
+    """
+    Returns a normalized object path inside a ROOT file.
+    Leading and trailing slashes and cycle suffixes (;cycle) are normalized
+    to the standard ROOT resolved format: /<clean>;1.
+    """
+    target = default if object_path is None else (str(object_path).strip() or default)
+    if not target:
+        return ""
+    clean = target.strip("/").partition(";")[0].rstrip("/")
+    if not clean:
+        return ""
+    return f"/{clean};1"
 
 
 def file_object_path_split(urlpath: str) -> tuple[str, str | None]:
@@ -968,9 +1055,7 @@ def _regularize_files_inner(
             file_path, object_path = files, None
 
         # This parses the windows drive letter as a scheme!
-        parsed_url = urlparse(file_path)
-        scheme = parsed_url.scheme
-        if "://" in file_path and scheme not in ("file", "local"):
+        if is_remote_url(file_path):
             # user specified a protocol, so we use fsspec to expand the glob and return the full paths
             file_names_full = [
                 file.full_name

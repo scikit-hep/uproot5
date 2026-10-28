@@ -271,9 +271,14 @@ def _mapped_buffer_keys(form, path, data, buffer_key):
 
 def _name_from_object_path(file_tree):
     """The ``TTree``'s name when no file was opened to ask it (``known_base_form=``): the object
-    path the caller gave, without its ``TDirectory`` prefix or ``;cycle`` suffix — the same name
+    path the caller gave, without its ``TDirectory`` prefix or ``;cycle`` suffix: the same name
     the opened ``TTree`` reports, so a source keeps its identity either way."""
-    return (file_tree[0][1] or "").rpartition("/")[2].partition(";")[0] or "events"
+    for _, obj_path in file_tree:
+        if obj_path:
+            clean = (obj_path or "").rpartition("/")[2].partition(";")[0]
+            if clean:
+                return clean
+    return "events"
 
 
 def _file_and_path(file_path, object_path):
@@ -302,7 +307,7 @@ def _resolve_entries(
 ):
     """Every entry of ``files`` as ``(file_path, tree_path, steps, found)``, where ``found`` is the
     opened object (a leaf ``TBranch`` included) or ``None`` for a file left unopened; the files
-    opened go in ``directories``, ``{file_path: directory}``, for the caller to close even when
+    opened go in ``directories``, ``{canonical_path(file_path): directory}``, for the caller to close even when
     this raises. An entry whose file lacks the object is dropped under ``allow_missing``.
 
     A file is opened when it holds the first entry that has the object, with ``open_files``, when
@@ -312,14 +317,17 @@ def _resolve_entries(
     ``/``, which could end in a ``TTree`` or in a ``TBranch``; any other path names a ``TTree``,
     or the first entry's leaf ``TBranch`` when it is the first entry's path. Every entry must select the first entry's
     leaf ``TBranch``, or none when the first names a ``TTree``."""
-    listed = collections.Counter(
-        uproot._util.canonical_path(_file_and_path(f, o)[0]) for f, o, *_ in files
-    )
-    first_path = leaf = unset
-    resolved = []
+    seen_inodes = {}
+    entries = []
     for given, given_path, *steps in files:
         file_path, object_path = _file_and_path(given, given_path)
-        canon = uproot._util.canonical_path(file_path)
+        canon = uproot._util.canonical_path(file_path, seen_inodes=seen_inodes)
+        entries.append((given, given_path, steps, file_path, object_path, canon))
+
+    listed = collections.Counter(canon for _, _, _, _, _, canon in entries)
+    first_path = leaf = unset
+    resolved = []
+    for given, given_path, steps, file_path, object_path, canon in entries:
         if isinstance(given, HasBranches):
             found = given
         elif (
@@ -341,7 +349,7 @@ def _resolve_entries(
         if found is not None:
             tree, branch = _leaf_to_tree(found)
             branch = None if branch is None else branch.name
-            file_path, tree_path = tree.file.file_path, tree.object_path
+            tree_path = tree.object_path
         elif object_path == first_path and leaf is not None:
             tree_path, branch = object_path.rpartition("/")[0], leaf
         else:
@@ -353,7 +361,7 @@ def _resolve_entries(
                 f"{{{file_path!r}: {given_path!r}}} selects {_selection(branch)}, but the first "
                 f"file selects {_selection(leaf)}; select the same in every file"
             )
-        resolved.append((file_path, tree_path, steps, found))
+        resolved.append((canon, tree_path, steps, found))
     return resolved
 
 
@@ -507,9 +515,17 @@ def graphed(
     if known_base_form is not None:  # the form is given: nothing is opened
         common_keys = list(dict.fromkeys(known_base_form.fields))
         base_form = known_base_form
-        file_tree = [_file_and_path(f, o) for f, o, *_ in files]
+        seen_inodes = {}
+        raw_file_tree = [_file_and_path(f, o) for f, o, *_ in files]
+        name = _name_from_object_path(raw_file_tree)
+        file_tree = [
+            (
+                uproot._util.canonical_path(file_path, seen_inodes=seen_inodes),
+                uproot._util.canonical_object_path(object_path, default=name),
+            )
+            for file_path, object_path in raw_file_tree
+        ]
         explicit_chunks = [f[2] for f in files] if all(is_3arg) else None
-        name = _name_from_object_path(file_tree)
     else:
         directories = {}
         try:
@@ -543,11 +559,13 @@ def graphed(
         finally:
             for directory in directories.values():
                 directory.file.close()
+        name = getattr(ttrees[0], "name", None) or _name_from_object_path(
+            [(fp, tp) for fp, tp, _, _ in resolved]
+        )
         file_tree = [(file_path, tree_path) for file_path, tree_path, _, _ in resolved]
         explicit_chunks = (
             [steps[0] for _, _, steps, _ in resolved] if all(is_3arg) else None
         )
-        name = getattr(ttrees[0], "name", None) or _name_from_object_path(file_tree)
     expected_form, info = _mapping_of(form_mapping, base_form)
     typetracer = awkward.typetracer.typetracer_from_form(
         expected_form, highlevel=True, behavior=info.behavior
