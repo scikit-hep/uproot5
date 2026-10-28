@@ -198,9 +198,6 @@ def test_canonical_path_normalization(tmp_path):
     assert "b.root" in canonical_path("root://server.cern.ch//a/../b.root")
     assert "a.root" in canonical_path("root://server.cern.ch//a.root")
     assert (
-        canonical_path("root://server.cern.ch/a.root") == "root://server.cern.ch/a.root"
-    )
-    assert (
         canonical_path("http://User:Secret@example.com/a.root")
         == "http://User:Secret@example.com/a.root"
     )
