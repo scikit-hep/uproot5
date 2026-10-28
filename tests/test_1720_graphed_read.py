@@ -292,6 +292,7 @@ def test_head_reads_only_the_first_file_and_the_needed_branches(tmp_path):
     assert seen == [(a, ("y",), 0, 4)]  # 6 asked, 4 in the first file: it stops there
 
 
+@pytest.mark.filterwarnings("ignore:.*is deprecated; pass session=:DeprecationWarning")
 def test_head_requires_one_uproot_source():
     from graphed.awkward import AwkwardBackend, from_awkward
 
