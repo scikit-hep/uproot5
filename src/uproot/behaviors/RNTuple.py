@@ -807,7 +807,7 @@ class HasFields(Mapping):
         start_cluster_idx = (
             numpy.searchsorted(cluster_starts, entry_start, side="right") - 1
         )
-        stop_cluster_idx = numpy.searchsorted(cluster_starts, entry_stop, side="right")
+        stop_cluster_idx = numpy.searchsorted(cluster_starts, entry_stop, side="left")
         cluster_num_entries = numpy.sum(
             [c.num_entries for c in clusters[start_cluster_idx:stop_cluster_idx]],
             dtype=int,
