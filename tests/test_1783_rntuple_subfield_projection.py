@@ -283,7 +283,7 @@ def test_rntuple_buffers_are_keyed_by_their_own_node():
     ) == {"jets.eta"}
 
 
-@pytest.mark.parametrize("name", ["[ab]", "{a,b}", "d.e", "x*"])
+@pytest.mark.parametrize("name", ["[ab]", "{a,b}", "x*"])
 def test_a_field_name_is_selected_literally(tmp_path, monkeypatch, name):
     pytest.importorskip("dask_awkward")
     where, arr = _rntuple(
@@ -295,6 +295,18 @@ def test_a_field_name_is_selected_literally(tmp_path, monkeypatch, name):
     ev = uproot.dask(where)
     read = _columns_read(monkeypatch)
     assert ak.array_equal(ev["rec", name].compute(), arr["rec", name])
+    assert len(read) == 1
+
+
+def test_a_top_level_field_name_may_contain_a_dot(tmp_path, monkeypatch):
+    pytest.importorskip("dask_awkward")
+    # ROOT forbids dots in RNTuple field names, but uproot can write them
+    where, arr = _rntuple(
+        tmp_path, ak.Array([{"a.b": k, "c": {"d": 2 * k}} for k in range(4)])
+    )
+    ev = uproot.dask(where)
+    read = _columns_read(monkeypatch)
+    assert ak.array_equal(ev["a.b"].compute(), arr["a.b"])
     assert len(read) == 1
 
 
