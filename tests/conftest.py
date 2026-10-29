@@ -38,9 +38,10 @@ def _data_path(filename, raise_missing=True, cache_dir=None):
                 if path.startswith(tmp) and os.path.isfile(path):
                     target.parent.mkdir(parents=True, exist_ok=True)
                     try:
-                        os.replace(path, target)
+                        # not os.replace: on Windows, replacing a file that
+                        # another worker is reading makes its next open fail
+                        os.rename(path, target)
                     except OSError:
-                        # on Windows, another worker may already have it open
                         if not target.exists():
                             raise
     return _skhep_data_path(filename, raise_missing, cache_dir)
@@ -49,6 +50,23 @@ def _data_path(filename, raise_missing=True, cache_dir=None):
 # conftest.py is imported before the test modules, so this also covers
 # "from skhep_testdata import data_path"
 skhep_testdata.data_path = _data_path
+
+
+try:
+    import graphed
+except ImportError:
+    graphed = None
+
+
+@pytest.fixture(autouse=True)
+def fresh_graphed_default():
+    """Each test starts without graphed's default Session and leaves the previous one in place."""
+    if not hasattr(graphed, "set_session"):
+        yield
+        return
+    previous = graphed.set_session(None)
+    yield
+    graphed.set_session(previous)
 
 
 @pytest.fixture(scope="function", autouse=False)

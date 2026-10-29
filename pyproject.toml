@@ -21,7 +21,7 @@ extra = [
 test = [
   "aiohttp",
   "deflate",
-  "graphed[awkward,parquet]>=0.0.5; python_version >= '3.11'",
+  "graphed[awkward,parquet]>=0.0.9; python_version >= '3.11'",
   "graphed-executors>=0.0.3; python_version >= '3.11'",
   "isal",
   "moto[s3,server]",
@@ -29,15 +29,15 @@ test = [
   "pytest-cov",
   "pytest-rerunfailures",
   "pytest-xdist",
-  "rangehttpserver",
-  "requests",
-  "s3fs",
+  "s3fs>=2023.1.0",
   "vector; python_version >= '3.11'",
   { include-group = "test-core" }
 ]
 test-core = [
   "pytest-timeout",
   "pytest>=6",
+  "rangehttpserver",
+  "requests",
   "scikit-hep-testdata"
 ]
 test-gpu-cu12 = [
@@ -79,6 +79,7 @@ classifiers = [
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
   "Programming Language :: Python :: 3.14",
+  "Programming Language :: Python :: 3.15",
   "Topic :: Scientific/Engineering",
   "Topic :: Scientific/Engineering :: Information Analysis",
   "Topic :: Scientific/Engineering :: Mathematics",
@@ -131,7 +132,8 @@ addopts = ["-ra", "--showlocals", "--strict-markers", "--strict-config"]
 filterwarnings = [
   "error",
   "default:module 'sre_.*' is deprecated:DeprecationWarning",
-  "ignore:unclosed transport <asyncio.sslproto._SSLProtocolTransport"  # https://github.com/aio-libs/aiohttp/issues/1115
+  "ignore:unclosed transport <asyncio.sslproto._SSLProtocolTransport",  # https://github.com/aio-libs/aiohttp/issues/1115
+  "ignore:Implicitly cleaning up <HTTPError 405:ResourceWarning"  # Selenium leaves geckodriver's /shutdown response unclosed (Pyodide tests)
 ]
 log_level = "INFO"
 markers = [

@@ -19,6 +19,7 @@ types. Writing and reading are considered separate projects with different capab
 from __future__ import annotations
 
 import datetime
+import difflib
 import itertools
 import queue
 import sys
@@ -114,9 +115,6 @@ def recreate(file_path: str | Path | IO, **options):
 
 def _create_or_recreate(file_path, mode, options):
     file_path = uproot._util.regularize_path(file_path)
-    storage_options = {
-        key: value for key, value in options.items() if key not in create.defaults
-    }
     compression = options.pop("compression", create.defaults["compression"])
     initial_directory_bytes = options.pop(
         "initial_directory_bytes", create.defaults["initial_directory_bytes"]
@@ -125,12 +123,8 @@ def _create_or_recreate(file_path, mode, options):
         "initial_streamers_bytes", create.defaults["initial_streamers_bytes"]
     )
     uuid_function = options.pop("uuid_function", create.defaults["uuid_function"])
-    if options:
-        # before opening the sink, which may truncate an existing file
-        raise TypeError(
-            "unrecognized options for uproot.create or uproot.recreate: "
-            + ", ".join(repr(x) for x in options)
-        )
+    # before opening the sink, which may truncate an existing file
+    storage_options = _storage_options(options, "uproot.create or uproot.recreate")
 
     sink = uproot.sink.file.FileSink(file_path, mode=mode, **storage_options)
     cascading = uproot.writing._cascade.create_empty(
@@ -174,18 +168,11 @@ def update(file_path: str | Path | IO, **options):
     """
 
     file_path = uproot._util.regularize_path(file_path)
-    storage_options = {
-        key: value for key, value in options.items() if key not in update.defaults
-    }
     initial_directory_bytes = options.pop(
         "initial_directory_bytes", create.defaults["initial_directory_bytes"]
     )
     uuid_function = options.pop("uuid_function", create.defaults["uuid_function"])
-    if options:
-        raise TypeError(
-            "unrecognized options for uproot.update: "
-            + ", ".join(repr(x) for x in options)
-        )
+    storage_options = _storage_options(options, "uproot.update")
 
     sink = uproot.sink.file.FileSink(file_path, mode="update", **storage_options)
     cascading = uproot.writing._cascade.update_existing(
@@ -196,6 +183,31 @@ def update(file_path: str | Path | IO, **options):
     return WritableFile(
         sink, cascading, initial_directory_bytes, uuid_function
     ).root_directory
+
+
+def _storage_options(options, function_name):
+    """
+    The options left after removing the ones uproot knows are passed as
+    ``storage_options`` to the fsspec filesystem.
+
+    A filesystem may silently ignore an option it does not know, so an option
+    that is (or closely resembles) an uproot writing option is rejected here
+    rather than passed on, e.g. a misspelled ``compresion``.
+    """
+    mistaken = []
+    for name in options:
+        # a cutoff above the default 0.6, which would reject real fsspec options
+        # such as session or compresslevel for resembling compression
+        matches = difflib.get_close_matches(name, create.defaults, n=1, cutoff=0.8)
+        if matches and matches[0] != name:
+            mistaken.append(f"{name!r} (did you mean {matches[0]!r}?)")
+        elif matches:
+            mistaken.append(repr(name))
+    if mistaken:
+        raise TypeError(
+            f"unrecognized options for {function_name}: " + ", ".join(mistaken)
+        )
+    return options
 
 
 create.defaults = {
@@ -1134,6 +1146,7 @@ class WritableDirectory(MutableMapping):
 
         branch_data = []
         branch_lookup = {}
+        _counter_names = {}
         for b in branches:
             if b.classname != "TBranch":
                 # TBranchElement, TBranchObject, etc. use an on-disk layout (split
@@ -1182,6 +1195,10 @@ class WritableDirectory(MutableMapping):
             # detect counter branches (e.g. njets for jagged jets array)
             _leaves = b.member("fLeaves")
             _is_counter = bool(_leaves) and bool(_leaves[0].member("fIsRange"))
+            _leafcount = _leaves[0].member("fLeafCount") if _leaves else None
+            _counter_names[b.name] = (
+                _leafcount.member("fName") if _leafcount is not None else None
+            )
             bd = {
                 "fName": b.name,
                 "branch_type": dtype,
@@ -1241,7 +1258,7 @@ class WritableDirectory(MutableMapping):
                 and bd["counter"] is None
                 and bd.get("dtype") != ">U0"
             ):
-                counter_nm = "n" + bd["fName"]
+                counter_nm = _counter_names.get(bd["fName"]) or "n" + bd["fName"]
                 counter_bd = next(
                     (x for x in branch_data if x["fName"] == counter_nm), None
                 )
@@ -2160,6 +2177,17 @@ in file {source.file_path} in directory {source.path}"""
         self._file._cascading.streamers.update_streamers(self._file.sink, streamers)
 
 
+def _is_jagged(data):
+    if isinstance(data, awkward.Array):
+        return data.ndim > 1 and not data.layout.purelist_isregular
+    if isinstance(data, (list, tuple)):
+        try:
+            return numpy.asarray(data).dtype.kind == "O"
+        except ValueError:
+            return True
+    return False
+
+
 class WritableTree:
     """
     Args:
@@ -2425,6 +2453,9 @@ class WritableTree:
             would silently drop them, so this raises ``NotImplementedError``
             for such trees instead. This mirrors the same restriction on
             :ref:`uproot.writing.writable.WritableTree.extend`.
+
+            Jagged (variable-length) branches are not yet supported and raise
+            ``NotImplementedError``.
         """
         if self._file.sink.closed:
             raise ValueError("cannot modify a TTree in a closed file")
@@ -2449,6 +2480,11 @@ class WritableTree:
         num_entries = casc._num_entries
 
         for branch_name, branch_data in branches.items():
+            if _is_jagged(branch_data):
+                raise NotImplementedError(
+                    f"branch {branch_name!r} is a jagged array; add_branches does not "
+                    "yet support jagged branches (which require a counter branch)"
+                )
             arr = numpy.asarray(branch_data)
             if len(arr) != num_entries:
                 raise ValueError(
@@ -2467,25 +2503,13 @@ class WritableTree:
                 "add_branches for files with TBranchElement (or other non-TBranch) "
                 "branches is not yet supported via the cascade approach"
             )
-        if casc._has_divergent_baskets:
-            # this cascade tracks one fWriteBasket/fMaxBaskets pair per tree, not
-            # per branch, but nothing guarantees every branch in a preexisting
-            # tree agrees on either (e.g. a ROOT-written tree whose branches
-            # have different per-entry sizes, and so flush baskets at different
-            # rates); rewriting the branch listing would apply one branch's
-            # basket bookkeeping to every branch, corrupting the others
-            raise NotImplementedError(
-                "add_branches for a TTree whose branches do not all have the same "
-                "number of baskets / basket capacity is not yet supported via the "
-                "cascade approach"
-            )
         if casc._num_baskets > 1:
             # add_branches always back-fills a new branch with exactly one
             # basket spanning every existing entry (see below), regardless of
             # how many baskets the tree's other branches already have. On a
             # tree with only one basket that coincidentally matches, but on
             # any tree with more, it would silently create the very
-            # divergent-basket-count state the guard above exists to reject
+            # divergent-basket-count state extend() already refuses to run on
             # -- turning every future extend() on this tree into a permanent
             # NotImplementedError, with no warning at add_branches() time.
             raise NotImplementedError(
@@ -2525,52 +2549,29 @@ class WritableTree:
         # redundantly do it again
         casc._needs_relocation_before_extend = False
 
-        # write one basket per new branch
-        old_num_baskets = casc._num_baskets
-        casc._num_baskets = 0
-        for branch_name, branch_data in branches.items():
-            arr = numpy.asarray(branch_data).astype(
-                casc._branch_data[casc._branch_lookup[branch_name]]["dtype"]
-            )
-            totbytes, zipbytes, location = casc.write_np_basket(
-                self._file.sink, branch_name, compression, arr
-            )
-            datum = casc._branch_data[casc._branch_lookup[branch_name]]
-            datum["fTotBytes"] += totbytes
-            datum["fZipBytes"] += zipbytes
-            datum["fBasketBytes"][0] = zipbytes
-            datum["fBasketSeek"][0] = location
-            datum["fBasketEntry"][1] = num_entries
-            datum["arrays_write_start"] = 0
-            datum["arrays_write_stop"] = 1
-            casc._metadata["fTotBytes"] += totbytes
-            casc._metadata["fZipBytes"] += zipbytes
+        # write one basket per new branch, matching the existing branches (the
+        # guard above ensures they have at most one); an empty tree has no
+        # baskets yet, and the next extend() writes basket 0 for every branch
+        if casc._num_baskets == 1:
+            for branch_name, branch_data in branches.items():
+                arr = numpy.asarray(branch_data).astype(
+                    casc._branch_data[casc._branch_lookup[branch_name]]["dtype"]
+                )
+                totbytes, zipbytes, location = casc.write_np_basket(
+                    self._file.sink, branch_name, compression, arr
+                )
+                datum = casc._branch_data[casc._branch_lookup[branch_name]]
+                datum["fTotBytes"] += totbytes
+                datum["fZipBytes"] += zipbytes
+                datum["fBasketBytes"][0] = zipbytes
+                datum["fBasketSeek"][0] = location
+                datum["fBasketEntry"][1] = num_entries
+                datum["arrays_write_start"] = 0
+                datum["arrays_write_stop"] = 1
+                casc._metadata["fTotBytes"] += totbytes
+                casc._metadata["fZipBytes"] += zipbytes
 
-        casc._num_baskets = old_num_baskets
         casc.write_updates(self._file.sink)
-
-        # write_updates() stamps every branch's fWriteBasket with the tree-wide
-        # casc._num_baskets (old_num_baskets) -- correct for the pre-existing
-        # branches, which really do have that many baskets, but wrong for the
-        # brand-new branches just written above: add_branches always writes
-        # exactly one basket per new branch (indexed 0 above), so their real
-        # fWriteBasket is 1, not old_num_baskets. Left uncorrected, the file
-        # claims baskets the new branch never wrote, and reading it back later
-        # fails to account for the true number of entries.
-        base = casc._key.seek_location + casc._key.num_bytes
-        for branch_name in branches:
-            datum = casc._branch_data[casc._branch_lookup[branch_name]]
-            self._file.sink.write(
-                base + datum["metadata_start"],
-                uproot.models.TBranch._tbranch13_format1.pack(
-                    0,  # fCompress (write_updates also always writes 0 here; see its comment)
-                    datum["fBasketSize"],
-                    datum["fEntryOffsetLen"],
-                    1,  # fWriteBasket -- this branch has exactly one basket
-                    casc._num_entries,  # fEntryNumber
-                ),
-            )
-
         self._file.sink.flush()
 
         # update in-memory directory cache
@@ -2764,13 +2765,7 @@ class WritableTree:
                 # awkward-internal "cannot convert to RegularArray" error for
                 # any jagged new field, instead of saying plainly that this
                 # isn't supported.
-                _jagged_new_fields = [
-                    k
-                    for k, v in new_fields.items()
-                    if isinstance(v, awkward.Array)
-                    and v.ndim > 1
-                    and not v.layout.purelist_isregular
-                ]
+                _jagged_new_fields = [k for k, v in new_fields.items() if _is_jagged(v)]
                 if _jagged_new_fields:
                     raise NotImplementedError(
                         f"accept_new_fields does not yet support jagged (variable-length) "

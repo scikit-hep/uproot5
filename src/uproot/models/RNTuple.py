@@ -85,6 +85,25 @@ def _envelop_header(chunk, cursor, context):
     return {"env_type_id": env_type_id, "env_length": env_length}
 
 
+def _key_prefixes(keys):
+    """
+    Returns the set of ``keys`` together with every prefix of a key that ends just
+    before a ``.``, so that ``path in _key_prefixes(keys)`` gives the same answer as
+    ``any(key == path or key.startswith(f"{path}.") for key in keys)``.
+    """
+    prefixes = set(keys)
+    for key in keys:
+        cut = key.rfind(".")
+        while cut != -1:
+            prefix = key[:cut]
+            if prefix in prefixes:
+                # its prefixes are already there, or get added when the loop reaches it
+                break
+            prefixes.add(prefix)
+            cut = key.rfind(".", 0, cut)
+    return prefixes
+
+
 class Model_ROOT_3a3a_RNTuple(uproot.behaviors.RNTuple.RNTuple, uproot.model.Model):
     """
     A versionless :doc:`uproot.model.Model` for ``ROOT::RNTuple``.
@@ -575,6 +594,13 @@ in file {self.file.file_path}"""
 
         Returns an Awkward Form describing the field.
         """
+        return self._field_form(this_id, _key_prefixes(keys), ak_add_doc=ak_add_doc)
+
+    def _field_form(self, this_id, key_prefixes, ak_add_doc=False):
+        """
+        Same as ``field_form``, but takes the keys as returned by ``_key_prefixes``,
+        so that they are only processed once per form.
+        """
 
         field_records = self.field_records
         this_record = field_records[this_id]
@@ -611,7 +637,7 @@ in file {self.file.file_path}"""
             if this_id in self._related_ids:
                 # std::array has only one subfield
                 child_id = self._related_ids[this_id][0]
-                inner = self.field_form(child_id, keys, ak_add_doc=ak_add_doc)
+                inner = self._field_form(child_id, key_prefixes, ak_add_doc=ak_add_doc)
             else:
                 # std::bitset has no subfields, so we use it directly
                 inner = self.col_form(this_id)
@@ -628,15 +654,11 @@ in file {self.file.file_path}"""
                 namelist = []
                 for i in newids:
                     if (
-                        any(
-                            key.startswith(f"{self.all_fields[i].path}.")
-                            or key == self.all_fields[i].path
-                            for key in keys
-                        )
+                        self.all_fields[i].path in key_prefixes
                         or self.all_fields[i].in_variant
                     ):
                         recordlist.append(
-                            self.field_form(i, keys, ak_add_doc=ak_add_doc)
+                            self._field_form(i, key_prefixes, ak_add_doc=ak_add_doc)
                         )
                         namelist.append(field_records[i].field_name)
                 if all(name == f"_{i}" for i, name in enumerate(namelist)):
@@ -657,7 +679,7 @@ in file {self.file.file_path}"""
             keyname = f"column-{col_id}"
             #  this only has one child
             child_id = self._related_ids[this_id][0]
-            inner = self.field_form(child_id, keys, ak_add_doc=ak_add_doc)
+            inner = self._field_form(child_id, key_prefixes, ak_add_doc=ak_add_doc)
             idx_type = (
                 "i32" if self._column_records_dict[cfid][0].nbits == 32 else "i64"
             )
@@ -687,14 +709,12 @@ in file {self.file.file_path}"""
             record_names = []
             for i in newids:
                 if (
-                    any(
-                        key.startswith(f"{self.all_fields[i].path}.")
-                        or key == self.all_fields[i].path
-                        for key in keys
-                    )
+                    self.all_fields[i].path in key_prefixes
                     or self.all_fields[i].in_variant
                 ):
-                    recordlist.append(self.field_form(i, keys, ak_add_doc=ak_add_doc))
+                    recordlist.append(
+                        self._field_form(i, key_prefixes, ak_add_doc=ak_add_doc)
+                    )
                     namelist.append(self.all_fields[i].name)
                     record_names.append(field_records[i].field_name)
             if all(re.fullmatch(r"_[0-9]+", name) is not None for name in record_names):
@@ -715,7 +735,7 @@ in file {self.file.file_path}"""
                 )
             ]
             for i in newids:
-                new_form = self.field_form(i, keys, ak_add_doc=ak_add_doc)
+                new_form = self._field_form(i, key_prefixes, ak_add_doc=ak_add_doc)
                 if not new_form.is_option and not new_form.is_union:
                     new_form = ak.forms.UnmaskedForm(new_form, form_key="")
                 recordlist.append(new_form)
@@ -2053,20 +2073,24 @@ class RField(uproot.behaviors.RNTuple.HasFields):
         # TODO: The conversion would be ideally be fully handled by Awkward.
         if library.name in ("np", "pd"):
             try:
-                numpy_data = arrays.to_numpy()
-            except (ValueError, TypeError):
-                try:
-                    numpy_data = uproot.behaviors.RNTuple._awkward_to_numpy(arrays)
-                except Exception:
-                    msg = f"Field {self.name} cannot be converted to NumPy/Pandas"
-                    raise ValueError(msg) from None
-            if library.name == "pd":
-                pd = uproot.extras.pandas()
-                pandas_index = uproot.interpretation.library._pandas_basic_index(
-                    pd, entry_start, entry_start + len(arrays)
-                )
-                pandas_data = pd.Series(numpy_data, index=pandas_index)
-                return pandas_data
+                numpy_data = uproot.behaviors.RNTuple._rntuple_to_numpy(arrays)
+                if library.name == "pd":
+                    pd = uproot.extras.pandas()
+                    pandas_index = uproot.interpretation.library._pandas_basic_index(
+                        pd, entry_start, entry_start + len(arrays)
+                    )
+                    if (
+                        getattr(numpy_data, "ndim", 1) > 1
+                        or getattr(numpy_data.dtype, "names", None) is not None
+                    ):
+                        pandas_series_data = list(numpy_data)
+                    else:
+                        pandas_series_data = numpy_data
+                    pandas_data = pd.Series(pandas_series_data, index=pandas_index)
+                    return pandas_data
+            except Exception:
+                msg = f"Field {self.name} cannot be converted to NumPy/Pandas"
+                raise ValueError(msg) from None
             return numpy_data
 
         return arrays

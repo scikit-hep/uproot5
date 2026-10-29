@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import sys
 import warnings
-from collections.abc import Iterable, Mapping
+from collections.abc import Mapping
 from functools import partial
 
 import awkward as ak
@@ -176,6 +176,7 @@ def iterate(
       array from ``RNTuples``.
     * :doc:`uproot._dask.dask`: returns an unevaluated Dask array from ``RNTuples``.
     """
+    uproot._util.check_step_size(step_size)
     files = uproot._util.regularize_files(files, steps_allowed=False, **options)
     library = uproot.interpretation.library._regularize_library(library)
 
@@ -594,15 +595,15 @@ class HasFields(Mapping):
         record_list = []
         if self is rntuple:
             field_path = None
+            key_prefixes = uproot.models.RNTuple._key_prefixes(keys)
             for field in self.fields:
                 # the field needs to be in the keys or be a parent of a field in the keys
-                if any(
-                    key.startswith(f"{field.name}.") or key == field.name
-                    for key in keys
-                ):
+                if field.name in key_prefixes:
                     top_names.append(field.name)
                     record_list.append(
-                        rntuple.field_form(field.field_id, keys, ak_add_doc=ak_add_doc)
+                        rntuple._field_form(
+                            field.field_id, key_prefixes, ak_add_doc=ak_add_doc
+                        )
                     )
         else:
             # If it is a subfield of a collection or a std::array (a LEAF with a nonzero
@@ -920,19 +921,30 @@ class HasFields(Mapping):
             numpy_data = {}
             for f in arrays.fields:
                 try:
-                    numpy_data[f] = arrays[f].to_numpy()
-                except (ValueError, TypeError):
-                    try:
-                        numpy_data[f] = _awkward_to_numpy(arrays[f])
-                    except Exception:
-                        msg = f"Field {f} cannot be converted to NumPy/Pandas"
-                        raise ValueError(msg) from None
+                    numpy_data[f] = _rntuple_to_numpy(arrays[f])
+                except Exception:
+                    msg = f"Field {f} cannot be converted to NumPy/Pandas"
+                    raise ValueError(msg) from None
             if library.name == "pd":
                 pd = uproot.extras.pandas()
                 pandas_index = uproot.interpretation.library._pandas_basic_index(
                     pd, entry_start, entry_start + len(arrays)
                 )
-                pandas_data = pd.DataFrame(numpy_data, index=pandas_index)
+                pandas_dict = {}
+                for f, arr in numpy_data.items():
+                    try:
+                        if getattr(arr, "ndim", 1) > 1:
+                            pandas_dict[f] = list(arr)
+                        else:
+                            pandas_dict[f] = arr
+                    except Exception:
+                        msg = f"Field {f} cannot be converted to NumPy/Pandas"
+                        raise ValueError(msg) from None
+                try:
+                    pandas_data = pd.DataFrame(pandas_dict, index=pandas_index)
+                except Exception:
+                    msg = "RNTuple fields cannot be converted to NumPy/Pandas"
+                    raise ValueError(msg) from None
                 arrays = pandas_data
             else:
                 arrays = numpy_data
@@ -1095,8 +1107,9 @@ class HasFields(Mapping):
             )
             if report:
                 sub_entry_stop = min(start + step_size, entry_stop)
-                yield arrays, uproot.behaviors.TBranch.Report(
-                    self, start, sub_entry_stop
+                yield (
+                    arrays,
+                    uproot.behaviors.TBranch.Report(self, start, sub_entry_stop),
                 )
             else:
                 yield arrays
@@ -1601,7 +1614,9 @@ class HasFields(Mapping):
         if len(akform.contents) == 0:
             return
 
-        return _num_entries_for(self, akform, target_num_bytes, entry_start, entry_stop)
+        return _num_entries_for(
+            self.ntuple, akform, target_num_bytes, entry_start, entry_stop
+        )
 
     def __getitem__(self, where):
         original_where = where
@@ -1873,13 +1888,16 @@ def _get_recursive(hasfields, where):
 
 
 def _num_entries_for(ntuple, akform, target_num_bytes, entry_start, entry_stop):
+    # a field or a set of fields has the cluster metadata on its RNTuple
+    ntuple = ntuple.ntuple
     clusters = ntuple.cluster_summaries
     cluster_starts = numpy.array([c.num_first_entry for c in clusters])
 
     start_cluster_idx = (
         numpy.searchsorted(cluster_starts, entry_start, side="right") - 1
     )
-    stop_cluster_idx = numpy.searchsorted(cluster_starts, entry_stop, side="right")
+    # a cluster that starts at entry_stop has no entries in the range
+    stop_cluster_idx = numpy.searchsorted(cluster_starts, entry_stop, side="left")
 
     target_cols = []
     _recursive_find(akform, target_cols)
@@ -1893,7 +1911,11 @@ def _num_entries_for(ntuple, akform, target_num_bytes, entry_start, entry_stop):
             )
             total_bytes += n_entries * dt.itemsize
 
-    total_entries = entry_stop - entry_start
+    # the bytes are those of whole clusters, so they are divided over the entries of
+    # those clusters rather than over the entries in the range
+    total_entries = sum(
+        c.num_entries for c in clusters[start_cluster_idx:stop_cluster_idx]
+    )
     if total_bytes == 0:
         num_entries = 0
     else:
@@ -1904,6 +1926,7 @@ def _num_entries_for(ntuple, akform, target_num_bytes, entry_start, entry_stop):
 
 
 def _regularize_step_size(ntuple, akform, step_size, entry_start, entry_stop):
+    uproot._util.check_step_size(step_size)
     if uproot._util.isint(step_size):
         return step_size
     target_num_bytes = uproot._util.memory_size(
@@ -2067,32 +2090,157 @@ def _fill_container_dict(container_dict, content, key, dtype_byte, dtype):
             container_dict[f"{key}-offsets"] = content
 
 
-def _awkward_to_numpy(data):
-    if isinstance(data, str):
-        return data
+_OPTION_FORMS = (
+    ak.forms.IndexedOptionForm,
+    ak.forms.ByteMaskedForm,
+    ak.forms.BitMaskedForm,
+    ak.forms.UnmaskedForm,
+)
 
-    if isinstance(data, ak.Array) and isinstance(data.layout, ak.contents.RecordArray):
-        try:
-            return data.to_numpy()
-        except (TypeError, ValueError):
-            fields = data.fields
-            arrays = [_awkward_to_numpy(data[f]) for f in fields]
-            dtypes = [arr.dtype if len(arr.shape) == 1 else "O" for arr in arrays]
-            tuple_array = [tuple(arr[i] for arr in arrays) for i in range(len(data))]
-            del arrays
-            return numpy.array(
-                tuple_array, dtype=list(zip(fields, dtypes, strict=True))
-            )
 
-    if not isinstance(data, Iterable) or len(data) == 0:
+def _is_string_form(form):
+    curr = form
+    while isinstance(curr, _OPTION_FORMS):
+        curr = curr.content
+    if isinstance(curr, (ak.forms.ListOffsetForm, ak.forms.ListForm)):
+        if curr.parameters.get("__array__") in ("string", "bytestring"):
+            return True
+        if (
+            isinstance(curr.content, ak.forms.NumpyForm)
+            and curr.content.parameters.get("__array__") == "char"
+        ):
+            return True
+    return False
+
+
+def _form_to_numpy_dtype(form, initial_sizes=()):
+    sizes = list(initial_sizes)
+    curr = form
+    while isinstance(curr, ak.forms.RegularForm):
+        sizes.append(curr.size)
+        curr = curr.content
+
+    if isinstance(curr, ak.forms.NumpyForm):
+        inner_dt = numpy.dtype(curr.primitive)
+        shape = tuple(sizes) + curr.inner_shape
+        if shape:
+            return numpy.dtype((inner_dt, shape))
+        return inner_dt
+
+    if isinstance(curr, ak.forms.RecordForm):
+        field_dtypes = []
+        for field in curr.fields:
+            content_form = curr.content(field)
+            field_dtypes.append((field, _form_to_numpy_dtype(content_form)))
+        record_dtype = numpy.dtype(field_dtypes)
+        if sizes:
+            return numpy.dtype((record_dtype, tuple(sizes)))
+        return record_dtype
+
+    if sizes:
+        return numpy.dtype((numpy.dtype(object), tuple(sizes)))
+    return numpy.dtype(object)
+
+
+def _rntuple_to_numpy(data):
+    if isinstance(data, ak.contents.Content):
+        data = ak.Array(data)
+    elif not isinstance(data, ak.Array):
         return numpy.asarray(data)
 
-    converted = [_awkward_to_numpy(item) for item in data]
+    form = data.layout.form
 
-    shapes = [c.shape if isinstance(c, numpy.ndarray) else (1,) for c in converted]
-    if len(set(shapes)) == 1:
-        return numpy.array(converted)
+    if _is_string_form(form):
+        lst = ak.to_list(data)
+        out = numpy.empty(len(lst), dtype=object)
+        out[:] = lst
+        return out
 
-    arr = numpy.empty(len(converted), dtype=object)
-    arr[:] = converted
-    return arr
+    if isinstance(form, _OPTION_FORMS):
+        curr = form
+        while isinstance(curr, (ak.forms.RegularForm, *_OPTION_FORMS)):
+            curr = curr.content
+        if isinstance(curr, ak.forms.NumpyForm):
+            return ak.to_numpy(data)
+        else:
+            if len(data) == 0:
+                return numpy.empty(0, dtype=object)
+            mask = ak.is_none(data).to_numpy()
+            projected = ak.Array(data.layout.project())
+            converted_proj = _rntuple_to_numpy(projected)
+            out = numpy.full(len(data), None, dtype=object)
+            for idx, val in zip(numpy.flatnonzero(~mask), converted_proj, strict=True):
+                out[idx] = val
+            return out
+
+    if isinstance(form, (ak.forms.ListOffsetForm, ak.forms.ListForm)):
+        if len(data) == 0:
+            return numpy.empty(0, dtype=object)
+        lo = data.layout.to_ListOffsetArray64(False)
+        offsets = numpy.asarray(lo.offsets)
+        start = offsets[0]
+        stop = offsets[-1]
+        inner = _rntuple_to_numpy(ak.Array(lo.content[start:stop]))
+        splits = numpy.split(inner, offsets[1:-1] - start)
+        out = numpy.empty(len(splits), dtype=object)
+        out[:] = splits
+        return out
+
+    if isinstance(form, ak.forms.RegularForm):
+        curr = form
+        while isinstance(curr, (ak.forms.RegularForm, *_OPTION_FORMS)):
+            curr = curr.content
+        if isinstance(curr, ak.forms.NumpyForm):
+            return ak.to_numpy(data)
+        else:
+            if len(data) == 0:
+                dt = _form_to_numpy_dtype(form)
+                base_dt, inner_shape = uproot.interpretation.numerical._dtype_shape(dt)
+                return numpy.empty((0, *inner_shape), dtype=base_dt)
+            flat = ak.flatten(data, axis=1)
+            flat_out = _rntuple_to_numpy(flat)
+            return flat_out.reshape((len(data), form.size, *flat_out.shape[1:]))
+
+    if isinstance(form, ak.forms.RecordForm):
+        try:
+            return ak.to_numpy(data)
+        except Exception:
+            pass
+
+        record_dtype = _form_to_numpy_dtype(form)
+        out = numpy.empty(len(data), dtype=record_dtype)
+        for field in form.fields:
+            c = _rntuple_to_numpy(data[field])
+            field_dt = record_dtype[field]
+            if field_dt.base == numpy.dtype(object):
+                if field_dt.shape == () and c.ndim > 1:
+                    c_out = numpy.empty(len(c), dtype=object)
+                    if numpy.ma.isMaskedArray(c):
+                        mask = numpy.ma.getmaskarray(c)
+                        for i in range(len(c)):
+                            m = mask[i]
+                            if m.all():
+                                c_out[i] = None
+                            elif m.any():
+                                row = c.data[i].astype(object)
+                                row[m] = None
+                                c_out[i] = row
+                            else:
+                                c_out[i] = c.data[i]
+                    else:
+                        for i in range(len(c)):
+                            c_out[i] = c[i]
+                    out[field] = c_out
+                elif numpy.ma.isMaskedArray(c):
+                    c_obj = c.data.astype(object)
+                    c_obj[numpy.ma.getmaskarray(c)] = None
+                    out[field] = c_obj
+                elif c.dtype != object:
+                    out[field] = c.astype(object)
+                else:
+                    out[field] = c
+            else:
+                out[field] = c
+        return out
+
+    return ak.to_numpy(data)
