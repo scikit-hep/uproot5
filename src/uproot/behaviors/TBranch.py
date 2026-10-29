@@ -661,10 +661,7 @@ def _ak_add_doc(array, hasbranches, ak_add_doc):
                 array.layout.parameters["__doc__"] = hasbranches.title
         elif isinstance(ak_add_doc, dict):
             array.layout.parameters.update(
-                {
-                    key: hasbranches.__getattribute__(value)
-                    for key, value in ak_add_doc.items()
-                }
+                {key: getattr(hasbranches, value) for key, value in ak_add_doc.items()}
             )
     return array
 

@@ -846,10 +846,7 @@ def get_ttree_form(
                 content_parameters["__doc__"] = branch.title
         elif isinstance(ak_add_doc, dict):
             content_parameters.update(
-                {
-                    key: branch.__getattribute__(value)
-                    for key, value in ak_add_doc.items()
-                }
+                {key: getattr(branch, value) for key, value in ak_add_doc.items()}
             )
         if len(content_parameters.keys()) != 0:
             content_form = content_form.copy(parameters=content_parameters)
