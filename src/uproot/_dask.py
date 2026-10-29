@@ -93,9 +93,10 @@ def dask(
             array. ``library='pd'`` has not been implemented yet and will raise a
             ``NotImplementedError``.
         ak_add_doc (bool | dict ): If True and ``library="ak"``, add the TBranch ``title``
-            to the Awkward ``__doc__`` parameter of the array.
-            if dict = {key:value} and ``library="ak"``, add the TBranch ``value`` to the
-            Awkward ``key`` parameter of the array.
+            or RField ``description`` to the Awkward ``__doc__`` parameter of the array.
+            if dict = {key:value} and ``library="ak"``, add the TBranch or RField ``value`` to
+            the Awkward ``key`` parameter of the array. A ``value`` of ``"title"`` (the TBranch
+            attribute) reads the RField ``description``.
         custom_classes (None or dict): If a dict, override the classes from
             the :doc:`uproot.reading.ReadOnlyFile` or ``uproot.classes``.
         allow_missing (bool): If True, skip over any files that do not contain
@@ -1686,44 +1687,6 @@ which has {num_entries} entries"""
         )
 
 
-def _get_ttree_form(
-    awkward,
-    ttree,
-    common_keys,
-    ak_add_doc,
-):
-    contents = []
-    for key in common_keys:
-        branch = ttree[key]
-        content_form = branch.interpretation.awkward_form(ttree.file)
-        content_parameters = {}
-        if isinstance(ak_add_doc, bool):
-            if ak_add_doc:
-                content_parameters["__doc__"] = branch.title
-        elif isinstance(ak_add_doc, dict):
-            content_parameters.update(
-                {key: getattr(branch, value) for key, value in ak_add_doc.items()}
-            )
-        if len(content_parameters.keys()) != 0:
-            content_form = content_form.copy(
-                parameters={**content_form.parameters, **content_parameters}
-            )
-        contents.append(content_form)
-
-    if isinstance(ak_add_doc, bool):
-        parameters = {"__doc__": ttree.title} if ak_add_doc else None
-    elif isinstance(ak_add_doc, dict):
-        parameters = (
-            {"__doc__": getattr(ttree, ak_add_doc["__doc__"])}
-            if "__doc__" in ak_add_doc.keys()
-            else None
-        )
-    else:
-        parameters = None
-
-    return awkward.forms.RecordForm(contents, common_keys, parameters=parameters)
-
-
 def _leaf_to_tree(obj):
     """A leaf ``TBranch`` given as the object path stands for its parent ``TTree`` with that one
     branch selected: ``(tree, leaf)``, with ``leaf`` ``None`` for any other object."""
@@ -1917,7 +1880,7 @@ def _base_form_of(ttree, common_keys, ak_add_doc, form_mapping):
             filter_field=_filter_field_by_key(ttree, common_keys),
             ak_add_doc=ak_add_doc,
         )[0]
-    base_form = _get_ttree_form(awkward, ttree, common_keys, ak_add_doc)
+    base_form = uproot._util.get_ttree_form(ttree, common_keys, ak_add_doc)
     if form_mapping is not None:
         base_form.parameters["typenames"] = ttree.typenames()
     return base_form

@@ -654,15 +654,11 @@ class Report:
         )
 
 
-def _ak_add_doc(array, hasbranches, ak_add_doc):
+def _ak_add_doc(array, hasbranches, ak_add_doc, top_level):
     if type(array).__module__ == "awkward.highlevel":
-        if isinstance(ak_add_doc, bool):
-            if ak_add_doc:
-                array.layout.parameters["__doc__"] = hasbranches.title
-        elif isinstance(ak_add_doc, dict):
-            array.layout.parameters.update(
-                {key: getattr(hasbranches, value) for key, value in ak_add_doc.items()}
-            )
+        array.layout.parameters.update(
+            uproot._util.ak_add_doc_parameters(hasbranches, ak_add_doc, top_level)
+        )
     return array
 
 
@@ -1374,7 +1370,7 @@ class HasBranches(Mapping):
         ]
 
         return _ak_add_doc(
-            library.group(output, expression_context, how), self, ak_add_doc
+            library.group(output, expression_context, how), self, ak_add_doc, True
         )
 
     def iterate(
@@ -1614,6 +1610,7 @@ class HasBranches(Mapping):
                     library.group(output, minimized_expression_context, how),
                     self,
                     ak_add_doc,
+                    True,
                 )
 
                 # no longer needed; save memory
@@ -3809,7 +3806,7 @@ def _fix_asgrouped(
                     subcontext.append((subname, limited_context[subname]))
 
                 arrays[branch.cache_key] = _ak_add_doc(
-                    library.group(subarrays, subcontext, how), branch, ak_add_doc
+                    library.group(subarrays, subcontext, how), branch, ak_add_doc, False
                 )
 
                 index_start = index_stop
