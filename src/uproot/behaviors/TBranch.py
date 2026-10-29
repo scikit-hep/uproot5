@@ -2862,6 +2862,8 @@ in file {self._file.file_path}"""
         if 0 <= basket_num < self._num_normal_baskets:
             start = self.member("fBasketSeek")[basket_num]
             stop = start + uproot.reading._key_format_big.size
+            # xrootd doesn't like NumPy ints
+            start, stop = int(start), int(stop)
             cursor = uproot.source.cursor.Cursor(start)
 
             # Chunk will not be retained; we don't have to detach_memmap()
