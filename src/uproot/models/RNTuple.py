@@ -928,6 +928,9 @@ in file {self.file.file_path}"""
         )
         res = numpy.empty(total_length, dtype)
         if len(starts) == 0:
+            # no clusters are read, so the array is only padding (and, for offsets,
+            # the leading zero)
+            res[:] = 0
             return res
 
         # Initialize the padding elements. Note that it might be different from missing_element_padding
