@@ -14,11 +14,11 @@ import numbers
 import os
 import re
 import sys
+import urllib.parse
 import warnings
 from collections.abc import Iterable
 from pathlib import Path
 from typing import IO
-from urllib.parse import urlparse
 
 import awkward
 import fsspec
@@ -277,6 +277,89 @@ def regularize_path(path):
         path = _fix_url_path.sub(r"\1/\3", os.fspath(path))
 
     return path
+
+
+def is_remote_url(file_path: str) -> bool:
+    """
+    Returns True if file_path is a URL with a remote scheme (not file or local).
+    """
+    if "://" not in file_path:
+        return False
+    parsed = urllib.parse.urlsplit(file_path)
+    return parsed.scheme not in ("", "file", "local")
+
+
+def _normalize_remote_url(file_path: str) -> str:
+    # fsspec's own normal form keeps each protocol's semantics: object stores and HTTP servers
+    # can hold different objects at "a//b" and "a/b", so no POSIX normalization on top of it
+    try:
+        fs, path = fsspec.core.url_to_fs(file_path)
+        return fs.unstrip_protocol(path)
+    except Exception:
+        return file_path
+
+
+def canonical_path(file_path, seen_inodes=None):
+    """
+    Returns a canonical identity key for a file path or URL for deduplication; it is a key, not
+    a path to open. Local paths and file:// URLs are normalized via ``os.path.realpath``; remote
+    URLs keep fsspec's normal form for their protocol. With ``seen_inodes``, a dict shared
+    across calls, local files that are the same inode (hard links, case-insensitive spellings)
+    get the same key.
+    """
+    if not isinstance(file_path, (str, bytes, os.PathLike)):
+        return file_path
+
+    if isinstance(file_path, os.PathLike):
+        file_path = os.fspath(file_path)
+    if isinstance(file_path, bytes):
+        file_path = os.fsdecode(file_path)
+
+    if is_remote_url(file_path):
+        return _normalize_remote_url(file_path)
+
+    parsed = urllib.parse.urlsplit(file_path)
+    if parsed.scheme in ("file", "local"):
+        if parsed.netloc and parsed.netloc != "localhost":
+            if (
+                sys.platform == "win32"
+                and len(parsed.netloc) >= 2
+                and parsed.netloc[1] == ":"
+            ):
+                from urllib.request import url2pathname
+
+                file_path = url2pathname(parsed.netloc + parsed.path)
+            else:
+                return file_path  # another host's file: its path semantics are not ours
+        else:
+            from urllib.request import url2pathname
+
+            file_path = url2pathname(parsed.path)
+
+    expanded = os.path.expanduser(file_path)
+    resolved = os.path.realpath(expanded)
+
+    if seen_inodes is not None:
+        try:
+            st = os.stat(resolved)
+            key = (st.st_dev, st.st_ino)
+            if key in seen_inodes:
+                return seen_inodes[key]
+            seen_inodes[key] = resolved
+        except OSError:
+            pass
+
+    return resolved
+
+
+def canonical_object_path(object_path):
+    """
+    Returns a canonical identity key for an object path inside a ROOT file for deduplication; it
+    is a key, not a path to read. Leading and trailing slashes and the ``;cycle`` suffix are
+    dropped, so cycles of one name share a key; ``None`` or an empty path, which names the file's
+    only ``TTree``, is ``""``.
+    """
+    return (object_path or "").strip().strip("/").partition(";")[0].rstrip("/")
 
 
 def file_object_path_split(urlpath: str) -> tuple[str, str | None]:
@@ -926,9 +1009,7 @@ def _regularize_files_inner(
             file_path, object_path = files, None
 
         # This parses the windows drive letter as a scheme!
-        parsed_url = urlparse(file_path)
-        scheme = parsed_url.scheme
-        if "://" in file_path and scheme not in ("file", "local"):
+        if is_remote_url(file_path):
             # user specified a protocol, so we use fsspec to expand the glob and return the full paths
             file_names_full = [
                 file.full_name

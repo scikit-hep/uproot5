@@ -342,7 +342,7 @@ def _resolve_entries(
 ):
     """Every entry of ``files`` as ``(file_path, tree_path, steps, found)``, where ``found`` is the
     opened object (a leaf ``TBranch`` included) or ``None`` for a file left unopened; the files
-    opened go in ``directories``, ``{file_path: directory}``, for the caller to close even when
+    opened go in ``directories``, ``{canonical_path(file_path): directory}``, for the caller to close even when
     this raises. An entry whose file lacks the object is dropped under ``allow_missing``.
 
     A file is opened when it holds the first entry that has the object, with ``open_files``, when
@@ -352,26 +352,31 @@ def _resolve_entries(
     ``/``, which could end in a ``TTree`` or in a ``TBranch``; any other path names a ``TTree``,
     or the first entry's leaf ``TBranch`` when it is the first entry's path. Every entry must select the first entry's
     leaf ``TBranch``, or none when the first names a ``TTree``."""
-    listed = collections.Counter(_file_and_path(f, o)[0] for f, o, *_ in files)
+    seen_inodes = {}
+    entries = []
+    for given, given_path, *steps in files:
+        file_path, _ = _file_and_path(given, given_path)
+        canon = uproot._util.canonical_path(file_path, seen_inodes=seen_inodes)
+        entries.append((given, given_path, steps, canon))
+
+    listed = collections.Counter(canon for *_, canon in entries)
     first_path = leaf = unset
     resolved = []
-    for given, given_path, *steps in files:
+    for given, given_path, steps, canon in entries:
         file_path, object_path = _file_and_path(given, given_path)
         if isinstance(given, HasBranches):
             found = given
         elif (
             first_path is unset
             or open_files
-            or listed[file_path] > 1
+            or listed[canon] > 1
             or ":" in (object_path or "")
             or (object_path != first_path and "/" in (object_path or "").strip("/"))
         ):
-            if file_path not in directories:
-                directories[file_path] = _open_directory(
-                    file_path, custom_classes, options
-                )
+            if canon not in directories:
+                directories[canon] = _open_directory(file_path, custom_classes, options)
             found = uproot._util.object_in_directory(
-                directories[file_path], object_path or None, allow_missing
+                directories[canon], object_path or None, allow_missing
             )
             if found is None:
                 continue
