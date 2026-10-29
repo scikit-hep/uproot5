@@ -52,6 +52,23 @@ def _data_path(filename, raise_missing=True, cache_dir=None):
 skhep_testdata.data_path = _data_path
 
 
+try:
+    import graphed
+except ImportError:
+    graphed = None
+
+
+@pytest.fixture(autouse=True)
+def fresh_graphed_default():
+    """Each test starts without graphed's default Session and leaves the previous one in place."""
+    if not hasattr(graphed, "set_session"):
+        yield
+        return
+    previous = graphed.set_session(None)
+    yield
+    graphed.set_session(previous)
+
+
 @pytest.fixture(scope="function", autouse=False)
 def reset_classes():
     uproot.model.reset_classes()
