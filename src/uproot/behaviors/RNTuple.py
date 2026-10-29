@@ -652,6 +652,10 @@ class HasFields(Mapping):
                 key: self.__getattribute__(value) for key, value in ak_add_doc.items()
             }
 
+        # A tuple is only kept when all of its fields are selected, since Awkward would
+        # renumber a subset of them and the form's fields would no longer match the RFields
+        if self is rntuple and rntuple.is_tuple and len(top_names) == len(self.fields):
+            top_names = None
         form = ak.forms.RecordForm(
             record_list, top_names, form_key="toplevel", parameters=parameters
         )
@@ -901,16 +905,7 @@ class HasFields(Mapping):
         # If we constructed some parent fields, we need to get back to the requested field
         if field_path is not None:
             for field in field_path[:-1]:
-                if field in arrays.fields:
-                    arrays = arrays[field]
-                # tuples are a trickier since indices no longer match
-                else:
-                    if field.isdigit() and arrays.fields == ["0"]:
-                        arrays = arrays["0"]
-                    else:
-                        raise AssertionError(
-                            "The array was not constructed correctly. Please report this issue."
-                        )
+                arrays = arrays[field]
 
         expression_context = [(f, None) for f in arrays.fields]
 

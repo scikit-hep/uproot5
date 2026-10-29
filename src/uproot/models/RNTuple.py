@@ -85,6 +85,14 @@ def _envelop_header(chunk, cursor, context):
     return {"env_type_id": env_type_id, "env_length": env_length}
 
 
+def _is_tuple_names(names):
+    """
+    Whether the field names ``names`` are those of a tuple: ``_0``, ``_1``, ... in order. Other
+    ``_N`` names would not match the indices of the tuple.
+    """
+    return len(names) > 0 and all(name == f"_{i}" for i, name in enumerate(names))
+
+
 def _key_prefixes(keys):
     """
     Returns the set of ``keys`` together with every prefix of a key that ends just
@@ -154,6 +162,8 @@ in file {self.file.file_path}"""
 
         self._field_records = None
         self._field_names = None
+        self._is_tuple = None
+        self._tuple_field_ids_ = None
         self._column_records = None
         self._alias_column_records = None
         self._related_ids_ = None
@@ -365,6 +375,40 @@ in file {self.file.file_path}"""
         if self._field_names is None:
             self._field_names = [r.field_name for r in self.field_records]
         return self._field_names
+
+    @property
+    def is_tuple(self):
+        """
+        True if the top-level fields of this RNTuple represent a tuple (i.e. they are
+        named ``_0``, ``_1``, ... in order), in which case they are renamed to ``0``,
+        ``1``, ... to match Awkward.
+        """
+        if self._is_tuple is None:
+            top_level_names = [
+                r.field_name
+                for i, r in enumerate(self.field_records)
+                if r.parent_field_id == i
+            ]
+            self._is_tuple = _is_tuple_names(top_level_names)
+        return self._is_tuple
+
+    @property
+    def _tuple_field_ids(self):
+        """
+        The IDs of the record fields that are tuples, i.e. their subfields are named ``_0``,
+        ``_1``, ... in order.
+        """
+        if self._tuple_field_ids_ is None:
+            self._tuple_field_ids_ = {
+                fid
+                for fid, child_ids in self._related_ids.items()
+                if self.field_records[fid].struct_role
+                == uproot.const.RNTupleFieldRole.RECORD
+                and _is_tuple_names(
+                    [self.field_records[i].field_name for i in child_ids]
+                )
+            }
+        return self._tuple_field_ids_
 
     @property
     def column_records(self):
@@ -706,7 +750,6 @@ in file {self.file.file_path}"""
             # go find N in the rest, N is the # of fields in struct
             recordlist = []
             namelist = []
-            record_names = []
             for i in newids:
                 if (
                     self.all_fields[i].path in key_prefixes
@@ -716,8 +759,12 @@ in file {self.file.file_path}"""
                         self._field_form(i, key_prefixes, ak_add_doc=ak_add_doc)
                     )
                     namelist.append(self.all_fields[i].name)
-                    record_names.append(field_records[i].field_name)
-            if all(re.fullmatch(r"_[0-9]+", name) is not None for name in record_names):
+            # A tuple is only kept when all of its fields are selected, since Awkward would
+            # renumber a subset of them and the form's fields would no longer match the RFields.
+            # Empty structs are read as empty tuples.
+            if len(recordlist) == len(newids) and (
+                len(newids) == 0 or this_id in self._tuple_field_ids
+            ):
                 namelist = None
             return ak.forms.RecordForm(
                 recordlist, namelist, form_key="whatever", parameters=parameters
@@ -1862,10 +1909,9 @@ class RField(uproot.behaviors.RNTuple.HasFields):
             # We rename subfields of tuples to match Awkward
             name = self._ntuple.field_records[self._fid].field_name
             if (
-                not self.top_level
-                and self.parent.record.struct_role
-                == uproot.const.RNTupleFieldRole.RECORD
-                and re.fullmatch(r"_[0-9]+", name) is not None
+                self._ntuple.is_tuple
+                if self.top_level
+                else self.parent.field_id in self._ntuple._tuple_field_ids
             ):
                 name = name[1:]
 
@@ -2058,16 +2104,7 @@ class RField(uproot.behaviors.RNTuple.HasFields):
             virtual=virtual,
             access_log=access_log,
         )
-        if self.name in arrays.fields:
-            arrays = arrays[self.name]
-        # tuples are a trickier since indices no longer match
-        else:
-            if self.name.isdigit() and arrays.fields == ["0"]:
-                arrays = arrays["0"]
-            else:
-                raise AssertionError(
-                    "The array was not constructed correctly. Please report this issue."
-                )
+        arrays = arrays[self.name]
         library = uproot.interpretation.library._regularize_library(library)
 
         # TODO: The conversion would be ideally be fully handled by Awkward.
