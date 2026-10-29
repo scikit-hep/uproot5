@@ -860,6 +860,13 @@ class Tree:
                     )
                 )
 
+        # don't write empty TBaskets: ROOT locates an entry's TBasket by binary
+        # search in fBasketEntry, so a zero-entry TBasket (sharing its start
+        # with the next one) can be picked instead, which reads wrong values,
+        # also after hadd (https://github.com/scikit-hep/uproot5/issues/756)
+        if num_entries == 0:
+            return
+
         # actually write baskets into the file
         uncompressed_bytes = 0
         compressed_bytes = 0
