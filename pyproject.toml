@@ -29,7 +29,7 @@ test = [
   "pytest-cov",
   "pytest-rerunfailures",
   "pytest-xdist",
-  "s3fs",
+  "s3fs>=2023.1.0",
   "vector; python_version >= '3.11'",
   { include-group = "test-core" }
 ]
