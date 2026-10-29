@@ -371,7 +371,8 @@ in file {self.file.file_path}"""
     def is_tuple(self):
         """
         True if the top-level fields of this RNTuple represent a tuple (i.e. they are
-        all named ``_N``), in which case they are renamed to ``N`` to match Awkward.
+        named ``_0``, ``_1``, ... in order), in which case they are renamed to ``0``,
+        ``1``, ... to match Awkward.
         """
         if self._is_tuple is None:
             top_level_names = [
@@ -379,8 +380,9 @@ in file {self.file.file_path}"""
                 for i, r in enumerate(self.field_records)
                 if r.parent_field_id == i
             ]
+            # other names would not match the indices of the tuple
             self._is_tuple = len(top_level_names) > 0 and all(
-                re.fullmatch(r"_[0-9]+", name) is not None for name in top_level_names
+                name == f"_{i}" for i, name in enumerate(top_level_names)
             )
         return self._is_tuple
 

@@ -78,3 +78,26 @@ def test_top_level_tuple_extend(tuple_path):
             (5.0, 6),
             (7.0, 8),
         ]
+
+
+@pytest.mark.parametrize(
+    "array",
+    [
+        ak.Array([{"_2": 10, "_3": 20}]),
+        ak.Array([{"_1": 10, "_0": 20}]),
+    ],
+)
+def test_top_level_record_with_tuple_like_names(tmp_path, array):
+    path = tmp_path / "record.root"
+    with uproot.recreate(path) as file:
+        file["record"] = array
+
+    with uproot.open(path) as file:
+        ntuple = file["record"]
+
+        assert not ntuple.to_akform()[0].is_tuple
+        assert ntuple.keys() == array.fields
+        assert ntuple.arrays().tolist() == array.tolist()
+
+    pytest.importorskip("dask_awkward")
+    assert uproot.dask(f"{path}:record").compute().tolist() == array.tolist()
