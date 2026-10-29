@@ -1689,10 +1689,7 @@ def _get_ttree_form(
                 content_parameters["__doc__"] = branch.title
         elif isinstance(ak_add_doc, dict):
             content_parameters.update(
-                {
-                    key: branch.__getattribute__(value)
-                    for key, value in ak_add_doc.items()
-                }
+                {key: getattr(branch, value) for key, value in ak_add_doc.items()}
             )
         if len(content_parameters.keys()) != 0:
             content_form = content_form.copy(
@@ -1704,7 +1701,7 @@ def _get_ttree_form(
         parameters = {"__doc__": ttree.title} if ak_add_doc else None
     elif isinstance(ak_add_doc, dict):
         parameters = (
-            {"__doc__": ttree.__getattribute__(ak_add_doc["__doc__"])}
+            {"__doc__": getattr(ttree, ak_add_doc["__doc__"])}
             if "__doc__" in ak_add_doc.keys()
             else None
         )

@@ -89,6 +89,7 @@ def iterate(
             to the Awkward ``__doc__`` parameter of the array.
             if dict = {key:value} and ``library="ak"``, add the RField ``value`` to the
             Awkward ``key`` parameter of the array.
+            A ``value`` of ``"title"``, the TBranch name, reads the ``description``.
         how (None, str, or container type): Library-dependent instructions
             for grouping. The only recognized container types are ``tuple``,
             ``list``, and ``dict``. Note that the container *type itself*
@@ -293,6 +294,7 @@ def concatenate(
             to the Awkward ``__doc__`` parameter of the array.
             if dict = {key:value} and ``library="ak"``, add the RField ``value`` to the
             Awkward ``key`` parameter of the array.
+            A ``value`` of ``"title"``, the TBranch name, reads the ``description``.
         how (None, str, or container type): Library-dependent instructions
             for grouping. The only recognized container types are ``tuple``,
             ``list``, and ``dict``. Note that the container *type itself*
@@ -456,6 +458,13 @@ def concatenate(
     return library.concatenate(all_arrays)
 
 
+def _doc_attribute(hasfields, name):
+    """The attribute an ``ak_add_doc`` dict names, read off an RNTuple or RField: ``"title"``, the
+    TBranch doc attribute, reads the ``description`` so one dict documents either kind of tree.
+    """
+    return getattr(hasfields, "description" if name == "title" else name)
+
+
 class HasFields(Mapping):
     """
     Abstract class of behaviors for anything that "has fields," namely
@@ -572,6 +581,7 @@ class HasFields(Mapping):
                 to the Awkward ``__doc__`` parameter of the array.
                 if dict = {key:value}, add the RField ``value`` to the
                 Awkward ``key`` parameter of the array.
+                A ``value`` of ``"title"``, the TBranch name, reads the ``description``.
             filter_branch (None or function of :doc:`uproot.models.RNTuple.RField` \u2192 bool): An alias for ``filter_field`` included
                 for compatibility with software that was used for :doc:`uproot.behaviors.TBranch.TBranch`. This argument should not be used
                 and will be removed in a future version.
@@ -649,7 +659,7 @@ class HasFields(Mapping):
             parameters = {"__doc__": self.description}
         elif isinstance(ak_add_doc, dict) and self is not rntuple:
             parameters = {
-                key: self.__getattribute__(value) for key, value in ak_add_doc.items()
+                key: _doc_attribute(self, value) for key, value in ak_add_doc.items()
             }
 
         form = ak.forms.RecordForm(
@@ -728,6 +738,7 @@ class HasFields(Mapping):
                 to the Awkward ``__doc__`` parameter of the array.
                 if dict = {key:value} and ``library="ak"``, add the RField ``value`` to the
                 Awkward ``key`` parameter of the array.
+                A ``value`` of ``"title"``, the TBranch name, reads the ``description``.
             how (None, str, or container type): Library-dependent instructions
                 for grouping. The only recognized container types are ``tuple``,
                 ``list``, and ``dict``. Note that the container *type itself*
@@ -1029,6 +1040,7 @@ class HasFields(Mapping):
                 to the Awkward ``__doc__`` parameter of the array.
                 if dict = {key:value} and ``library="ak"``, add the RField ``value`` to the
                 Awkward ``key`` parameter of the array.
+                A ``value`` of ``"title"``, the TBranch name, reads the ``description``.
             how (None, str, or container type): Library-dependent instructions
                 for grouping. The only recognized container types are ``tuple``,
                 ``list``, and ``dict``. Note that the container *type itself*
