@@ -2832,10 +2832,14 @@ in file {self._file.file_path}"""
 
         The number of uncompressed bytes cannot be determined without reading a
         ``TKey``, which are small, but may be slow for remote connections because
-        of the latency of round-trip requests.
+        of the latency of round-trip requests. The result is cached.
         """
         if 0 <= basket_num < self._num_normal_baskets:
-            return _key_uncompressed_bytes(self.basket_key(basket_num))
+            if basket_num not in self._uncompressed_bytes_cache:
+                self._uncompressed_bytes_cache[basket_num] = _key_uncompressed_bytes(
+                    self.basket_key(basket_num)
+                )
+            return self._uncompressed_bytes_cache[basket_num]
         elif 0 <= basket_num < self.num_baskets:
             return self.basket(basket_num).uncompressed_bytes
         else:
@@ -2949,6 +2953,7 @@ in file {self._file.file_path}"""
         self._streamer = None
         self._streamer_isTClonesArray = False
         self._cache_key = None
+        self._uncompressed_bytes_cache = {}
         self._context = dict(context)
         self._context["breadcrumbs"] = ()
         self._context["in_TBranch"] = True
@@ -3827,11 +3832,19 @@ _basket_keys_coalesce_config = uproot.source.coalesce.CoalesceConfig(max_range_g
 def _basket_keys_uncompressed_bytes(file, branch_baskets):
     """
     Total of ``TBranch.basket_uncompressed_bytes`` for normal baskets, with all
-    ``TKeys`` read in one request instead of one round trip per basket.
+    uncached ``TKeys`` read in one request instead of one round trip per basket.
     """
-    if not branch_baskets:
-        return 0
+    missing = [
+        (branch, num)
+        for branch, num in branch_baskets
+        if num not in branch._uncompressed_bytes_cache
+    ]
+    if missing:
+        _read_basket_keys(file, missing)
+    return sum(branch._uncompressed_bytes_cache[num] for branch, num in branch_baskets)
 
+
+def _read_basket_keys(file, branch_baskets):
     source = file.source
     ranges = [branch._basket_key_range(num) for branch, num in branch_baskets]
     # Chunks will not be retained; we don't have to detach_memmap()
@@ -3844,10 +3857,10 @@ def _basket_keys_uncompressed_bytes(file, branch_baskets):
     else:
         chunks = source.chunks(ranges, notifications=queue.Queue())
 
-    return sum(
-        _key_uncompressed_bytes(branch._basket_key_from_chunk(chunk))
-        for (branch, _), chunk in zip(branch_baskets, chunks, strict=True)
-    )
+    for (branch, num), chunk in zip(branch_baskets, chunks, strict=True):
+        branch._uncompressed_bytes_cache[num] = _key_uncompressed_bytes(
+            branch._basket_key_from_chunk(chunk)
+        )
 
 
 def _hasbranches_num_entries_for(
