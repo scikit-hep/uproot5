@@ -281,6 +281,18 @@ def graphed_write(
             "partition alone); 'files' with explicit 'steps' cannot be written — use "
             "steps_per_file"
         )
+    seen, seen_inodes = {}, {}
+    for file_path, object_path in source._file_tree:
+        key = (
+            uproot._util.canonical_path(file_path, seen_inodes=seen_inodes),
+            uproot._util.canonical_object_path(object_path, default=source._name),
+        )
+        if key in seen:
+            raise ValueError(
+                f"duplicate input {(file_path, object_path or '')!r} is the same as "
+                f"{seen[key]!r}: list each file (or file, tree) once"
+            )
+        seen[key] = (file_path, object_path or "")
     bases = graphed.write.file_bases(
         [
             (file_path, object_path or "")

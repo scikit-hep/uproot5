@@ -202,8 +202,49 @@ def test_canonical_path_normalization(tmp_path):
         == "http://User:Secret@example.com/a.root"
     )
 
-    assert canonical_object_path("/events") == "/events;1"
-    assert canonical_object_path("events;1") == "/events;1"
-    assert canonical_object_path("/events;1") == "/events;1"
-    assert canonical_object_path(None, default="events") == "/events;1"
-    assert canonical_object_path("/dir/events;2") == "/dir/events;1"
+    assert canonical_object_path("/events") == "events"
+    assert canonical_object_path("events;1") == "events"
+    assert canonical_object_path("/events;1") == "events"
+    assert canonical_object_path(None, default="events") == "events"
+    assert canonical_object_path("/dir/events;2") == "dir/events"
+
+
+def _make_tree_at_cycle_2(path):
+    with uproot.recreate(path) as f:
+        for n in (3, 5):
+            f.mktree("events", {"x": "f8", "y": "f8"})
+            f["events"].extend({"x": np.arange(n, dtype="f8"), "y": np.zeros(n)})
+    return str(path)
+
+
+@pytest.mark.parametrize("object_path", ["events", None])
+def test_known_base_form_reads_the_latest_cycle(tmp_path, object_path):
+    path = _make_tree_at_cycle_2(tmp_path / "c.root")
+    base_form = uproot.open(path)["events"].arrays().layout.form
+
+    g = uproot.graphed({path: object_path}, known_base_form=base_form)
+    out = uproot.graphed_write(g, str(tmp_path / "out"), executor="thread")
+    assert [t.num_entries for t in uproot.open(out[0]).values()] == [5]
+
+
+def test_known_base_form_none_reads_the_only_tree_whatever_its_name(tmp_path):
+    path = _make_tree(tmp_path / "t.root", n=4, name="tree")
+    base_form = uproot.open(path)["tree"].arrays().layout.form
+
+    g = uproot.graphed({path: None}, known_base_form=base_form)
+    out = uproot.graphed_write(g, str(tmp_path / "out"), executor="thread")
+    assert [t.num_entries for t in uproot.open(out[0]).values()] == [4]
+
+
+@pytest.mark.parametrize("known", [False, True])
+def test_workers_read_the_path_as_given(tmp_path, known):
+    from uproot._graphed import _uproot_source
+
+    absp = _make_tree(tmp_path / "a.root")
+    linkp = tmp_path / "link.root"
+    linkp.symlink_to(absp)
+    base_form = uproot.open(absp)["events"].arrays().layout.form if known else None
+
+    g = uproot.graphed({str(linkp): "events"}, known_base_form=base_form)
+    _, source = _uproot_source(g, "test")
+    assert [file_path for file_path, _ in source._file_tree] == [str(linkp)]
