@@ -1044,16 +1044,7 @@ class TrivialFormMappingInfo(ImplementsFormMappingInfo):
             # by field-name tuple, so braces and glob characters in a name are literal; a
             # top-level field is selected whole, as a dot in its name (which ROOT forbids,
             # but uproot can write) is only supported there
-            form = self._form
-            # Awkward renumbers a subset of a tuple's fields, so they are selected from a
-            # record with the same field names instead
-            if form.is_tuple:
-                form = awkward.forms.RecordForm(
-                    form.contents,
-                    form.fields,
-                    form_key=form.form_key,
-                    parameters=form.parameters,
-                )
+            form = _tuples_as_records(self._form)
             names = ((k,) if form.has_field(k) else k.split(".") for k in keys)
             form = form.select_columns([tuple(map(glob.escape, n)) for n in names])
             projection_subforms = {f: form.content(f) for f in form.fields}
@@ -1112,6 +1103,20 @@ def _contents(form):
     if form.is_list or form.is_option or form.is_indexed:
         return [form.content]
     return []
+
+
+def _tuples_as_records(form):
+    """``form`` with its tuples as records with the same field names, since Awkward renumbers a
+    subset of a tuple's fields and they would no longer match the RNTuple's fields."""
+    if form.is_record:
+        return form.copy(
+            contents=[_tuples_as_records(c) for c in form.contents], fields=form.fields
+        )
+    if form.is_union:
+        return form.copy(contents=[_tuples_as_records(c) for c in form.contents])
+    if form.is_list or form.is_option or form.is_indexed:
+        return form.copy(content=_tuples_as_records(form.content))
+    return form
 
 
 def _ancestors(keys):

@@ -101,3 +101,57 @@ def test_top_level_record_with_tuple_like_names(tmp_path, array):
 
     pytest.importorskip("dask_awkward")
     assert uproot.dask(f"{path}:record").compute().tolist() == array.tolist()
+
+
+@pytest.mark.parametrize("is_list", [False, True])
+def test_nested_tuple_fields(tmp_path, is_list):
+    tuples = [(1.0, 2), (3.0, 4)]
+    array = ak.Array([{"r": [t] if is_list else t} for t in tuples])
+    path = tmp_path / "nested.root"
+    with uproot.recreate(path) as file:
+        file["nested"] = array
+
+    def wrap(x):
+        return [x] if is_list else x
+
+    with uproot.open(path) as file:
+        ntuple = file["nested"]
+
+        assert ntuple.keys() == ["r", "r.0", "r.1"]
+        assert ntuple.arrays().tolist() == array.tolist()
+        assert ntuple["r.1"].array().tolist() == [wrap(2), wrap(4)]
+        # a subset of the fields is a record, so that its fields match the RFields
+        assert ntuple.arrays(filter_name="r.1").tolist() == [
+            {"r": wrap({"1": 2})},
+            {"r": wrap({"1": 4})},
+        ]
+
+    pytest.importorskip("dask_awkward")
+    assert uproot.dask(f"{path}:nested").compute().tolist() == array.tolist()
+    assert uproot.dask(f"{path}:nested")["r", "1"].compute().tolist() == [
+        wrap(2),
+        wrap(4),
+    ]
+
+
+@pytest.mark.parametrize(
+    "record",
+    [{"_2": 10, "_3": 20}, {"_1": 10, "_0": 20}, {"_0": 10, "x": 20}],
+)
+def test_nested_record_with_tuple_like_names(tmp_path, record):
+    array = ak.Array([{"r": record}])
+    path = tmp_path / "nested.root"
+    with uproot.recreate(path) as file:
+        file["nested"] = array
+
+    last = list(record)[-1]
+    with uproot.open(path) as file:
+        ntuple = file["nested"]
+
+        assert ntuple.keys() == ["r"] + [f"r.{name}" for name in record]
+        assert ntuple.arrays().tolist() == array.tolist()
+        assert ntuple[f"r.{last}"].array().tolist() == [record[last]]
+
+    pytest.importorskip("dask_awkward")
+    assert uproot.dask(f"{path}:nested").compute().tolist() == array.tolist()
+    assert uproot.dask(f"{path}:nested")["r", last].compute().tolist() == [record[last]]

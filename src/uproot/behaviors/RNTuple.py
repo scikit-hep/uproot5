@@ -905,16 +905,7 @@ class HasFields(Mapping):
         # If we constructed some parent fields, we need to get back to the requested field
         if field_path is not None:
             for field in field_path[:-1]:
-                if field in arrays.fields:
-                    arrays = arrays[field]
-                # tuples are a trickier since indices no longer match
-                else:
-                    if field.isdigit() and arrays.fields == ["0"]:
-                        arrays = arrays["0"]
-                    else:
-                        raise AssertionError(
-                            "The array was not constructed correctly. Please report this issue."
-                        )
+                arrays = arrays[field]
 
         expression_context = [(f, None) for f in arrays.fields]
 
