@@ -1035,7 +1035,7 @@ class Tree:
                     fCompress,
                     datum["fBasketSize"],
                     datum["fEntryOffsetLen"],
-                    self._num_baskets,  # fWriteBasket
+                    datum["arrays_write_stop"],  # fWriteBasket
                     self._num_entries,  # fEntryNumber
                 )
             )
@@ -1046,7 +1046,7 @@ class Tree:
             out.append(
                 uproot.models.TBranch._tbranch13_format2.pack(
                     datum["fOffset"],
-                    self._basket_capacity,  # fMaxBaskets
+                    len(datum["fBasketBytes"]),  # fMaxBaskets
                     datum["fSplitLevel"],
                     self._num_entries,  # fEntries
                     datum["fFirstEntry"],
@@ -1364,7 +1364,7 @@ class Tree:
                     fCompress,
                     datum["fBasketSize"],
                     datum["fEntryOffsetLen"],
-                    self._num_baskets,  # fWriteBasket
+                    datum["arrays_write_stop"],  # fWriteBasket
                     self._num_entries,  # fEntryNumber
                 ),
             )
@@ -1374,7 +1374,7 @@ class Tree:
                 position,
                 uproot.models.TBranch._tbranch13_format2.pack(
                     datum["fOffset"],
-                    self._basket_capacity,  # fMaxBaskets
+                    len(datum["fBasketBytes"]),  # fMaxBaskets
                     datum["fSplitLevel"],
                     self._num_entries,  # fEntries
                     datum["fFirstEntry"],
