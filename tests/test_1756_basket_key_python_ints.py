@@ -15,14 +15,20 @@ import uproot
 def test_iterate_memory_step_size_requests_python_ints(monkeypatch):
     with uproot.open(skhep_testdata.data_path("uproot-Zmumu.root"))["events"] as tree:
         source = tree.file.source
-        original = source.chunk
+        original_chunk = source.chunk
+        original_chunks = source.chunks
         requested = []
 
-        def spy(start, stop):
+        def chunk(start, stop):
             requested.append((start, stop))
-            return original(start, stop)
+            return original_chunk(start, stop)
 
-        monkeypatch.setattr(source, "chunk", spy)
+        def chunks(ranges, notifications, **kwargs):
+            requested.extend(ranges)
+            return original_chunks(ranges, notifications, **kwargs)
+
+        monkeypatch.setattr(source, "chunk", chunk)
+        monkeypatch.setattr(source, "chunks", chunks)
 
         for _ in tree.iterate(["px1"], step_size="100 MB", library="np"):
             pass
