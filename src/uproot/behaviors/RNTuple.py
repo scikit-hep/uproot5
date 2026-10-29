@@ -652,7 +652,9 @@ class HasFields(Mapping):
                 key: self.__getattribute__(value) for key, value in ak_add_doc.items()
             }
 
-        if top_names and all(name == f"_{i}" for i, name in enumerate(top_names)):
+        # A tuple is only kept when all of its fields are selected, since Awkward would
+        # renumber a subset of them and the form's fields would no longer match the RFields
+        if self is rntuple and rntuple.is_tuple and len(top_names) == len(self.fields):
             top_names = None
         form = ak.forms.RecordForm(
             record_list, top_names, form_key="toplevel", parameters=parameters

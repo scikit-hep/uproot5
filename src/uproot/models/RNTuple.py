@@ -154,6 +154,7 @@ in file {self.file.file_path}"""
 
         self._field_records = None
         self._field_names = None
+        self._is_tuple = None
         self._column_records = None
         self._alias_column_records = None
         self._related_ids_ = None
@@ -365,6 +366,23 @@ in file {self.file.file_path}"""
         if self._field_names is None:
             self._field_names = [r.field_name for r in self.field_records]
         return self._field_names
+
+    @property
+    def is_tuple(self):
+        """
+        True if the top-level fields of this RNTuple represent a tuple (i.e. they are
+        all named ``_N``), in which case they are renamed to ``N`` to match Awkward.
+        """
+        if self._is_tuple is None:
+            top_level_names = [
+                r.field_name
+                for i, r in enumerate(self.field_records)
+                if r.parent_field_id == i
+            ]
+            self._is_tuple = len(top_level_names) > 0 and all(
+                re.fullmatch(r"_[0-9]+", name) is not None for name in top_level_names
+            )
+        return self._is_tuple
 
     @property
     def column_records(self):
@@ -1861,11 +1879,11 @@ class RField(uproot.behaviors.RNTuple.HasFields):
         if self._name is None:
             # We rename subfields of tuples to match Awkward
             name = self._ntuple.field_records[self._fid].field_name
-            if (
-                not self.top_level
-                and self.parent.record.struct_role
+            if re.fullmatch(r"_[0-9]+", name) is not None and (
+                self._ntuple.is_tuple
+                if self.top_level
+                else self.parent.record.struct_role
                 == uproot.const.RNTupleFieldRole.RECORD
-                and re.fullmatch(r"_[0-9]+", name) is not None
             ):
                 name = name[1:]
 

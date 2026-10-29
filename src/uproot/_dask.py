@@ -1044,10 +1044,18 @@ class TrivialFormMappingInfo(ImplementsFormMappingInfo):
             # by field-name tuple, so braces and glob characters in a name are literal; a
             # top-level field is selected whole, as a dot in its name (which ROOT forbids,
             # but uproot can write) is only supported there
-            names = ((k,) if self._form.has_field(k) else k.split(".") for k in keys)
-            form = self._form.select_columns(
-                [tuple(map(glob.escape, n)) for n in names]
-            )
+            form = self._form
+            # Awkward renumbers a subset of a tuple's fields, so they are selected from a
+            # record with the same field names instead
+            if form.is_tuple:
+                form = awkward.forms.RecordForm(
+                    form.contents,
+                    form.fields,
+                    form_key=form.form_key,
+                    parameters=form.parameters,
+                )
+            names = ((k,) if form.has_field(k) else k.split(".") for k in keys)
+            form = form.select_columns([tuple(map(glob.escape, n)) for n in names])
             projection_subforms = {f: form.content(f) for f in form.fields}
             leaf_keys = [
                 p
