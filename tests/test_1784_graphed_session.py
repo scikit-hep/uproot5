@@ -148,6 +148,10 @@ def test_a_branch_path_is_not_refused_under_the_branch_name():
 def test_head_finds_its_source_by_node_not_name(tmp_path):
     left, _, _ = _joined(tmp_path)
     session = left.session
+    if hasattr(graphed, "current_session"):  # one binding per name
+        with pytest.raises(ValueError, match="'events' is already bound to other data"):
+            session.source("events", form=session.form(left), data=None, tag=1)
+        return
     # another integration's source under the same name, kept apart by its params
     other = session.source("events", form=session.form(left), data=None, tag=1)
     assert len(session.source_ids()) == 3
