@@ -47,7 +47,7 @@ def test_num_entries_for_reads_keys_in_one_request(monkeypatch):
         assert result == tree.num_entries
 
 
-def test_num_entries_for_fsspec_does_not_coalesce_keys():
+def test_num_entries_for_fsspec_does_not_coalesce_keys(monkeypatch):
     path = skhep_testdata.data_path("uproot-HZZ.root")
     with uproot.open(f"file://{path}", handler=uproot.source.fsspec.FSSpecSource)[
         "events"
@@ -63,14 +63,17 @@ def test_num_entries_for_fsspec_does_not_coalesce_keys():
 
         source = tree.file.source
         fetched = []
-        original_cat_ranges = source._fs.cat_ranges
+        # fsspec caches filesystem instances, so patch the class through
+        # monkeypatch to keep the spy from leaking into other tests.
+        fs_class = type(source._fs)
+        original_cat_ranges = fs_class.cat_ranges
 
-        def cat_ranges(paths, starts, ends, **kwargs):
+        def cat_ranges(self, paths, starts, ends, **kwargs):
             fetched.extend(stop - start for start, stop in zip(starts, ends))
-            return original_cat_ranges(paths, starts, ends, **kwargs)
+            return original_cat_ranges(self, paths, starts, ends, **kwargs)
 
-        source._fs.cat_ranges = cat_ranges
-        source._async_impl = False
+        monkeypatch.setattr(fs_class, "cat_ranges", cat_ranges)
+        monkeypatch.setattr(source, "_async_impl", False)
 
         assert tree.num_entries_for(expected_bytes) == tree.num_entries
         assert sum(fetched) == num_baskets * uproot.reading._key_format_big.size
