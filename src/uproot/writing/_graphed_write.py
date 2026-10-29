@@ -268,7 +268,7 @@ def graphed_write(
 
     _refuse_non_record(array, "graphed_write")
 
-    from uproot._graphed import _uproot_source
+    from uproot._graphed import _name_from_object_path, _uproot_source
 
     session = array.session
     nid, source = _uproot_source(array, "graphed_write")
@@ -283,10 +283,11 @@ def graphed_write(
             "steps_per_file"
         )
     seen, seen_inodes = {}, {}
+    only_tree = _name_from_object_path(source._file_tree)  # what a None path names
     for file_path, object_path in source._file_tree:
         key = (
             uproot._util.canonical_path(file_path, seen_inodes=seen_inodes),
-            uproot._util.canonical_object_path(object_path, default=source._name),
+            uproot._util.canonical_object_path(object_path, default=only_tree),
         )
         if key in seen:
             raise ValueError(

@@ -248,3 +248,15 @@ def test_workers_read_the_path_as_given(tmp_path, known):
     g = uproot.graphed({str(linkp): "events"}, known_base_form=base_form)
     _, source = _uproot_source(g, "test")
     assert [file_path for file_path, _ in source._file_tree] == [str(linkp)]
+
+
+def test_none_and_name_refused_with_a_custom_source_name(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    absp = _make_tree(tmp_path / "a.root")
+    base_form = uproot.open(absp)["events"].arrays().layout.form
+
+    g = uproot.graphed(
+        {absp: None, "a.root": "events"}, known_base_form=base_form, name="muons"
+    )
+    with pytest.raises(ValueError, match="duplicate input"):
+        uproot.graphed_write(g, str(tmp_path / "out"), executor="thread")
