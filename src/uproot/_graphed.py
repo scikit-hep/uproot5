@@ -42,7 +42,7 @@ from uproot._dask import (
 )
 from uproot._util import no_filter, unset
 from uproot.behaviors.RNTuple import HasFields
-from uproot.behaviors.TBranch import HasBranches
+from uproot.behaviors.TBranch import HasBranches, TBranch
 
 #: ``uproot.dask`` parameters ``uproot.graphed`` has no counterpart for, and where that concern
 #: lives instead; ``**options`` would otherwise swallow them silently.
@@ -79,11 +79,9 @@ class _GraphedTTreeSource:
         interpretation_executor,
         explicit_chunks=None,
         align_baskets=False,
-        requested,
     ):
-        self._file_tree = list(file_tree)  # [(file_path, object_path or None)]
-        # per file, the object path as a request spells it: the identity's, not the read's
-        self._requested = list(requested)
+        # [(file_path, object_path or None, _spellings of the tree there)]
+        self._file_tree = list(file_tree)
         self._common_keys = list(common_keys)
         self._name = name  # the graphed source name, which the projection answers under
         self._expected_form = expected_form
@@ -109,7 +107,7 @@ class _GraphedTTreeSource:
         mapping = self._form_mapping
         own = getattr(mapping, "source_identity", None)
         return (
-            tuple(zip([f for f, _ in self._file_tree], self._requested, strict=True)),
+            tuple((file_path, paths) for file_path, _, paths in self._file_tree),
             self._explicit_chunks,
             self._allow_missing,
             self._align_baskets,
@@ -138,7 +136,7 @@ class _GraphedTTreeSource:
 
     def _trees(self):
         """Every tree, opened here and now (the whole-dataset loader and ``graphed_head``)."""
-        for file_path, object_path in self._file_tree:
+        for file_path, object_path, _ in self._file_tree:
             tree = self._tree_in(self._open_directory(file_path), object_path)
             if tree is not None:
                 yield tree
@@ -193,7 +191,7 @@ class _GraphedTTreeSource:
                 graphed.core.Partition(
                     file_path, object_path or "", int(start), int(stop)
                 )
-                for (file_path, object_path), chunks in zip(
+                for (file_path, object_path, _), chunks in zip(
                     self._file_tree, self._explicit_chunks, strict=True
                 )
                 for start, stop in chunks
@@ -202,7 +200,7 @@ class _GraphedTTreeSource:
             graphed.core.Partition.blind(
                 file_path, object_path or "", step, steps_per_file
             )
-            for file_path, object_path in self._file_tree
+            for file_path, object_path, _ in self._file_tree
             for step in range(steps_per_file)
         )
 
@@ -319,14 +317,45 @@ def _name_from_object_path(file_tree):
     return (file_tree[0][1] or "").rpartition("/")[2].partition(";")[0] or "events"
 
 
-def _requested_path(tree):
-    """``tree``'s object path as a request spells it, so an opened and an unopened read of one
-    tree share an identity: no leading ``/``, and no ``;cycle`` when it is the highest cycle, the
-    one a path without a cycle opens."""
-    path, _, cycle = tree.object_path.lstrip("/").partition(";")
-    if cycle and tree.file.root_directory.key(path).fCycle != int(cycle):
-        return f"{path};{cycle}"
-    return path
+class _Spellings:
+    """Object paths that open one tree in a file; two reads of the file are one source when
+    their paths overlap (see :func:`_spellings`)."""
+
+    __slots__ = ("paths",)
+
+    def __init__(self, paths):
+        self.paths = frozenset(paths)
+
+    def __eq__(self, other):
+        return isinstance(other, _Spellings) and not self.paths.isdisjoint(other.paths)
+
+    __hash__ = None
+
+
+def _spellings(given, given_path, found):
+    """The object paths known, without I/O, to open the tree an entry of ``files`` reads: the
+    path given, and for a tree in hand (``found``) its key's ``dir/name;cycle`` plus ``dir/name``
+    when that opens the same key, so a spelling only an opened file could equate stays apart.
+    """
+    paths = set()
+    if not isinstance(given, HasBranches):
+        paths.add((given_path or "").lstrip("/") or None)
+    if found is not None:
+        tree, inner = _leaf_to_tree(found)[0], []
+        while isinstance(tree, TBranch):
+            inner.append(tree.name)
+            tree = tree.parent
+        key = tree.parent
+        name = key.name(False)
+        path = "/".join((*key.parent.path, name))
+        branch = ":" + "/".join(reversed(inner)) if inner else ""
+        paths.add(f"{path};{key.fCycle}{branch}")
+        try:
+            if key.parent.key(name) is key:  # the directory's keys are held: no I/O
+                paths.add(path + branch)
+        except uproot.KeyInFileError:  # a name like "a;3" reads as a cycle of "a"
+            pass
+    return _Spellings(paths)
 
 
 def _file_and_path(file_path, object_path):
@@ -353,8 +382,8 @@ def _selection(leaf):
 def _resolve_entries(
     files, open_files, custom_classes, allow_missing, options, directories
 ):
-    """Every entry of ``files`` as ``(file_path, tree_path, steps, requested, found)``, where
-    ``requested`` is the tree path as :func:`_requested_path` spells it and ``found`` is the
+    """Every entry of ``files`` as ``(file_path, tree_path, steps, paths, found)``, where
+    ``paths`` are the entry's :func:`_spellings` and ``found`` is the
     opened object (a leaf ``TBranch`` included) or ``None`` for a file left unopened; the files
     opened go in ``directories``, ``{canonical_path(file_path): directory}``, for the caller to close even when
     this raises. An entry whose file lacks the object is dropped under ``allow_missing``.
@@ -400,13 +429,10 @@ def _resolve_entries(
             tree, branch = _leaf_to_tree(found)
             branch = None if branch is None else branch.name
             file_path, tree_path = tree.file.file_path, tree.object_path
-            requested = _requested_path(tree)
         elif object_path == first_path and leaf is not None:
             tree_path, branch = object_path.rpartition("/")[0], leaf
         else:
             tree_path, branch = object_path, None
-        if found is None:
-            requested = tree_path and tree_path.lstrip("/")
         if first_path is unset:
             first_path, leaf = object_path, branch
         elif branch != leaf:
@@ -414,7 +440,8 @@ def _resolve_entries(
                 f"{{{file_path!r}: {given_path!r}}} selects {_selection(branch)}, but the first "
                 f"file selects {_selection(leaf)}; select the same in every file"
             )
-        resolved.append((file_path, tree_path, steps, requested, found))
+        paths = _spellings(given, given_path, found)
+        resolved.append((file_path, tree_path, steps, paths, found))
     return resolved
 
 
@@ -661,9 +688,11 @@ def graphed(
     if known_base_form is not None:  # the form is given: nothing is opened
         common_keys = list(dict.fromkeys(known_base_form.fields))
         base_form = known_base_form
-        file_tree = [_file_and_path(f, o) for f, o, *_ in files]
-        requested_paths = [
-            _requested_path(f) if isinstance(f, HasBranches) else o and o.lstrip("/")
+        file_tree = [
+            (
+                *_file_and_path(f, o),
+                _spellings(f, o, f if isinstance(f, HasBranches) else None),
+            )
             for f, o, *_ in files
         ]
         explicit_chunks = [f[2] for f in files] if all(is_3arg) else None
@@ -703,8 +732,10 @@ def graphed(
         finally:
             for directory in directories.values():
                 directory.file.close()
-        file_tree = [(file_path, tree_path) for file_path, tree_path, *_ in resolved]
-        requested_paths = [path for *_, path, _ in resolved]
+        file_tree = [
+            (file_path, tree_path, paths)
+            for file_path, tree_path, _, paths, _ in resolved
+        ]
         explicit_chunks = (
             [steps[0] for _, _, steps, *_ in resolved] if all(is_3arg) else None
         )
@@ -761,7 +792,6 @@ def graphed(
         interpretation_executor=interpretation_executor,
         explicit_chunks=explicit_chunks,
         align_baskets=align_baskets,
-        requested=requested_paths,
     )
     return session.source(
         name, form=graphed.awkward.AwkwardForm(typetracer), data=source
