@@ -532,7 +532,9 @@ def graphed(
             as in :doc:`uproot._dask.dask`.
         library (str): Only ``"ak"`` is supported (a single deferred ``graphed`` array). ``"np"`` and
             ``"pd"`` raise ``NotImplementedError``.
-        ak_add_doc, custom_classes, allow_missing: As in :doc:`uproot._dask.dask`.
+        ak_add_doc (bool | dict): As in :doc:`uproot._dask.dask`, for a TTree or an RNTuple: a
+            ``value`` of ``"title"`` (the TBranch attribute) reads the RField ``description``.
+        custom_classes, allow_missing: As in :doc:`uproot._dask.dask`.
         behavior (dict or None): An awkward behavior dict (e.g. ``vector``'s) registered on the
             recording backend, for the default backend and the unmapped form: with
             ``gak.with_name``, behavior PROPERTIES (``.pt``, ``.mass``) work through plain attribute

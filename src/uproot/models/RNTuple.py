@@ -635,6 +635,7 @@ in file {self.file.file_path}"""
                 to the Awkward ``__doc__`` parameter of the array.
                 if dict = {key:value}, add the RField ``value`` to the
                 Awkward ``key`` parameter of the array.
+                A ``value`` of ``"title"`` (the TBranch attribute) reads the RField ``description``.
 
         Returns an Awkward Form describing the field.
         """
@@ -650,14 +651,12 @@ in file {self.file.file_path}"""
         this_record = field_records[this_id]
         structural_role = this_record.struct_role
 
-        parameters = None
-        if isinstance(ak_add_doc, bool) and ak_add_doc and this_record.field_desc != "":
-            parameters = {"__doc__": this_record.field_desc}
-        elif isinstance(ak_add_doc, dict):
-            parameters = {
-                key: self.ntuple.all_fields[this_id].__getattribute__(value)
-                for key, value in ak_add_doc.items()
-            }
+        parameters = (
+            uproot._util.ak_add_doc_parameters(
+                self.ntuple.all_fields[this_id], ak_add_doc
+            )
+            or None
+        )
         if (
             structural_role == uproot.const.RNTupleFieldRole.LEAF
             and this_record.repetition == 0
@@ -2065,6 +2064,7 @@ class RField(uproot.behaviors.RNTuple.HasFields):
                 to the Awkward ``__doc__`` parameter of the array.
                 if dict = {key:value} and ``library="ak"``, add the RField ``value`` to the
                 Awkward ``key`` parameter of the array.
+                A ``value`` of ``"title"`` (the TBranch attribute) reads the RField ``description``.
             virtual (bool): If True, return virtual Awkward arrays, meaning that the data will not be
                 loaded into memory until it is accessed.
             access_log (None or object with a ``__iadd__`` method): If an access_log is
