@@ -27,9 +27,10 @@ DEFAULT_CONFIG = CoalesceConfig()
 
 
 class SliceFuture:
-    def __init__(self, parent: Future, s: slice | int):
+    def __init__(self, parent: Future, s: slice | int, description: str = ""):
         self._parent = parent
         self._s = s
+        self._description = description
 
     def add_done_callback(self, callback, *, context=None):
         self._parent.add_done_callback(callback)
@@ -40,10 +41,11 @@ class SliceFuture:
             result = self._parent.result()
         else:
             result = self._parent.result(timeout=timeout)
+        item = result[self._s]
         # fsspec's cat_ranges returns exceptions in place of data by default
-        if isinstance(result, BaseException):
-            raise result
-        return result[self._s]
+        if isinstance(item, Exception):
+            raise OSError(f"failed to read {self._description}") from item
+        return item
 
 
 @dataclass
@@ -90,9 +92,10 @@ class CoalescedRequest:
     def ranges(self):
         return [(cluster.start, cluster.stop) for cluster in self.clusters]
 
-    def set_future(self, future: Future):
+    def set_future(self, future: Future, file_path: str):
         for i, cluster in enumerate(self.clusters):
-            cluster.set_future(SliceFuture(future, i))
+            description = f"{file_path!r} bytes {cluster.start}:{cluster.stop}"
+            cluster.set_future(SliceFuture(future, i, description))
 
 
 def _merge_adjacent(ranges: list[RangeRequest], config: CoalesceConfig):
@@ -139,7 +142,7 @@ def coalesce_requests(
     all_requests = [RangeRequest(start, stop, None) for start, stop in ranges]
     for merged_request in _coalesce(all_requests, config):
         future = submit_fn(merged_request.ranges())
-        merged_request.set_future(future)
+        merged_request.set_future(future, source.file_path)
 
     def chunkify(req: RangeRequest):
         chunk = uproot.source.chunk.Chunk(source, req.start, req.stop, req.future)
