@@ -3818,10 +3818,41 @@ def _fix_asgrouped(
                 index_start = index_stop
 
 
+def _basket_keys_uncompressed_bytes(source, branch_baskets):
+    """
+    Total of ``TBranch.basket_uncompressed_bytes`` for normal baskets, with all
+    ``TKeys`` read in one request instead of one round trip per basket.
+    """
+    if not branch_baskets:
+        return 0
+
+    ranges = []
+    for branch, basket_num in branch_baskets:
+        start = int(branch.member("fBasketSeek")[basket_num])
+        ranges.append((start, start + uproot.reading._key_format_big.size))
+
+    # Chunks will not be retained; we don't have to detach_memmap()
+    chunks = source.chunks(ranges, notifications=queue.Queue())
+
+    total = 0
+    for (branch, _), chunk in zip(branch_baskets, chunks, strict=True):
+        key = uproot.reading.ReadOnlyKey(
+            chunk,
+            uproot.source.cursor.Cursor(chunk.start),
+            {},
+            branch._file,
+            branch,
+            read_strings=False,
+        )
+        total += key.data_uncompressed_bytes + key.fKeylen
+    return total
+
+
 def _hasbranches_num_entries_for(
     hasbranches, target_num_bytes, entry_start, entry_stop, branchid_interpretation
 ):
     total_bytes = 0.0
+    normal_baskets = []
     for branch in hasbranches.itervalues(recursive=True):
         if branch.cache_key in branchid_interpretation:
             entry_offsets = branch.entry_offsets
@@ -3830,8 +3861,15 @@ def _hasbranches_num_entries_for(
                 if entry_start < stop and (
                     start < entry_stop or entry_start == entry_stop == start
                 ):
-                    total_bytes += branch.basket_uncompressed_bytes(basket_num)
+                    if basket_num < branch._num_normal_baskets:
+                        normal_baskets.append((branch, basket_num))
+                    else:
+                        total_bytes += branch.basket_uncompressed_bytes(basket_num)
                 start = stop
+
+    total_bytes += _basket_keys_uncompressed_bytes(
+        hasbranches._file.source, normal_baskets
+    )
 
     total_entries = entry_stop - entry_start
     if total_bytes == 0:
