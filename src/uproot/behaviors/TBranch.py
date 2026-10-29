@@ -2841,11 +2841,7 @@ in file {self._file.file_path}"""
         of the latency of round-trip requests.
         """
         if 0 <= basket_num < self._num_normal_baskets:
-            # Reading only the TKey (instead of the whole TBasket) is enough to
-            # determine the uncompressed size; add fKeylen to match the header-
-            # inclusive value reported by Model_TBasket.uncompressed_bytes.
-            key = self.basket_key(basket_num)
-            return key.data_uncompressed_bytes + key.fKeylen
+            return _key_uncompressed_bytes(self.basket_key(basket_num))
         elif 0 <= basket_num < self.num_baskets:
             return self.basket(basket_num).uncompressed_bytes
         else:
@@ -2863,18 +2859,9 @@ in file {self._file.file_path}"""
         :ref:`uproot.behaviors.TBranch.TBranch.embedded_baskets`.
         """
         if 0 <= basket_num < self._num_normal_baskets:
-            start = self.member("fBasketSeek")[basket_num]
-            stop = start + uproot.reading._key_format_big.size
-            # xrootd doesn't like NumPy ints
-            start, stop = int(start), int(stop)
-            cursor = uproot.source.cursor.Cursor(start)
-
+            start, stop = self._basket_key_range(basket_num)
             # Chunk will not be retained; we don't have to detach_memmap()
-            chunk = self._file.source.chunk(start, stop)
-
-            return uproot.reading.ReadOnlyKey(
-                chunk, cursor, {}, self._file, self, read_strings=False
-            )
+            return self._basket_key_from_chunk(self._file.source.chunk(start, stop))
 
         elif 0 <= basket_num < self.num_baskets:
             raise ValueError(
@@ -2886,6 +2873,21 @@ in file {self._file.file_path}"""
                 f"""branch {self.name!r} has {self.num_baskets} baskets; cannot get basket chunk {basket_num}
 in file {self._file.file_path}"""
             )
+
+    def _basket_key_range(self, basket_num):
+        # xrootd doesn't like NumPy ints
+        start = int(self.member("fBasketSeek")[basket_num])
+        return start, start + uproot.reading._key_format_big.size
+
+    def _basket_key_from_chunk(self, chunk):
+        return uproot.reading.ReadOnlyKey(
+            chunk,
+            uproot.source.cursor.Cursor(chunk.start),
+            {},
+            self._file,
+            self,
+            read_strings=False,
+        )
 
     @property
     def embedded_baskets(self):
@@ -3818,10 +3820,47 @@ def _fix_asgrouped(
                 index_start = index_stop
 
 
+def _key_uncompressed_bytes(key):
+    # Add fKeylen to match the header-inclusive value reported by
+    # Model_TBasket.uncompressed_bytes.
+    return key.data_uncompressed_bytes + key.fKeylen
+
+
+# The gaps between TKeys are basket data, which must not be fetched.
+_basket_keys_coalesce_config = uproot.source.coalesce.CoalesceConfig(max_range_gap=0)
+
+
+def _basket_keys_uncompressed_bytes(file, branch_baskets):
+    """
+    Total of ``TBranch.basket_uncompressed_bytes`` for normal baskets, with all
+    ``TKeys`` read in one request instead of one round trip per basket.
+    """
+    if not branch_baskets:
+        return 0
+
+    source = file.source
+    ranges = [branch._basket_key_range(num) for branch, num in branch_baskets]
+    # Chunks will not be retained; we don't have to detach_memmap()
+    if isinstance(source, uproot.source.fsspec.FSSpecSource):
+        chunks = source.chunks(
+            ranges,
+            notifications=queue.Queue(),
+            coalesce_config=_basket_keys_coalesce_config,
+        )
+    else:
+        chunks = source.chunks(ranges, notifications=queue.Queue())
+
+    return sum(
+        _key_uncompressed_bytes(branch._basket_key_from_chunk(chunk))
+        for (branch, _), chunk in zip(branch_baskets, chunks, strict=True)
+    )
+
+
 def _hasbranches_num_entries_for(
     hasbranches, target_num_bytes, entry_start, entry_stop, branchid_interpretation
 ):
     total_bytes = 0.0
+    normal_baskets = []
     for branch in hasbranches.itervalues(recursive=True):
         if branch.cache_key in branchid_interpretation:
             entry_offsets = branch.entry_offsets
@@ -3830,8 +3869,13 @@ def _hasbranches_num_entries_for(
                 if entry_start < stop and (
                     start < entry_stop or entry_start == entry_stop == start
                 ):
-                    total_bytes += branch.basket_uncompressed_bytes(basket_num)
+                    if basket_num < branch._num_normal_baskets:
+                        normal_baskets.append((branch, basket_num))
+                    else:
+                        total_bytes += branch.basket_uncompressed_bytes(basket_num)
                 start = stop
+
+    total_bytes += _basket_keys_uncompressed_bytes(hasbranches._file, normal_baskets)
 
     total_entries = entry_stop - entry_start
     if total_bytes == 0:
