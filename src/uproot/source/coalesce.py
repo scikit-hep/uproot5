@@ -37,8 +37,13 @@ class SliceFuture:
     def result(self, timeout=None):
         if uproot._util.wasm:
             # Pyodide futures don't support timeout
-            return self._parent.result()[self._s]
-        return self._parent.result(timeout=timeout)[self._s]
+            result = self._parent.result()
+        else:
+            result = self._parent.result(timeout=timeout)
+        # fsspec's cat_ranges returns exceptions in place of data by default
+        if isinstance(result, BaseException):
+            raise result
+        return result[self._s]
 
 
 @dataclass
