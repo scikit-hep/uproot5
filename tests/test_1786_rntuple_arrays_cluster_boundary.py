@@ -61,6 +61,8 @@ def clusters_read(monkeypatch):
         (0, 1000, {0, 1}),
         (0, 0, set()),
         (600, 600, set()),
+        (300, 300, set()),  # an empty range inside a cluster
+        (1000, 1000, set()),
     ],
 )
 def test_arrays_reads_only_needed_clusters(
@@ -75,7 +77,7 @@ def test_arrays_reads_only_needed_clusters(
 
 @pytest.mark.parametrize(
     ("entry_start", "entry_stop"),
-    [(0, 600), (600, 600), (0, 0), (100, 600), (599, 601)],
+    [(0, 600), (600, 600), (0, 0), (300, 300), (100, 600), (599, 601)],
 )
 def test_arrays_virtual_at_cluster_boundary(ntuple, entry_start, entry_stop):
     arrays = ntuple.arrays(entry_start=entry_start, entry_stop=entry_stop, virtual=True)
@@ -88,3 +90,70 @@ def test_iterate_cluster_aligned_steps(ntuple, clusters_read):
     # one column, one cluster per chunk
     assert clusters_read == [(0, 1), (1, 2)]
     assert ak.concatenate(chunks).x.to_list() == list(range(1000))
+
+
+@pytest.fixture
+def ntuple_with_empty_cluster(tmp_path):
+    path = tmp_path / "test.root"
+    with uproot.recreate(path) as file:
+        # three clusters, starting at entries 0, 600 and 600: the middle one is empty
+        writable = file.mkrntuple("ntuple", _data(0, 600))
+        writable.extend(_data(601, 602)[:0])
+        writable.extend(_data(600, 1000))
+    with uproot.open(path) as file:
+        yield file["ntuple"]
+
+
+@pytest.mark.parametrize(
+    ("entry_start", "entry_stop", "expected_clusters"),
+    [
+        (0, 600, {0}),
+        (600, 1000, {2}),
+        (600, 600, set()),
+        (599, 601, {0, 1, 2}),
+        (0, 1000, {0, 1, 2}),
+    ],
+)
+def test_arrays_with_empty_cluster(
+    ntuple_with_empty_cluster, clusters_read, entry_start, entry_stop, expected_clusters
+):
+    assert [c.num_entries for c in ntuple_with_empty_cluster.cluster_summaries] == [
+        600,
+        0,
+        400,
+    ]
+    arrays = ntuple_with_empty_cluster.arrays(
+        entry_start=entry_start, entry_stop=entry_stop
+    )
+    assert all(start <= stop for start, stop in clusters_read)
+    assert {i for start, stop in clusters_read for i in range(start, stop)} == (
+        expected_clusters
+    )
+    assert arrays.to_list() == _data(entry_start, entry_stop).to_list()
+
+
+def test_access_log_with_empty_cluster(ntuple_with_empty_cluster):
+    log = []
+    arrays = ntuple_with_empty_cluster.arrays(
+        entry_start=600, entry_stop=600, virtual=True, access_log=log
+    )
+    assert ak.materialize(arrays).to_list() == []
+    assert len(log) > 0
+    assert all(access.cluster_start == access.cluster_stop for access in log)
+
+
+def test_empty_cluster_range_buffers_are_zeroed(ntuple, monkeypatch):
+    # fill new buffers with nonzero values, so any element left uninitialized shows up
+    original_empty = numpy.empty
+
+    def nonzero_empty(*args, **kwargs):
+        out = original_empty(*args, **kwargs)
+        out.fill(7)
+        return out
+
+    model = ntuple.ntuple
+    monkeypatch.setattr(numpy, "empty", nonzero_empty)
+    for col_idx in range(len(model.column_records)):
+        for cluster_idx in (0, 1):
+            buffer = model.read_cluster_range(col_idx, cluster_idx, cluster_idx)
+            assert numpy.all(buffer == 0)

@@ -803,18 +803,12 @@ class HasFields(Mapping):
         library = uproot.interpretation.library._regularize_library(library)
 
         clusters = self.ntuple.cluster_summaries
-        cluster_starts = numpy.array([c.num_first_entry for c in clusters])
-        start_cluster_idx = (
-            numpy.searchsorted(cluster_starts, entry_start, side="right") - 1
+        start_cluster_idx, stop_cluster_idx, cluster_offset = _cluster_range(
+            clusters, entry_start, entry_stop
         )
-        stop_cluster_idx = numpy.searchsorted(cluster_starts, entry_stop, side="left")
         cluster_num_entries = numpy.sum(
             [c.num_entries for c in clusters[start_cluster_idx:stop_cluster_idx]],
             dtype=int,
-        )
-        # the buffers below start at the first cluster that is read
-        cluster_offset = (
-            cluster_starts[start_cluster_idx] if start_cluster_idx >= 0 else 0
         )
 
         array_cache = _regularize_array_cache(array_cache, self.ntuple._file)
@@ -833,8 +827,13 @@ class HasFields(Mapping):
         _recursive_find(form, target_cols)
 
         # With GPU interpretation data can be decompressed and deserialized in
-        # parallel. Read requested columns all at once
-        if interpreter == "gpu" and backend == "cuda":
+        # parallel. Read requested columns all at once (an empty range reads no
+        # clusters, so there is nothing to read)
+        if (
+            interpreter == "gpu"
+            and backend == "cuda"
+            and start_cluster_idx < stop_cluster_idx
+        ):
             clusters_datas = self.ntuple.gpu_read_cluster_range(
                 target_cols, start_cluster_idx, stop_cluster_idx
             )
@@ -877,7 +876,18 @@ class HasFields(Mapping):
                     else:
                         content = content_generator()
                 elif interpreter == "gpu" and backend == "cuda":
-                    content = content_dict[key_nr]
+                    if start_cluster_idx < stop_cluster_idx:
+                        content = content_dict[key_nr]
+                    else:
+                        # no clusters are read, so the column is only its padding
+                        content = uproot.extras.cupy().asarray(
+                            self.ntuple.read_cluster_range(
+                                key_nr,
+                                start_cluster_idx,
+                                stop_cluster_idx,
+                                missing_element_padding=n_padding,
+                            )
+                        )
                 elif interpreter == "gpu":
                     raise NotImplementedError(
                         f"Backend {backend} GDS support not implemented."
@@ -1885,17 +1895,37 @@ def _get_recursive(hasfields, where):
         return None
 
 
+def _cluster_range(clusters, entry_start, entry_stop):
+    """
+    Returns ``(start_cluster_idx, stop_cluster_idx, cluster_offset)``: the range of
+    clusters that hold the entries from ``entry_start`` to ``entry_stop`` (exclusive),
+    and the first entry of the first of those clusters, where the buffers read from
+    that range start. An empty entry range gives an empty cluster range.
+    """
+    cluster_starts = numpy.array([c.num_first_entry for c in clusters])
+    start_cluster_idx = int(
+        numpy.searchsorted(cluster_starts, entry_start, side="right") - 1
+    )
+    if entry_stop <= entry_start:
+        stop_cluster_idx = start_cluster_idx
+    else:
+        # a cluster that starts at entry_stop has no entries in the range
+        stop_cluster_idx = int(
+            numpy.searchsorted(cluster_starts, entry_stop, side="left")
+        )
+    cluster_offset = (
+        int(cluster_starts[start_cluster_idx]) if start_cluster_idx >= 0 else 0
+    )
+    return start_cluster_idx, stop_cluster_idx, cluster_offset
+
+
 def _num_entries_for(ntuple, akform, target_num_bytes, entry_start, entry_stop):
     # a field or a set of fields has the cluster metadata on its RNTuple
     ntuple = ntuple.ntuple
     clusters = ntuple.cluster_summaries
-    cluster_starts = numpy.array([c.num_first_entry for c in clusters])
-
-    start_cluster_idx = (
-        numpy.searchsorted(cluster_starts, entry_start, side="right") - 1
+    start_cluster_idx, stop_cluster_idx, _ = _cluster_range(
+        clusters, entry_start, entry_stop
     )
-    # a cluster that starts at entry_stop has no entries in the range
-    stop_cluster_idx = numpy.searchsorted(cluster_starts, entry_stop, side="left")
 
     target_cols = []
     _recursive_find(akform, target_cols)
