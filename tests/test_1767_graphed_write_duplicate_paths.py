@@ -185,28 +185,61 @@ def test_canonical_path_normalization(tmp_path):
         == "file://somehost/tmp/test.root"
     )
 
+    # remote URLs keep their protocol's semantics: "a//b", "a/b" and "a/../b" can differ
+    assert canonical_path("memory://bucket/a.root") == canonical_path(
+        "memory:///bucket/a.root"
+    )
+    assert canonical_path("memory:///bucket/a//b.root") != canonical_path(
+        "memory:///bucket/a/b.root"
+    )
     assert (
-        canonical_path("http://example.com/foo/../bar.root")
-        == "http://example.com/bar.root"
-    )
-    assert canonical_path("root://server.cern.ch//a/../b.root") == canonical_path(
-        "root://server.cern.ch/b.root"
-    )
-    assert canonical_path("root://server.cern.ch//a.root") == canonical_path(
-        "root://server.cern.ch/a.root"
-    )
-    assert "b.root" in canonical_path("root://server.cern.ch//a/../b.root")
-    assert "a.root" in canonical_path("root://server.cern.ch//a.root")
-    assert (
-        canonical_path("http://User:Secret@example.com/a.root")
-        == "http://User:Secret@example.com/a.root"
+        canonical_path("http://User:Secret@example.com/foo/../bar.root")
+        == "http://User:Secret@example.com/foo/../bar.root"
     )
 
     assert canonical_object_path("/events") == "events"
     assert canonical_object_path("events;1") == "events"
     assert canonical_object_path("/events;1") == "events"
-    assert canonical_object_path(None, default="events") == "events"
+    assert canonical_object_path(None) == ""
     assert canonical_object_path("/dir/events;2") == "dir/events"
+
+
+def test_remote_paths_differing_by_a_double_slash_are_different_files(tmp_path):
+    fsspec = pytest.importorskip("fsspec")
+    fs = fsspec.filesystem("memory")
+    urls = ["memory:///test_1767/a//b.root", "memory:///test_1767/a/b.root"]
+    try:
+        for url, value in zip(urls, (1.0, 99.0)):
+            local = tmp_path / f"{int(value)}.root"
+            with uproot.recreate(local) as f:
+                f.mktree("events", {"x": "f8"})
+                f["events"].extend({"x": np.array([value])})
+            fs.pipe(url[len("memory://") :], local.read_bytes())
+
+        g = uproot.graphed({url: "events" for url in urls})
+        out = uproot.graphed_write(g, str(tmp_path / "out"), executor="thread")
+        assert [uproot.open(p)["tree"]["x"].array().tolist() for p in sorted(out)] == [
+            [1.0],
+            [99.0],
+        ]
+    finally:
+        for url in urls:
+            if fs.exists(url):
+                fs.rm(url)
+
+
+@pytest.mark.parametrize("none_first", [True, False])
+def test_none_is_the_only_tree_whatever_its_name(tmp_path, monkeypatch, none_first):
+    monkeypatch.chdir(tmp_path)
+    absp = _make_tree(tmp_path / "a.root", name="other")
+    base_form = uproot.open(absp)["other"].arrays().layout.form
+    entries = [(absp, None), ("a.root", "other")]
+
+    g = uproot.graphed(
+        dict(entries if none_first else entries[::-1]), known_base_form=base_form
+    )
+    with pytest.raises(ValueError, match="duplicate input"):
+        uproot.graphed_write(g, str(tmp_path / "out"), executor="thread")
 
 
 def _make_tree_at_cycle_2(path):

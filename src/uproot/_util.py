@@ -12,7 +12,6 @@ import glob
 import itertools
 import numbers
 import os
-import posixpath
 import re
 import sys
 import urllib.parse
@@ -291,43 +290,20 @@ def is_remote_url(file_path: str) -> bool:
 
 
 def _normalize_remote_url(file_path: str) -> str:
+    # fsspec's own normal form keeps each protocol's semantics: object stores and HTTP servers
+    # can hold different objects at "a//b" and "a/b", so no POSIX normalization on top of it
     try:
         fs, path = fsspec.core.url_to_fs(file_path)
-        file_path = fs.unstrip_protocol(path)
+        return fs.unstrip_protocol(path)
     except Exception:
-        pass
-
-    parsed = urllib.parse.urlsplit(file_path)
-    auth = ""
-    if parsed.username is not None:
-        auth = parsed.username
-        if parsed.password is not None:
-            auth += f":{parsed.password}"
-        auth += "@"
-    host = parsed.hostname.lower() if parsed.hostname else ""
-    if parsed.port is not None:
-        host += f":{parsed.port}"
-    netloc = f"{auth}{host}" if (auth or host) else parsed.netloc
-
-    path = "/" + parsed.path.lstrip("/") if parsed.path else ""
-    norm_path = posixpath.normpath(path) if path else ""
-
-    return urllib.parse.urlunsplit(
-        (
-            parsed.scheme.lower(),
-            netloc,
-            norm_path,
-            parsed.query,
-            parsed.fragment,
-        )
-    )
+        return file_path
 
 
 def canonical_path(file_path, seen_inodes=None):
     """
     Returns a canonical identity key for a file path or URL for deduplication; it is a key, not
     a path to open. Local paths and file:// URLs are normalized via ``os.path.realpath``; remote
-    URLs are normalized via fsspec and URL normalization. With ``seen_inodes``, a dict shared
+    URLs keep fsspec's normal form for their protocol. With ``seen_inodes``, a dict shared
     across calls, local files that are the same inode (hard links, case-insensitive spellings)
     get the same key.
     """
@@ -354,15 +330,7 @@ def canonical_path(file_path, seen_inodes=None):
 
                 file_path = url2pathname(parsed.netloc + parsed.path)
             else:
-                return urllib.parse.urlunsplit(
-                    (
-                        parsed.scheme.lower(),
-                        parsed.netloc,
-                        posixpath.normpath(parsed.path),
-                        parsed.query,
-                        parsed.fragment,
-                    )
-                )
+                return file_path  # another host's file: its path semantics are not ours
         else:
             from urllib.request import url2pathname
 
@@ -384,17 +352,14 @@ def canonical_path(file_path, seen_inodes=None):
     return resolved
 
 
-def canonical_object_path(object_path, default=None):
+def canonical_object_path(object_path):
     """
     Returns a canonical identity key for an object path inside a ROOT file for deduplication; it
     is a key, not a path to read. Leading and trailing slashes and the ``;cycle`` suffix are
     dropped, so cycles of one name share a key; ``None`` or an empty path, which names the file's
-    only ``TTree``, takes ``default``.
+    only ``TTree``, is ``""``.
     """
-    target = default if object_path is None else (str(object_path).strip() or default)
-    if not target:
-        return ""
-    return target.strip("/").partition(";")[0].rstrip("/")
+    return (object_path or "").strip().strip("/").partition(";")[0].rstrip("/")
 
 
 def file_object_path_split(urlpath: str) -> tuple[str, str | None]:

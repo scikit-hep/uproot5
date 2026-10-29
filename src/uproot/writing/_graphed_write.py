@@ -268,7 +268,7 @@ def graphed_write(
 
     _refuse_non_record(array, "graphed_write")
 
-    from uproot._graphed import _name_from_object_path, _uproot_source
+    from uproot._graphed import _uproot_source
 
     session = array.session
     nid, source = _uproot_source(array, "graphed_write")
@@ -282,19 +282,23 @@ def graphed_write(
             "partition alone); 'files' with explicit 'steps' cannot be written — use "
             "steps_per_file"
         )
-    seen, seen_inodes = {}, {}
-    only_tree = _name_from_object_path(source._file_tree)  # what a None path names
+    listed, seen_inodes = {}, {}  # canonical file -> {canonical tree: input as given}
     for file_path, object_path in source._file_tree:
-        key = (
-            uproot._util.canonical_path(file_path, seen_inodes=seen_inodes),
-            uproot._util.canonical_object_path(object_path, default=only_tree),
+        canon = uproot._util.canonical_path(file_path, seen_inodes=seen_inodes)
+        tree = uproot._util.canonical_object_path(object_path)
+        in_file = listed.setdefault(canon, {})
+        # no object path names the file's only TTree: the same as any other input of that file
+        earlier = (
+            in_file.get(tree, in_file.get(""))
+            if tree
+            else next(iter(in_file.values()), None)
         )
-        if key in seen:
+        if earlier is not None:
             raise ValueError(
                 f"duplicate input {(file_path, object_path or '')!r} is the same as "
-                f"{seen[key]!r}: list each file (or file, tree) once"
+                f"{earlier!r}: list each file (or file, tree) once"
             )
-        seen[key] = (file_path, object_path or "")
+        in_file[tree] = (file_path, object_path or "")
     bases = graphed.write.file_bases(
         [
             (file_path, object_path or "")
