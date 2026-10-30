@@ -1146,6 +1146,17 @@ class DirectoryData(CascadeLeaf):
             cycle = max(cycle, key.cycle + 1)
         return cycle
 
+    def _index_key(self, key):
+        self._keys_by_name.setdefault(key.name.string, []).append(key)
+
+    def _unindex_key(self, key):
+        keys = self._keys_by_name.get(key.name.string)
+        if keys is None:
+            return
+        keys[:] = [k for k in keys if k is not key]
+        if not keys:
+            del self._keys_by_name[key.name.string]
+
     def add_key(self, key, incremental=False):
         if incremental:
             self._dirty_keys.append(key)
@@ -1153,40 +1164,31 @@ class DirectoryData(CascadeLeaf):
             self._file_dirty = True
 
         self._keys_num_bytes += key.allocation
-        keys = self._keys_by_name.get(key.name.string)
-        if keys is None:
-            keys = self._keys_by_name[key.name.string] = []
-        keys.append(key)
+        self._index_key(key)
         self._keys.append(key)
 
     def replace_key(self, key):
         self._file_dirty = True
-        for i in range(len(self._keys)):
-            old = self._keys[i]
-            if old.name.string == key.name.string and old.cycle == key.cycle:
-                self._keys_num_bytes += key.allocation - old.allocation
-                keys = self._keys_by_name[key.name.string]
-                keys[:] = [k for k in keys if k.cycle != key.cycle]
-                keys.append(key)
-                self._keys[i] = key
-                return
+        keys = self._keys_by_name.get(key.name.string, [])
+        for old in keys:
+            if old.cycle == key.cycle:
+                break
         else:
-            raise AssertionError
+            raise AssertionError(f"no key {key.name.string};{key.cycle} to replace")
+        self._keys_num_bytes += key.allocation - old.allocation
+        self._keys[self._keys.index(old)] = key
+        keys[keys.index(old)] = key
 
     def remove_key(self, key):
         self._file_dirty = True
-        for i in range(len(self._keys)):
-            old = self._keys[i]
-            if old.name.string == key.name.string and old.cycle == key.cycle:
-                self._keys_num_bytes -= old.allocation
-                keys = self._keys_by_name[key.name.string]
-                keys[:] = [k for k in keys if k.cycle != key.cycle]
-                if len(keys) == 0:
-                    del self._keys_by_name[key.name.string]
-                del self._keys[i]
-                return
+        for old in self._keys_by_name.get(key.name.string, []):
+            if old.cycle == key.cycle:
+                break
         else:
-            raise AssertionError
+            raise AssertionError(f"no key {key.name.string};{key.cycle} to remove")
+        self._keys_num_bytes -= old.allocation
+        self._keys.remove(old)
+        self._unindex_key(old)
 
     @property
     def num_keys(self):

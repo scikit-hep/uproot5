@@ -1595,6 +1595,12 @@ class WritableDirectory(MutableMapping):
                 file_path=self.file_path,
                 object_path=self.object_path,
             )
+        tree = self._file._trees.pop(key.seek_location, None)
+        if tree is not None:
+            tree._deleted = True
+        ntuple = self._file._ntuples.pop(key.seek_location, None)
+        if ntuple is not None:
+            ntuple._deleted = True
         start = key.seek_location
         stop = start + key.num_bytes + key.compressed_bytes
         self._cascading.freesegments.release(start, stop)
@@ -2636,6 +2642,8 @@ class WritableTree:
             since). Either case raises ``NotImplementedError`` rather than
             desynchronizing or corrupting the tree's branches.
         """
+        if getattr(self, "_deleted", False):
+            raise ValueError("this TTree cycle was deleted")
         if self._cascading is None:
             raise RuntimeError(
                 "_cascading is None — this should not happen; please report this bug"
