@@ -14,11 +14,11 @@ import numbers
 import os
 import re
 import sys
+import urllib.parse
 import warnings
 from collections.abc import Iterable
 from pathlib import Path
 from typing import IO
-from urllib.parse import urlparse
 
 import awkward
 import fsspec
@@ -277,6 +277,89 @@ def regularize_path(path):
         path = _fix_url_path.sub(r"\1/\3", os.fspath(path))
 
     return path
+
+
+def is_remote_url(file_path: str) -> bool:
+    """
+    Returns True if file_path is a URL with a remote scheme (not file or local).
+    """
+    if "://" not in file_path:
+        return False
+    parsed = urllib.parse.urlsplit(file_path)
+    return parsed.scheme not in ("", "file", "local")
+
+
+def _normalize_remote_url(file_path: str) -> str:
+    # fsspec's own normal form keeps each protocol's semantics: object stores and HTTP servers
+    # can hold different objects at "a//b" and "a/b", so no POSIX normalization on top of it
+    try:
+        fs, path = fsspec.core.url_to_fs(file_path)
+        return fs.unstrip_protocol(path)
+    except Exception:
+        return file_path
+
+
+def canonical_path(file_path, seen_inodes=None):
+    """
+    Returns a canonical identity key for a file path or URL for deduplication; it is a key, not
+    a path to open. Local paths and file:// URLs are normalized via ``os.path.realpath``; remote
+    URLs keep fsspec's normal form for their protocol. With ``seen_inodes``, a dict shared
+    across calls, local files that are the same inode (hard links, case-insensitive spellings)
+    get the same key.
+    """
+    if not isinstance(file_path, (str, bytes, os.PathLike)):
+        return file_path
+
+    if isinstance(file_path, os.PathLike):
+        file_path = os.fspath(file_path)
+    if isinstance(file_path, bytes):
+        file_path = os.fsdecode(file_path)
+
+    if is_remote_url(file_path):
+        return _normalize_remote_url(file_path)
+
+    parsed = urllib.parse.urlsplit(file_path)
+    if parsed.scheme in ("file", "local"):
+        if parsed.netloc and parsed.netloc != "localhost":
+            if (
+                sys.platform == "win32"
+                and len(parsed.netloc) >= 2
+                and parsed.netloc[1] == ":"
+            ):
+                from urllib.request import url2pathname
+
+                file_path = url2pathname(parsed.netloc + parsed.path)
+            else:
+                return file_path  # another host's file: its path semantics are not ours
+        else:
+            from urllib.request import url2pathname
+
+            file_path = url2pathname(parsed.path)
+
+    expanded = os.path.expanduser(file_path)
+    resolved = os.path.realpath(expanded)
+
+    if seen_inodes is not None:
+        try:
+            st = os.stat(resolved)
+            key = (st.st_dev, st.st_ino)
+            if key in seen_inodes:
+                return seen_inodes[key]
+            seen_inodes[key] = resolved
+        except OSError:
+            pass
+
+    return resolved
+
+
+def canonical_object_path(object_path):
+    """
+    Returns a canonical identity key for an object path inside a ROOT file for deduplication; it
+    is a key, not a path to read. Leading and trailing slashes and the ``;cycle`` suffix are
+    dropped, so cycles of one name share a key; ``None`` or an empty path, which names the file's
+    only ``TTree``, is ``""``.
+    """
+    return (object_path or "").strip().strip("/").partition(";")[0].rstrip("/")
 
 
 def file_object_path_split(urlpath: str) -> tuple[str, str | None]:
@@ -747,40 +830,44 @@ def awkward_form_of_iter(awkward, form):
         raise RuntimeError(f"unrecognized form: {type(form)}")
 
 
+def ak_add_doc_parameters(obj, ak_add_doc, top_level=False):
+    """
+    The Awkward parameters that ``ak_add_doc`` gives the form of ``obj``: a TBranch or RField, or
+    with ``top_level``, the TTree, RNTuple, TBranch or RField being read as a record.
+
+    ``True`` reads ``title`` into ``__doc__``; a dict reads each ``value`` attribute into its
+    ``key``. A top-level record takes only the ``__doc__`` key, and only from an attribute it has.
+    Empty values are kept, as a TBranch's empty ``title`` always was.
+    """
+    if isinstance(ak_add_doc, bool):
+        # a branch without a title (#1421) gets an empty __doc__
+        return {"__doc__": getattr(obj, "title", "")} if ak_add_doc else {}
+    elif not isinstance(ak_add_doc, dict):
+        return {}
+    elif top_level:
+        name = ak_add_doc.get("__doc__")
+        return {} if name is None else {"__doc__": getattr(obj, name, "")}
+    else:
+        return {key: getattr(obj, value) for key, value in ak_add_doc.items()}
+
+
 def get_ttree_form(
     ttree,
     common_keys,
     ak_add_doc,
 ):
-
     contents = []
     for key in common_keys:
         branch = ttree[key]
         content_form = branch.interpretation.awkward_form(ttree.file)
-        content_parameters = {}
-        if isinstance(ak_add_doc, bool):
-            if ak_add_doc:
-                content_parameters["__doc__"] = branch.title
-        elif isinstance(ak_add_doc, dict):
-            content_parameters.update(
-                {
-                    key: branch.__getattribute__(value)
-                    for key, value in ak_add_doc.items()
-                }
+        doc = ak_add_doc_parameters(branch, ak_add_doc)
+        if doc:
+            content_form = content_form.copy(
+                parameters={**content_form.parameters, **doc}
             )
-        if len(content_parameters.keys()) != 0:
-            content_form = content_form.copy(parameters=content_parameters)
         contents.append(content_form)
 
-    if isinstance(ak_add_doc, bool):
-        parameters = {"__doc__": ttree.title} if ak_add_doc else None
-    elif isinstance(ak_add_doc, dict):
-        parameters = (
-            {"__doc__": ttree.title} if "__doc__" in ak_add_doc.keys() else None
-        )
-    else:
-        parameters = None
-
+    parameters = ak_add_doc_parameters(ttree, ak_add_doc, top_level=True) or None
     return awkward.forms.RecordForm(contents, common_keys, parameters=parameters)
 
 
@@ -926,9 +1013,7 @@ def _regularize_files_inner(
             file_path, object_path = files, None
 
         # This parses the windows drive letter as a scheme!
-        parsed_url = urlparse(file_path)
-        scheme = parsed_url.scheme
-        if "://" in file_path and scheme not in ("file", "local"):
+        if is_remote_url(file_path):
             # user specified a protocol, so we use fsspec to expand the glob and return the full paths
             file_names_full = [
                 file.full_name

@@ -253,8 +253,9 @@ def graphed_write(
         max_workers (int or None): Worker count for an executor built here.
         backend (callable, str or None): The workers' evaluation backend, as in
             ``graphed.aggregate_plan``: a zero-arg factory/class or an importable ``"module:attr"``
-            reference, resolved in the worker; default the session backend's type. A backend whose
-            behavior holds lambdas (``vector``'s) does not pickle — pass it by reference.
+            reference, resolved in the worker; default the session backend's type, with its
+            behavior where ``graphed`` can rebuild it on workers. A backend whose behavior holds
+            lambdas (``vector``'s) does not pickle — pass it by reference.
 
     Produces one ROOT file per partition, mirroring :doc:`uproot.writing._dask_write.dask_write`,
     as a specialization of the ``graphed.write`` partitioned-write base. A reduction on the
@@ -281,13 +282,36 @@ def graphed_write(
             "partition alone); 'files' with explicit 'steps' cannot be written — use "
             "steps_per_file"
         )
+    listed, seen_inodes = {}, {}  # canonical file -> {canonical tree: input as given}
+    for file_path, object_path, _ in source._file_tree:
+        canon = uproot._util.canonical_path(file_path, seen_inodes=seen_inodes)
+        tree = uproot._util.canonical_object_path(object_path)
+        in_file = listed.setdefault(canon, {})
+        # no object path names the file's only TTree: the same as any other input of that file
+        earlier = (
+            in_file.get(tree, in_file.get(""))
+            if tree
+            else next(iter(in_file.values()), None)
+        )
+        if earlier is not None:
+            raise ValueError(
+                f"duplicate input {(file_path, object_path or '')!r} is the same as "
+                f"{earlier!r}: list each file (or file, tree) once"
+            )
+        in_file[tree] = (file_path, object_path or "")
     bases = graphed.write.file_bases(
         [
             (file_path, object_path or "")
-            for file_path, object_path in source._file_tree
+            for file_path, object_path, _ in source._file_tree
         ],
         steps_per_file,
     )
+
+    # worker_backend rebuilds the backend's behavior too; type() alone drops it
+    if hasattr(graphed.aggregate, "worker_backend"):
+        backend = graphed.aggregate.worker_backend(session, backend)
+    elif backend is None:
+        backend = type(session.backend)
 
     fs, root = url_to_fs(destination, **(storage_options or {}))
     fs.mkdirs(root, exist_ok=True)
@@ -299,7 +323,7 @@ def graphed_write(
         codec=_RootCodec.of(locals()),
         columns=list(source.projected_columns((array,))),
         compiled=compiled,
-        backend=backend if backend is not None else type(session.backend),
+        backend=backend,
         externals=tuple(
             graphed.aggregate.external_evaluators(session, compiled).items()
         ),

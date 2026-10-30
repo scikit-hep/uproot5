@@ -210,7 +210,10 @@ def test_a_missing_tree_under_allow_missing_writes_no_part(tmp_path):
     opened = uproot.graphed(a)
     form = opened.session.form(opened).tt.layout.form
     g = uproot.graphed(
-        [a, b.replace("other", "events")], known_base_form=form, allow_missing=True
+        [a, b.replace("other", "events")],
+        known_base_form=form,
+        allow_missing=True,
+        name="g",
     )
     paths = uproot.graphed_write(g, os.path.join(tmp_path, "out"), executor="thread")
     assert [os.path.basename(p) for p in paths] == ["part-00000.root"]
@@ -228,6 +231,7 @@ def test_externals_reach_the_write_workers(tmp_path):
     assert ak.array_equal(_back(paths).a, 2 * uproot.open(src).arrays().x)
 
 
+@pytest.mark.filterwarnings("ignore:.*is deprecated; pass session=:DeprecationWarning")
 def test_refusals_happen_before_anything_is_written(tmp_path):
     src = _make_tree(os.path.join(tmp_path, "in.root"))
     out = os.path.join(tmp_path, "out")
@@ -235,7 +239,7 @@ def test_refusals_happen_before_anything_is_written(tmp_path):
         uproot.graphed_write(
             uproot.graphed([src, src]), out, steps_per_file=2, executor="thread"
         )
-    g = uproot.graphed(src)
+    g = uproot.graphed(src, name="g")
     with pytest.raises(
         graphed.GraphedError, match="'slice' reduces the partitioned axis"
     ):
@@ -250,7 +254,8 @@ def test_refusals_happen_before_anything_is_written(tmp_path):
                         "object_path": "events",
                         "steps": [[0, 5], [5, 20]],
                     }
-                }
+                },
+                name="steps",
             ),
             out,
             executor="thread",
@@ -272,7 +277,7 @@ def test_a_mapped_source_writes_through_its_mapping(tmp_path):
     g = uproot.graphed(
         where, filter_name=mini.FILTER, form_mapping=mini.MiniNanoMapping()
     )
-    ((_nid, source),) = g.session.sources().items()
+    _nid, source = uproot._graphed._uproot_source(g, "test")
     seen = []
     real = source.read_range
     source.read_range = lambda tree, keys, start, stop: (
