@@ -37,7 +37,7 @@ class _NoClose:
         self.hasbranches = hasbranches
 
     def __enter__(self):
-        return self
+        return self.hasbranches
 
     def __exit__(self, exception_type, exception_value, traceback):
         pass
@@ -211,12 +211,12 @@ def iterate(
 
     global_offset = 0
     for file_path, object_path in files:
-        hasbranches = uproot._util.regularize_object_path(
+        hasbranches_context = uproot._util.regularize_object_path(
             file_path, object_path, custom_classes, allow_missing, options
         )
 
-        if hasbranches is not None:
-            with hasbranches:
+        if hasbranches_context is not None:
+            with hasbranches_context as hasbranches:
                 try:
                     for item in hasbranches.iterate(
                         expressions=expressions,
@@ -439,8 +439,8 @@ def concatenate(
     entry_start, entry_stop = _regularize_entries_start_stop(
         total_num_entries, entry_start, entry_stop
     )
-    for hasbranches in all_hasbranches:
-        with hasbranches:
+    for hasbranches_context in all_hasbranches:
+        with hasbranches_context as hasbranches:
             nentries = hasbranches.num_entries
             global_stop += nentries
 
