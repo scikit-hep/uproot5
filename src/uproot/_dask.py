@@ -1325,6 +1325,14 @@ class UprootReadMixin:
             return self.allow_read_errors_with_report
         return (OSError,)
 
+    def is_allowed_exception(self, err: BaseException) -> bool:
+        if isinstance(err, self.allowed_exceptions):
+            return True
+        # coalesced reads wrap the original error in an OSError
+        return isinstance(err, OSError) and isinstance(
+            err.__cause__, self.allowed_exceptions
+        )
+
     @property
     def return_report(self) -> bool:
         return bool(self.allow_read_errors_with_report)
@@ -1534,7 +1542,9 @@ class _UprootRead(UprootReadMixin):
                         counters=counters,
                     ),
                 )
-            except self.allowed_exceptions as err:
+            except BaseException as err:
+                if not self.is_allowed_exception(err):
+                    raise
                 return (
                     self.mock_empty(backend="cpu"),
                     _report_failure(
@@ -1651,7 +1661,9 @@ which has {num_entries} entries"""
                         counters=counters,
                     ),
                 )
-            except self.allowed_exceptions as err:
+            except BaseException as err:
+                if not self.is_allowed_exception(err):
+                    raise
                 return (
                     self.mock_empty(backend="cpu"),
                     _report_failure(

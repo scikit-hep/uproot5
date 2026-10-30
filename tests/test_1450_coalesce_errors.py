@@ -57,3 +57,39 @@ def test_dropped_connection_raises_oserror(failing_file):
             tree.arrays(["px1", "py1"], library="np")
 
     assert isinstance(excinfo.value.__cause__, PayloadError)
+
+
+@pytest.mark.parametrize("open_files", [True, False])
+@pytest.mark.parametrize("allowed", [True, (OSError,), (PayloadError,)])
+def test_dropped_connection_in_dask_report(failing_file, allowed, open_files):
+    dask = pytest.importorskip("dask")
+    pytest.importorskip("dask_awkward")
+    collection, report = uproot.dask(
+        {failing_file: "events"},
+        library="ak",
+        open_files=open_files,
+        allow_read_errors_with_report=allowed,
+        handler=uproot.source.fsspec.FSSpecSource,
+    )
+    FailingMemoryFileSystem.fail = True
+    _, creport = dask.compute(collection, report, scheduler="synchronous")
+
+    assert creport[0].exception == "OSError"
+    assert "Zmumu.root" in creport[0].message
+    assert "Response payload is not completed" in creport[0].message
+
+
+@pytest.mark.parametrize("open_files", [True, False])
+def test_dropped_connection_not_allowed_in_dask_report(failing_file, open_files):
+    dask = pytest.importorskip("dask")
+    pytest.importorskip("dask_awkward")
+    collection, report = uproot.dask(
+        {failing_file: "events"},
+        library="ak",
+        open_files=open_files,
+        allow_read_errors_with_report=(ValueError,),
+        handler=uproot.source.fsspec.FSSpecSource,
+    )
+    FailingMemoryFileSystem.fail = True
+    with pytest.raises(OSError, match="Zmumu.root"):
+        dask.compute(collection, report, scheduler="synchronous")

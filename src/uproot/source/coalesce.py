@@ -44,7 +44,7 @@ class SliceFuture:
         item = result[self._s]
         # fsspec's cat_ranges returns exceptions in place of data by default
         if isinstance(item, Exception):
-            raise OSError(f"failed to read {self._description}") from item
+            raise OSError(f"failed to read {self._description}: {item!r}") from item
         return item
 
 
