@@ -37,7 +37,7 @@ class _NoClose:
         self.hasbranches = hasbranches
 
     def __enter__(self):
-        return self
+        return self.hasbranches
 
     def __exit__(self, exception_type, exception_value, traceback):
         pass
@@ -216,7 +216,7 @@ def iterate(
         )
 
         if hasbranches is not None:
-            with hasbranches:
+            with hasbranches as hasbranches:
                 try:
                     for item in hasbranches.iterate(
                         expressions=expressions,
@@ -439,8 +439,8 @@ def concatenate(
     entry_start, entry_stop = _regularize_entries_start_stop(
         total_num_entries, entry_start, entry_stop
     )
-    for hasbranches in all_hasbranches:
-        with hasbranches:
+    for hasbranches_context in all_hasbranches:
+        with hasbranches_context as hasbranches:
             nentries = hasbranches.num_entries
             global_stop += nentries
 
