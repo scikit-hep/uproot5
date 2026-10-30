@@ -7,6 +7,8 @@ must raise an OSError for that range, not a TypeError from slicing it.
 
 from __future__ import annotations
 
+import asyncio
+import errno
 import queue
 
 import fsspec
@@ -16,11 +18,20 @@ from fsspec.asyn import AsyncFileSystem
 from fsspec.implementations.memory import MemoryFileSystem
 
 import uproot
-from uproot.source.coalesce import CoalescedReadError, CoalesceConfig
+from uproot import CoalescedReadError
+from uproot.source.coalesce import CoalesceConfig
 
 
 class PayloadError(Exception):
     """Not an OSError, like aiohttp.ClientPayloadError."""
+
+
+class ResetError(PayloadError, ConnectionResetError):
+    """Like aiohttp.ClientConnectionResetError."""
+
+
+class ThirdPartyOSError(PayloadError, OSError):
+    """Like aiohttp.ClientOSError."""
 
 
 DROPPED_CONNECTION = PayloadError("Response payload is not completed")
@@ -149,6 +160,39 @@ def test_builtin_oserror_keeps_its_type(failing_file, error):
     assert excinfo.value.__cause__ is original
 
 
+@pytest.mark.parametrize(
+    ("original", "expected"),
+    [
+        (ResetError("reset"), ConnectionResetError),
+        (ThirdPartyOSError("failed"), CoalescedReadError),
+        (OSError("failed"), CoalescedReadError),
+        (asyncio.CancelledError("cancelled"), CoalescedReadError),
+    ],
+)
+def test_error_type_of_other_exceptions(failing_file, original, expected):
+    with uproot.open(failing_file, handler=uproot.source.fsspec.FSSpecSource) as f:
+        tree = f["events"]
+        FailingMemoryFileSystem.error = original
+        with pytest.raises(expected, match="Zmumu.root") as excinfo:
+            tree.arrays(["px1", "py1"], library="np")
+
+    assert type(excinfo.value) is expected
+    assert excinfo.value.__cause__ is original
+
+
+def test_errno_and_filename_are_kept(failing_file):
+    with uproot.open(failing_file, handler=uproot.source.fsspec.FSSpecSource) as f:
+        tree = f["events"]
+        FailingMemoryFileSystem.error = FileNotFoundError(
+            errno.ENOENT, "No such file", "/some/file.root"
+        )
+        with pytest.raises(FileNotFoundError, match="Zmumu.root") as excinfo:
+            tree.arrays(["px1", "py1"], library="np")
+
+    assert excinfo.value.errno == errno.ENOENT
+    assert excinfo.value.filename == "/some/file.root"
+
+
 @pytest.mark.parametrize("open_files", [True, False])
 @pytest.mark.parametrize("allowed", [True, (OSError,), (PayloadError,)])
 def test_dropped_connection_in_dask_report(failing_file, allowed, open_files):
@@ -184,6 +228,24 @@ def test_builtin_oserror_in_dask_report(failing_file, open_files):
     _, creport = dask.compute(collection, report, scheduler="synchronous")
 
     assert creport[0].exception == "FileNotFoundError"
+
+
+@pytest.mark.parametrize("open_files", [True, False])
+def test_builtin_error_matches_on_its_original_type(failing_file, open_files):
+    dask = pytest.importorskip("dask")
+    pytest.importorskip("dask_awkward")
+    collection, report = uproot.dask(
+        {failing_file: "events"},
+        library="ak",
+        open_files=open_files,
+        allow_read_errors_with_report=(PayloadError,),
+        handler=uproot.source.fsspec.FSSpecSource,
+    )
+    FailingMemoryFileSystem.error = ResetError("reset")
+    _, creport = dask.compute(collection, report, scheduler="synchronous")
+
+    assert creport[0].exception == "ConnectionResetError"
+    assert "ResetError('reset')" in creport[0].message
 
 
 @pytest.mark.parametrize("open_files", [True, False])

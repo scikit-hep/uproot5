@@ -26,7 +26,6 @@ from uproot.behaviors.RNTuple import (
 )
 from uproot.behaviors.TBranch import HasBranches, TBranch, _regularize_step_size
 from uproot.source.chunk import SourcePerformanceCounters
-from uproot.source.coalesce import CoalescedReadError
 
 if TYPE_CHECKING:
     from awkward._nplikes.typetracer import TypeTracerReport
@@ -114,10 +113,10 @@ def dask(
             catch any of those exceptions and return empty arrays for those nodes. In either of
             those cases, The return of this function becomes a two element tuple, where the
             first return is the dask-awkward collection of interest and the second return is a
-            report dask-awkward collection. A failed read of a coalesced range is a
-            :doc:`uproot.source.coalesce.CoalescedReadError` (an OSError) unless the original
-            error is a built-in OSError type. A tuple also matches against that original
-            error, and the report includes it in the message.
+            report dask-awkward collection. A failed read of a coalesced range keeps the
+            nearest built-in OSError type of the original error, or else is a
+            :doc:`uproot.exceptions.CoalescedReadError`. A tuple also matches against that
+            original error, and the report includes it in the message.
         known_base_form (awkward.forms.Form | None): If not none use this form instead of opening
             one file to determine the dataset's form. Only available with open_files=False.
         decompression_executor (None or Executor with a ``submit`` method): The
@@ -1331,11 +1330,13 @@ class UprootReadMixin:
 
     @property
     def caught_exceptions(self):
-        return (*self.allowed_exceptions, CoalescedReadError)
+        # coalesced read errors are OSErrors that can match on their original error
+        return (*self.allowed_exceptions, OSError)
 
     def is_allowed_exception(self, err: BaseException) -> bool:
-        # CoalescedReadError wraps the original error, which may be the allowed one
-        return isinstance(err, self.allowed_exceptions) or isinstance(
+        if isinstance(err, self.allowed_exceptions):
+            return True
+        return getattr(err, "coalesced_read", False) and isinstance(
             err.__cause__, self.allowed_exceptions
         )
 
