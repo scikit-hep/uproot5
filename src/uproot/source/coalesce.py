@@ -26,6 +26,21 @@ class CoalesceConfig:
 DEFAULT_CONFIG = CoalesceConfig()
 
 
+class CoalescedReadError(OSError):
+    """
+    A range of a coalesced request failed. The error returned for that range is
+    the ``__cause__`` of this exception.
+    """
+
+
+def _read_error(item: Exception, description: str) -> OSError:
+    message = f"failed to read {description}: {item!r}"
+    # builtin OSError types only need a message, so callers can still catch them
+    if isinstance(item, OSError) and type(item).__module__ == "builtins":
+        return type(item)(message)
+    return CoalescedReadError(message)
+
+
 class SliceFuture:
     def __init__(self, parent: Future, s: slice | int, description: str = ""):
         self._parent = parent
@@ -44,7 +59,7 @@ class SliceFuture:
         item = result[self._s]
         # fsspec's cat_ranges returns exceptions in place of data by default
         if isinstance(item, Exception):
-            raise OSError(f"failed to read {self._description}: {item!r}") from item
+            raise _read_error(item, self._description) from item
         return item
 
 

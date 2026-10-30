@@ -26,6 +26,7 @@ from uproot.behaviors.RNTuple import (
 )
 from uproot.behaviors.TBranch import HasBranches, TBranch, _regularize_step_size
 from uproot.source.chunk import SourcePerformanceCounters
+from uproot.source.coalesce import CoalescedReadError
 
 if TYPE_CHECKING:
     from awkward._nplikes.typetracer import TypeTracerReport
@@ -113,7 +114,10 @@ def dask(
             catch any of those exceptions and return empty arrays for those nodes. In either of
             those cases, The return of this function becomes a two element tuple, where the
             first return is the dask-awkward collection of interest and the second return is a
-            report dask-awkward collection.
+            report dask-awkward collection. A failed read of a coalesced range is a
+            :doc:`uproot.source.coalesce.CoalescedReadError` (an OSError) unless the original
+            error is a built-in OSError type. A tuple also matches against that original
+            error, and the report includes it in the message.
         known_base_form (awkward.forms.Form | None): If not none use this form instead of opening
             one file to determine the dataset's form. Only available with open_files=False.
         decompression_executor (None or Executor with a ``submit`` method): The
@@ -1325,11 +1329,13 @@ class UprootReadMixin:
             return self.allow_read_errors_with_report
         return (OSError,)
 
+    @property
+    def caught_exceptions(self):
+        return (*self.allowed_exceptions, CoalescedReadError)
+
     def is_allowed_exception(self, err: BaseException) -> bool:
-        if isinstance(err, self.allowed_exceptions):
-            return True
-        # coalesced reads wrap the original error in an OSError
-        return isinstance(err, OSError) and isinstance(
+        # CoalescedReadError wraps the original error, which may be the allowed one
+        return isinstance(err, self.allowed_exceptions) or isinstance(
             err.__cause__, self.allowed_exceptions
         )
 
@@ -1542,7 +1548,7 @@ class _UprootRead(UprootReadMixin):
                         counters=counters,
                     ),
                 )
-            except BaseException as err:
+            except self.caught_exceptions as err:
                 if not self.is_allowed_exception(err):
                     raise
                 return (
@@ -1661,7 +1667,7 @@ which has {num_entries} entries"""
                         counters=counters,
                     ),
                 )
-            except BaseException as err:
+            except self.caught_exceptions as err:
                 if not self.is_allowed_exception(err):
                     raise
                 return (
