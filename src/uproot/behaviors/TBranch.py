@@ -225,13 +225,13 @@ def iterate(
                         filter_typename=filter_typename,
                         filter_branch=(
                             filter_branch
-                            if isinstance(hasbranches, HasBranches)
+                            if isinstance(hasbranches, (HasBranches, _NoClose))
                             or filter_branch is not no_filter
                             else unset
                         ),
                         **(
                             {}
-                            if isinstance(hasbranches, HasBranches)
+                            if isinstance(hasbranches, (HasBranches, _NoClose))
                             else {"filter_field": filter_field}
                         ),
                         aliases=aliases,
@@ -470,13 +470,13 @@ def concatenate(
                     filter_typename=filter_typename,
                     filter_branch=(
                         filter_branch
-                        if isinstance(hasbranches, HasBranches)
+                        if isinstance(hasbranches, (HasBranches, _NoClose))
                         or filter_branch is not no_filter
                         else unset
                     ),
                     **(
                         {}
-                        if isinstance(hasbranches, HasBranches)
+                        if isinstance(hasbranches, (HasBranches, _NoClose))
                         else {"filter_field": filter_field}
                     ),
                     aliases=aliases,
