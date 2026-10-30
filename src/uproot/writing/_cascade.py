@@ -1118,9 +1118,7 @@ class DirectoryData(CascadeLeaf):
         self._keys_num_bytes = sum(x.allocation for x in keys)
         self._keys_by_name = {}
         for key in keys:
-            if key.name.string not in self._keys_by_name:
-                self._keys_by_name[key.name.string] = []
-            self._keys_by_name[key.name.string].append(key)
+            self._index_key(key)
         self._keys = keys
 
     def __repr__(self):
@@ -1150,9 +1148,7 @@ class DirectoryData(CascadeLeaf):
         self._keys_by_name.setdefault(key.name.string, []).append(key)
 
     def _unindex_key(self, key):
-        keys = self._keys_by_name.get(key.name.string)
-        if keys is None:
-            return
+        keys = self._keys_by_name[key.name.string]
         keys[:] = [k for k in keys if k is not key]
         if not keys:
             del self._keys_by_name[key.name.string]
@@ -1169,22 +1165,18 @@ class DirectoryData(CascadeLeaf):
 
     def replace_key(self, key):
         self._file_dirty = True
-        keys = self._keys_by_name.get(key.name.string, [])
-        for old in keys:
-            if old.cycle == key.cycle:
-                break
-        else:
+        old = self.get_key(key.name.string, key.cycle)
+        if old is None:
             raise AssertionError(f"no key {key.name.string};{key.cycle} to replace")
         self._keys_num_bytes += key.allocation - old.allocation
         self._keys[self._keys.index(old)] = key
-        keys[keys.index(old)] = key
+        self._unindex_key(old)
+        self._index_key(key)
 
     def remove_key(self, key):
         self._file_dirty = True
-        for old in self._keys_by_name.get(key.name.string, []):
-            if old.cycle == key.cycle:
-                break
-        else:
+        old = self.get_key(key.name.string, key.cycle)
+        if old is None:
             raise AssertionError(f"no key {key.name.string};{key.cycle} to remove")
         self._keys_num_bytes -= old.allocation
         self._keys.remove(old)
@@ -1220,13 +1212,17 @@ class DirectoryData(CascadeLeaf):
         return [(x.name.string, x.cycle, x.classname.string) for x in self._keys]
 
     @property
-    def dir_names(self):
+    def dir_keys(self):
         return [
-            x.name.string
+            x
             for x in self._keys
             if x.classname.string == "TDirectory"
             or x.classname.string == "TDirectoryFile"
         ]
+
+    @property
+    def dir_names(self):
+        return [x.name.string for x in self.dir_keys]
 
     def classname_of(self, name):
         keys = self._keys_by_name.get(name, [])
