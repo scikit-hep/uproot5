@@ -29,14 +29,13 @@ DEFAULT_CONFIG = CoalesceConfig()
 
 def _read_error(item: BaseException, description: str) -> OSError:
     message = f"failed to read {description}: {item!r}"
-    # the nearest builtin OSError type lets callers catch the error by that type
+    # the nearest builtin OSError type lets callers catch the error by that type,
+    # and OSError itself becomes a more specific type if its errno has one
     error_type = next(
         (
             cls
             for cls in type(item).__mro__
-            if cls is not OSError
-            and cls.__module__ == "builtins"
-            and issubclass(cls, OSError)
+            if cls.__module__ == "builtins" and issubclass(cls, OSError)
         ),
         uproot.exceptions.CoalescedReadError,
     )

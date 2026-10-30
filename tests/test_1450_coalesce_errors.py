@@ -164,8 +164,10 @@ def test_builtin_oserror_keeps_its_type(failing_file, error):
     ("original", "expected"),
     [
         (ResetError("reset"), ConnectionResetError),
-        (ThirdPartyOSError("failed"), CoalescedReadError),
-        (OSError("failed"), CoalescedReadError),
+        (ThirdPartyOSError(errno.ECONNRESET, "reset"), ConnectionResetError),
+        (ThirdPartyOSError(errno.EIO, "failed"), OSError),
+        (ThirdPartyOSError("failed"), OSError),
+        (OSError("failed"), OSError),
         (asyncio.CancelledError("cancelled"), CoalescedReadError),
     ],
 )
@@ -231,7 +233,10 @@ def test_builtin_oserror_in_dask_report(failing_file, open_files):
 
 
 @pytest.mark.parametrize("open_files", [True, False])
-def test_builtin_error_matches_on_its_original_type(failing_file, open_files):
+@pytest.mark.parametrize(
+    "original", [ResetError("reset"), ThirdPartyOSError(errno.ECONNRESET, "reset")]
+)
+def test_builtin_error_matches_on_its_original_type(failing_file, original, open_files):
     dask = pytest.importorskip("dask")
     pytest.importorskip("dask_awkward")
     collection, report = uproot.dask(
@@ -241,11 +246,11 @@ def test_builtin_error_matches_on_its_original_type(failing_file, open_files):
         allow_read_errors_with_report=(PayloadError,),
         handler=uproot.source.fsspec.FSSpecSource,
     )
-    FailingMemoryFileSystem.error = ResetError("reset")
+    FailingMemoryFileSystem.error = original
     _, creport = dask.compute(collection, report, scheduler="synchronous")
 
     assert creport[0].exception == "ConnectionResetError"
-    assert "ResetError('reset')" in creport[0].message
+    assert repr(original) in creport[0].message
 
 
 @pytest.mark.parametrize("open_files", [True, False])
