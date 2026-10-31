@@ -1217,7 +1217,9 @@ in file {self.file.file_path}"""
                 if cluster_i < 0:
                     continue
                 stop = starts[i + 1] if i + 1 < len(starts) else total_length
-                cluster_buffer = col_decompressed_buffers[cluster_i]
+                # the buffers only hold the clusters that were read, starting at
+                # start_cluster_idx
+                cluster_buffer = col_decompressed_buffers[cluster_i - start_cluster_idx]
                 cluster_buffer = self.gpu_deserialize_pages(
                     cluster_buffer, ncol, cluster_i, field_metadata
                 )
