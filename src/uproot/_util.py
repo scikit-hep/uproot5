@@ -424,10 +424,13 @@ def _edit_distance(a: str, b: str) -> int:
     return rows[len(a)][len(b)]
 
 
-def _check_unknown_options(options: dict, file_path=None, stacklevel: int = 3) -> None:
+def _check_unknown_options(
+    options: dict, file_path=None, stacklevel: int = 3, all_local: bool = False
+) -> None:
     """
     Raise on unrecognized options for uproot's own sources and warn about likely
-    misspellings of uproot options for fsspec, whose storage options are open-ended.
+    misspellings of uproot options for fsspec, whose storage options are open-ended;
+    ``all_local`` refuses those too.
     Handlers that are not uproot Sources are skipped here and rejected later by
     ``file_path_to_source_class``.
 
@@ -453,7 +456,8 @@ def _check_unknown_options(options: dict, file_path=None, stacklevel: int = 3) -
     ):
         return
 
-    if issubclass(source_cls, uproot.source.fsspec.FSSpecSource):
+    fsspec_source = issubclass(source_cls, uproot.source.fsspec.FSSpecSource)
+    if fsspec_source and not all_local:
         for key in unknown:
             matches = [k for k in sorted(known) if _edit_distance(key, k) <= 2]
             if matches:
@@ -464,7 +468,8 @@ def _check_unknown_options(options: dict, file_path=None, stacklevel: int = 3) -
                 )
     else:
         raise TypeError(
-            f"unrecognized option(s) for {source_cls.__name__}: "
+            f"unrecognized option(s) for "
+            f"{'local files' if fsspec_source else source_cls.__name__}: "
             f"{', '.join(map(repr, unknown))}; valid options are {sorted(known)}"
         )
 
