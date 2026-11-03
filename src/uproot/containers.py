@@ -1444,7 +1444,16 @@ class AsMap(AsContainer):
                         self._values, 1, chunk, cursor, context, file, selffile, parent
                     )
                 )
-            out = STLMap(numpy.concatenate(keys), numpy.concatenate(values))
+            if length == 0:
+                keys = _read_nested(
+                    self._keys, 0, chunk, cursor, context, file, selffile, parent
+                )
+                values = _read_nested(
+                    self._values, 0, chunk, cursor, context, file, selffile, parent
+                )
+            else:
+                keys, values = numpy.concatenate(keys), numpy.concatenate(values)
+            out = STLMap(keys, values)
             if self._header and header:
                 uproot.deserialization.numbytes_check(
                     chunk,
