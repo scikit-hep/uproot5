@@ -2,6 +2,7 @@
 import shutil
 import socket
 import subprocess
+import sys
 import tempfile
 import pytest
 import threading
@@ -71,8 +72,22 @@ def fresh_graphed_default():
 
 @pytest.fixture(scope="function", autouse=False)
 def reset_classes():
-    uproot.model.reset_classes()
-    return
+    # reset_classes reloads the model modules, which replaces their classes.
+    # Put the originals back afterward: other tests under this process compare
+    # against them or looked them up when they were collected.
+    modules = {
+        module: dict(vars(module))
+        for name, module in list(sys.modules.items())
+        if name == "uproot.streamers" or name.startswith("uproot.models.")
+    }
+    classes, unknown_classes = uproot.classes, uproot.unknown_classes
+    try:
+        uproot.model.reset_classes()
+        yield
+    finally:
+        for module, contents in modules.items():
+            vars(module).update(contents)
+        uproot.classes, uproot.unknown_classes = classes, unknown_classes
 
 
 @contextlib.contextmanager
