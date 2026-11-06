@@ -638,14 +638,10 @@ class HasFields(Mapping):
             # Also include the field itself
             keys = [self.path] + [f"{self.path}.{k}" for k in keys]
             if top_collection is None:
-                # The field needs to be in the keys or be a parent of a field in the keys
-                if any(
-                    key.startswith(f"{self.path}.") or key == self.path for key in keys
-                ):
-                    top_names.append(self.name)
-                    record_list.append(
-                        rntuple.field_form(self.field_id, keys, ak_add_doc=ak_add_doc)
-                    )
+                top_names.append(self.name)
+                record_list.append(
+                    rntuple.field_form(self.field_id, keys, ak_add_doc=ak_add_doc)
+                )
             else:
                 keys += [top_collection.path]
                 top_names.append(top_collection.name)
@@ -944,14 +940,10 @@ class HasFields(Mapping):
                 )
                 pandas_dict = {}
                 for f, arr in numpy_data.items():
-                    try:
-                        if getattr(arr, "ndim", 1) > 1:
-                            pandas_dict[f] = list(arr)
-                        else:
-                            pandas_dict[f] = arr
-                    except Exception:
-                        msg = f"Field {f} cannot be converted to NumPy/Pandas"
-                        raise ValueError(msg) from None
+                    if getattr(arr, "ndim", 1) > 1:
+                        pandas_dict[f] = list(arr)
+                    else:
+                        pandas_dict[f] = arr
                 try:
                     pandas_data = pd.DataFrame(pandas_dict, index=pandas_index)
                 except Exception:
@@ -1115,6 +1107,7 @@ class HasFields(Mapping):
                 library=library,
                 backend=backend,
                 interpreter=interpreter,
+                ak_add_doc=ak_add_doc,
                 how=how,
                 filter_branch=filter_branch,
             )
@@ -1997,8 +1990,7 @@ def _cupy_insert(arr, obj, value):
             src_i += n
         out[dst_i] = value
         dst_i += 1
-    if src_i < arr.size:
-        out[dst_i:] = arr[src_i:]
+    out[dst_i:] = arr[src_i:]
     return out
 
 

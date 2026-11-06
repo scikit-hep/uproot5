@@ -265,6 +265,8 @@ class NumPy(Library):
             return [concatenated[k] for k in keys]
         elif isinstance(all_arrays[0], dict):
             return concatenated
+        else:
+            raise AssertionError(f"checked above, but it is {type(all_arrays[0])}")
 
 
 def _strided_to_awkward(awkward, path, interpretation, data):
@@ -540,7 +542,7 @@ class Awkward(Library):
             )
             if issubclass(array.offsets.dtype.type, numpy.int32):
                 offsets = awkward.index.Index32(array.offsets)
-                layout = awkward.contents.ListOffsetArray32(offsets, content)
+                layout = awkward.contents.ListOffsetArray(offsets, content)
             else:
                 offsets = awkward.index.Index64(array.offsets)
                 layout = awkward.contents.ListOffsetArray(offsets, content)
@@ -552,7 +554,7 @@ class Awkward(Library):
             )
             if issubclass(array.offsets.dtype.type, numpy.int32):
                 offsets = awkward.index.Index32(array.offsets)
-                layout = awkward.contents.ListOffsetArray32(offsets, content)
+                layout = awkward.contents.ListOffsetArray(offsets, content)
             else:
                 offsets = awkward.index.Index64(array.offsets)
                 layout = awkward.contents.ListOffsetArray(offsets, content)
@@ -565,12 +567,12 @@ class Awkward(Library):
             )
             if issubclass(array.offsets.dtype.type, numpy.int32):
                 offsets = awkward.index.Index32(array.offsets)
-                layout = awkward.contents.ListOffsetArray32(
+                layout = awkward.contents.ListOffsetArray(
                     offsets, content, parameters={"__array__": "string"}
                 )
             elif issubclass(array.offsets.dtype.type, numpy.uint32):
                 offsets = awkward.index.IndexU32(array.offsets)
-                layout = awkward.contents.ListOffsetArrayU32(
+                layout = awkward.contents.ListOffsetArray(
                     offsets, content, parameters={"__array__": "string"}
                 )
             elif issubclass(array.offsets.dtype.type, numpy.int64):
@@ -627,7 +629,7 @@ class Awkward(Library):
             return [arrays[name] for name, _ in expression_context]
         elif how is dict:
             return {_rename(name, c): arrays[name] for name, c in expression_context}
-        elif how is None:
+        elif how is None or (how == "zip" and len(expression_context) == 0):
             if len(expression_context) == 0:
                 return awkward.Array(
                     awkward.contents.RecordArray([], fields=[], length=0)
@@ -667,14 +669,9 @@ class Awkward(Library):
 
             out = None
             if len(nonjagged) != 0:
-                if len(nonjagged) == 0:
-                    out = awkward.Array(
-                        awkward.contents.RecordArray([], fields=[], length=0)
-                    )
-                else:
-                    out = awkward.Array(
-                        {name: renamed_arrays[name] for name in nonjagged},
-                    )
+                out = awkward.Array(
+                    {name: renamed_arrays[name] for name in nonjagged},
+                )
             for number, jagged in enumerate(jaggeds):
                 cut = len(jagged[0])
                 for name in jagged:
@@ -694,27 +691,17 @@ class Awkward(Library):
                     cut = 0
                 if cut == 0:
                     common = f"jagged{number}"
-                    if len(jagged) == 0:
-                        subarray = awkward.Array(
-                            awkward.contents.RecordArray([], fields=[], length=0)
-                        )
-                    else:
-                        subarray = awkward.zip(
-                            {name: renamed_arrays[name] for name in jagged}
-                        )
+                    subarray = awkward.zip(
+                        {name: renamed_arrays[name] for name in jagged}
+                    )
                 else:
                     common = jagged[0][:cut].strip("_./")
-                    if len(jagged) == 0:
-                        subarray = awkward.Array(
-                            awkward.contents.RecordArray([], fields=[], length=0)
-                        )
-                    else:
-                        subarray = awkward.zip(
-                            {
-                                name[cut:].strip("_./"): renamed_arrays[name]
-                                for name in jagged
-                            }
-                        )
+                    subarray = awkward.zip(
+                        {
+                            name[cut:].strip("_./"): renamed_arrays[name]
+                            for name in jagged
+                        }
+                    )
                 if out is None:
                     out = awkward.Array({common: subarray})
                 else:
@@ -754,6 +741,8 @@ class Awkward(Library):
             return [concatenated[k] for k in keys]
         elif isinstance(all_arrays[0], dict):
             return concatenated
+        else:
+            raise AssertionError(f"checked above, but it is {type(all_arrays[0])}")
 
 
 def _is_pandas_rangeindex(pandas, index):
@@ -848,9 +837,9 @@ class Pandas(Library):
 
     The "group" behavior for this library is:
 
-    * ``how=None`` or a string: passed to ``pandas.merge`` as its ``how``
-      parameter, which would be relevant if jagged arrays with different
-      multiplicity are requested.
+    * ``how=None`` or a string: a single ``pandas.DataFrame``, made by
+      ``pandas.concat`` of the arrays along columns (an outer join on their
+      indexes). The value of a string ``how`` is ignored.
     * ``how=dict``: a dict of str \u2192 array, mapping the names to
       ``pandas.Series``.
     * ``how=tuple``: a tuple of ``pandas.Series``, in the order requested.
@@ -908,9 +897,9 @@ class Pandas(Library):
 
         else:
             raise TypeError(
-                f"for library {self.name}, how must be tuple, list, dict, str (for "
-                "pandas.merge's 'how' parameter, or None (for one or more"
-                "DataFrames without merging)"
+                f"for library {self.name}, how must be tuple, list, dict, or None "
+                "or a str (for a DataFrame of all arrays, concatenated along "
+                "columns; the value of the str is ignored)"
             )
 
     def global_index(self, arrays, global_offset):
@@ -955,6 +944,8 @@ class Pandas(Library):
             return [concatenated[k] for k in keys]
         elif isinstance(all_arrays[0], dict):
             return concatenated
+        else:
+            raise AssertionError(f"checked above, but it is {type(all_arrays[0])}")
 
 
 _libraries = {

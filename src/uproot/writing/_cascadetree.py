@@ -101,7 +101,7 @@ class Tree:
         self._rewrite_blockers = ()
         self._needs_relocation_before_extend = False
 
-        if isinstance(branch_types, dict):
+        if isinstance(branch_types, Mapping):
             branch_types_items = branch_types.items()
         else:
             branch_types_items = branch_types
@@ -130,7 +130,7 @@ class Tree:
                         raise TypeError
                     branch_dtype = numpy.dtype(branch_type)
 
-                except (TypeError, ValueError) as err:
+                except (TypeError, ValueError, SyntaxError) as err:
                     if isinstance(
                         branch_type,
                         (awkward.types.Type, awkward.types.ArrayType),
@@ -152,53 +152,54 @@ class Tree:
 
             if branch_dict is not None:
                 self._check_not_counter(branch_name)
-                if branch_name not in self._branch_lookup:
-                    self._branch_lookup[branch_name] = len(self._branch_data)
-                    self._branch_data.append(
-                        {
-                            "kind": "record",
-                            "name": branch_name,
-                            "keys": list(branch_dict),
-                        }
-                    )
+                self._check_new_branch(branch_name)
+                self._branch_lookup[branch_name] = len(self._branch_data)
+                self._branch_data.append(
+                    {
+                        "kind": "record",
+                        "name": branch_name,
+                        "keys": list(branch_dict),
+                    }
+                )
 
-                    for key, content in branch_dict.items():
-                        subname = self._field_name(branch_name, key)
-                        try:
-                            dtype = numpy.dtype(content)
-                        except Exception as err:
-                            raise TypeError(
-                                f"values of a dict must be NumPy types\n\n    key {key!r} has type {content!r}"
-                            ) from err
-                        self._check_not_counter(subname)
-                        record_fields.add(subname)
-                        if subname not in self._branch_lookup:
-                            self._branch_lookup[subname] = len(self._branch_data)
-                            self._branch_data.append(
-                                self._branch_np(subname, content, dtype)
-                            )
+                for key, content in branch_dict.items():
+                    subname = self._field_name(branch_name, key)
+                    try:
+                        dtype = numpy.dtype(content)
+                    except Exception as err:
+                        raise TypeError(
+                            f"values of a dict must be NumPy types\n\n    key {key!r} has type {content!r}"
+                        ) from err
+                    self._check_not_counter(subname)
+                    record_fields.add(subname)
+                    self._check_new_branch(subname)
+                    self._branch_lookup[subname] = len(self._branch_data)
+                    self._branch_data.append(self._branch_np(subname, content, dtype))
 
             elif branch_dtype is not None:
                 if branch_dtype.subdtype is not None or branch_dtype.kind not in "iu":
                     self._check_not_counter(branch_name)
-                if branch_name not in self._branch_lookup:
+                index = self._branch_lookup.get(branch_name)
+                if index is None:
                     self._branch_lookup[branch_name] = len(self._branch_data)
                     self._branch_data.append(
                         self._branch_np(branch_name, branch_type, branch_dtype)
                     )
+                elif self._branch_data[index]["kind"] != "counter":
+                    # (a scalar integer may name the counter of a jagged branch
+                    # before it, which is then that counter)
+                    self._check_new_branch(branch_name)
 
             else:
                 parameters = branch_datashape.parameters
-                if parameters is None:
-                    parameters = {}
 
                 if parameters.get("__array__") == "string":
                     self._check_not_counter(branch_name)
-                    if branch_name not in self._branch_lookup:
-                        self._branch_lookup[branch_name] = len(self._branch_data)
-                        self._branch_data.append(
-                            self._branch_np(branch_name, branch_type, numpy.dtype(str))
-                        )
+                    self._check_new_branch(branch_name)
+                    self._branch_lookup[branch_name] = len(self._branch_data)
+                    self._branch_data.append(
+                        self._branch_np(branch_name, branch_type, numpy.dtype(str))
+                    )
 
                 elif parameters.get("__array__") == "bytes":
                     raise NotImplementedError("array of bytes")
@@ -244,39 +245,30 @@ class Tree:
                     self._check_not_counter(branch_name)
 
                     if type(content).__name__ == "RecordType":
-                        if hasattr(content, "contents"):
-                            contents = content.contents
-                        else:
-                            contents = content.fields()
+                        contents = content.contents
                         keys = content.fields
-                        if callable(keys):
-                            keys = keys()
                         if keys is None:
                             keys = [str(x) for x in range(len(contents))]
 
-                        if branch_name not in self._branch_lookup:
-                            self._branch_lookup[branch_name] = len(self._branch_data)
-                            self._branch_data.append(
-                                {"kind": "record", "name": branch_name, "keys": keys}
-                            )
+                        self._check_new_branch(branch_name)
+                        self._branch_lookup[branch_name] = len(self._branch_data)
+                        self._branch_data.append(
+                            {"kind": "record", "name": branch_name, "keys": keys}
+                        )
 
-                            for key, cont in zip(keys, contents, strict=True):
-                                subname = self._field_name(branch_name, key)
-                                dtype = self._branch_ak_to_np(cont)
-                                if dtype is None:
-                                    raise TypeError(
-                                        f"fields of a record must be NumPy types, though the record itself may be in a jagged array\n\n    field {key!r} has type {cont!s}"
-                                    )
-                                self._check_not_counter(subname)
-                                if subname not in self._branch_lookup:
-                                    self._branch_lookup[subname] = len(
-                                        self._branch_data
-                                    )
-                                    self._branch_data.append(
-                                        self._branch_np(
-                                            subname, cont, dtype, counter=counter
-                                        )
-                                    )
+                        for key, cont in zip(keys, contents, strict=True):
+                            subname = self._field_name(branch_name, key)
+                            dtype = self._branch_ak_to_np(cont)
+                            if dtype is None:
+                                raise TypeError(
+                                    f"fields of a record must be NumPy types, though the record itself may be in a jagged array\n\n    field {key!r} has type {cont!s}"
+                                )
+                            self._check_not_counter(subname)
+                            self._check_new_branch(subname)
+                            self._branch_lookup[subname] = len(self._branch_data)
+                            self._branch_data.append(
+                                self._branch_np(subname, cont, dtype, counter=counter)
+                            )
 
                     else:
                         dt = self._branch_ak_to_np(content)
@@ -284,44 +276,39 @@ class Tree:
                             raise TypeError(
                                 f"cannot write Awkward Array type to ROOT file:\n\n    {branch_datashape!s}"
                             )
-                        if branch_name not in self._branch_lookup:
-                            self._branch_lookup[branch_name] = len(self._branch_data)
-                            self._branch_data.append(
-                                self._branch_np(branch_name, dt, dt, counter=counter)
-                            )
+                        self._check_new_branch(branch_name)
+                        self._branch_lookup[branch_name] = len(self._branch_data)
+                        self._branch_data.append(
+                            self._branch_np(branch_name, dt, dt, counter=counter)
+                        )
 
                 elif type(branch_datashape).__name__ == "RecordType":
-                    if hasattr(branch_datashape, "contents"):
-                        contents = branch_datashape.contents
-                    else:
-                        contents = branch_datashape.fields()
+                    contents = branch_datashape.contents
                     keys = branch_datashape.fields
-                    if callable(keys):
-                        keys = keys()
                     if keys is None:
                         keys = [str(x) for x in range(len(contents))]
 
                     self._check_not_counter(branch_name)
-                    if branch_name not in self._branch_lookup:
-                        self._branch_lookup[branch_name] = len(self._branch_data)
-                        self._branch_data.append(
-                            {"kind": "record", "name": branch_name, "keys": keys}
-                        )
+                    self._check_new_branch(branch_name)
+                    self._branch_lookup[branch_name] = len(self._branch_data)
+                    self._branch_data.append(
+                        {"kind": "record", "name": branch_name, "keys": keys}
+                    )
 
-                        for key, content in zip(keys, contents, strict=True):
-                            subname = self._field_name(branch_name, key)
-                            dtype = self._branch_ak_to_np(content)
-                            if dtype is None:
-                                raise TypeError(
-                                    f"fields of a record must be NumPy types, though the record itself may be in a jagged array\n\n    field {key!r} has type {content!s}"
-                                )
-                            self._check_not_counter(subname)
-                            record_fields.add(subname)
-                            if subname not in self._branch_lookup:
-                                self._branch_lookup[subname] = len(self._branch_data)
-                                self._branch_data.append(
-                                    self._branch_np(subname, content, dtype)
-                                )
+                    for key, content in zip(keys, contents, strict=True):
+                        subname = self._field_name(branch_name, key)
+                        dtype = self._branch_ak_to_np(content)
+                        if dtype is None:
+                            raise TypeError(
+                                f"fields of a record must be NumPy types, though the record itself may be in a jagged array\n\n    field {key!r} has type {content!s}"
+                            )
+                        self._check_not_counter(subname)
+                        record_fields.add(subname)
+                        self._check_new_branch(subname)
+                        self._branch_lookup[subname] = len(self._branch_data)
+                        self._branch_data.append(
+                            self._branch_np(subname, content, dtype)
+                        )
 
                 else:
                     raise TypeError(
@@ -352,6 +339,14 @@ class Tree:
         }
         self._key = None
 
+    def _check_new_branch(self, name):
+        if name in self._branch_lookup:
+            raise ValueError(
+                f"branch {name!r} is defined more than once; the fields of a record "
+                f"are branches too, named by field_name, so rename one of them or "
+                f"choose a different field_name"
+            )
+
     def _check_not_counter(self, name):
         index = self._branch_lookup.get(name)
         if index is not None and self._branch_data[index]["kind"] == "counter":
@@ -366,8 +361,6 @@ class Tree:
             return numpy.dtype("float64")
         elif type(branch_datashape).__name__ == "NumpyType":
             return numpy.dtype(branch_datashape.primitive)
-        elif type(branch_datashape).__name__ == "PrimitiveType":
-            return numpy.dtype(branch_datashape.dtype)
         elif type(branch_datashape).__name__ == "RegularType":
             content = self._branch_ak_to_np(branch_datashape.content)
             if content is None:
@@ -695,12 +688,12 @@ class Tree:
                 )
 
             datum = branch_data[branch_lookup[branch_name]]
-            if datum["kind"] == "record":
-                continue
 
             if datum["counter"] is None:
                 if datum["dtype"] == ">U0":
                     layout = awkward.to_layout(branch_array)
+                    if isinstance(layout, awkward.contents.IndexedArray):
+                        layout = layout.project()
                     if isinstance(
                         layout,
                         (
@@ -771,7 +764,11 @@ class Tree:
 
             else:
                 big_endian, big_endian_offsets = _normalize_jagged_array(
-                    branch_array, datum["dtype"], datum["shape"], operation="extend"
+                    branch_name,
+                    branch_array,
+                    datum["dtype"],
+                    datum["shape"],
+                    operation="extend",
                 )
                 tofill.append(
                     (branch_name, datum["compression"], big_endian, big_endian_offsets)
@@ -1083,8 +1080,6 @@ class Tree:
                 special_struct = uproot.models.TLeaf._tleafs1_format1
             elif letter_upper == "I":
                 special_struct = uproot.models.TLeaf._tleafi1_format1
-            elif letter_upper == "G":
-                special_struct = uproot.models.TLeaf._tleafl1_format0
             elif letter_upper == "L":
                 special_struct = uproot.models.TLeaf._tleafl1_format0
             elif letter_upper == "F":
@@ -1093,6 +1088,8 @@ class Tree:
                 special_struct = uproot.models.TLeaf._tleafd1_format1
             elif letter_upper == "C":
                 special_struct = uproot.models.TLeaf._tleafc1_format1
+            else:
+                raise AssertionError(f"not in _dtype_to_char: {letter_upper!r}")
 
             fLenType = datum["dtype"].itemsize
             fIsUnsigned = letter != letter_upper
@@ -1610,11 +1607,7 @@ class Tree:
             + 1
         )
 
-        itemsize = array.dtype.itemsize
-        for item in array.shape[1:]:
-            itemsize *= item
-
-        offsets *= itemsize
+        offsets *= array.dtype.itemsize
         offsets += fKeylen
 
         raw_array = array.tobytes()
@@ -1762,7 +1755,7 @@ def check_counter_agrees(counter_name, generated, explicit, counted=None):
 
 
 def _normalize_jagged_array(
-    branch_array, target_dtype, target_shape, operation="extend"
+    branch_name, branch_array, target_dtype, target_shape, operation="extend"
 ):
     layout = branch_array.layout
     while not isinstance(layout, awkward.contents.ListOffsetArray):
@@ -1773,7 +1766,10 @@ def _normalize_jagged_array(
             layout = layout.to_ListOffsetArray64(False)
 
         else:
-            raise AssertionError(f"how did this pass the type check?\n\n{layout!r}")
+            raise TypeError(
+                f"jagged branch {branch_name!r} can't be filled with this "
+                f"Awkward Array:\n\n{layout!r}"
+            )
 
     content = layout.content
     offsets = numpy.asarray(layout.offsets)
@@ -1797,7 +1793,10 @@ def _normalize_jagged_array(
             content = content.content
 
         else:
-            raise AssertionError(f"how did this pass the type check?\n\n{content!r}")
+            raise TypeError(
+                f"jagged branch {branch_name!r} can't be filled with lists "
+                f"of this Awkward Array:\n\n{content!r}"
+            )
 
     big_endian = numpy.asarray(content.data, dtype=target_dtype)
     shape = tuple(shape) + big_endian.shape[1:]
